@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0a0518" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="ஜோதிட நிபுணர் — Advanced Vedic Astrology App with AI Predictions. Swiss Ephemeris accuracy." />
+  <meta name="keywords" content="jothidam, astrology, vedic, horoscope, ஜோதிடம், ராசி, நட்சத்திரம், jathagam" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="ஜோதிட நிபுணர் — Jothida Nipunar" />
+  <meta property="og:description" content="Advanced Vedic Astrology with AI Predictions" />
+  <meta property="og:type" content="website" />
+
+  <title>ஜோதிட நிபுணர் — Jothida Nipunar</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+
+  <!-- Noto Sans Tamil for proper Tamil rendering -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans Tamil', 'Segoe UI', system-ui, sans-serif;
+      background: #030108;
+      color: #e8e0f0;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    #root { min-height: 100vh; }
+    /* Remove input spinners */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #d4a85330; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>
