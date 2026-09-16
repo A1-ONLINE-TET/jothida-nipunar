@@ -387,6 +387,283 @@ function calculate10Porutham(nak1, nak2, rashi1, rashi2) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// GOCHARA (TRANSIT) — தினப்பலன் / இன்றைய கிரக நிலை
+// ═══════════════════════════════════════════════════════════════════
+// Traditional gochara phalam: house-from-moon effect (simplified, per-planet)
+// 1=good,0=neutral,-1=bad — classic rules for benefic/malefic houses from Rashi
+const GOCHARA_RULES = {
+  "சூரியன்": {good:[3,6,10,11], bad:[1,2,4,5,7,8,9,12]},
+  "சந்திரன்": {good:[1,3,6,7,10,11], bad:[2,4,5,8,9,12]}, // 8th = Chandrashtama
+  "செவ்வாய்": {good:[3,6,11], bad:[1,2,4,5,7,8,9,10,12]},
+  "புதன்": {good:[2,4,6,8,10,11], bad:[1,3,5,7,9,12]},
+  "குரு": {good:[2,5,7,9,11], bad:[1,3,4,6,8,10,12]},
+  "சுக்கிரன்": {good:[1,2,3,4,5,8,9,11,12], bad:[6,7,10]},
+  "சனி": {good:[3,6,11], bad:[1,2,4,5,7,8,9,10,12]},
+};
+
+function calculateGochara(birthMoonRashi, todayPlacements) {
+  const results = todayPlacements.map(p => {
+    const houseFromMoon = ((RASHIS.indexOf(p.rashi) - birthMoonRashi + 12) % 12) + 1;
+    const rule = GOCHARA_RULES[p.ta];
+    let effect = "neutral";
+    if (rule) {
+      if (rule.good.includes(houseFromMoon)) effect = "good";
+      else if (rule.bad.includes(houseFromMoon)) effect = "bad";
+    }
+    return { ...p, houseFromMoon, effect };
+  });
+
+  // Chandrashtama check — transit Moon in 8th house from birth Moon (inauspicious)
+  const moonToday = results.find(p => p.ta === "சந்திரன்");
+  const isChandrashtama = moonToday && moonToday.houseFromMoon === 8;
+
+  const goodCount = results.filter(r => r.effect === "good").length;
+  const badCount = results.filter(r => r.effect === "bad").length;
+  const overallMood = isChandrashtama ? "caution" : goodCount > badCount ? "good" : badCount > goodCount ? "caution" : "neutral";
+
+  return { results, isChandrashtama, goodCount, badCount, overallMood };
+}
+
+// Get today's panchangam + transit — reuses the Jean Meeus engine for TODAY's date
+function getTodayTranist() {
+  const today = new Date();
+  const dob = today.toISOString().split('T')[0];
+  const hh = String(today.getHours()).padStart(2,'0');
+  const mm = String(today.getMinutes()).padStart(2,'0');
+  const h = generateHoroscope(dob, `${hh}:${mm}`);
+  const dayNames = ["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"];
+  return {
+    ...h,
+    dateStr: today.toLocaleDateString("ta-IN",{year:"numeric",month:"long",day:"numeric"}),
+    dayName: dayNames[today.getDay()],
+    dateObj: today
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ராசி வாரியான நியமங்கள் & பரிகாரங்கள் (Per-Rashi Daily Remedies)
+// ═══════════════════════════════════════════════════════════════════
+// index matches RASHIS array: 0=மேஷம் ... 11=மீனம்
+const RASHI_REMEDIES = [
+  { lord:"செவ்வாய்", deity:"முருகன் / ஆஞ்சநேயர்", color:"சிவப்பு", gem:"பவளம்", mantra:"ஓம் அங்காரகாய நமః", favDay:2 },
+  { lord:"சுக்கிரன்", deity:"மகாலக்ஷ்மி", color:"வெள்ளை", gem:"வைரம்", mantra:"ஓம் சுக்ராய நமः", favDay:5 },
+  { lord:"புதன்", deity:"விஷ்ணு / விநாயகர்", color:"பச்சை", gem:"மரகதம்", mantra:"ஓம் புதாய நமः", favDay:3 },
+  { lord:"சந்திரன்", deity:"சிவபெருமான்", color:"வெள்ளை", gem:"முத்து", mantra:"ஓம் சோமாய நமः", favDay:1 },
+  { lord:"சூரியன்", deity:"சூரியன் / சிவன்", color:"மஞ்சள் சிவப்பு", gem:"மாணிக்யம்", mantra:"ஓம் சூர்யாய நமः", favDay:0 },
+  { lord:"புதன்", deity:"விஷ்ணு / விநாயகர்", color:"பச்சை", gem:"மரகதம்", mantra:"ஓம் புதாய நமः", favDay:3 },
+  { lord:"சுக்கிரன்", deity:"மகாலக்ஷ்மி", color:"வெள்ளை", gem:"வைரம்", mantra:"ஓம் சுக்ராய நமः", favDay:5 },
+  { lord:"செவ்வாய்", deity:"முருகன் / ஆஞ்சநேயர்", color:"சிவப்பு", gem:"பவளம்", mantra:"ஓம் அங்காரகாய நமः", favDay:2 },
+  { lord:"குரு", deity:"தக்ஷிணாமூர்த்தி / குரு", color:"மஞ்சள்", gem:"புஷ்பராகம்", mantra:"ஓம் குரவே நமः", favDay:4 },
+  { lord:"சனி", deity:"ஐயப்பன் / சனீஸ்வரர்", color:"கருப்பு நீலம்", gem:"நீலம்", mantra:"ஓம் சனிஸ்வராய நமः", favDay:6 },
+  { lord:"சனி", deity:"ஐயப்பன் / சனீஸ்வரர்", color:"கருப்பு நீலம்", gem:"நீலம்", mantra:"ஓம் சனிஸ்வராய நமః", favDay:6 },
+  { lord:"குரு", deity:"தக்ஷிணாமூர்த்தி / குரு", color:"மஞ்சள்", gem:"புஷ்பராகம்", mantra:"ஓம் குரவே நமः", favDay:4 },
+];
+
+// key = JS getDay() → 0=Sunday...6=Saturday
+const DAY_REMEDIES = {
+  0: { lord:"சூரியன்", deity:"சூரிய பகவான்", remedy:"சூரியனுக்கு நீரில் சிவப்பு சந்தனம் கலந்து அர்க்யம் கொடுக்கவும்", donate:"கோதுமை, வெல்லம்", avoid:"உப்பு அதிகம் தவிர்க்கவும்" },
+  1: { lord:"சந்திரன்", deity:"சிவபெருமான்", remedy:"சிவன் கோவிலில் பால் அபிஷேகம் செய்யவும் / சந்தனம் அணியவும்", donate:"பால், அரிசி, வெள்ளை உடை", avoid:"கோபம் தவிர்க்கவும்" },
+  2: { lord:"செவ்வாய்", deity:"முருகன் / ஆஞ்சநேயர்", remedy:"முருகன் அல்லது ஆஞ்சநேயருக்கு வழிபாடு, வேல் தரிசனம்", donate:"சிவப்பு பருப்பு, வெல்லம்", avoid:"முடிவெடுக்கும்போது அவசரப்படாதீர்" },
+  3: { lord:"புதன்", deity:"விஷ்ணு / விநாயகர்", remedy:"விநாயகருக்கு பச்சை பாயசம் நைவேத்யம், பச்சை அணியவும்", donate:"பாசிப்பருப்பு", avoid:"தேவையற்ற வாக்குவாதம் தவிர்க்கவும்" },
+  4: { lord:"குரு", deity:"தக்ஷிணாமூர்த்தி / குரு", remedy:"குருவை வணங்கவும், மஞ்சள் அணியவும்", donate:"மஞ்சள், வாழைப்பழம், புத்தகம்", avoid:"பெரியோரை அவமதிக்காதீர்" },
+  5: { lord:"சுக்கிரன்", deity:"மகாலக்ஷ்மி", remedy:"லக்ஷ்மி வழிபாடு, வெள்ளை உடை அணியவும்", donate:"அரிசி, வெள்ளை உடை, சர்க்கரை", avoid:"பொருள் விரயம் தவிர்க்கவும்" },
+  6: { lord:"சனி", deity:"ஐயப்பன் / சனீஸ்வரர்", remedy:"சனீஸ்வரருக்கு எள் எண்ணெய் அபிஷேகம், கருப்பு உடை அணியவும்", donate:"எள் எண்ணெய், கருப்பு உளுந்து", avoid:"புதிய காரியங்கள் தொடங்காதீர்" },
+};
+
+// திதி வழிகாட்டுதல் — 15 நாள் சுழற்சி (வார நாள் 7-நாள் சுழற்சியுடன் சேராது,
+// இதனால் வார நாள் + திதி இணைந்த பலன் 105 நாட்கள் வரை repeat ஆகாது)
+const TITHI_GUIDANCE = [
+  { name:"பிரதமை", note:"புதிய தொடக்கங்களுக்கு ஏற்ற நாள்", activity:"புதிய காரியம் தொடங்கலாம்" },
+  { name:"த்விதியை", note:"திட்டமிடலுக்கு ஏற்ற நாள்", activity:"நீண்டகால திட்டங்களை வகுக்கலாம்" },
+  { name:"திருதியை", note:"தைரியம் தேவைப்படும் காரியங்களுக்கு ஏற்றது", activity:"முக்கிய முடிவுகள் எடுக்கலாம்" },
+  { name:"சதுர்த்தி", note:"விநாயகர் வழிபாட்டிற்கு சிறந்த நாள்", activity:"தடைகள் நீங்க விநாயகரை வழிபடவும்" },
+  { name:"பஞ்சமி", note:"கல்வி, கலைகளுக்கு ஏற்ற நாள்", activity:"புதிய திறமைகளை கற்கலாம்" },
+  { name:"ஷஷ்டி", note:"முருகன் வழிபாட்டிற்கு சிறந்த நாள்", activity:"ஆரோக்கியம் தொடர்பான காரியங்களுக்கு நல்லது" },
+  { name:"சப்தமி", note:"பயணங்களுக்கு ஏற்ற நாள்", activity:"தொலைதூர பயணம் தொடங்கலாம்" },
+  { name:"அஷ்டமி", note:"காளி/துர்கை வழிபாட்டிற்கு ஏற்றது", activity:"சவால்களை எதிர்கொள்ளும் காரியங்களுக்கு நல்லது" },
+  { name:"நவமி", note:"கவனமாக இருக்க வேண்டிய நாள்", activity:"பெரிய முடிவுகளை தள்ளி வைக்கலாம்" },
+  { name:"தசமி", note:"வெற்றிக்கு உகந்த நாள்", activity:"முக்கிய காரியங்களை நிறைவு செய்யலாம்" },
+  { name:"ஏகாதசி", note:"விரதம் இருக்க சிறந்த நாள்", activity:"உபவாசம் / ஆன்மீக நடவடிக்கைகளுக்கு நல்லது" },
+  { name:"த்வாதசி", note:"தானதர்மங்களுக்கு ஏற்ற நாள்", activity:"தர்மகாரியங்கள் செய்யலாம்" },
+  { name:"திரயோதசி", note:"சிவ வழிபாட்டிற்கு ஏற்றது", activity:"பிரதோஷம் என்றால் சிவன் கோவில் செல்லவும்" },
+  { name:"சதுர்தசி", note:"கவனமாக இருக்க வேண்டிய நாள்", activity:"சர்ச்சைகளைத் தவிர்க்கவும்" },
+  { name:"பௌர்ணமி", note:"முழு நிலவு — மிக சுப நாள்", activity:"வழிபாடு, தானம், நல்ல காரியங்களுக்கு சிறந்த நாள்" },
+];
+
+function getPersonalizedRemedy(rashiIdx, dayOfWeek, isChandrashtama, tithiName) {
+  const rashiInfo = RASHI_REMEDIES[rashiIdx] || RASHI_REMEDIES[0];
+  const dayInfo = DAY_REMEDIES[dayOfWeek];
+  const isSpecialDay = rashiInfo.favDay === dayOfWeek; // today is this rashi's lord's day
+  const tithiInfo = TITHI_GUIDANCE.find(t => tithiName && tithiName.includes(t.name)) || TITHI_GUIDANCE[0];
+  return { rashiInfo, dayInfo, isSpecialDay, isChandrashtama, tithiInfo };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SUNRISE / SUNSET — NOAA Solar Equations (real astronomical formula)
+// This is the actual basis for Rahu Kalam, Yamagandam, Kuligai, Horai —
+// the genuinely time-varying (hour-to-hour) part of Vedic daily timing.
+// Default location: Chennai (13.08°N, 80.27°E) — pass lat/lon for other cities.
+// ═══════════════════════════════════════════════════════════════════
+function calcSunriseSunset(date, lat=13.0827, lon=80.2707, tzOffset=5.5) {
+  const rad = Math.PI/180, deg = 180/Math.PI;
+  const start = new Date(date.getFullYear(), 0, 0);
+  const N = Math.floor((date - start) / 86400000);
+  const gamma = 2*Math.PI/365 * (N - 1);
+
+  const eqTime = 229.18*(0.000075 + 0.001868*Math.cos(gamma) - 0.032077*Math.sin(gamma)
+    - 0.014615*Math.cos(2*gamma) - 0.040849*Math.sin(2*gamma));
+  const decl = 0.006918 - 0.399912*Math.cos(gamma) + 0.070257*Math.sin(gamma)
+    - 0.006758*Math.cos(2*gamma) + 0.000907*Math.sin(2*gamma)
+    - 0.002697*Math.cos(3*gamma) + 0.00148*Math.sin(3*gamma);
+
+  const latRad = lat*rad;
+  const haArg = (Math.cos(90.833*rad)/(Math.cos(latRad)*Math.cos(decl))) - Math.tan(latRad)*Math.tan(decl);
+  const ha = Math.acos(Math.max(-1,Math.min(1,haArg))) * deg;
+
+  const solarNoon = 720 - 4*lon - eqTime;
+  const sunriseMin = solarNoon - 4*ha + tzOffset*60;
+  const sunsetMin = solarNoon + 4*ha + tzOffset*60;
+
+  const toHM = (mins) => {
+    let h = Math.floor(mins/60) % 24, m = Math.round(mins%60);
+    if(m===60){h=(h+1)%24;m=0;}
+    return { h, m, decimal: h+m/60, label: `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}` };
+  };
+  return { sunrise: toHM(sunriseMin), sunset: toHM(sunsetMin) };
+}
+
+// Segment index (1-8) tables — standard Tamil panchangam convention, by JS getDay() (0=Sun..6=Sat)
+const RAHU_KALAM_SEG  = {0:8, 1:2, 2:7, 3:5, 4:6, 5:4, 6:3};
+const YAMAGANDAM_SEG  = {0:5, 1:4, 2:3, 3:2, 4:1, 5:7, 6:6};
+const KULIGAI_SEG     = {0:7, 1:6, 2:5, 3:4, 4:3, 5:2, 6:1};
+
+function calcMuhurtham(date, lat=13.0827, lon=80.2707, tzOffset=5.5) {
+  const { sunrise, sunset } = calcSunriseSunset(date, lat, lon, tzOffset);
+  const dayLenMin = (sunset.decimal - sunrise.decimal) * 60;
+  const segMin = dayLenMin / 8;
+  const day = date.getDay();
+
+  const segRange = (segNum) => {
+    const startMin = sunrise.decimal*60 + (segNum-1)*segMin;
+    const endMin = startMin + segMin;
+    const fmt = (m) => { let h=Math.floor(m/60)%24, mn=Math.round(m%60); if(mn===60){h=(h+1)%24;mn=0;} return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`; };
+    return `${fmt(startMin)} — ${fmt(endMin)}`;
+  };
+
+  // Abhijit Muhurtham — most auspicious, centered on solar noon, ~48 min window
+  const noonMin = (sunrise.decimal + sunset.decimal)/2 * 60;
+  const fmt2 = (m) => { let h=Math.floor(m/60)%24, mn=Math.round(m%60); if(mn===60){h=(h+1)%24;mn=0;} return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`; };
+  const abhijit = `${fmt2(noonMin-24)} — ${fmt2(noonMin+24)}`;
+
+  return {
+    sunrise: sunrise.label, sunset: sunset.label,
+    rahuKalam: segRange(RAHU_KALAM_SEG[day]),
+    yamagandam: segRange(YAMAGANDAM_SEG[day]),
+    kuligai: segRange(KULIGAI_SEG[day]),
+    abhijit
+  };
+}
+
+// Horai (Planetary Hour) — Chaldean sequence, cycles every hour from sunrise
+const HORA_CYCLE = ["சனி","குரு","செவ்வாய்","சூரியன்","சுக்கிரன்","புதன்","சந்திரன்"];
+const HORA_SYMBOLS = {"சனி":"♄","குரு":"♃","செவ்வாய்":"♂","சூரியன்":"☉","சுக்கிரன்":"♀","புதன்":"☿","சந்திரன்":"☽"};
+const DAY_LORD_BY_WEEKDAY = ["சூரியன்","சந்திரன்","செவ்வாய்","புதன்","குரு","சுக்கிரன்","சனி"]; // JS getDay 0-6
+
+function calcCurrentHorai(now, lat=13.0827, lon=80.2707, tzOffset=5.5) {
+  const { sunrise, sunset } = calcSunriseSunset(now, lat, lon, tzOffset);
+
+  const nowMin = now.getHours()*60 + now.getMinutes() + now.getSeconds()/60;
+  const sunriseMin = sunrise.decimal*60, sunsetMin = sunset.decimal*60;
+
+  let hourIndex, segStart, segEnd, dayForLord;
+  if (nowMin >= sunriseMin && nowMin < sunsetMin) {
+    // Day hora
+    const dayLen = sunsetMin - sunriseMin;
+    hourIndex = Math.floor((nowMin - sunriseMin) / (dayLen/12));
+    segStart = sunriseMin + hourIndex*(dayLen/12);
+    segEnd = segStart + dayLen/12;
+    dayForLord = now.getDay();
+  } else {
+    // Night hora (from sunset to next sunrise)
+    const nightLen = (24*60 - sunsetMin) + sunriseMin;
+    let sinceSunset = nowMin >= sunsetMin ? (nowMin - sunsetMin) : (24*60 - sunsetMin + nowMin);
+    hourIndex = 12 + Math.floor(sinceSunset / (nightLen/12));
+    segStart = (sunsetMin + Math.floor(sinceSunset/(nightLen/12))*(nightLen/12)) % (24*60);
+    segEnd = segStart + nightLen/12;
+    dayForLord = nowMin >= sunsetMin ? now.getDay() : (now.getDay()+6)%7; // hora-day starts at sunrise
+  }
+
+  const dayLord = DAY_LORD_BY_WEEKDAY[dayForLord];
+  const startIdx = HORA_CYCLE.indexOf(dayLord);
+  const rulingPlanet = HORA_CYCLE[(startIdx + hourIndex) % 7];
+
+  const fmt = (m) => { let h=Math.floor(m/60)%24, mn=Math.round(m%60); if(mn===60){h=(h+1)%24;mn=0;} return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`; };
+  const isBenefic = ["குரு","சுக்கிரன்","புதன்","சந்திரன்"].includes(rulingPlanet);
+
+  return {
+    planet: rulingPlanet, symbol: HORA_SYMBOLS[rulingPlanet],
+    startLabel: fmt(segStart), endLabel: fmt(segEnd < segStart ? segEnd+24*60 : segEnd),
+    isBenefic
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ஏழரை சனி (SADE SATI) — Saturn's 7.5-year cycle relative to birth Moon
+// ═══════════════════════════════════════════════════════════════════
+function calcSadeSati(birthMoonRashi, saturnTodayRashi) {
+  const houseFromMoon = ((saturnTodayRashi - birthMoonRashi + 12) % 12) + 1;
+  if (houseFromMoon === 12) return { active:true, phase:"தொடக்க சாடே சாதி", phaseEn:"Rising Phase", desc:"ஏழரை சனியின் முதல் கட்டம் தொடங்கியுள்ளது — மன அழுத்தம், மாற்றங்கள் ஏற்படலாம். பொறுமை தேவை.", severity:"caution" };
+  if (houseFromMoon === 1)  return { active:true, phase:"உச்ச சாடே சாதி", phaseEn:"Peak Phase", desc:"ஏழரை சனியின் உச்சக்கட்டம் — மிகவும் கடினமான காலம். ஆன்மீக பயிற்சி, சனி பரிகாரம் செய்யவும்.", severity:"high" };
+  if (houseFromMoon === 2)  return { active:true, phase:"இறங்கு சாடே சாதி", phaseEn:"Setting Phase", desc:"ஏழரை சனி முடிவை நோக்கி செல்கிறது — குடும்பம், பொருளாதாரத்தில் கவனம் தேவை.", severity:"caution" };
+  if (houseFromMoon === 8)  return { active:true, phase:"அஷ்டம சனி (கண்டக சனி)", phaseEn:"Ashtama Shani", desc:"சனி 8ஆம் வீட்டில் — ஆரோக்கியம், எதிர்பாராத சிக்கல்களில் கவனம் தேவை.", severity:"caution" };
+  if (houseFromMoon === 4)  return { active:true, phase:"அர்த்தாஷ்டம சனி", phaseEn:"Ardhashtama Shani", desc:"சனி 4ஆம் வீட்டில் — மனநிலை, வீடு தொடர்பான விஷயங்களில் கவனம்.", severity:"caution" };
+  return { active:false, phase:"ஏழரை சனி இல்லை", phaseEn:"No Sade Sati", desc:"தற்போது சனி தொடர்பான சிறப்பு கவனம் தேவையில்லை.", severity:"none" };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// குரு பெயர்ச்சி (GURU PEYARCHI) — Jupiter's yearly transit status
+// ═══════════════════════════════════════════════════════════════════
+function calcGuruPeyarchi(birthMoonRashi, jupiterTodayRashi) {
+  const houseFromMoon = ((jupiterTodayRashi - birthMoonRashi + 12) % 12) + 1;
+  const GURU_EFFECTS = {
+    1:{mood:"good",desc:"தன்னம்பிக்கை, புதிய தொடக்கங்களுக்கு நல்ல காலம்"},
+    2:{mood:"good",desc:"பொருளாதார வளர்ச்சி, குடும்ப மகிழ்ச்சி"},
+    3:{mood:"caution",desc:"முயற்சிகள் அதிகரிக்கும், சகோதரர்களுடன் உறவில் கவனம்"},
+    4:{mood:"caution",desc:"வீடு, தாய் தொடர்பான விஷயங்களில் மாற்றம்"},
+    5:{mood:"good",desc:"கல்வி, குழந்தைகள், படைப்பாற்றலுக்கு சிறந்த காலம்"},
+    6:{mood:"caution",desc:"எதிரிகள், கடன், ஆரோக்கியத்தில் கவனம் தேவை"},
+    7:{mood:"good",desc:"திருமணம், கூட்டாண்மைகளுக்கு நல்ல காலம்"},
+    8:{mood:"caution",desc:"திடீர் மாற்றங்கள், ஆன்மீக வளர்ச்சிக்கான காலம்"},
+    9:{mood:"good",desc:"அதிர்ஷ்டம், தர்மம், தொலைதூர பயணங்களுக்கு சிறந்தது"},
+    10:{mood:"good",desc:"தொழில், பதவி உயர்வுக்கு சிறந்த காலம்"},
+    11:{mood:"good",desc:"வருமானம், லாபம், நண்பர்கள் மூலம் நன்மை"},
+    12:{mood:"caution",desc:"செலவு அதிகரிக்கும், ஓய்வு தேவைப்படும் காலம்"}
+  };
+  const effect = GURU_EFFECTS[houseFromMoon];
+  return { houseFromMoon, rashi:RASHIS[jupiterTodayRashi], ...effect };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// தாரா பலம் (TARA BALA) — 27-Nakshatra strength (finer than Chandra Bala)
+// ═══════════════════════════════════════════════════════════════════
+const TARA_TYPES = [
+  {name:"ஜென்ம தாரை", mood:"bad", desc:"தவிர்க்கவும் — புதிய காரியங்களுக்கு உகந்தது அல்ல"},
+  {name:"சம்பத் தாரை", mood:"good", desc:"செல்வம், நன்மை தரும் நாள்"},
+  {name:"விபத் தாரை", mood:"bad", desc:"தடைகள் வரலாம் — கவனமாக இருக்கவும்"},
+  {name:"க்ஷேம தாரை", mood:"good", desc:"நல்வாழ்வு, மகிழ்ச்சி தரும் நாள்"},
+  {name:"பிரத்யக் தாரை", mood:"bad", desc:"தடைகள், தாமதங்கள் ஏற்படலாம்"},
+  {name:"சாதக தாரை", mood:"good", desc:"வெற்றி, சாதனைகளுக்கு உகந்த நாள்"},
+  {name:"வத தாரை", mood:"bad", desc:"மிகவும் கவனமாக இருக்க வேண்டிய நாள்"},
+  {name:"மைத்ர தாரை", mood:"good", desc:"நட்பு, ஒத்துழைப்பு தரும் நாள்"},
+  {name:"பரம மைத்ர தாரை", mood:"good", desc:"மிகச் சிறந்த, நட்பான நாள்"},
+];
+function calcTaraBala(birthNakIdx, todayNakIdx) {
+  const count = ((todayNakIdx - birthNakIdx + 27) % 27) + 1; // 1-27
+  const taraIdx = (count - 1) % 9;
+  return { count, ...TARA_TYPES[taraIdx] };
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // COSMIC UNIVERSE BACKGROUND
 // ═══════════════════════════════════════════════════════════════════
 function CosmicBackground() {
@@ -1183,7 +1460,7 @@ td{border-bottom:1px solid #e8e0d0;}
 }
 
 // ═══════════════════════════════════════════════════════════════════
-const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6 };
+const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7 };
 
 export default function AstrologyApp() {
   const [screen, setScreen] = useState(SCREEN.SPLASH);
@@ -1203,6 +1480,16 @@ export default function AstrologyApp() {
   const [poruthBride, setPoruthBride] = useState({ name:"", dob:"", tob:"", ampm:"AM" });
   const [poruthGroom, setPoruthGroom] = useState({ name:"", dob:"", tob:"", ampm:"AM" });
   const [poruthResult, setPoruthResult] = useState(null);
+  // Daily prediction
+  const [dailyData, setDailyData] = useState(null);
+  const [dailyPrediction, setDailyPrediction] = useState("");
+  const [dailyLoading, setDailyLoading] = useState(false);
+  // Live clock for Horai (planetary hour) — updates every 30s
+  const [liveClock, setLiveClock] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setLiveClock(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const goTo = useCallback((s) => {
     setFadeIn(false);
@@ -1321,6 +1608,62 @@ Predict: பொது பலன், தொழில், திருமணம்
     } catch(e){ setPrediction("AI பலன் பெற இணைய இணைப்பு தேவை."); }
     setPredictionLoading(false);
   };
+
+  // ── DAILY PREDICTION (தினப்பலன்) ──
+  const openDailyScreen = () => {
+    if (!horoscope) return;
+    const today = getTodayTranist();
+    const birthMoonRashi = RASHIS.indexOf(horoscope.moonRashi);
+    const gochara = calculateGochara(birthMoonRashi, today.placements);
+    const remedy = getPersonalizedRemedy(birthMoonRashi, today.dateObj.getDay(), gochara.isChandrashtama, today.tithi);
+    const muhurtham = calcMuhurtham(today.dateObj);
+
+    // Sade Sati (Saturn transit) & Guru Peyarchi (Jupiter transit)
+    const saturnToday = today.placements.find(p => p.ta === "சனி");
+    const jupiterToday = today.placements.find(p => p.ta === "குரு");
+    const sadeSati = saturnToday ? calcSadeSati(birthMoonRashi, RASHIS.indexOf(saturnToday.rashi)) : null;
+    const guruPeyarchi = jupiterToday ? calcGuruPeyarchi(birthMoonRashi, RASHIS.indexOf(jupiterToday.rashi)) : null;
+
+    // Tara Bala (birth nakshatra vs today's transiting moon nakshatra)
+    const birthNakIdx = NAKSHATRAS.indexOf(horoscope.nakshatra);
+    const todayNakIdx = NAKSHATRAS.indexOf(today.nakshatra);
+    const taraBala = (birthNakIdx>=0 && todayNakIdx>=0) ? calcTaraBala(birthNakIdx, todayNakIdx) : null;
+
+    setDailyData({ today, gochara, remedy, muhurtham, sadeSati, guruPeyarchi, taraBala });
+    setDailyPrediction("");
+    goTo(SCREEN.DAILY);
+  };
+
+  const fetchDailyPrediction = async () => {
+    if (!horoscope || !dailyData) return;
+    setDailyLoading(true); setDailyPrediction("");
+    try {
+      const { today, gochara, remedy, sadeSati, guruPeyarchi, taraBala } = dailyData;
+      const transitSummary = gochara.results.map(p =>
+        `${p.ta}: ${p.rashi} (birth moon-க்கு ${p.houseFromMoon}ஆம் வீடு, ${p.effect==="good"?"சுபம்":p.effect==="bad"?"அசுபம்":"நடுநிலை"})`
+      ).join(", ");
+      const prompt = `You are a Tamil Vedic astrologer giving a daily horoscope reading. Respond ONLY in Tamil.
+Person: ${formData.name}
+Birth chart: Lagna ${horoscope.lagnaName}, Moon sign (Rashi) ${horoscope.moonRashi}, Nakshatra ${horoscope.nakshatra}
+Today's date: ${today.dateStr} (${today.dayName}கிழமை)
+Today's Panchangam: திதி ${today.tithi} ${today.paksham}, யோகம் ${today.yogam}, கரணம் ${today.karanam}, நட்சத்திரம் ${today.nakshatra}
+Today's planetary transits relative to birth moon sign: ${transitSummary}
+${gochara.isChandrashtama ? "இன்று சந்திராஷ்டமம் — கவனமாக இருக்க வேண்டிய நாள்." : ""}
+${sadeSati?.active ? `Sade Sati status: ${sadeSati.phase} — ${sadeSati.desc}` : "No Sade Sati currently."}
+Guru Peyarchi (Jupiter transit) effect: ${guruPeyarchi?.desc || "N/A"}
+Tara Bala today: ${taraBala?.name} (${taraBala?.mood === "good" ? "favorable" : "use caution"})
+Recommended remedy for this rashi today: worship ${remedy?.dayInfo?.deity}, ${remedy?.dayInfo?.remedy}
+Give a short, warm, practical daily prediction (170 words max) covering: today's general mood, favorable/unfavorable timing, one practical tip for the day. Weave in Sade Sati or Guru Peyarchi naturally ONLY if they are significant today. Do not repeat the raw planetary data back — synthesize it into natural guidance.`;
+      const r = await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:600,messages:[{role:"user",content:prompt}]})
+      });
+      const data = await r.json();
+      setDailyPrediction(data.content?.map(b=>b.text||"").join("")||"இன்றைய பலன் கிடைக்கவில்லை.");
+    } catch(e){ setDailyPrediction("இணைய இணைப்பு தேவை."); }
+    setDailyLoading(false);
+  };
+
 
   const handleAuth = (e) => { e?.preventDefault?.(); setUser({name:formData.name||"User"}); goTo(SCREEN.FORM); };
 
@@ -1726,6 +2069,19 @@ ${aiPart}
             <div style={{width:40}}/>
           </div>
 
+          {/* ═══ TAB SWITCHER: ஜாதகம் / இன்றைய பலன் ═══ */}
+          <div style={{display:"flex",gap:0,marginBottom:14,background:"rgba(255,255,255,0.04)",borderRadius:12,padding:3}}>
+            <button style={{
+              flex:1,padding:"10px 0",border:"none",borderRadius:10,
+              background:"linear-gradient(135deg,#d4a85325,#a78bfa18)",
+              color:"#f0c75e",fontSize:12,fontWeight:700,cursor:"pointer"
+            }}>📜 ஜாதகம்</button>
+            <button onClick={openDailyScreen} style={{
+              flex:1,padding:"10px 0",border:"none",borderRadius:10,
+              background:"transparent",color:"#a78bfa80",fontSize:12,fontWeight:600,cursor:"pointer"
+            }}>📅 இன்றைய பலன்</button>
+          </div>
+
           {/* ═══ 1. BIRTH DETAILS ═══ */}
           <div style={{...card,marginBottom:10,padding:"12px 14px",fontSize:12}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -1917,6 +2273,281 @@ ${aiPart}
               ))}
             </div>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // ═══════ DAILY PREDICTION (தினப்பலன்) ═══════
+  if(screen===SCREEN.DAILY && dailyData) {
+    const { today, gochara, remedy, muhurtham, sadeSati, guruPeyarchi, taraBala } = dailyData;
+    const moodColor = gochara.overallMood==="good" ? "#4ade80" : gochara.overallMood==="caution" ? "#ff6b8a" : "#f0c75e";
+    const moodText = gochara.overallMood==="good" ? "இன்று நல்ல நாள்" : gochara.overallMood==="caution" ? "கவனமாக இருக்க வேண்டிய நாள்" : "சாதாரண நாள்";
+    const currentHorai = calcCurrentHorai(liveClock); // live — refreshes every 30s via liveClock state
+
+    return (
+      <div style={base}>
+        <CosmicBackground/>
+        <MantraChakra speed={100} size={400} opacity={0.06}/>
+        <div style={{...container,paddingTop:20,paddingBottom:30}}>
+          <button onClick={()=>goTo(SCREEN.RESULT)} style={{background:"none",border:"none",color:"#a78bfa",fontSize:14,cursor:"pointer",padding:0,marginBottom:12}}>← திரும்பு</button>
+
+          {/* ═══ TAB SWITCHER: ஜாதகம் / இன்றைய பலன் ═══ */}
+          <div style={{display:"flex",gap:0,marginBottom:16,background:"rgba(255,255,255,0.04)",borderRadius:12,padding:3}}>
+            <button onClick={()=>goTo(SCREEN.RESULT)} style={{
+              flex:1,padding:"10px 0",border:"none",borderRadius:10,
+              background:"transparent",color:"#a78bfa80",fontSize:12,fontWeight:600,cursor:"pointer"
+            }}>📜 ஜாதகம்</button>
+            <button style={{
+              flex:1,padding:"10px 0",border:"none",borderRadius:10,
+              background:"linear-gradient(135deg,#d4a85325,#a78bfa18)",
+              color:"#f0c75e",fontSize:12,fontWeight:700,cursor:"pointer"
+            }}>📅 இன்றைய பலன்</button>
+          </div>
+
+          <div style={{textAlign:"center",marginBottom:16}}>
+            <div style={{fontSize:32,marginBottom:6}}>📅</div>
+            <h2 style={{fontSize:19,fontWeight:500,color:"#f0c75e",margin:"0 0 2px"}}>இன்றைய பலன்</h2>
+            <p style={{fontSize:12,color:"#a78bfa"}}>{today.dateStr} • {today.dayName}கிழமை</p>
+          </div>
+
+          {/* Live Horai — updates every ~30s */}
+          <div style={{...card,marginBottom:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,
+            border:`1px solid ${currentHorai.isBenefic?"#4ade8030":"#ff6b8a30"}`}}>
+            <div style={{fontSize:24}}>{currentHorai.symbol}</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:9,color:"#a78bfa80"}}>இப்போது நடக்கும் ஹோரை (Live)</div>
+              <div style={{fontSize:13,fontWeight:700,color:currentHorai.isBenefic?"#4ade80":"#ff6b8a"}}>
+                {currentHorai.planet} ஹோரை
+              </div>
+              <div style={{fontSize:9,color:"#a78bfa60"}}>{currentHorai.startLabel} — {currentHorai.endLabel}</div>
+            </div>
+            <div style={{fontSize:9,color:currentHorai.isBenefic?"#4ade80":"#ff6b8a",fontWeight:600,textAlign:"right"}}>
+              {currentHorai.isBenefic?"✓ சுப நேரம்":"⚠ கவனம்"}
+            </div>
+          </div>
+
+          {/* Mood Banner */}
+          <div style={{...card,marginBottom:12,padding:"14px 16px",textAlign:"center",
+            border:`1.5px solid ${moodColor}40`, background:`${moodColor}10`}}>
+            <div style={{fontSize:15,fontWeight:700,color:moodColor}}>{moodText}</div>
+            {gochara.isChandrashtama && (
+              <div style={{fontSize:11,color:"#ff6b8a",marginTop:6,fontWeight:600}}>
+                ⚠ இன்று சந்திராஷ்டமம் — புதிய காரியங்களைத் தவிர்க்கவும்
+              </div>
+            )}
+            <div style={{fontSize:10,color:"#a78bfa80",marginTop:6}}>
+              சுப கிரகங்கள்: {gochara.goodCount} • எச்சரிக்கை: {gochara.badCount}
+            </div>
+          </div>
+
+          {/* Sade Sati + Tara Bala row */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+            {sadeSati && (
+              <div style={{...card,padding:"10px 12px",
+                border:`1px solid ${sadeSati.active?(sadeSati.severity==="high"?"#ff6b8a40":"#f0c75e30"):"#4ade8025"}`}}>
+                <div style={{fontSize:9,color:"#a78bfa80",marginBottom:3}}>ஏழரை சனி</div>
+                <div style={{fontSize:11,fontWeight:700,
+                  color:sadeSati.active?(sadeSati.severity==="high"?"#ff6b8a":"#f0c75e"):"#4ade80"}}>
+                  {sadeSati.active?"⚠ "+sadeSati.phase:"✓ இல்லை"}
+                </div>
+              </div>
+            )}
+            {taraBala && (
+              <div style={{...card,padding:"10px 12px",
+                border:`1px solid ${taraBala.mood==="good"?"#4ade8025":"#ff6b8a30"}`}}>
+                <div style={{fontSize:9,color:"#a78bfa80",marginBottom:3}}>தாரா பலம்</div>
+                <div style={{fontSize:11,fontWeight:700,color:taraBala.mood==="good"?"#4ade80":"#ff6b8a"}}>
+                  {taraBala.mood==="good"?"✓ ":"⚠ "}{taraBala.name}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Guru Peyarchi */}
+          {guruPeyarchi && (
+            <div style={{...card,marginBottom:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,
+              border:`1px solid ${guruPeyarchi.mood==="good"?"#4ade8025":"#f0c75e30"}`}}>
+              <div style={{fontSize:22}}>♃</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:9,color:"#a78bfa80"}}>குரு பெயர்ச்சி பலன் ({guruPeyarchi.rashi})</div>
+                <div style={{fontSize:11,color:"#e8e0f0cc",lineHeight:1.5,marginTop:2}}>{guruPeyarchi.desc}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Muhurtham — Rahu Kalam, Yamagandam, Kuligai, Abhijit */}
+          {muhurtham && (
+            <div style={{...card,marginBottom:12,padding:"12px 14px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:2,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
+                ⏰ இன்றைய நல்ல நேரம் / தவிர்க்க வேண்டிய நேரம்
+              </div>
+              <div style={{fontSize:9,color:"#a78bfa60",marginBottom:8,marginTop:4}}>
+                சூரிய உதயம் {muhurtham.sunrise} • அஸ்தமனம் {muhurtham.sunset} (Chennai அடிப்படையில்)
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:"1px solid #ffffff06"}}>
+                <span style={{fontSize:8,fontWeight:700,color:"#4ade80",background:"#4ade8015",padding:"3px 8px",borderRadius:5,width:70,textAlign:"center"}}>சுபம்</span>
+                <span style={{fontSize:11,color:"#e8e0f0"}}>அபிஜித் முகூர்த்தம்</span>
+                <span style={{fontSize:10,color:"#a78bfa",marginLeft:"auto"}}>{muhurtham.abhijit}</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:"1px solid #ffffff06"}}>
+                <span style={{fontSize:8,fontWeight:700,color:"#ff6b8a",background:"#ff6b8a15",padding:"3px 8px",borderRadius:5,width:70,textAlign:"center"}}>தவிர்க்க</span>
+                <span style={{fontSize:11,color:"#e8e0f0"}}>ராகு காலம்</span>
+                <span style={{fontSize:10,color:"#a78bfa",marginLeft:"auto"}}>{muhurtham.rahuKalam}</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:"1px solid #ffffff06"}}>
+                <span style={{fontSize:8,fontWeight:700,color:"#ff6b8a",background:"#ff6b8a15",padding:"3px 8px",borderRadius:5,width:70,textAlign:"center"}}>தவிர்க்க</span>
+                <span style={{fontSize:11,color:"#e8e0f0"}}>எமகண்டம்</span>
+                <span style={{fontSize:10,color:"#a78bfa",marginLeft:"auto"}}>{muhurtham.yamagandam}</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0"}}>
+                <span style={{fontSize:8,fontWeight:700,color:"#ff6b8a",background:"#ff6b8a15",padding:"3px 8px",borderRadius:5,width:70,textAlign:"center"}}>தவிர்க்க</span>
+                <span style={{fontSize:11,color:"#e8e0f0"}}>குளிகை</span>
+                <span style={{fontSize:10,color:"#a78bfa",marginLeft:"auto"}}>{muhurtham.kuligai}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Today's Panchangam */}
+          <div style={{...card,marginBottom:12,padding:"12px 14px",fontSize:12}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
+              இன்றைய பஞ்சாங்கம்
+            </div>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <tbody>
+                {[
+                  ["திதி",`${today.tithi}, ${today.paksham}`],
+                  ["நட்சத்திரம்",`${today.nakshatra}, பாதம் ${today.nakshatraPada||1}`],
+                  ["யோகம்",today.yogam],
+                  ["கரணம்",today.karanam],
+                  ["சந்திர ராசி",today.moonRashi],
+                ].map(([l,v],i)=>(
+                  <tr key={i} style={{borderBottom:"1px solid #ffffff08"}}>
+                    <td style={{padding:"4px 0",color:"#a78bfa",width:"38%",fontWeight:600,fontSize:11}}>{l}</td>
+                    <td style={{padding:"4px 0",color:"#a78bfa40",width:10}}>:</td>
+                    <td style={{padding:"4px 6px",color:"#e8e0f0",fontWeight:600,fontSize:11}}>{v}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ═══ NIYAMAM & PARIKARAM — ராசிக்கான நியமங்கள் & பரிகாரங்கள் ═══ */}
+          {remedy && (
+            <div style={{...card,marginBottom:12,padding:"12px 14px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
+                🕉 உங்கள் ராசிக்கான நியமங்கள் & பரிகாரங்கள்
+              </div>
+
+              {/* Constant Rashi info */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                <div style={{background:"#f0c75e08",borderRadius:6,padding:"7px 9px"}}>
+                  <div style={{fontSize:9,color:"#a78bfa80"}}>ஆட்சி கிரகம்</div>
+                  <div style={{fontSize:11,fontWeight:700,color:"#f0c75e"}}>{remedy.rashiInfo.lord}</div>
+                </div>
+                <div style={{background:"#f0c75e08",borderRadius:6,padding:"7px 9px"}}>
+                  <div style={{fontSize:9,color:"#a78bfa80"}}>வழிபட வேண்டிய தெய்வம்</div>
+                  <div style={{fontSize:11,fontWeight:700,color:"#f0c75e"}}>{remedy.rashiInfo.deity}</div>
+                </div>
+                <div style={{background:"#a78bfa08",borderRadius:6,padding:"7px 9px"}}>
+                  <div style={{fontSize:9,color:"#a78bfa80"}}>அணிய நல்ல நிறம்</div>
+                  <div style={{fontSize:11,fontWeight:700,color:"#e8e0f0"}}>{remedy.rashiInfo.color}</div>
+                </div>
+                <div style={{background:"#a78bfa08",borderRadius:6,padding:"7px 9px"}}>
+                  <div style={{fontSize:9,color:"#a78bfa80"}}>ரத்தினம்</div>
+                  <div style={{fontSize:11,fontWeight:700,color:"#e8e0f0"}}>{remedy.rashiInfo.gem}</div>
+                </div>
+              </div>
+              <div style={{background:"#4ade8008",border:"1px solid #4ade8020",borderRadius:6,padding:"8px 10px",marginBottom:10}}>
+                <div style={{fontSize:9,color:"#4ade8090"}}>தினசரி ஜபிக்க வேண்டிய மந்திரம்</div>
+                <div style={{fontSize:12,fontWeight:600,color:"#4ade80",fontFamily:"serif",marginTop:2}}>{remedy.rashiInfo.mantra}</div>
+              </div>
+
+              {/* Today's specific remedy */}
+              <div style={{borderTop:"1px dashed #d4a85330",paddingTop:10}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#e8e0f0",marginBottom:6}}>
+                  📿 இன்று ({today.dayName}கிழமை) செய்ய வேண்டியவை
+                </div>
+                {remedy.isSpecialDay && (
+                  <div style={{fontSize:10,background:"#f0c75e15",color:"#f0c75e",padding:"4px 8px",borderRadius:6,marginBottom:6,fontWeight:600}}>
+                    ⭐ இன்று உங்கள் ராசி நாதன் ({remedy.rashiInfo.lord}) நாள் — சிறப்பு நாள்!
+                  </div>
+                )}
+                <div style={{fontSize:11,color:"#e8e0f0cc",lineHeight:1.7,marginBottom:6}}>
+                  <span style={{color:"#a78bfa"}}>வழிபாடு:</span> {remedy.dayInfo.remedy}
+                </div>
+                <div style={{fontSize:11,color:"#e8e0f0cc",lineHeight:1.7,marginBottom:6}}>
+                  <span style={{color:"#a78bfa"}}>தானம்:</span> {remedy.dayInfo.donate}
+                </div>
+                <div style={{fontSize:11,color:"#e8e0f0cc",lineHeight:1.7}}>
+                  <span style={{color:"#a78bfa"}}>தவிர்க்க வேண்டியது:</span> {remedy.dayInfo.avoid}
+                </div>
+
+                {/* Tithi-based guidance — changes daily (15-day cycle), keeps this from feeling like a 7-day repeat */}
+                <div style={{marginTop:10,borderTop:"1px dashed #a78bfa25",paddingTop:8}}>
+                  <div style={{fontSize:10,color:"#a78bfa",marginBottom:3}}>
+                    🌙 இன்றைய திதி ({today.tithi}) வழிகாட்டுதல்
+                  </div>
+                  <div style={{fontSize:11,color:"#e8e0f0cc",lineHeight:1.6}}>
+                    {remedy.tithiInfo.note} — <span style={{color:"#4ade80"}}>{remedy.tithiInfo.activity}</span>
+                  </div>
+                </div>
+
+                {remedy.isChandrashtama && (
+                  <div style={{marginTop:10,background:"#ff6b8a10",border:"1px solid #ff6b8a30",borderRadius:6,padding:"8px 10px"}}>
+                    <div style={{fontSize:10,fontWeight:700,color:"#ff6b8a",marginBottom:3}}>⚠ சந்திராஷ்டம பரிகாரம்</div>
+                    <div style={{fontSize:10,color:"#e8e0f0cc",lineHeight:1.6}}>
+                      இன்று புதிய காரியங்கள், பயணம், முக்கிய முடிவுகள் தவிர்க்கவும். சிவன் கோவிலில் "ஓம் நமசிவாய" 108 முறை ஜபிக்கவும். பால் அபிஷேகம் செய்தால் நல்லது.
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Gochara Transit Table */}
+          <div style={{...card,marginBottom:12,padding:"12px 14px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
+              கிரக கோசாரம் (உங்கள் ராசி: {horoscope.moonRashi})
+            </div>
+            {gochara.results.map((p,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",
+                borderBottom:i<gochara.results.length-1?"1px solid #ffffff06":"none"}}>
+                <span style={{fontSize:15,width:20}}>{p.symbol}</span>
+                <span style={{fontSize:11,color:"#e8e0f0",flex:1}}>{p.ta} — {p.rashi}</span>
+                <span style={{fontSize:9,color:"#a78bfa80"}}>{p.houseFromMoon}ஆம் வீடு</span>
+                <span style={{
+                  fontSize:8, fontWeight:700, padding:"2px 7px", borderRadius:5,
+                  background:p.effect==="good"?"#4ade8020":p.effect==="bad"?"#ff6b8a20":"#a78bfa15",
+                  color:p.effect==="good"?"#4ade80":p.effect==="bad"?"#ff6b8a":"#a78bfa80"
+                }}>{p.effect==="good"?"சுபம்":p.effect==="bad"?"அசுபம்":"நடுநிலை"}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* AI Daily Prediction */}
+          <div style={{...card,marginBottom:12,padding:"14px 16px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+              <div style={{width:32,height:32,borderRadius:10,background:"linear-gradient(135deg,#d4a85330,#a78bfa20)",
+                display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🤖</div>
+              <div style={{fontSize:13,fontWeight:600,color:"#f0c75e"}}>AI தினப்பலன்</div>
+            </div>
+            {dailyLoading ? (
+              <div style={{textAlign:"center",padding:"20px 0"}}>
+                <div style={{width:26,height:26,margin:"0 auto 8px",border:"2px solid #d4a85320",borderTop:"2px solid #d4a853",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+                <p style={{color:"#a78bfa",fontSize:12}}>தினப்பலன் உருவாக்குகிறது...</p>
+                <style>{`@keyframes spin{to{transform:rotate(360deg);}}`}</style>
+              </div>
+            ) : dailyPrediction ? (
+              <div style={{fontSize:13,lineHeight:1.9,color:"#e8e0f0cc",whiteSpace:"pre-wrap"}}>{dailyPrediction}</div>
+            ) : (
+              <button style={{...btnGold,width:"auto",padding:"10px 24px",display:"inline-block",fontSize:13}} onClick={fetchDailyPrediction}>
+                🔮 இன்றைய பலன் பெறு →
+              </button>
+            )}
+          </div>
+
+          <button style={{...btnOutline,fontSize:12,padding:"10px 0"}} onClick={()=>goTo(SCREEN.RESULT)}>← ஜாதகத்திற்கு திரும்பு</button>
         </div>
       </div>
     );
