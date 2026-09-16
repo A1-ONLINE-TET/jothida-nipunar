@@ -147,6 +147,201 @@ function generateHoroscope(dob, tob) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// VIMSHOTTARI DASHA SYSTEM (120-year cycle)
+// ═══════════════════════════════════════════════════════════════════
+const DASHA_LORDS = [
+  {name:"கேது",    en:"Ketu",    years:7,  symbol:"☋"},
+  {name:"சுக்கிரன்",en:"Venus",  years:20, symbol:"♀"},
+  {name:"சூரியன்", en:"Sun",     years:6,  symbol:"☉"},
+  {name:"சந்திரன்",en:"Moon",    years:10, symbol:"☽"},
+  {name:"செவ்வாய்",en:"Mars",    years:7,  symbol:"♂"},
+  {name:"ராகு",    en:"Rahu",    years:18, symbol:"☊"},
+  {name:"குரு",    en:"Jupiter", years:16, symbol:"♃"},
+  {name:"சனி",     en:"Saturn",  years:19, symbol:"♄"},
+  {name:"புதன்",   en:"Mercury", years:17, symbol:"☿"}
+];
+// Nakshatra → Dasha lord index: 0=Ketu,1=Venus,2=Sun,...
+const NAK_DASHA_MAP = [0,1,2,3,4,5,6,7,8,0,1,2,3,4,5,6,7,8,0,1,2,3,4,5,6,7,8];
+
+function calculateDasha(moonLongitude, birthDate) {
+  const nakIdx = Math.floor(moonLongitude / (360/27)) % 27;
+  const lordIdx = NAK_DASHA_MAP[nakIdx];
+  const lord = DASHA_LORDS[lordIdx];
+
+  // Balance of nakshatra at birth (how much of current nakshatra is remaining)
+  const nakStart = nakIdx * (360/27);
+  const posInNak = moonLongitude - nakStart;
+  const nakSpan = 360/27; // 13.333°
+  const remaining = 1 - (posInNak / nakSpan); // fraction remaining
+  const balanceYears = lord.years * remaining;
+
+  // Build dasha periods
+  const bd = new Date(birthDate);
+  const dashas = [];
+  let currentDate = new Date(bd);
+  // First: remaining balance of birth dasha
+  let startIdx = lordIdx;
+  for (let i = 0; i < 9; i++) {
+    const idx = (startIdx + i) % 9;
+    const d = DASHA_LORDS[idx];
+    const yrs = i === 0 ? balanceYears : d.years;
+    const startDt = new Date(currentDate);
+    const endMs = currentDate.getTime() + yrs * 365.25 * 24 * 3600000;
+    const endDt = new Date(endMs);
+
+    // Antardasha (sub-periods within this dasha)
+    const antardashas = [];
+    let adDate = new Date(startDt);
+    for (let j = 0; j < 9; j++) {
+      const adIdx = (idx + j) % 9;
+      const ad = DASHA_LORDS[adIdx];
+      const adYrs = (yrs * ad.years) / 120;
+      const adStart = new Date(adDate);
+      const adEndMs = adDate.getTime() + adYrs * 365.25 * 24 * 3600000;
+      const adEnd = new Date(adEndMs);
+      antardashas.push({
+        ...ad, startDate: adStart, endDate: adEnd,
+        duration: adYrs.toFixed(1) + " வருடம்"
+      });
+      adDate = adEnd;
+    }
+
+    const now = new Date();
+    const isCurrent = now >= startDt && now < endDt;
+    dashas.push({
+      ...d, years: Math.round(yrs * 10) / 10,
+      startDate: startDt, endDate: endDt,
+      isCurrent, antardashas
+    });
+    currentDate = endDt;
+  }
+  return { dashas, birthNakshatra: NAKSHATRAS[nakIdx], birthLord: lord };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// NAVAMSA (D9) CHART CALCULATOR
+// ═══════════════════════════════════════════════════════════════════
+function calculateNavamsa(placements) {
+  // Navamsa = divide each sign into 9 parts (3°20' each)
+  // Movable signs (Aries,Cancer,Libra,Cap) start from Aries
+  // Fixed signs (Taurus,Leo,Scorpio,Aqua) start from Capricorn
+  // Dual signs (Gemini,Virgo,Sag,Pisces) start from Libra
+  const movable = [0,3,6,9], fixed = [1,4,7,10], dual = [2,5,8,11];
+  return placements.map(p => {
+    const rashiIdx = RASHIS.indexOf(p.rashi);
+    const deg = p.degree;
+    const navPart = Math.floor(deg / (30/9)); // 0-8
+
+    let startRashi;
+    if (movable.includes(rashiIdx)) startRashi = 0;       // Aries
+    else if (fixed.includes(rashiIdx)) startRashi = 9;      // Capricorn
+    else startRashi = 6;                                     // Libra
+
+    const navRashi = (startRashi + navPart) % 12;
+    return { ...p, navRashi: RASHIS[navRashi], navRashiEn: RASHI_EN[navRashi], navRashiIdx: navRashi };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 10 PORUTHAM — MARRIAGE MATCHING
+// ═══════════════════════════════════════════════════════════════════
+const GANAM = [0,0,2,0,0,1,0,0,2, 0,2,1,0,2,0, 2,0,2,2,1,1,0,2,2,1,1,0];
+// 0=Deva, 1=Manushya, 2=Rakshasa
+const GANAM_NAMES = ["தேவ கணம்","மனுஷ்ய கணம்","ராக்ஷஸ கணம்"];
+
+const YONI = [0,1,2,3,3,4,5,5,6, 7,7,8,9,9,9, 10,10,10,4,11,11,11,0,0,0,8,1];
+const YONI_NAMES = ["குதிரை","யானை","ஆடு","பாம்பு","நாய்","பூனை","எலி","பசு","எருமை","புலி","மான்","குரங்கு"];
+
+const NADI_MAP = [0,1,2,0,1,2,0,1,2, 0,1,2,0,1,2, 0,1,2,0,1,2,0,1,2,0,1,2];
+const NADI_NAMES = ["வாத நாடி","பித்த நாடி","கப நாடி"];
+
+const RAJJU_MAP = [0,1,2,3,4,4,3,2,1, 0,1,2,3,4,4, 3,2,1,0,1,2,3,4,4,3,2,1];
+const RAJJU_NAMES = ["பாத ரஜ்ஜு","கடி ரஜ்ஜு","நாபி ரஜ்ஜு","கண்ட ரஜ்ஜு","சிர ரஜ்ஜு"];
+
+const VEDHA_PAIRS = [[0,17],[1,16],[2,15],[3,14],[4,13],[5,12],[6,11],[7,10],[8,9],[18,26],[19,25],[20,24],[21,23]];
+
+const RASHI_LORD = [2,1,4,3,0,4,1,2,6,7,7,6]; // Sun=0,Moon=1..Mercury=4..Jup=6,Sat=7
+
+function calculate10Porutham(nak1, nak2, rashi1, rashi2) {
+  const results = [];
+  let totalScore = 0;
+
+  // 1. DINAM — count from bride to groom nakshatra
+  const dinCount = ((nak2 - nak1 + 27) % 27) + 1;
+  const dinOk = ![2,4,6,8,9].includes(dinCount % 9);
+  results.push({ name:"தினம்", en:"Dinam", ok:dinOk, score:dinOk?1:0, max:1,
+    desc:dinOk?"இருவரின் ஆரோக்கியமும் நலமும் நன்றாக இருக்கும்":"ஆரோக்கியத்தில் சிறு பாதிப்பு இருக்கலாம்" });
+  if(dinOk) totalScore++;
+
+  // 2. GANAM
+  const g1=GANAM[nak1], g2=GANAM[nak2];
+  const ganOk = g1===g2 || (g1===0&&g2===1) || (g1===1&&g2===0) || (g1===0&&g2===2);
+  results.push({ name:"கணம்", en:"Ganam", ok:ganOk, score:ganOk?1:0, max:1,
+    desc:`${GANAM_NAMES[g1]} + ${GANAM_NAMES[g2]} — ${ganOk?"குணப் பொருத்தம் உண்டு":"குணத்தில் வேறுபாடு"}` });
+  if(ganOk) totalScore++;
+
+  // 3. YONI
+  const y1=YONI[nak1], y2=YONI[nak2];
+  const yoniOk = y1===y2 || Math.abs(y1-y2) > 2;
+  results.push({ name:"யோனி", en:"Yoni", ok:yoniOk, score:yoniOk?1:0, max:1,
+    desc:`${YONI_NAMES[y1]} + ${YONI_NAMES[y2]} — ${yoniOk?"தாம்பத்ய ஒற்றுமை உண்டு":"தாம்பத்யத்தில் சிறு வேறுபாடு"}` });
+  if(yoniOk) totalScore++;
+
+  // 4. RASHI
+  const rDiff = ((rashi2 - rashi1 + 12) % 12) + 1;
+  const rashiOk = [1,2,3,4,5,7,12].includes(rDiff);
+  results.push({ name:"ராசி", en:"Rasi", ok:rashiOk, score:rashiOk?1:0, max:1,
+    desc:rashiOk?"ராசி பொருத்தம் உள்ளது, செல்வம் சேரும்":"ராசி பொருத்தம் சரியில்லை" });
+  if(rashiOk) totalScore++;
+
+  // 5. RASIYATHIPATI (Lord compatibility)
+  const l1=RASHI_LORD[rashi1], l2=RASHI_LORD[rashi2];
+  const lordOk = l1===l2 || [0,1].includes(l1)&&[0,1].includes(l2) || [6,7].includes(l1)&&[6,7].includes(l2);
+  results.push({ name:"ராசியாதிபதி", en:"Rasiyathipati", ok:lordOk, score:lordOk?1:0, max:1,
+    desc:lordOk?"இரு ராசிநாதர்களும் நட்பு — நல்ல பொருத்தம்":"ராசிநாதர்கள் நட்பில்லை" });
+  if(lordOk) totalScore++;
+
+  // 6. RAJJU
+  const r1=RAJJU_MAP[nak1], r2=RAJJU_MAP[nak2];
+  const rajjuOk = r1 !== r2;
+  results.push({ name:"ரஜ்ஜு", en:"Rajju", ok:rajjuOk, score:rajjuOk?1:0, max:1,
+    desc:`${RAJJU_NAMES[r1]} + ${RAJJU_NAMES[r2]} — ${rajjuOk?"மாங்கல்ய பலம் உண்டு":"⚠ ரஜ்ஜு தோஷம் — கவனம் தேவை"}` });
+  if(rajjuOk) totalScore++;
+
+  // 7. VEDHA
+  const vedhaOk = !VEDHA_PAIRS.some(([a,b]) => (nak1===a&&nak2===b)||(nak1===b&&nak2===a));
+  results.push({ name:"வேதை", en:"Vedha", ok:vedhaOk, score:vedhaOk?1:0, max:1,
+    desc:vedhaOk?"வேதை இல்லை — தடையில்லா வாழ்க்கை":"வேதை உள்ளது — சில தடைகள் வரலாம்" });
+  if(vedhaOk) totalScore++;
+
+  // 8. VASIYAM
+  const vasiyaPairs = {0:[3,4],1:[0,2],2:[11],3:[1],4:[5],5:[0,4],6:[3],7:[2],8:[10],9:[0],10:[8],11:[9]};
+  const vasiyamOk = (vasiyaPairs[rashi1]||[]).includes(rashi2) || (vasiyaPairs[rashi2]||[]).includes(rashi1) || rashi1===rashi2;
+  results.push({ name:"வசியம்", en:"Vasiyam", ok:vasiyamOk, score:vasiyamOk?1:0, max:1,
+    desc:vasiyamOk?"ஒருவர் மீது ஒருவர் ஈர்ப்பு உண்டு":"வசிய பொருத்தம் குறைவு" });
+  if(vasiyamOk) totalScore++;
+
+  // 9. MAHENDRAM
+  const mahCount = ((nak2 - nak1 + 27) % 27) + 1;
+  const mahOk = [1,4,7,10,13,16,19,22,25].includes(mahCount);
+  results.push({ name:"மகேந்திரம்", en:"Mahendram", ok:mahOk, score:mahOk?1:0, max:1,
+    desc:mahOk?"சந்ததி பாக்கியம் உண்டு, வம்ச விருத்தி":"மகேந்திர பொருத்தம் இல்லை" });
+  if(mahOk) totalScore++;
+
+  // 10. NADI
+  const n1=NADI_MAP[nak1], n2=NADI_MAP[nak2];
+  const nadiOk = n1 !== n2;
+  results.push({ name:"நாடி", en:"Nadi", ok:nadiOk, score:nadiOk?1:0, max:1,
+    desc:`${NADI_NAMES[n1]} + ${NADI_NAMES[n2]} — ${nadiOk?"நாடி பொருத்தம் உண்டு — ஆரோக்கியம் நல்லது":"⚠ நாடி தோஷம் — பரிகாரம் தேவை"}` });
+  if(nadiOk) totalScore++;
+
+  const grade = totalScore >= 8 ? "மிகச் சிறந்த பொருத்தம்" : totalScore >= 6 ? "நல்ல பொருத்தம்" : totalScore >= 4 ? "சுமாரான பொருத்தம்" : "பொருத்தம் குறைவு";
+  const gradeEn = totalScore >= 8 ? "Excellent" : totalScore >= 6 ? "Good" : totalScore >= 4 ? "Average" : "Poor";
+
+  return { results, totalScore, maxScore: 10, grade, gradeEn };
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // COSMIC UNIVERSE BACKGROUND
 // ═══════════════════════════════════════════════════════════════════
 function CosmicBackground() {
@@ -955,7 +1150,7 @@ td{border-bottom:1px solid #e8e0d0;}
 }
 
 // ═══════════════════════════════════════════════════════════════════
-const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5 };
+const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6 };
 
 export default function AstrologyApp() {
   const [screen, setScreen] = useState(SCREEN.SPLASH);
@@ -967,6 +1162,14 @@ export default function AstrologyApp() {
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("chart");
   const [fadeIn, setFadeIn] = useState(true);
+  // New states
+  const [dashaData, setDashaData] = useState(null);
+  const [navamsaData, setNavamsaData] = useState(null);
+  const [expandedDasha, setExpandedDasha] = useState(null);
+  // Porutham
+  const [poruthBride, setPoruthBride] = useState({ name:"", dob:"", tob:"", ampm:"AM" });
+  const [poruthGroom, setPoruthGroom] = useState({ name:"", dob:"", tob:"", ampm:"AM" });
+  const [poruthResult, setPoruthResult] = useState(null);
 
   const goTo = useCallback((s) => {
     setFadeIn(false);
@@ -1062,9 +1265,26 @@ export default function AstrologyApp() {
     if (result) {
       setApiSource("api");
       setHoroscope(result);
+      setNavamsaData(calculateNavamsa(result.placements));
     } else {
       setApiSource("local");
-      setHoroscope(generateHoroscope(formData.dob, finalTime));
+      const h = generateHoroscope(formData.dob, finalTime);
+      setHoroscope(h);
+      setNavamsaData(calculateNavamsa(h.placements));
+      // Calculate moon longitude for dasha
+      const dDate = new Date(formData.dob);
+      const T2 = ((dDate - new Date(2000,0,1)) / 86400000 / 36525);
+      const Lm2 = ((218.3165+481267.8813*T2)%360+360)%360;
+      const Dm2 = ((297.8502+445267.1115*T2)%360+360)%360;
+      const Mm2 = ((134.9634+477198.8676*T2)%360+360)%360;
+      const Fm2 = ((93.2721+483202.0175*T2)%360+360)%360;
+      const Ms2 = ((357.52911+35999.05029*T2)%360+360)%360;
+      const ayanamsa2 = 23.85+(T2*100*50.29/3600);
+      const r = Math.PI/180;
+      const mCorr = 6.289*Math.sin(Mm2*r)-1.274*Math.sin((2*Dm2-Mm2)*r)+0.658*Math.sin(2*Dm2*r)
+        -0.214*Math.sin(2*Mm2*r)-0.186*Math.sin(Ms2*r)+0.110*Math.sin(2*Fm2*r);
+      const mLong = (((Lm2+mCorr)%360+360)%360-ayanamsa2+360)%360;
+      setDashaData(calculateDasha(mLong, formData.dob));
     }
     goTo(SCREEN.RESULT);
   };
@@ -1311,6 +1531,13 @@ Predict: பொது பலன், தொழில், திருமணம்
             </div>
           ))}
         </div>
+        {/* Porutham Button */}
+        <button onClick={()=>goTo(SCREEN.PORUTHAM)} style={{
+          ...btnOutline, marginTop:12, borderColor:"#ff6b8a30", color:"#ff6b8a",
+          display:"flex", alignItems:"center", justifyContent:"center", gap:8
+        }}>
+          <span style={{fontSize:18}}>💍</span> திருமண பொருத்தம் பார்க்க
+        </button>
       </div>
     </div>
   );
@@ -1389,7 +1616,7 @@ Predict: பொது பலன், தொழில், திருமணம்
 
   // ═══════ RESULT ═══════
   if(screen===SCREEN.RESULT&&horoscope){
-    const tabs=[{key:"chart",label:"ராசி சக்கரம்",icon:"◎"},{key:"planets",label:"கிரகங்கள்",icon:"☿"},{key:"ai",label:"AI பலன்",icon:"🤖"}];
+    const tabs=[{key:"chart",label:"ராசி",icon:"◎"},{key:"planets",label:"கிரகங்கள்",icon:"☿"},{key:"dasha",label:"தசா",icon:"📅"},{key:"navamsa",label:"நவாம்சம்",icon:"◈"},{key:"ai",label:"AI பலன்",icon:"🤖"}];
     return (
       <div style={base}>
         <CosmicBackground/>
@@ -1467,6 +1694,83 @@ Predict: பொது பலன், தொழில், திருமணம்
             ))}
           </div>)}
 
+          {/* ═══ DASHA TAB ═══ */}
+          {activeTab==="dasha"&&dashaData&&(<div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <div style={{...card,padding:"14px 16px",textAlign:"center"}}>
+              <div style={{fontSize:11,color:"#a78bfa"}}>பிறப்பு நட்சத்திரம்</div>
+              <div style={{fontSize:16,fontWeight:700,color:"#f0c75e",marginTop:4}}>{dashaData.birthNakshatra}</div>
+              <div style={{fontSize:11,color:"#a78bfa80",marginTop:2}}>நட்சத்திர நாதன்: {dashaData.birthLord.name}</div>
+            </div>
+            {dashaData.dashas.map((d,i)=>(
+              <div key={i} style={{
+                ...card, padding:"12px 16px", cursor:"pointer",
+                border:d.isCurrent?"1.5px solid #f0c75e50":card.border,
+                background:d.isCurrent?"linear-gradient(135deg,rgba(212,168,83,0.08),rgba(167,139,250,0.04))":card.background
+              }} onClick={()=>setExpandedDasha(expandedDasha===i?null:i)}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{
+                    width:36,height:36,borderRadius:10,fontSize:18,flexShrink:0,
+                    background:d.isCurrent?"linear-gradient(135deg,#d4a853,#f0c75e)":"linear-gradient(135deg,#d4a85320,#a78bfa15)",
+                    color:d.isCurrent?"#0a0518":"#e8e0f0",
+                    display:"flex",alignItems:"center",justifyContent:"center"
+                  }}>{d.symbol}</div>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span style={{fontSize:14,fontWeight:600,color:d.isCurrent?"#f0c75e":"#e8e0f0"}}>{d.name} தசை</span>
+                      {d.isCurrent&&<span style={{fontSize:9,background:"#f0c75e20",color:"#f0c75e",padding:"2px 8px",borderRadius:8,fontWeight:600}}>நடப்பு</span>}
+                    </div>
+                    <div style={{fontSize:11,color:"#a78bfa",marginTop:2}}>
+                      {d.years} வருடம் • {d.startDate.toLocaleDateString("ta-IN")} — {d.endDate.toLocaleDateString("ta-IN")}
+                    </div>
+                  </div>
+                  <span style={{color:"#a78bfa60",fontSize:12}}>{expandedDasha===i?"▲":"▼"}</span>
+                </div>
+                {/* Antardasha expanded */}
+                {expandedDasha===i&&(
+                  <div style={{marginTop:12,paddingTop:10,borderTop:"1px solid #d4a85320"}}>
+                    <div style={{fontSize:10,color:"#a78bfa",marginBottom:8,fontWeight:600}}>புக்தி (அந்தர்தசை)</div>
+                    {d.antardashas.map((ad,ai)=>{
+                      const adNow = new Date()>=ad.startDate && new Date()<ad.endDate;
+                      return(
+                      <div key={ai} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",
+                        borderBottom:ai<8?"1px solid #ffffff08":"none"}}>
+                        <span style={{fontSize:14,width:20}}>{ad.symbol}</span>
+                        <span style={{fontSize:12,color:adNow?"#f0c75e":"#e8e0f0cc",fontWeight:adNow?600:400,flex:1}}>{ad.name}</span>
+                        {adNow&&<span style={{fontSize:8,background:"#4ade8020",color:"#4ade80",padding:"1px 6px",borderRadius:6}}>நடப்பு</span>}
+                        <span style={{fontSize:10,color:"#a78bfa60"}}>{ad.duration}</span>
+                      </div>);
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>)}
+
+          {/* ═══ NAVAMSA TAB ═══ */}
+          {activeTab==="navamsa"&&navamsaData&&(<div>
+            <div style={{...card,textAlign:"center",marginBottom:10}}>
+              <div style={{fontSize:14,fontWeight:600,color:"#f0c75e",marginBottom:4}}>நவாம்ச சக்கரம் (D9)</div>
+              <div style={{fontSize:11,color:"#a78bfa"}}>திருமணம் & ஆன்மீக பலன்</div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {navamsaData.map((p,i)=>(
+                <div key={i} style={{...card,padding:"10px 14px",display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{width:34,height:34,borderRadius:10,
+                    background:"linear-gradient(135deg,#d4a85320,#a78bfa15)",
+                    display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0
+                  }}>{p.symbol}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"#e8e0f0"}}>{p.ta}</div>
+                    <div style={{fontSize:11,color:"#a78bfa"}}>ராசி: {p.rashi} → நவாம்சம்: <span style={{color:"#f0c75e",fontWeight:600}}>{p.navRashi}</span></div>
+                  </div>
+                  <div style={{fontSize:10,color:"#a78bfa60"}}>{p.degree}°</div>
+                </div>
+              ))}
+            </div>
+          </div>)}
+
+          {/* ═══ AI TAB ═══ */}
+
           {activeTab==="ai"&&(<div style={card}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
               <div style={{width:36,height:36,borderRadius:10,background:"linear-gradient(135deg,#d4a85330,#a78bfa20)",
@@ -1500,14 +1804,104 @@ Predict: பொது பலன், தொழில், திருமணம்
             <span style={{fontSize:20}}>📄</span>
             முழு ஜாதகம் PDF பதிவிறக்கு
           </button>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:10}}>
-            <button style={{...btnOutline,fontSize:12,padding:"10px 0"}} onClick={()=>goTo(SCREEN.FORM)}>புதிய ஜாதகம்</button>
-            <button style={{...btnOutline,fontSize:12,padding:"10px 0",borderColor:"#d4a85340",color:"#f0c75e"}}
-              onClick={()=>goTo(SCREEN.PREMIUM)}>⭐ Premium பெறு</button>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:10}}>
+            <button style={{...btnOutline,fontSize:11,padding:"10px 0"}} onClick={()=>goTo(SCREEN.FORM)}>புதிய ஜாதகம்</button>
+            <button style={{...btnOutline,fontSize:11,padding:"10px 0",borderColor:"#ff6b8a30",color:"#ff6b8a"}}
+              onClick={()=>goTo(SCREEN.PORUTHAM)}>💍 பொருத்தம்</button>
+            <button style={{...btnOutline,fontSize:11,padding:"10px 0",borderColor:"#d4a85340",color:"#f0c75e"}}
+              onClick={()=>goTo(SCREEN.PREMIUM)}>⭐ Premium</button>
           </div>
         </div>
       </div>
     );
   }
+
+  // ═══════ PORUTHAM (Marriage Matching) ═══════
+  if(screen===SCREEN.PORUTHAM) {
+    const handlePorutham = () => {
+      if(!poruthBride.dob || !poruthGroom.dob) return;
+      const h1 = generateHoroscope(poruthBride.dob, poruthBride.tob || "06:00");
+      const h2 = generateHoroscope(poruthGroom.dob, poruthGroom.tob || "06:00");
+      const nak1 = NAKSHATRAS.indexOf(h1.nakshatra);
+      const nak2 = NAKSHATRAS.indexOf(h2.nakshatra);
+      const rashi1 = RASHIS.indexOf(h1.moonRashi);
+      const rashi2 = RASHIS.indexOf(h2.moonRashi);
+      setPoruthResult({ ...calculate10Porutham(nak1>=0?nak1:0, nak2>=0?nak2:0, rashi1>=0?rashi1:0, rashi2>=0?rashi2:0), bride:h1, groom:h2, brideName:poruthBride.name, groomName:poruthGroom.name });
+    };
+
+    return(
+      <div style={base}>
+        <CosmicBackground/>
+        <MantraChakra speed={100} size={400} opacity={0.08}/>
+        <div style={{...container,paddingTop:24,paddingBottom:30}}>
+          <button onClick={()=>goTo(horoscope?SCREEN.RESULT:SCREEN.FORM)} style={{background:"none",border:"none",color:"#a78bfa",fontSize:14,cursor:"pointer",padding:0,marginBottom:16}}>← பின் செல்</button>
+
+          <div style={{textAlign:"center",marginBottom:24}}>
+            <div style={{fontSize:36,marginBottom:6}}>💍</div>
+            <h2 style={{fontSize:20,fontWeight:500,color:"#ff6b8a",margin:"0 0 4px"}}>திருமண பொருத்தம்</h2>
+            <p style={{fontSize:12,color:"#a78bfa"}}>10 பொருத்தம் — Kundali Matching</p>
+          </div>
+
+          <div style={{...card,marginBottom:12,borderLeft:"3px solid #ff6b8a"}}>
+            <div style={{fontSize:13,fontWeight:600,color:"#ff6b8a",marginBottom:10}}>👰 பெண் விவரம்</div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <input style={inputStyle} placeholder="பெண் பெயர்" value={poruthBride.name}
+                onChange={e=>setPoruthBride(d=>({...d,name:e.target.value}))}/>
+              <input type="date" style={{...inputStyle,colorScheme:"dark"}} value={poruthBride.dob}
+                onChange={e=>setPoruthBride(d=>({...d,dob:e.target.value}))}/>
+            </div>
+          </div>
+
+          <div style={{...card,marginBottom:16,borderLeft:"3px solid #6b8aff"}}>
+            <div style={{fontSize:13,fontWeight:600,color:"#6b8aff",marginBottom:10}}>🤵 ஆண் விவரம்</div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <input style={inputStyle} placeholder="ஆண் பெயர்" value={poruthGroom.name}
+                onChange={e=>setPoruthGroom(d=>({...d,name:e.target.value}))}/>
+              <input type="date" style={{...inputStyle,colorScheme:"dark"}} value={poruthGroom.dob}
+                onChange={e=>setPoruthGroom(d=>({...d,dob:e.target.value}))}/>
+            </div>
+          </div>
+
+          <button style={{...btnGold,opacity:(!poruthBride.dob||!poruthGroom.dob)?0.4:1,
+            pointerEvents:(!poruthBride.dob||!poruthGroom.dob)?"none":"auto",
+            background:"linear-gradient(135deg,#ff6b8a,#ff8fab,#ff6b8a)"}} onClick={handlePorutham}>
+            💍 பொருத்தம் பார் →
+          </button>
+
+          {poruthResult&&(
+            <div style={{marginTop:20}}>
+              <div style={{...card,textAlign:"center",marginBottom:14}}>
+                <div style={{position:"relative",width:100,height:100,margin:"0 auto 10px"}}>
+                  <svg viewBox="0 0 100 100" style={{width:100,height:100}}>
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#ffffff10" strokeWidth="6"/>
+                    <circle cx="50" cy="50" r="42" fill="none"
+                      stroke={poruthResult.totalScore>=8?"#4ade80":poruthResult.totalScore>=6?"#f0c75e":"#ff6b8a"}
+                      strokeWidth="6" strokeDasharray={`${poruthResult.totalScore*26.4} 264`}
+                      strokeLinecap="round" transform="rotate(-90 50 50)"/>
+                    <text x="50" y="46" textAnchor="middle" fill="#f0c75e" fontSize="24" fontWeight="700">{poruthResult.totalScore}</text>
+                    <text x="50" y="62" textAnchor="middle" fill="#a78bfa" fontSize="10">/10</text>
+                  </svg>
+                </div>
+                <div style={{fontSize:16,fontWeight:700,color:poruthResult.totalScore>=8?"#4ade80":poruthResult.totalScore>=6?"#f0c75e":"#ff6b8a"}}>
+                  {poruthResult.grade}
+                </div>
+                <div style={{fontSize:11,color:"#a78bfa",marginTop:4}}>{poruthResult.brideName||"பெண்"} ❤ {poruthResult.groomName||"ஆண்"}</div>
+              </div>
+              {poruthResult.results.map((r,i)=>(
+                <div key={i} style={{...card,padding:"12px 16px",marginBottom:6,display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${r.ok?"#4ade80":"#ff6b8a"}`}}>
+                  <div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,fontSize:14,background:r.ok?"#4ade8020":"#ff6b8a20",color:r.ok?"#4ade80":"#ff6b8a",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{r.ok?"✓":"✗"}</div>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,fontWeight:600,color:"#e8e0f0"}}>{r.name}</span><span style={{fontSize:10,color:"#a78bfa"}}>{r.en}</span></div>
+                    <div style={{fontSize:11,color:"#a78bfa",marginTop:3,lineHeight:1.5}}>{r.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return null;
 }
