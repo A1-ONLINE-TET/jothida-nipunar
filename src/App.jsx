@@ -125,22 +125,67 @@ function generateHoroscope(dob, tob) {
 
   const allPlanetLongs = [sunLong, moonLong, marsLong, mercuryLong, jupiterLong, venusLong, saturnLong, rahuLong, ketuLong];
 
+  // DMS formatter
+  const toDMS = (deg) => {
+    const d = Math.floor(deg);
+    const mf = (deg - d) * 60;
+    const m = Math.floor(mf);
+    const s = Math.floor((mf - m) * 60);
+    return `${d}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  };
+
   const placements = PLANETS.map((p, i) => {
     const lng = allPlanetLongs[i];
     const rashi = Math.floor(lng / 30);
-    const degree = Math.floor(lng % 30);
+    const degInSign = lng % 30;
+    const degree = Math.floor(degInSign);
     const house = ((rashi - lagna + 12) % 12) + 1;
     const nak = Math.floor(lng / (360 / 27)) % 27;
+    const nakDeg = lng % (360/27);
+    const pada = Math.floor(nakDeg / (360/108)) + 1;
     return {
-      ...p, rashi: RASHIS[rashi], rashiEn: RASHI_EN[rashi],
-      degree, house, nakshatraTa: NAKSHATRAS[nak]
+      ...p, rashi: RASHIS[rashi], rashiEn: RASHI_EN[rashi], rashiIdx: rashi,
+      degree, degExact: degInSign, dms: toDMS(lng), fullLong: Math.round(lng*100)/100,
+      house, nakshatraTa: NAKSHATRAS[nak], nakIdx: nak, pada
     };
   });
 
+  // ── Tithi (Moon - Sun / 12) ──
+  const tithiAngle = norm(moonLong - sunLong);
+  const tithiIdx = Math.floor(tithiAngle / 12);
+  const TITHIS = ["பிரதமை","த்விதியை","திருதியை","சதுர்த்தி","பஞ்சமி","ஷஷ்டி","சப்தமி",
+    "அஷ்டமி","நவமி","தசமி","ஏகாதசி","த்வாதசி","திரயோதசி","சதுர்தசி","பௌர்ணமி/அமாவாசை"];
+  const tithiName = TITHIS[tithiIdx % 15];
+  const paksham = tithiIdx < 15 ? "சுக்லபக்ஷம் (வளர்பிறை)" : "கிருஷ்ணபக்ஷம் (தேய்பிறை)";
+
+  // ── Yogam (Sun + Moon / 13.333) ──
+  const yogaAngle = norm(sunLong + moonLong);
+  const yogaIdx = Math.floor(yogaAngle / (360/27));
+  const YOGAMS = ["விஷ்கம்பம்","பிரீதி","ஆயுஷ்மான்","சௌபாக்யம்","சோபனம்","அதிகண்டம்","சுகர்மம்",
+    "திருதி","சூலம்","கண்டம்","விருத்தி","துருவம்","வ்யாகாதம்","ஹர்ஷணம்","வஜ்ரம்",
+    "சித்தி","வ்யதீபாதம்","வரீயான்","பரிகம்","சிவம்","சித்தம்","சாத்தியம்","சுபம்",
+    "சுப்ரம்","பிராம்யம்","ஐந்திரம்","வைத்ருதி"];
+
+  // ── Karanam (Moon - Sun / 6) ──
+  const karanaIdx = Math.floor(tithiAngle / 6) % 11;
+  const KARANAMS = ["பவம்","பாலவம்","கௌலவம்","தைதுலம்","கரம்","வணிசை","விஷ்டி",
+    "சகுனி","சதுஷ்பாதம்","நாகம்","கிம்ஸ்துக்னம்"];
+
+  // Lagna nakshatra
+  const lagnaFullLong = norm(ascSidereal);
+  const lagnaNakIdx = Math.floor(lagnaFullLong / (360/27)) % 27;
+  const lagnaPada = Math.floor((lagnaFullLong % (360/27)) / (360/108)) + 1;
+
   return {
     lagna, lagnaName: RASHIS[lagna], lagnaEn: RASHI_EN[lagna], lagnaDeg,
+    lagnaDMS: toDMS(lagnaFullLong), lagnaFullLong: Math.round(lagnaFullLong*100)/100,
+    lagnaNakshatra: NAKSHATRAS[lagnaNakIdx], lagnaPada,
     placements, nakshatra: NAKSHATRAS[nakshatraIndex],
+    nakshatraPada: Math.floor((moonLong % (360/27)) / (360/108)) + 1,
     moonRashi: RASHIS[moonRashi], sunSign: RASHIS[sunRashi],
+    tithi: tithiName, paksham,
+    yogam: YOGAMS[yogaIdx % 27],
+    karanam: KARANAMS[karanaIdx],
     birthTime: tob || "06:00",
     apiSource: "Local Engine (Jean Meeus Algorithms)"
   };
@@ -1627,29 +1672,44 @@ Predict: பொது பலன், தொழில், திருமணம்
             <h2 style={{fontSize:17,fontWeight:500,margin:0,color:"#f0c75e"}}>{formData.name} — ஜாதகம்</h2>
             <div style={{width:40}}/>
           </div>
-          {/* Primary Info */}
-          <div style={{...card,marginBottom:10,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,textAlign:"center"}}>
-            <div><div style={{fontSize:10,color:"#a78bfa",marginBottom:2}}>லக்னம்</div>
-            <div style={{fontSize:15,fontWeight:700,color:"#f0c75e"}}>{horoscope.lagnaName}</div>
-            <div style={{fontSize:10,color:"#a78bfa60"}}>{horoscope.lagnaEn} {horoscope.lagnaDeg}°</div></div>
-            <div><div style={{fontSize:10,color:"#a78bfa",marginBottom:2}}>சந்திர ராசி</div>
-            <div style={{fontSize:15,fontWeight:700,color:"#e8e0f0"}}>{horoscope.moonRashi}</div></div>
-            <div><div style={{fontSize:10,color:"#a78bfa",marginBottom:2}}>நட்சத்திரம்</div>
-            <div style={{fontSize:15,fontWeight:700,color:"#e8e0f0"}}>{horoscope.nakshatra}</div></div>
+          {/* ═══ DETAILED BIRTH INFO (Professional Style) ═══ */}
+          <div style={{...card,marginBottom:10,padding:"14px 16px",fontSize:12}}>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <tbody>
+                {[
+                  ["பெயர்",formData.name],
+                  ["பிறந்த நாள்",formData.dob],
+                  ["பிறந்த நேரம்",(formData.tob||"—")+" "+(formData.ampm||"")],
+                  ["பிறந்த இடம்",formData.pob||"—"],
+                  ["உதய லக்னம்",`${horoscope.lagnaName} (${horoscope.lagnaEn})`],
+                  ["ராசி",horoscope.moonRashi],
+                  ["விண்மீன்",`${horoscope.nakshatra}, பாதம் ${horoscope.nakshatraPada||1}`],
+                  ["திதி",`${horoscope.tithi||"—"}, ${horoscope.paksham||""}`],
+                  ["கரணம்",horoscope.karanam||"—"],
+                  ["யோகம்",horoscope.yogam||"—"],
+                ].map(([lbl,val],i)=>(
+                  <tr key={i} style={{borderBottom:"1px solid #ffffff08"}}>
+                    <td style={{padding:"5px 0",color:"#a78bfa",width:"40%",fontWeight:500}}>{lbl}</td>
+                    <td style={{padding:"5px 0",color:"#a78bfa60"}}>:</td>
+                    <td style={{padding:"5px 8px",color:"#e8e0f0",fontWeight:600}}>{val}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {/* Secondary Info — Sun sign, birth time */}
-          <div style={{...card,marginBottom:18,padding:"12px 16px",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,textAlign:"center"}}>
-            <div><div style={{fontSize:9,color:"#a78bfa80"}}>சூரிய ராசி</div>
-            <div style={{fontSize:12,fontWeight:600,color:"#d4a853"}}>{horoscope.sunSign}</div></div>
-            <div><div style={{fontSize:9,color:"#a78bfa80"}}>பிறந்த நேரம்</div>
-            <div style={{fontSize:12,fontWeight:600,color:"#e8e0f0cc"}}>
-              {formData.tob ? `${formData.tob} ${formData.ampm}` : horoscope.birthTime}
-            </div>
-            <div style={{fontSize:9,color:formData.ampm==="AM"?"#f0c75e60":"#a78bfa60"}}>
-              {formData.ampm==="AM"?"☀ காலை":"☽ மாலை"}
-            </div></div>
-            <div><div style={{fontSize:9,color:"#a78bfa80"}}>தேதி</div>
-            <div style={{fontSize:12,fontWeight:600,color:"#e8e0f0cc"}}>{formData.dob}</div></div>
+          {/* Summary chips */}
+          <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
+            {[
+              {l:"லக்னம்",v:horoscope.lagnaName,c:"#f0c75e"},
+              {l:"ராசி",v:horoscope.moonRashi,c:"#a78bfa"},
+              {l:"நட்சத்திரம்",v:horoscope.nakshatra,c:"#4ade80"},
+              {l:"சூரியன்",v:horoscope.sunSign,c:"#ff8fab"}
+            ].map((s,i)=>(
+              <div key={i} style={{background:`${s.c}15`,border:`1px solid ${s.c}25`,borderRadius:8,padding:"4px 10px",textAlign:"center"}}>
+                <div style={{fontSize:8,color:`${s.c}90`}}>{s.l}</div>
+                <div style={{fontSize:12,fontWeight:700,color:s.c}}>{s.v}</div>
+              </div>
+            ))}
           </div>
           <div style={{display:"flex",gap:0,marginBottom:18,background:"rgba(255,255,255,0.04)",borderRadius:12,padding:3}}>
             {tabs.map(t=>(
@@ -1676,22 +1736,44 @@ Predict: பொது பலன், தொழில், திருமணம்
             </div>
           </div>)}
 
-          {activeTab==="planets"&&(<div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {horoscope.placements.map((p,i)=>(
-              <div key={i} style={{...card,padding:"12px 16px",display:"flex",alignItems:"center",gap:14}}>
-                <div style={{width:40,height:40,borderRadius:12,
-                  background:"linear-gradient(135deg,#d4a85325,#a78bfa18)",
-                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0
-                }}>{p.symbol}</div>
-                <div style={{flex:1}}>
-                  <div style={{display:"flex",justifyContent:"space-between"}}>
-                    <span style={{fontSize:14,fontWeight:600,color:"#e8e0f0"}}>{p.ta}</span>
-                    <span style={{fontSize:11,color:"#a78bfa"}}>{p.degree}°</span>
-                  </div>
-                  <div style={{fontSize:12,color:"#a78bfa",marginTop:2}}>{p.rashi} • வீடு {p.house}</div>
-                </div>
+          {activeTab==="planets"&&(<div style={card}>
+            <div style={{fontSize:13,fontWeight:600,color:"#f0c75e",marginBottom:10}}>நிராயண ஸ்புடங்கள்</div>
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                <thead>
+                  <tr style={{borderBottom:"1.5px solid #d4a85340"}}>
+                    <th style={{padding:"6px 4px",color:"#a78bfa",fontWeight:600,textAlign:"left"}}>கிரகம்</th>
+                    <th style={{padding:"6px 4px",color:"#a78bfa",fontWeight:600,textAlign:"center"}}>தீர்காம்சம்</th>
+                    <th style={{padding:"6px 4px",color:"#a78bfa",fontWeight:600,textAlign:"left"}}>ராசி</th>
+                    <th style={{padding:"6px 4px",color:"#a78bfa",fontWeight:600,textAlign:"left"}}>நட்சத்திரம்</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Lagna row */}
+                  <tr style={{borderBottom:"1px solid #ffffff08",background:"#f0c75e08"}}>
+                    <td style={{padding:"6px 4px",fontWeight:700,color:"#f0c75e"}}>லக்னம்</td>
+                    <td style={{padding:"6px 4px",textAlign:"center",color:"#e8e0f0",fontFamily:"monospace",fontSize:11}}>{horoscope.lagnaDMS||`${horoscope.lagnaFullLong}`}</td>
+                    <td style={{padding:"6px 4px",color:"#f0c75e",fontWeight:600}}>{horoscope.lagnaName}</td>
+                    <td style={{padding:"6px 4px",color:"#e8e0f0cc"}}>{horoscope.lagnaNakshatra||""} - {horoscope.lagnaPada||""}</td>
+                  </tr>
+                  {horoscope.placements.map((p,i)=>(
+                    <tr key={i} style={{borderBottom:"1px solid #ffffff06",background:i%2===0?"transparent":"#ffffff03"}}>
+                      <td style={{padding:"6px 4px",color:"#e8e0f0"}}>
+                        <span style={{marginRight:4}}>{p.symbol}</span>{p.ta}
+                      </td>
+                      <td style={{padding:"6px 4px",textAlign:"center",color:"#e8e0f0",fontFamily:"monospace",fontSize:11}}>{p.dms}</td>
+                      <td style={{padding:"6px 4px",color:"#a78bfa"}}>{p.rashi}</td>
+                      <td style={{padding:"6px 4px",color:"#e8e0f0cc"}}>{p.nakshatraTa} - {p.pada}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {dashaData&&(
+              <div style={{marginTop:12,padding:"8px 10px",background:"#f0c75e08",borderRadius:8,fontSize:11,color:"#f0c75e"}}>
+                தசை இருப்பு: {dashaData.birthLord.name} {dashaData.dashas[0]?.years} வருடம்
               </div>
-            ))}
+            )}
           </div>)}
 
           {/* ═══ DASHA TAB ═══ */}
