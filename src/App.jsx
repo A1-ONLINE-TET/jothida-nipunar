@@ -495,53 +495,345 @@ function MantraChakra({ speed = 90, size = 500, opacity = 0.25 }) {
 // ═══════════════════════════════════════════════════════════════════
 // South Indian Rashi Chart
 // ═══════════════════════════════════════════════════════════════════
+// Short Tamil names for inside the chart cells
+const PLANET_SHORT = {
+  "சூரியன்":"சூரி","சந்திரன்":"சந்தி","செவ்வாய்":"செவ்வா",
+  "புதன்":"புதன்","குரு":"குரு","சுக்கிரன்":"சுக்கி",
+  "சனி":"சனி","ராகு":"ராகு","கேது":"கேது"
+};
+
 function SouthIndianChart({ horoscope }) {
   const { lagna, placements } = horoscope;
-  const cellW=80, cellH=72, chartW=cellW*4, chartH=cellH*4;
+
+  // Bigger cells so text fits clearly
+  const cellW = 96, cellH = 88;
+  const chartW = cellW * 4, chartH = cellH * 4;
+
   const siPositions = [
     {rashi:11,r:0,c:0},{rashi:0,r:0,c:1},{rashi:1,r:0,c:2},{rashi:2,r:0,c:3},
     {rashi:10,r:1,c:0},{rashi:3,r:1,c:3},{rashi:9,r:2,c:0},{rashi:4,r:2,c:3},
     {rashi:8,r:3,c:0},{rashi:7,r:3,c:1},{rashi:6,r:3,c:2},{rashi:5,r:3,c:3}
   ];
+
+  // Group planets by rashi — store full planet object
   const rashiPlanets = {};
   placements.forEach(p => {
     const ri = RASHIS.indexOf(p.rashi);
-    if(ri>=0){ if(!rashiPlanets[ri])rashiPlanets[ri]=[]; rashiPlanets[ri].push(p.symbol); }
+    if (ri >= 0) {
+      if (!rashiPlanets[ri]) rashiPlanets[ri] = [];
+      rashiPlanets[ri].push(p);
+    }
   });
+
+  // Row height per planet entry inside a cell
+  const rowH = 14;
+
   return (
-    <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{ width:"100%", maxWidth:340 }}>
+    <svg
+      viewBox={`0 0 ${chartW} ${chartH}`}
+      style={{ width:"100%", maxWidth:400 }}
+      fontFamily="'Noto Sans Tamil','Segoe UI',sans-serif"
+    >
       <defs>
         <linearGradient id="chartBg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#100828"/><stop offset="100%" stopColor="#1a0a2e"/>
+          <stop offset="0%" stopColor="#100828"/>
+          <stop offset="100%" stopColor="#1a0a2e"/>
         </linearGradient>
         <linearGradient id="lagnaGlow" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#d4a853" stopOpacity="0.35"/>
+          <stop offset="0%" stopColor="#d4a853" stopOpacity="0.4"/>
           <stop offset="100%" stopColor="#d4a853" stopOpacity="0.08"/>
         </linearGradient>
+        <linearGradient id="centerGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#0a0e27cc"/>
+          <stop offset="100%" stopColor="#1a0a2ecc"/>
+        </linearGradient>
       </defs>
-      <rect x="0" y="0" width={chartW} height={chartH} rx="8" fill="url(#chartBg)"/>
+
+      {/* Background */}
+      <rect x="0" y="0" width={chartW} height={chartH} rx="10" fill="url(#chartBg)"/>
+
+      {/* Grid lines */}
       {[1,2,3].map(i=>(
-        <g key={i}><line x1={cellW*i} y1={0} x2={cellW*i} y2={chartH} stroke="#d4a85330" strokeWidth="0.5"/>
-        <line x1={0} y1={cellH*i} x2={chartW} y2={cellH*i} stroke="#d4a85330" strokeWidth="0.5"/></g>
+        <g key={i}>
+          <line x1={cellW*i} y1={0} x2={cellW*i} y2={chartH} stroke="#d4a85335" strokeWidth="0.7"/>
+          <line x1={0} y1={cellH*i} x2={chartW} y2={cellH*i} stroke="#d4a85335" strokeWidth="0.7"/>
+        </g>
       ))}
-      <rect x="1" y="1" width={chartW-2} height={chartH-2} rx="8" fill="none" stroke="#d4a853" strokeWidth="1.5"/>
-      <rect x={cellW} y={cellH} width={cellW*2} height={cellH*2} fill="#0a0e2788" stroke="#d4a85340" strokeWidth="0.8"/>
-      <text x={chartW/2} y={chartH/2-8} textAnchor="middle" fill="#d4a853" fontSize="11" fontWeight="700">ராசி</text>
-      <text x={chartW/2} y={chartH/2+10} textAnchor="middle" fill="#8b7ec8" fontSize="9">Rashi Chart</text>
-      {siPositions.map(({rashi,r,c})=>{
-        const x=c*cellW, y=r*cellH, isL=rashi===lagna;
-        const planets=rashiPlanets[rashi]||[];
-        return(<g key={rashi}>
-          {isL&&<rect x={x+1} y={y+1} width={cellW-2} height={cellH-2} fill="url(#lagnaGlow)"/>}
-          <text x={x+5} y={y+13} fill={isL?"#f0c75e":"#8b7ec880"} fontSize="7.5">{RASHIS[rashi]}</text>
-          {isL&&<text x={x+cellW-5} y={y+13} textAnchor="end" fill="#f0c75e" fontSize="6.5">லக்</text>}
-          <line x1={x} y1={y} x2={x+cellW} y2={y+cellH} stroke="#d4a85312" strokeWidth="0.3"/>
-          {planets.map((sym,pi)=>(<text key={pi} x={x+10+(pi%3)*22} y={y+32+Math.floor(pi/3)*18}
-            fill={isL?"#f0c75e":"#e8e0f0"} fontSize="14">{sym}</text>))}
-        </g>);
+
+      {/* Outer border */}
+      <rect x="1" y="1" width={chartW-2} height={chartH-2} rx="10"
+        fill="none" stroke="#d4a853" strokeWidth="2"/>
+
+      {/* Center box */}
+      <rect x={cellW} y={cellH} width={cellW*2} height={cellH*2}
+        fill="url(#centerGrad)" stroke="#d4a85350" strokeWidth="1"/>
+      {/* Center diagonals */}
+      <line x1={cellW} y1={cellH} x2={cellW*3} y2={cellH*3} stroke="#d4a85320" strokeWidth="0.5"/>
+      <line x1={cellW*3} y1={cellH} x2={cellW} y2={cellH*3} stroke="#d4a85320" strokeWidth="0.5"/>
+      <text x={chartW/2} y={chartH/2-12} textAnchor="middle"
+        fill="#d4a853" fontSize="13" fontWeight="700">ராசி சக்கரம்</text>
+      <text x={chartW/2} y={chartH/2+6} textAnchor="middle"
+        fill="#a78bfa" fontSize="9">தென் இந்திய முறை</text>
+      <text x={chartW/2} y={chartH/2+20} textAnchor="middle"
+        fill="#d4a85370" fontSize="8">Nirayana • Lahiri</text>
+
+      {/* Rashi cells */}
+      {siPositions.map(({rashi, r, c}) => {
+        const x = c * cellW, y = r * cellH;
+        const isLagna = rashi === lagna;
+        const planets = rashiPlanets[rashi] || [];
+
+        return (
+          <g key={rashi}>
+            {/* Lagna highlight */}
+            {isLagna && (
+              <rect x={x+1} y={y+1} width={cellW-2} height={cellH-2}
+                fill="url(#lagnaGlow)" rx="4"/>
+            )}
+
+            {/* Rashi name top-left */}
+            <text x={x+5} y={y+13}
+              fill={isLagna ? "#f0c75e" : "#8b7ec899"}
+              fontSize="8" fontWeight={isLagna?"700":"400"}>
+              {RASHIS[rashi]}
+            </text>
+
+            {/* Lagna badge */}
+            {isLagna && (
+              <g>
+                <rect x={x+cellW-26} y={y+3} width={22} height={12} rx="3"
+                  fill="#d4a85330" stroke="#d4a85360" strokeWidth="0.5"/>
+                <text x={x+cellW-15} y={y+12} textAnchor="middle"
+                  fill="#f0c75e" fontSize="7" fontWeight="700">லக்னம்</text>
+              </g>
+            )}
+
+            {/* Planet entries — symbol + short name + degree */}
+            {planets.map((p, pi) => {
+              const py = y + 26 + pi * rowH;
+              const shortName = PLANET_SHORT[p.ta] || p.ta;
+              const isLagnaPlanet = isLagna;
+              const textCol = isLagnaPlanet ? "#ffe088" : "#e8e0f0";
+              const symCol  = isLagnaPlanet ? "#f0c75e" : "#d4a853";
+              const degCol  = isLagnaPlanet ? "#f0c75e99" : "#a78bfa99";
+              return (
+                <g key={pi}>
+                  {/* Symbol */}
+                  <text x={x+6} y={py+10}
+                    fill={symCol} fontSize="11" fontWeight="700">
+                    {p.symbol}
+                  </text>
+                  {/* Short Tamil name */}
+                  <text x={x+20} y={py+10}
+                    fill={textCol} fontSize="9" fontWeight="500">
+                    {shortName}
+                  </text>
+                  {/* Degree */}
+                  <text x={x+cellW-5} y={py+10} textAnchor="end"
+                    fill={degCol} fontSize="7.5">
+                    {p.degree}°
+                  </text>
+                </g>
+              );
+            })}
+          </g>
+        );
       })}
     </svg>
   );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FULL JATHAGAM PDF GENERATOR
+// ═══════════════════════════════════════════════════════════════════
+function generateJathagamPDF(formData, horoscope, prediction) {
+  // Build South Indian chart as SVG string
+  const lagna = horoscope.lagna;
+  const cW = 110, cH = 100;
+  const chartW = cW*4, chartH = cH*4;
+  const siPos = [
+    {rashi:11,r:0,c:0},{rashi:0,r:0,c:1},{rashi:1,r:0,c:2},{rashi:2,r:0,c:3},
+    {rashi:10,r:1,c:0},{rashi:3,r:1,c:3},{rashi:9,r:2,c:0},{rashi:4,r:2,c:3},
+    {rashi:8,r:3,c:0},{rashi:7,r:3,c:1},{rashi:6,r:3,c:2},{rashi:5,r:3,c:3}
+  ];
+  const rashiPlanets = {};
+  horoscope.placements.forEach(p => {
+    const ri = RASHIS.indexOf(p.rashi);
+    if (ri >= 0) { if (!rashiPlanets[ri]) rashiPlanets[ri] = []; rashiPlanets[ri].push(p); }
+  });
+
+  const cellsSVG = siPos.map(({rashi,r,c}) => {
+    const x=c*cW, y=r*cH, isL=rashi===lagna;
+    const planets = rashiPlanets[rashi]||[];
+    const bg = isL ? `<rect x="${x+1}" y="${y+1}" width="${cW-2}" height="${cH-2}" fill="#d4a85320"/>` : "";
+    const rashiText = `<text x="${x+4}" y="${y+13}" fill="${isL?"#b8860b":"#555"}" font-size="8" font-weight="${isL?"700":"400"}" font-family="serif">${RASHIS[rashi]}</text>`;
+    const lagnaTag = isL ? `<rect x="${x+cW-30}" y="${y+3}" width="27" height="12" rx="3" fill="#d4a85340"/><text x="${x+cW-17}" y="${y+12}" text-anchor="middle" fill="#8b6914" font-size="7.5" font-weight="700" font-family="sans-serif">லக்னம்</text>` : "";
+    const planetsSVG = planets.map((p,pi) => {
+      const py = y + 26 + pi*14;
+      return `<text x="${x+4}" y="${py+10}" fill="${isL?"#8b5e00":"#333"}" font-size="10" font-weight="700" font-family="serif">${p.symbol}</text>`
+           + `<text x="${x+18}" y="${py+10}" fill="${isL?"#5c3a00":"#222"}" font-size="9" font-family="sans-serif">${PLANET_SHORT[p.ta]||p.ta}</text>`
+           + `<text x="${x+cW-4}" y="${py+10}" text-anchor="end" fill="#666" font-size="7.5" font-family="sans-serif">${p.degree}°</text>`;
+    }).join("");
+    return bg + rashiText + lagnaTag + planetsSVG;
+  }).join("");
+
+  const chartSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${chartW} ${chartH}" width="${chartW}" height="${chartH}" font-family="'Noto Sans Tamil',serif,sans-serif">
+    <rect width="${chartW}" height="${chartH}" fill="#fffdf5" rx="6"/>
+    ${[1,2,3].map(i=>`<line x1="${cW*i}" y1="0" x2="${cW*i}" y2="${chartH}" stroke="#d4a85340" stroke-width="0.8"/><line x1="0" y1="${cH*i}" x2="${chartW}" y2="${cH*i}" stroke="#d4a85340" stroke-width="0.8"/>`).join("")}
+    <rect x="1" y="1" width="${chartW-2}" height="${chartH-2}" rx="6" fill="none" stroke="#d4a853" stroke-width="1.5"/>
+    <rect x="${cW}" y="${cH}" width="${cW*2}" height="${cH*2}" fill="#fdf8ee" stroke="#d4a85350" stroke-width="1"/>
+    <line x1="${cW}" y1="${cH}" x2="${cW*3}" y2="${cH*3}" stroke="#d4a85325" stroke-width="0.5"/>
+    <line x1="${cW*3}" y1="${cH}" x2="${cW}" y2="${cH*3}" stroke="#d4a85325" stroke-width="0.5"/>
+    <text x="${chartW/2}" y="${cH*2-10}" text-anchor="middle" fill="#b8860b" font-size="14" font-weight="700" font-family="sans-serif">ராசி சக்கரம்</text>
+    <text x="${chartW/2}" y="${cH*2+10}" text-anchor="middle" fill="#888" font-size="9" font-family="sans-serif">தென் இந்திய முறை • Lahiri Ayanamsa</text>
+    ${cellsSVG}
+  </svg>`;
+
+  // Planet table rows
+  const planetRows = horoscope.placements.map(p =>
+    `<tr>
+      <td style="padding:7px 10px;font-size:15px;text-align:center;">${p.symbol}</td>
+      <td style="padding:7px 10px;font-weight:600;">${p.ta}</td>
+      <td style="padding:7px 10px;">${p.en}</td>
+      <td style="padding:7px 10px;">${p.rashi}</td>
+      <td style="padding:7px 10px;text-align:center;">${p.degree}°</td>
+      <td style="padding:7px 10px;text-align:center;">${p.house}</td>
+    </tr>`
+  ).join("");
+
+  const birthTime = formData.tob ? `${formData.tob} ${formData.ampm}` : "—";
+  const aiSection = prediction
+    ? `<div style="margin-top:32px;background:#fffdf0;border:1px solid #d4a85340;border-radius:10px;padding:20px;">
+        <h3 style="font-size:15px;color:#8b6914;margin:0 0 12px;font-family:sans-serif;">🤖 AI ஜோதிட பலன் (Claude AI)</h3>
+        <p style="font-size:13px;line-height:1.9;color:#333;white-space:pre-wrap;margin:0;">${prediction}</p>
+      </div>`
+    : "";
+
+  const html = `<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8"/>
+<title>${formData.name} — ஜாதகம்</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Noto Sans Tamil','Segoe UI',sans-serif; background:#fff; color:#222; padding:0; }
+  @media print {
+    body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .no-print { display:none; }
+  }
+  .page { max-width:740px; margin:0 auto; padding:32px 28px; }
+  .header { text-align:center; border-bottom:2px solid #d4a853; padding-bottom:20px; margin-bottom:24px; }
+  .header-sun { font-size:44px; line-height:1; }
+  .header h1 { font-size:26px; color:#8b6914; font-weight:700; margin:8px 0 4px; }
+  .header .subtitle { font-size:12px; color:#888; letter-spacing:2px; }
+  .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:24px; }
+  .info-box { background:#fffdf0; border:1px solid #d4a85330; border-radius:8px; padding:12px 14px; }
+  .info-box .label { font-size:10px; color:#888; margin-bottom:3px; }
+  .info-box .value { font-size:15px; font-weight:700; color:#333; }
+  .info-box .sub { font-size:10px; color:#b8860b; margin-top:2px; }
+  .section { margin-bottom:28px; }
+  .section-title { font-size:14px; font-weight:700; color:#8b6914; margin-bottom:12px;
+    padding-bottom:6px; border-bottom:1px solid #d4a85330; }
+  .chart-wrap { display:flex; justify-content:center; margin-bottom:6px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { background:#d4a85315; color:#8b6914; font-weight:700; padding:9px 10px;
+       text-align:left; font-size:12px; }
+  tr:nth-child(even) { background:#fffdf5; }
+  tr:hover { background:#fef9e7; }
+  td { border-bottom:1px solid #d4a85315; }
+  .lagna-badge { background:#d4a85325; color:#8b6914; border-radius:12px;
+    padding:2px 8px; font-size:10px; font-weight:700; }
+  .summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .summary-box { background:#fffdf0; border:1px solid #d4a85330; border-radius:8px;
+    padding:12px; text-align:center; }
+  .summary-box .s-label { font-size:9px; color:#888; margin-bottom:4px; }
+  .summary-box .s-value { font-size:14px; font-weight:700; color:#5c3a00; }
+  .footer { text-align:center; margin-top:32px; padding-top:16px;
+    border-top:1px solid #d4a85330; font-size:10px; color:#aaa; }
+  .print-btn { position:fixed; bottom:24px; right:24px; background:linear-gradient(135deg,#d4a853,#f0c75e);
+    color:#0a0518; border:none; border-radius:14px; padding:14px 28px;
+    font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 4px 20px #d4a85350;
+    font-family:'Noto Sans Tamil',sans-serif; }
+</style>
+</head>
+<body>
+<div class="page">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-sun">☉</div>
+    <h1>${formData.name} — ஜாதகம்</h1>
+    <div class="subtitle">JATHAGAM • VEDIC BIRTH CHART</div>
+  </div>
+
+  <!-- Birth Info -->
+  <div class="section">
+    <div class="section-title">📋 பிறப்பு விவரங்கள்</div>
+    <div class="info-grid">
+      <div class="info-box"><div class="label">பெயர்</div><div class="value">${formData.name}</div></div>
+      <div class="info-box"><div class="label">பிறந்த தேதி</div><div class="value">${formData.dob}</div></div>
+      <div class="info-box"><div class="label">பிறந்த நேரம்</div><div class="value">${birthTime}</div><div class="sub">${formData.ampm==="AM"?"☀ காலை":"☽ மாலை"}</div></div>
+      <div class="info-box"><div class="label">பிறந்த இடம்</div><div class="value">${formData.pob||"—"}</div></div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="section">
+    <div class="section-title">⭐ முக்கிய விவரங்கள்</div>
+    <div class="summary-grid">
+      <div class="summary-box"><div class="s-label">லக்னம்</div><div class="s-value">${horoscope.lagnaName}</div><div style="font-size:10px;color:#888;">${horoscope.lagnaEn} ${horoscope.lagnaDeg}°</div></div>
+      <div class="summary-box"><div class="s-label">சந்திர ராசி</div><div class="s-value">${horoscope.moonRashi}</div></div>
+      <div class="summary-box"><div class="s-label">நட்சத்திரம்</div><div class="s-value">${horoscope.nakshatra}</div></div>
+      <div class="summary-box"><div class="s-label">சூரிய ராசி</div><div class="s-value">${horoscope.sunSign}</div></div>
+      <div class="summary-box"><div class="s-label">Ayanamsa</div><div class="s-value" style="font-size:12px;">Lahiri</div></div>
+      <div class="summary-box"><div class="s-label">Engine</div><div class="s-value" style="font-size:10px;">Jean Meeus</div></div>
+    </div>
+  </div>
+
+  <!-- Rashi Chart SVG -->
+  <div class="section">
+    <div class="section-title">◎ ராசி சக்கரம் (தென் இந்திய முறை)</div>
+    <div class="chart-wrap">${chartSVG}</div>
+  </div>
+
+  <!-- Planet Table -->
+  <div class="section">
+    <div class="section-title">🪐 கிரக நிலைகள் (Planetary Positions)</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:center;">சின்னம்</th>
+          <th>கிரகம் (தமிழ்)</th>
+          <th>Planet</th>
+          <th>ராசி</th>
+          <th style="text-align:center;">கலை</th>
+          <th style="text-align:center;">வீடு</th>
+        </tr>
+      </thead>
+      <tbody>${planetRows}</tbody>
+    </table>
+  </div>
+
+  ${aiSection}
+
+  <div class="footer">
+    ஜோதிட நிபுணர் — Jothida Nipunar &nbsp;|&nbsp; Jean Meeus Astronomical Algorithms &nbsp;|&nbsp; Lahiri Ayanamsa<br/>
+    Generated on ${new Date().toLocaleDateString("ta-IN", {year:"numeric",month:"long",day:"numeric"})}
+  </div>
+</div>
+
+<button class="print-btn no-print" onclick="window.print()">
+  📄 PDF சேமி / அச்சிடு
+</button>
+</body>
+</html>`;
+
+  // Open in new tab and trigger print
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+  // Auto-trigger print dialog after fonts load
+  win.onload = () => setTimeout(() => win.print(), 800);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1078,7 +1370,19 @@ Predict: பொது பலன், தொழில், திருமணம்
             {prediction&&(<button onClick={fetchAIPrediction} style={{...btnOutline,marginTop:16,fontSize:13}}>மீண்டும் பலன் பெறு ↻</button>)}
           </div>)}
 
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:18}}>
+          {/* PDF Download Button */}
+          <button
+            onClick={()=>generateJathagamPDF(formData, horoscope, prediction)}
+            style={{
+              ...btnGold, marginTop:18,
+              display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+              fontSize:16, padding:"16px 0",
+              boxShadow:"0 6px 32px #d4a85355"
+            }}>
+            <span style={{fontSize:20}}>📄</span>
+            முழு ஜாதகம் PDF பதிவிறக்கு
+          </button>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:10}}>
             <button style={{...btnOutline,fontSize:12,padding:"10px 0"}} onClick={()=>goTo(SCREEN.FORM)}>புதிய ஜாதகம்</button>
             <button style={{...btnOutline,fontSize:12,padding:"10px 0",borderColor:"#d4a85340",color:"#f0c75e"}}
               onClick={()=>goTo(SCREEN.PREMIUM)}>⭐ Premium பெறு</button>
