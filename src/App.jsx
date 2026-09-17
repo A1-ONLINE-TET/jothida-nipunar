@@ -1860,6 +1860,8 @@ export default function AstrologyApp() {
   const [grahaBala, setGrahaBala] = useState(null);
   const [mahapurushaYogas, setMahapurushaYogas] = useState([]);
   const [classicalYogas, setClassicalYogas] = useState([]);
+  const [advancedView, setAdvancedView] = useState("");
+  const [omPlayed, setOmPlayed] = useState(false);
   const [ashtakavargaData, setAshtakavargaData] = useState(null);
   const [drishtiData, setDrishtiData] = useState([]);
   const [d10Data, setD10Data] = useState(null);
@@ -1890,6 +1892,92 @@ export default function AstrologyApp() {
   useEffect(() => {
     if(screen===SCREEN.SPLASH){ const t=setTimeout(()=>goTo(SCREEN.AUTH),3200); return()=>clearTimeout(t); }
   }, [screen, goTo]);
+
+  // ── ஓம் ஒலி (Om Sound) — synthesized, free, plays once on app open ──
+  const playOmSound = useCallback(() => {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return false;
+      const ctx = new Ctx();
+      if (ctx.state === "suspended") ctx.resume().catch(()=>{});
+      const now = ctx.currentTime;
+      const duration = 4.2;
+      const baseFreq = 136.1; // "ஓம் அதிர்வெண்" — traditional cosmic/Om frequency
+
+      // Master envelope — slow devotional swell in, gentle sustain, long fade out
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(0.0001, now);
+      master.gain.exponentialRampToValueAtTime(0.22, now + 0.9);
+      master.gain.setValueAtTime(0.22, now + duration - 2.0);
+      master.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+      // Soft low-pass filter — warm chant-like tone, not harsh
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 1200;
+      filter.Q.value = 0.7;
+      master.connect(filter);
+      filter.connect(ctx.destination);
+
+      // Fundamental + harmonics blended for a rich "hum" timbre (approximating A-U-M)
+      const partials = [
+        { mult: 1,   gain: 1.0,  type: "sine" },
+        { mult: 2,   gain: 0.45, type: "sine" },
+        { mult: 3,   gain: 0.18, type: "sine" },
+        { mult: 1.5, gain: 0.12, type: "triangle" },
+      ];
+      const oscillators = [];
+      partials.forEach(p => {
+        const osc = ctx.createOscillator();
+        osc.type = p.type;
+        osc.frequency.setValueAtTime(baseFreq * p.mult, now);
+        const g = ctx.createGain();
+        g.gain.value = p.gain;
+        osc.connect(g);
+        g.connect(master);
+        osc.start(now);
+        osc.stop(now + duration + 0.1);
+        oscillators.push(osc);
+      });
+
+      // Gentle vibrato on the fundamental — living, chant-like quality
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 3.2;
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = 1.5;
+      lfo.connect(lfoGain);
+      lfoGain.connect(oscillators[0].frequency);
+      lfo.start(now);
+      lfo.stop(now + duration + 0.1);
+
+      setTimeout(() => { try { ctx.close(); } catch(e){} }, (duration + 0.5) * 1000);
+      return true;
+    } catch (e) {
+      return false; // autoplay blocked or Web Audio unsupported — never interrupt the user
+    }
+  }, []);
+
+  useEffect(() => {
+    if (omPlayed) return;
+    // Best-effort immediate attempt (works if browser allows, or on repeat visits)
+    playOmSound();
+    // Guaranteed fallback: browsers require a user gesture for audio —
+    // play on the very first tap/click/key if the immediate attempt was silently blocked
+    const tryOnGesture = () => {
+      if (omPlayed) return;
+      const ok = playOmSound();
+      if (ok) setOmPlayed(true);
+    };
+    document.addEventListener("click", tryOnGesture);
+    document.addEventListener("touchstart", tryOnGesture);
+    document.addEventListener("keydown", tryOnGesture);
+    return () => {
+      document.removeEventListener("click", tryOnGesture);
+      document.removeEventListener("touchstart", tryOnGesture);
+      document.removeEventListener("keydown", tryOnGesture);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [omPlayed, playOmSound]);
 
   // ── Backend API (Swiss Ephemeris — deploy on Render.com) ──
   // After deploying, paste your Render URL here:
@@ -2564,8 +2652,32 @@ ${aiPart}
             </div>)}
           </div>
 
+          {/* ═══ ADVANCED VIEW SELECTOR — தேர்ந்தெடுத்து பார்க்க ═══ */}
+          <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8}}>
+              🔬 மேலும் ஆழமான விவரங்கள்
+            </div>
+            <select
+              value={advancedView}
+              onChange={e=>setAdvancedView(e.target.value)}
+              style={{
+                width:"100%", padding:"10px 12px", background:"rgba(255,255,255,0.04)",
+                border:"1.5px solid #d4a85330", borderRadius:10, color:"#e8e0f0",
+                fontSize:13, outline:"none", fontFamily:"'Noto Sans Tamil',sans-serif"
+              }}
+            >
+              <option value="">— பார்க்க வேண்டியதைத் தேர்ந்தெடுக்கவும் —</option>
+              <option value="grahabala">💪 கிரக பலம் (Graha Bala)</option>
+              <option value="yogas">🕉 யோகங்கள் (Mahapurusha + Classical)</option>
+              <option value="ashtakavarga">🔢 சர்வாஷ்டகவர்க்கம்</option>
+              <option value="drishti">👁 கிரக திருஷ்டி (Aspects)</option>
+              <option value="d10">💼 தசாம்சம் D10 (தொழில்)</option>
+              <option value="divisional">🔀 பிரிவு சக்கரங்கள் (D2,D3,D12)</option>
+            </select>
+          </div>
+
           {/* ═══ 3.5 GRAHA BALA (Planet Strength) ═══ */}
-          {grahaBala && grahaBala.length > 0 && (
+          {advancedView==="grahabala" && grahaBala && grahaBala.length > 0 && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
                 💪 கிரக பலம் (Graha Bala)
@@ -2593,58 +2705,65 @@ ${aiPart}
             </div>
           )}
 
-          {/* ═══ 3.6 PANCHA MAHAPURUSHA YOGA ═══ */}
-          {mahapurushaYogas && mahapurushaYogas.length > 0 && (
-            <div style={{...card,marginBottom:10,padding:"12px 14px",border:"1px solid #f0c75e40",
-              background:"linear-gradient(135deg,rgba(212,168,83,0.08),rgba(167,139,250,0.04))"}}>
-              <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8}}>
-                ⭐ பஞ்ச மகாபுருஷ யோகம் கண்டறியப்பட்டது!
-              </div>
-              {mahapurushaYogas.map((y,i) => (
-                <div key={i} style={{marginBottom:i<mahapurushaYogas.length-1?10:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontSize:18}}>{y.symbol}</span>
-                    <span style={{fontSize:13,fontWeight:700,color:"#f0c75e"}}>{y.name}</span>
-                    <span style={{fontSize:9,color:"#a78bfa80"}}>({y.house}ஆம் வீடு)</span>
+          {/* ═══ 3.6 YOGAS (Mahapurusha + Classical combined) ═══ */}
+          {advancedView==="yogas" && (
+            <>
+              {mahapurushaYogas && mahapurushaYogas.length > 0 && (
+                <div style={{...card,marginBottom:10,padding:"12px 14px",border:"1px solid #f0c75e40",
+                  background:"linear-gradient(135deg,rgba(212,168,83,0.08),rgba(167,139,250,0.04))"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8}}>
+                    ⭐ பஞ்ச மகாபுருஷ யோகம் கண்டறியப்பட்டது!
                   </div>
-                  <div style={{fontSize:11,color:"#e8e0f0cc",marginTop:3,lineHeight:1.5}}>{y.effect}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* ═══ 3.6b CLASSICAL YOGAS — Gajakesari, Raja, Dhana, Kemadruma etc. ═══ */}
-          {classicalYogas && classicalYogas.length > 0 && (
-            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
-              <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
-                🕉 யோகங்கள் கண்டறியப்பட்டது ({classicalYogas.length})
-              </div>
-              {classicalYogas.map((y,i) => {
-                const isDosha = y.type === "dosha";
-                const col = isDosha ? "#ff6b8a" : "#f0c75e";
-                return (
-                  <div key={i} style={{
-                    marginBottom:i<classicalYogas.length-1?10:0, padding:"8px 10px",
-                    background:`${col}08`, borderLeft:`3px solid ${col}`, borderRadius:"0 6px 6px 0"
-                  }}>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontSize:14}}>{y.icon}</span>
-                      <span style={{fontSize:12,fontWeight:700,color:col}}>{y.name}</span>
-                      <span style={{fontSize:8,color:`${col}90`}}>{y.nameEn}</span>
-                      {isDosha && <span style={{fontSize:7,background:"#ff6b8a20",color:"#ff6b8a",padding:"1px 6px",borderRadius:5,marginLeft:"auto",fontWeight:700}}>தோஷம்</span>}
+                  {mahapurushaYogas.map((y,i) => (
+                    <div key={i} style={{marginBottom:i<mahapurushaYogas.length-1?10:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{fontSize:18}}>{y.symbol}</span>
+                        <span style={{fontSize:13,fontWeight:700,color:"#f0c75e"}}>{y.name}</span>
+                        <span style={{fontSize:9,color:"#a78bfa80"}}>({y.house}ஆம் வீடு)</span>
+                      </div>
+                      <div style={{fontSize:11,color:"#e8e0f0cc",marginTop:3,lineHeight:1.5}}>{y.effect}</div>
                     </div>
-                    <div style={{fontSize:10.5,color:"#e8e0f0bb",marginTop:4,lineHeight:1.6}}>{y.desc}</div>
+                  ))}
+                </div>
+              )}
+              {classicalYogas && classicalYogas.length > 0 && (
+                <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
+                    🕉 யோகங்கள் கண்டறியப்பட்டது ({classicalYogas.length})
                   </div>
-                );
-              })}
-              <div style={{fontSize:9,color:"#a78bfa50",marginTop:8}}>
-                கேந்திர/திரிகோண நாத conjunction அடிப்படையில் — mutual aspect/parivartana இன்னும் சேர்க்கப்படவில்லை
-              </div>
-            </div>
+                  {classicalYogas.map((y,i) => {
+                    const isDosha = y.type === "dosha";
+                    const col = isDosha ? "#ff6b8a" : "#f0c75e";
+                    return (
+                      <div key={i} style={{
+                        marginBottom:i<classicalYogas.length-1?10:0, padding:"8px 10px",
+                        background:`${col}08`, borderLeft:`3px solid ${col}`, borderRadius:"0 6px 6px 0"
+                      }}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <span style={{fontSize:14}}>{y.icon}</span>
+                          <span style={{fontSize:12,fontWeight:700,color:col}}>{y.name}</span>
+                          <span style={{fontSize:8,color:`${col}90`}}>{y.nameEn}</span>
+                          {isDosha && <span style={{fontSize:7,background:"#ff6b8a20",color:"#ff6b8a",padding:"1px 6px",borderRadius:5,marginLeft:"auto",fontWeight:700}}>தோஷம்</span>}
+                        </div>
+                        <div style={{fontSize:10.5,color:"#e8e0f0bb",marginTop:4,lineHeight:1.6}}>{y.desc}</div>
+                      </div>
+                    );
+                  })}
+                  <div style={{fontSize:9,color:"#a78bfa50",marginTop:8}}>
+                    கேந்திர/திரிகோண நாத conjunction அடிப்படையில் — mutual aspect/parivartana இன்னும் சேர்க்கப்படவில்லை
+                  </div>
+                </div>
+              )}
+              {(!mahapurushaYogas || mahapurushaYogas.length===0) && (!classicalYogas || classicalYogas.length===0) && (
+                <div style={{...card,marginBottom:10,padding:"14px",textAlign:"center",fontSize:11,color:"#a78bfa80"}}>
+                  இந்த ஜாதகத்தில் மேற்குறிப்பிட்ட யோகங்கள் எதுவும் கண்டறியப்படவில்லை
+                </div>
+              )}
+            </>
           )}
 
           {/* ═══ 3.7 ASHTAKAVARGA — SARVASHTAKAVARGA ═══ */}
-          {ashtakavargaData && (
+          {advancedView==="ashtakavarga" && ashtakavargaData && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
                 🔢 சர்வாஷ்டகவர்க்கம் (Sarvashtakavarga)
@@ -2672,7 +2791,7 @@ ${aiPart}
           )}
 
           {/* ═══ 3.8 GRAHA DRISHTI — PLANETARY ASPECTS ═══ */}
-          {drishtiData && drishtiData.length > 0 && (
+          {advancedView==="drishti" && drishtiData && drishtiData.length > 0 && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
                 👁 கிரக திருஷ்டி (Graha Drishti)
@@ -2699,7 +2818,7 @@ ${aiPart}
           )}
 
           {/* ═══ 3.9 D10 DASAMSA — CAREER CHART ═══ */}
-          {d10Data && (
+          {advancedView==="d10" && d10Data && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
                 💼 தசாம்சம் D10 (தொழில் பிரிவு சக்கரம்)
@@ -2721,7 +2840,7 @@ ${aiPart}
           )}
 
           {/* ═══ 3.10 D2/D3/D12 — COMBINED DIVISIONAL TABLE ═══ */}
-          {d2Data && d3Data && d12Data && (
+          {advancedView==="divisional" && d2Data && d3Data && d12Data && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
                 🔀 பிரிவு சக்கரங்கள் (Divisional Charts)
