@@ -2050,6 +2050,8 @@ export default function AstrologyApp() {
   const [screen, setScreen] = useState(SCREEN.SPLASH);
   const [authMode, setAuthMode] = useState("login");
   const [user, setUser] = useState(null);
+  const [theme, setTheme] = useState(() => { try { return localStorage.getItem("jn_theme") || "dark"; } catch(e) { return "dark"; } });
+  const toggleTheme = () => { const t = theme === "dark" ? "light" : "dark"; setTheme(t); try { localStorage.setItem("jn_theme", t); } catch(e){} };
   const [formData, setFormData] = useState({ name:"", dob:"", tob:"", pob:"", ampm:"AM", pobLat:null, pobLon:null, pobSource:null });
   const [horoscope, setHoroscope] = useState(null);
   const [prediction, setPrediction] = useState("");
@@ -2424,8 +2426,21 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
 
   const handleAuth = (e) => { e?.preventDefault?.(); setUser({name:formData.name||"User"}); goTo(SCREEN.FORM); };
 
+  // ─── NAVAGRAHA COLORS ───
+  const GRAHA_COLORS = {
+    "சூரியன்":"#e85d26","சந்திரன்":"#c0c0c0","செவ்வாய்":"#dc2626","புதன்":"#22c55e",
+    "குரு":"#eab308","சுக்கிரன்":"#ec4899","சனி":"#1e3a5f","ராகு":"#6366f1","கேது":"#a78bfa"
+  };
+  const grahaCardBorder = (planetTa) => GRAHA_COLORS[planetTa] || "#d4a853";
+  const isLight = theme === "light";
+
   // ─── STYLES ───
-  const base = {
+  const base = isLight ? {
+    minHeight:"100vh",
+    background:"linear-gradient(180deg, #fffdf5 0%, #fef6e4 50%, #fdf0d5 100%)",
+    fontFamily:"'Segoe UI','Noto Sans Tamil',system-ui,sans-serif",
+    color:"#2d1810", position:"relative", overflow:"hidden"
+  } : {
     minHeight:"100vh",
     background:"linear-gradient(160deg, #030108 0%, #0c0320 18%, #150838 38%, #1a0645 55%, #120530 75%, #08021a 100%)",
     fontFamily:"'Segoe UI','Noto Sans Tamil',system-ui,sans-serif",
@@ -2437,27 +2452,52 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
     opacity:fadeIn?1:0, transform:fadeIn?"translateY(0)":"translateY(14px)",
     transition:"opacity 0.45s ease, transform 0.45s ease"
   };
-  const btnGold = {
+  const T = {
+    gold: isLight ? "#7b1c1c" : "#f0c75e",
+    goldBg: isLight ? "#7b1c1c15" : "#f0c75e15",
+    accent: isLight ? "#9b2c2c" : "#a78bfa",
+    accentSoft: isLight ? "#9b2c2c80" : "#a78bfa80",
+    text: isLight ? "#2d1810" : "#e8e0f0",
+    textSoft: isLight ? "#5a3e2b" : "#e8e0f0bb",
+    textMuted: isLight ? "#8b6f5e" : "#a78bfa70",
+    bg: isLight ? "#fffdf5" : "#0a0e27",
+    cardBg: isLight ? "rgba(255,255,255,0.85)" : "linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015))",
+    cardBorder: isLight ? "1px solid #7b1c1c18" : "1px solid rgba(212,168,83,0.12)",
+    inputBg: isLight ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.04)",
+    inputBorder: isLight ? "1.5px solid #7b1c1c25" : "1.5px solid #d4a85325",
+    inputColor: isLight ? "#2d1810" : "#e8e0f0",
+    good: isLight ? "#15803d" : "#4ade80",
+    bad: isLight ? "#dc2626" : "#ff6b8a",
+    neutral: isLight ? "#92400e" : "#a78bfa",
+    shadow: isLight ? "0 4px 28px #7b1c1c20" : "0 4px 28px #d4a85345",
+    pink: isLight ? "#9b2c2c" : "#f472b6",
+    roseGold: isLight ? "#b45309" : "#fbbf24",
+  };
+  const btnGold = isLight ? {
+    background:"linear-gradient(135deg, #7b1c1c, #9b2c2c, #7b1c1c)",
+    color:"#fffdf5", border:"none", borderRadius:14, padding:"14px 0",
+    width:"100%", fontSize:16, fontWeight:700, cursor:"pointer",
+    boxShadow:"0 4px 28px #7b1c1c30"
+  } : {
     background:"linear-gradient(135deg, #d4a853, #f0c75e, #d4a853)",
     color:"#0a0e27", border:"none", borderRadius:14, padding:"14px 0",
     width:"100%", fontSize:16, fontWeight:700, cursor:"pointer",
     boxShadow:"0 4px 28px #d4a85345"
   };
   const btnOutline = {
-    background:"transparent", color:"#d4a853",
-    border:"1.5px solid #d4a85340", borderRadius:14,
+    background:"transparent", color:T.gold,
+    border:`1.5px solid ${isLight ? "#7b1c1c40" : "#d4a85340"}`, borderRadius:14,
     padding:"12px 0", width:"100%", fontSize:15, fontWeight:600, cursor:"pointer"
   };
   const inputStyle = {
     width:"100%", padding:"13px 16px",
-    background:"rgba(255,255,255,0.04)", border:"1.5px solid #d4a85325",
-    borderRadius:12, color:"#e8e0f0", fontSize:15, outline:"none",
+    background:T.inputBg, border:T.inputBorder,
+    borderRadius:12, color:T.inputColor, fontSize:15, outline:"none",
     boxSizing:"border-box", backdropFilter:"blur(6px)"
   };
-  const labelStyle = { display:"block", marginBottom:6, fontSize:13, color:"#a78bfa", fontWeight:500 };
+  const labelStyle = { display:"block", marginBottom:6, fontSize:13, color:T.accent, fontWeight:500 };
   const card = {
-    background:"linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015))",
-    border:"1px solid rgba(212,168,83,0.12)", borderRadius:18, padding:20,
+    background:T.cardBg, border:T.cardBorder, borderRadius:18, padding:20,
     backdropFilter:"blur(14px)"
   };
 
@@ -2494,8 +2534,8 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
   // ═══════ AUTH ═══════
   if(screen===SCREEN.AUTH) return (
     <div style={base}>
-      <CosmicBackground/>
-      <MantraChakra speed={95} size={560} opacity={0.2}/>
+      {!isLight&&<CosmicBackground/>}
+      {!isLight&&<MantraChakra speed={95} size={560} opacity={0.2}/>}
       <div style={{...container, paddingTop:56}}>
         <div style={{textAlign:"center", marginBottom:36}}>
           <div style={{
@@ -2546,18 +2586,24 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
   // ═══════ FORM ═══════
   if(screen===SCREEN.FORM) return (
     <div style={base}>
-      <CosmicBackground/>
-      <MantraChakra speed={100} size={500} opacity={0.15}/>
+      {!isLight&&<CosmicBackground/>}
+      {!isLight&&<MantraChakra speed={100} size={500} opacity={0.15}/>}
       <div style={{...container, paddingTop:24}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:28}}>
           <div>
-            <h2 style={{fontSize:20,fontWeight:400,margin:"0 0 2px",color:"#f0c75e"}}>ஜாதகம் பார்க்க</h2>
-            <p style={{fontSize:12,color:"#a78bfa",margin:0}}>பிறப்பு விவரங்களை உள்ளிடுக</p>
+            <h2 style={{fontSize:20,fontWeight:400,margin:"0 0 2px",color:T.gold}}>ஜாதகம் பார்க்க</h2>
+            <p style={{fontSize:12,color:T.accent,margin:0}}>பிறப்பு விவரங்களை உள்ளிடுக</p>
           </div>
-          <button onClick={()=>goTo(SCREEN.PREMIUM)} style={{
-            background:"linear-gradient(135deg,#d4a85325,#a78bfa18)",border:"1px solid #d4a85330",
-            borderRadius:10,padding:"8px 14px",color:"#f0c75e",fontSize:11,fontWeight:600,cursor:"pointer"
-          }}>⭐ Premium</button>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <button onClick={toggleTheme} style={{
+              background:isLight?"#7b1c1c15":"#a78bfa15",border:`1px solid ${isLight?"#7b1c1c30":"#a78bfa30"}`,
+              borderRadius:10,padding:"8px 12px",color:T.gold,fontSize:14,cursor:"pointer",lineHeight:1
+            }}>{isLight?"🌙":"☀️"}</button>
+            <button onClick={()=>goTo(SCREEN.PREMIUM)} style={{
+              background:isLight?"#7b1c1c12":"linear-gradient(135deg,#d4a85325,#a78bfa18)",border:`1px solid ${isLight?"#7b1c1c30":"#d4a85330"}`,
+              borderRadius:10,padding:"8px 14px",color:T.gold,fontSize:11,fontWeight:600,cursor:"pointer"
+            }}>⭐ Premium</button>
+          </div>
         </div>
         <div style={card}>
           <div style={{display:"flex",flexDirection:"column",gap:18}}>
@@ -2750,8 +2796,8 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
   // ═══════ LOADING ═══════
   if(screen===SCREEN.LOADING) return (
     <div style={{...base,display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <CosmicBackground/>
-      <MantraChakra speed={20} size={520} opacity={0.35}/>
+      {!isLight&&<CosmicBackground/>}
+      {!isLight&&<MantraChakra speed={20} size={520} opacity={0.35}/>}
       <div style={{textAlign:"center",zIndex:3}}>
         <div style={{position:"relative",width:120,height:120,margin:"0 auto 28px"}}>
           <svg viewBox="0 0 120 120" style={{width:120,height:120,animation:"spin 2s linear infinite"}}>
@@ -2786,8 +2832,8 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
   // ═══════ PREMIUM ═══════
   if(screen===SCREEN.PREMIUM) return (
     <div style={base}>
-      <CosmicBackground/>
-      <MantraChakra speed={100} size={420} opacity={0.12}/>
+      {!isLight&&<CosmicBackground/>}
+      {!isLight&&<MantraChakra speed={100} size={420} opacity={0.12}/>}
       <div style={{...container,paddingTop:24}}>
         <button onClick={()=>goTo(SCREEN.FORM)} style={{background:"none",border:"none",color:"#a78bfa",fontSize:14,cursor:"pointer",padding:0,marginBottom:20}}>← பின் செல்</button>
         <div style={{textAlign:"center",marginBottom:28}}>
@@ -2909,25 +2955,25 @@ ${aiPart}
 
     return (
       <div style={base}>
-        <CosmicBackground/>
-        <MantraChakra speed={120} size={400} opacity={0.06}/>
+        {!isLight&&<CosmicBackground/>}
+        {!isLight&&<MantraChakra speed={120} size={400} opacity={0.06}/>}
         <div style={{...container,paddingTop:20,paddingBottom:30}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-            <button onClick={()=>goTo(SCREEN.FORM)} style={{background:"none",border:"none",color:"#a78bfa",fontSize:14,cursor:"pointer",padding:0}}>← திரும்பு</button>
-            <h2 style={{fontSize:16,fontWeight:600,margin:0,color:"#f0c75e"}}>{formData.name} — ஜாதகம்</h2>
-            <div style={{width:40}}/>
+            <button onClick={()=>goTo(SCREEN.FORM)} style={{background:"none",border:"none",color:T.accent,fontSize:14,cursor:"pointer",padding:0}}>← திரும்பு</button>
+            <h2 style={{fontSize:16,fontWeight:600,margin:0,color:T.gold}}>{formData.name} — ஜாதகம்</h2>
+            <button onClick={toggleTheme} style={{background:"none",border:`1px solid ${T.accent}30`,borderRadius:8,padding:"4px 8px",color:T.gold,fontSize:14,cursor:"pointer"}}>{isLight?"🌙":"☀️"}</button>
           </div>
 
           {/* ═══ TAB SWITCHER: ஜாதகம் / இன்றைய பலன் ═══ */}
-          <div style={{display:"flex",gap:0,marginBottom:14,background:"rgba(255,255,255,0.04)",borderRadius:12,padding:3}}>
+          <div style={{display:"flex",gap:0,marginBottom:14,background:isLight?"#7b1c1c08":"rgba(255,255,255,0.04)",borderRadius:12,padding:3}}>
             <button style={{
               flex:1,padding:"10px 0",border:"none",borderRadius:10,
-              background:"linear-gradient(135deg,#d4a85325,#a78bfa18)",
-              color:"#f0c75e",fontSize:12,fontWeight:700,cursor:"pointer"
+              background:isLight?"#7b1c1c":"linear-gradient(135deg,#d4a85325,#a78bfa18)",
+              color:isLight?"#fffdf5":T.gold,fontSize:12,fontWeight:700,cursor:"pointer"
             }}>📜 ஜாதகம்</button>
             <button onClick={()=>openDailyScreen()} style={{
               flex:1,padding:"10px 0",border:"none",borderRadius:10,
-              background:"transparent",color:"#a78bfa80",fontSize:12,fontWeight:600,cursor:"pointer"
+              background:"transparent",color:T.accentSoft,fontSize:12,fontWeight:600,cursor:"pointer"
             }}>📅 இன்றைய பலன்</button>
           </div>
 
@@ -3376,8 +3422,8 @@ ${aiPart}
 
     return(
       <div style={base}>
-        <CosmicBackground/>
-        <MantraChakra speed={100} size={400} opacity={0.08}/>
+        {!isLight&&<CosmicBackground/>}
+        {!isLight&&<MantraChakra speed={100} size={400} opacity={0.08}/>}
         <div style={{...container,paddingTop:24,paddingBottom:30}}>
           <button onClick={()=>goTo(horoscope?SCREEN.RESULT:SCREEN.FORM)} style={{background:"none",border:"none",color:"#a78bfa",fontSize:14,cursor:"pointer",padding:0,marginBottom:16}}>← பின் செல்</button>
 
@@ -3462,8 +3508,8 @@ ${aiPart}
 
     return (
       <div style={base}>
-        <CosmicBackground/>
-        <MantraChakra speed={100} size={400} opacity={0.06}/>
+        {!isLight&&<CosmicBackground/>}
+        {!isLight&&<MantraChakra speed={100} size={400} opacity={0.06}/>}
         <div style={{...container,paddingTop:20,paddingBottom:30}}>
           <button onClick={()=>goTo(SCREEN.RESULT)} style={{background:"none",border:"none",color:"#a78bfa",fontSize:14,cursor:"pointer",padding:0,marginBottom:12}}>← திரும்பு</button>
 
@@ -3799,15 +3845,17 @@ ${aiPart}
               கிரக கோசாரம் (உங்கள் ராசி: {horoscope.moonRashi})
             </div>
             {gochara.results.map((p,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",
-                borderBottom:i<gochara.results.length-1?"1px solid #ffffff06":"none"}}>
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 4px",
+                borderBottom:i<gochara.results.length-1?`1px solid ${isLight?"#7b1c1c08":"#ffffff06"}`:"none",
+                borderLeft:`3px solid ${grahaCardBorder(p.ta)}`,marginBottom:2,borderRadius:4,
+                background:isLight?`${grahaCardBorder(p.ta)}08`:"transparent"}}>
                 <span style={{fontSize:15,width:20}}>{p.symbol}</span>
-                <span style={{fontSize:11,color:"#e8e0f0",flex:1}}>{p.ta} — {p.rashi}</span>
-                <span style={{fontSize:9,color:"#a78bfa80"}}>{p.houseFromMoon}ஆம் வீடு</span>
+                <span style={{fontSize:11,color:T.text,flex:1}}>{p.ta} — {p.rashi}</span>
+                <span style={{fontSize:9,color:T.textMuted}}>{p.houseFromMoon}ஆம் வீடு</span>
                 <span style={{
                   fontSize:8, fontWeight:700, padding:"2px 7px", borderRadius:5,
-                  background:p.effect==="good"?"#4ade8020":p.effect==="bad"?"#ff6b8a20":"#a78bfa15",
-                  color:p.effect==="good"?"#4ade80":p.effect==="bad"?"#ff6b8a":"#a78bfa80"
+                  background:p.effect==="good"?T.good+"20":p.effect==="bad"?T.bad+"20":T.neutral+"15",
+                  color:p.effect==="good"?T.good:p.effect==="bad"?T.bad:T.accentSoft
                 }}>{p.effect==="good"?"சுபம்":p.effect==="bad"?"அசுபம்":"நடுநிலை"}</span>
               </div>
             ))}
@@ -3891,9 +3939,9 @@ ${aiPart}
 
     return(
       <div style={base}>
-        <CosmicBackground/>
+        {!isLight&&<CosmicBackground/>}
         <div style={{...container,paddingTop:16,paddingBottom:30}}>
-          <button onClick={()=>goTo(horoscope?SCREEN.RESULT:SCREEN.FORM)} style={{background:"none",border:"none",color:"#a78bfa",fontSize:14,cursor:"pointer",padding:0,marginBottom:12}}>← பின் செல்</button>
+          <button onClick={()=>goTo(horoscope?SCREEN.RESULT:SCREEN.FORM)} style={{background:"none",border:"none",color:T.accent,fontSize:14,cursor:"pointer",padding:0,marginBottom:12}}>← பின் செல்</button>
 
           {/* Header */}
           <div style={{textAlign:"center",marginBottom:14}}>
