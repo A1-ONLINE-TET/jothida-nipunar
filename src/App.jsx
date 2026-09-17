@@ -57,6 +57,48 @@ function geocodeCity(cityName) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// PRECISE PLACE SEARCH — OpenStreetMap Nominatim (free, no API key)
+// Lets the user search-as-they-type for ANY place worldwide and pick
+// an exact match, instead of relying on the ~51-city hardcoded database.
+// Usage policy: max ~1 request/sec, so callers must debounce (handled
+// in the UI via placeSearchTimer). Falls back silently on any network
+// or rate-limit failure — the hardcoded CITIES database remains the
+// safety net so the app keeps working offline.
+// ═══════════════════════════════════════════════════════════════════
+async function searchPlacesOSM(query) {
+  if (!query || query.trim().length < 3) return [];
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=6&addressdetails=1`;
+    const res = await fetch(url, { headers: { "Accept-Language": "ta,en" } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.map(d => ({
+      displayName: d.display_name,
+      lat: parseFloat(d.lat),
+      lon: parseFloat(d.lon),
+      // Short label: prefer city/town/village + state/country for a cleaner dropdown line
+      shortLabel: [
+        d.address?.city || d.address?.town || d.address?.village || d.address?.county || d.name,
+        d.address?.state || d.address?.country
+      ].filter(Boolean).join(", ") || d.display_name
+    }));
+  } catch (e) {
+    return []; // network unavailable — UI falls back to the offline CITIES database
+  }
+}
+
+// Resolves the lat/lon to use for a person's birth place, in priority order:
+// 1. Precise coordinates from the OSM search dropdown OR manual "advanced" entry
+//    (both stored in formData.pobLat/pobLon — this function doesn't need to distinguish them)
+// 2. Fallback: fuzzy match against the offline ~51-city CITIES database (geocodeCity)
+function resolveBirthGeo(fd) {
+  if (fd.pobLat != null && fd.pobLon != null) {
+    return { lat: fd.pobLat, lon: fd.pobLon, matched: true, precise: true, name: fd.pob };
+  }
+  return { ...geocodeCity(fd.pob), precise: false };
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // VEDIC HOROSCOPE ENGINE — Jean Meeus Astronomical Algorithms
 // Sun: ~0.01° accuracy | Moon: ~0.5° (6 perturbation terms)
 // Lagna: Local Sidereal Time method | Ayanamsa: Lahiri
@@ -1966,12 +2008,18 @@ export default function AstrologyApp() {
   const [screen, setScreen] = useState(SCREEN.SPLASH);
   const [authMode, setAuthMode] = useState("login");
   const [user, setUser] = useState(null);
-  const [formData, setFormData] = useState({ name:"", dob:"", tob:"", pob:"", ampm:"AM" });
+  const [formData, setFormData] = useState({ name:"", dob:"", tob:"", pob:"", ampm:"AM", pobLat:null, pobLon:null, pobSource:null });
   const [horoscope, setHoroscope] = useState(null);
   const [prediction, setPrediction] = useState("");
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("chart");
   const [fadeIn, setFadeIn] = useState(true);
+  // Precise place search (OpenStreetMap Nominatim) — for accurate birth-place lat/lon
+  const [placeResults, setPlaceResults] = useState([]);
+  const [placeSearching, setPlaceSearching] = useState(false);
+  const [placeDropdownOpen, setPlaceDropdownOpen] = useState(false);
+  const [showManualGeo, setShowManualGeo] = useState(false);
+  const placeSearchTimer = useRef(null);
   // New states
   const [dashaData, setDashaData] = useState(null);
   const [navamsaData, setNavamsaData] = useState(null);
@@ -2185,7 +2233,7 @@ export default function AstrologyApp() {
       setDashaData(calculateDasha(moonLongFromApi, dobISO));
     } else {
       setApiSource("local");
-      const geo = geocodeCity(formData.pob);
+      const geo = resolveBirthGeo(formData);
       const h = generateHoroscope(dobISO, finalTime, geo.lat, geo.lon);
       setHoroscope(h);
       setNavamsaData(calculateNavamsa(h.placements));
@@ -2239,7 +2287,7 @@ Predict: பொது பலன், தொழில், திருமணம்
   // ── DAILY PREDICTION (தினப்பலன்) ── targetDate: null = "இப்போது" (live now), or a Date object for a future/past date
   const openDailyScreen = (targetDate = null) => {
     if (!horoscope) return;
-    const geo = geocodeCity(formData.pob);
+    const geo = resolveBirthGeo(formData);
     const today = getTodayTranist(geo.lat, geo.lon, targetDate);
     const birthMoonRashi = RASHIS.indexOf(horoscope.moonRashi);
     const gochara = calculateGochara(birthMoonRashi, today.placements);
@@ -2504,19 +2552,92 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
               {formData.ampm==="AM"?"காலை 12:00 — பிற்பகல் 11:59":"பிற்பகல் 12:00 — இரவு 11:59"}
             </div>
             </div>
-            <div><label style={labelStyle}>பிறந்த இடம்</label>
-            <input style={inputStyle} placeholder="எ.கா. சென்னை, தமிழ்நாடு" value={formData.pob}
-              onChange={e=>setFormData(d=>({...d,pob:e.target.value}))}/>
-            {formData.pob && formData.pob.trim() && (() => {
-              const geo = geocodeCity(formData.pob);
-              return (
-                <div style={{fontSize:10,marginTop:5,color:geo.matched?"#4ade80":"#f0c75e"}}>
-                  {geo.matched
-                    ? `✓ கண்டறியப்பட்டது — ${geo.lat.toFixed(2)}°N, ${geo.lon.toFixed(2)}°E (துல்லியமான லக்னம்)`
-                    : `⚠ இந்த ஊர் database-ல் இல்லை — Chennai coordinates பயன்படுத்தப்படும் (சிறிய பிழை வரலாம்)`}
+            <div style={{position:"relative"}}>
+              <label style={labelStyle}>பிறந்த இடம் <span style={{fontSize:10,color:"#a78bfa60",fontWeight:400}}>(துல்லியமான ஊரைத் தேடி தேர்ந்தெடுக்கவும்)</span></label>
+              <input style={inputStyle} placeholder="எ.கா. Madurai, Tamil Nadu — தட்டச்சு செய்யவும்"
+                value={formData.pob}
+                onChange={e=>{
+                  const val = e.target.value;
+                  // Typing invalidates any previously-selected precise coordinates
+                  setFormData(d=>({...d, pob:val, pobLat:null, pobLon:null, pobSource:null}));
+                  setPlaceDropdownOpen(false);
+                  if (placeSearchTimer.current) clearTimeout(placeSearchTimer.current);
+                  if (val.trim().length < 3) { setPlaceResults([]); return; }
+                  setPlaceSearching(true);
+                  placeSearchTimer.current = setTimeout(async () => {
+                    const results = await searchPlacesOSM(val);
+                    setPlaceResults(results);
+                    setPlaceSearching(false);
+                    setPlaceDropdownOpen(results.length > 0);
+                  }, 500); // debounce — respects Nominatim's ~1 req/sec usage policy
+                }}
+                onBlur={()=>{ setTimeout(()=>setPlaceDropdownOpen(false), 200); }} // delay lets dropdown click register first
+                onFocus={()=>{ if(placeResults.length>0) setPlaceDropdownOpen(true); }}/>
+
+              {placeSearching && (
+                <div style={{fontSize:10,marginTop:5,color:"#a78bfa80"}}>🔍 தேடுகிறது...</div>
+              )}
+
+              {/* Search results dropdown */}
+              {placeDropdownOpen && placeResults.length > 0 && (
+                <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:20,marginTop:4,
+                  background:"#150838",border:"1.5px solid #d4a85340",borderRadius:12,
+                  boxShadow:"0 8px 32px #000000a0",maxHeight:220,overflowY:"auto"}}>
+                  {placeResults.map((r,i)=>(
+                    <div key={i}
+                      onMouseDown={()=>{ // onMouseDown fires before input's onBlur, so click registers reliably
+                        setFormData(d=>({...d, pob:r.shortLabel, pobLat:r.lat, pobLon:r.lon, pobSource:"osm"}));
+                        setPlaceDropdownOpen(false);
+                        setPlaceResults([]);
+                      }}
+                      style={{padding:"10px 14px",cursor:"pointer",borderBottom:i<placeResults.length-1?"1px solid #ffffff08":"none"}}>
+                      <div style={{fontSize:12,fontWeight:600,color:"#e8e0f0"}}>📍 {r.shortLabel}</div>
+                      <div style={{fontSize:9,color:"#a78bfa60",marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.displayName}</div>
+                    </div>
+                  ))}
                 </div>
-              );
-            })()}
+              )}
+
+              {/* Status indicator */}
+              {formData.pobLat != null ? (
+                <div style={{fontSize:10,marginTop:5,color:"#4ade80"}}>
+                  ✓ துல்லியமான ஆயத்தொலைவு {formData.pobSource==="manual"?"(கைமுறையாக உள்ளிடப்பட்டது)":"(தேடலில் இருந்து தேர்ந்தெடுக்கப்பட்டது)"} — {formData.pobLat.toFixed(4)}°N, {formData.pobLon.toFixed(4)}°E
+                </div>
+              ) : formData.pob && formData.pob.trim() && !placeSearching && (() => {
+                const geo = geocodeCity(formData.pob);
+                return (
+                  <div style={{fontSize:10,marginTop:5,color:geo.matched?"#f0c75e":"#ff6b8a"}}>
+                    {geo.matched
+                      ? `≈ database-ல் தோராயமாக கண்டறியப்பட்டது — மேலே தோன்றும் தேடல் பட்டியலில் இருந்து துல்லியமான இடத்தைத் தேர்ந்தெடுக்க பரிந்துரைக்கிறோம்`
+                      : `⚠ கண்டறியப்படவில்லை — Chennai coordinates fallback (பிழை வரலாம்). மேலே தேடல் முடிவுகள் வரவில்லை என்றால் கீழே கைமுறையாக உள்ளிடவும்`}
+                  </div>
+                );
+              })()}
+
+              {/* Manual precise lat/lon entry — for advanced users who already know exact coordinates */}
+              <button type="button" onClick={()=>setShowManualGeo(v=>!v)} style={{
+                background:"none",border:"none",color:"#a78bfa80",fontSize:10,cursor:"pointer",
+                padding:"6px 0 0",textDecoration:"underline"
+              }}>{showManualGeo?"▲ கைமுறை Lat/Lon மறை":"✏️ கூடுதல் துல்லியம்: Lat/Lon நேரடியாக உள்ளிடவும்"}</button>
+
+              {showManualGeo && (
+                <div style={{display:"flex",gap:8,marginTop:6}}>
+                  <input type="number" step="0.0001" placeholder="Latitude (எ.கா. 9.9252)"
+                    style={{...inputStyle,fontSize:12,padding:"9px 10px"}}
+                    value={formData.pobSource==="manual" ? (formData.pobLat ?? "") : ""}
+                    onChange={e=>{
+                      const lat = e.target.value === "" ? null : parseFloat(e.target.value);
+                      setFormData(d=>({...d, pobLat:lat, pobSource: lat!=null && d.pobLon!=null ? "manual" : d.pobSource}));
+                    }}/>
+                  <input type="number" step="0.0001" placeholder="Longitude (எ.கா. 78.1198)"
+                    style={{...inputStyle,fontSize:12,padding:"9px 10px"}}
+                    value={formData.pobSource==="manual" ? (formData.pobLon ?? "") : ""}
+                    onChange={e=>{
+                      const lon = e.target.value === "" ? null : parseFloat(e.target.value);
+                      setFormData(d=>({...d, pobLon:lon, pobSource: lon!=null && d.pobLat!=null ? "manual" : d.pobSource}));
+                    }}/>
+                </div>
+              )}
             </div>
             <button style={{...btnGold,opacity:(!formData.name||!isValidDDMMYYYY(formData.dob))?0.4:1,
               pointerEvents:(!formData.name||!isValidDDMMYYYY(formData.dob))?"none":"auto"}} onClick={handleSubmit}>
@@ -3239,7 +3360,7 @@ ${aiPart}
     const { today, gochara, remedy, muhurtham, sadeSati, guruPeyarchi, taraBala, currentDasha } = dailyData;
     const moodColor = gochara.overallMood==="good" ? "#4ade80" : gochara.overallMood==="caution" ? "#ff6b8a" : "#f0c75e";
     const moodText = gochara.overallMood==="good" ? `${today.isOtherDate?"அன்று":"இன்று"} நல்ல நாள்` : gochara.overallMood==="caution" ? "கவனமாக இருக்க வேண்டிய நாள்" : "சாதாரண நாள்";
-    const dailyGeo = geocodeCity(formData.pob);
+    const dailyGeo = resolveBirthGeo(formData);
     const currentHorai = calcCurrentHorai(liveClock, dailyGeo.lat, dailyGeo.lon); // live — refreshes every 30s via liveClock state
 
     return (
