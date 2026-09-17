@@ -62,8 +62,11 @@ function geocodeCity(cityName) {
 // Lagna: Local Sidereal Time method | Ayanamsa: Lahiri
 // ═══════════════════════════════════════════════════════════════════
 function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707) {
-  const d = new Date(dob);
-  const year = d.getFullYear(), month = d.getMonth() + 1, day = d.getDate();
+  // Parse Y/M/D directly from "YYYY-MM-DD" string — avoids the classic JS bug where
+  // new Date("YYYY-MM-DD") parses as UTC midnight, then local getters (getDate()) can
+  // shift the day backward by one for users in negative-UTC-offset timezones (e.g. Americas).
+  const [yStr, mStr, dStr] = dob.split('-');
+  const year = parseInt(yStr, 10), month = parseInt(mStr, 10), day = parseInt(dStr, 10);
   let birthH = 6, birthM = 0;
   if (tob) { const p = tob.split(':').map(Number); birthH = p[0]||6; birthM = p[1]||0; }
   const hourDec = birthH + birthM / 60;
@@ -512,18 +515,29 @@ function calculateGochara(birthMoonRashi, todayPlacements) {
 }
 
 // Get today's panchangam + transit — reuses the Jean Meeus engine for TODAY's date
-function getTodayTranist(lat=13.0827, lon=80.2707) {
-  const today = new Date();
-  const dob = today.toISOString().split('T')[0];
-  const hh = String(today.getHours()).padStart(2,'0');
-  const mm = String(today.getMinutes()).padStart(2,'0');
+function getTodayTranist(lat=13.0827, lon=80.2707, targetDate=null) {
+  const today = targetDate || new Date();
+  // Use LOCAL date components (not toISOString, which is UTC-based and would
+  // incorrectly report YESTERDAY's date for IST users between 12:00–5:29 AM,
+  // since UTC lags IST by 5:30 hours).
+  const dob = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  // For a future/past target date, use a fixed 06:00 reference time (matches how the
+  // Panchangam Calendar computes other days); for "right now" use the live clock time
+  // so transits reflect the exact current moment.
+  const hh = targetDate ? "06" : String(today.getHours()).padStart(2,'0');
+  const mm = targetDate ? "00" : String(today.getMinutes()).padStart(2,'0');
   const h = generateHoroscope(dob, `${hh}:${mm}`, lat, lon);
   const dayNames = ["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"];
+  const realNow = new Date();
+  const isOtherDate = today.toDateString() !== realNow.toDateString();
   return {
     ...h,
     dateStr: today.toLocaleDateString("ta-IN",{year:"numeric",month:"long",day:"numeric"}),
     dayName: dayNames[today.getDay()],
-    dateObj: today
+    dateObj: today,
+    isOtherDate,
+    isFuture: isOtherDate && today > realNow,
+    isPast: isOtherDate && today < realNow
   };
 }
 
@@ -1906,6 +1920,28 @@ function formatDateInput(raw) {
   return out; // e.g. "25-12-1990"
 }
 
+// Auto-format as user types: "0" → "0", "06" → "06", "063" → "06:3", "0630" → "06:30"
+// Clamps hour to 1-12 and minute to 0-59 once both digits of that segment are entered.
+function formatTimeInput(raw) {
+  let digits = raw.replace(/\D/g, "").slice(0, 4); // max 4 digits: hhmm
+  let hh = digits.slice(0, 2), mm = digits.slice(2, 4);
+  if (hh.length === 2) {
+    let hNum = parseInt(hh, 10);
+    if (hNum > 12) hh = "12";
+    else if (hNum === 0) hh = "01";
+  }
+  if (mm.length === 2) {
+    let mNum = parseInt(mm, 10);
+    if (mNum > 59) mm = "59";
+  }
+  let out = hh;
+  for (let i = 0; i < mm.length; i++) {
+    if (i === 0) out += ":";
+    out += mm[i];
+  }
+  return out; // e.g. "06:30"
+}
+
 // Convert dd-mm-yyyy → YYYY-MM-DD (ISO) for engine calculations
 function parseDDMMYYYY(str) {
   if (!str) return "";
@@ -1924,7 +1960,7 @@ function isValidDDMMYYYY(str) {
   return !isNaN(d.getTime()) && d.getFullYear() >= 1900 && d.getFullYear() <= 2100;
 }
 
-const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7 };
+const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8 };
 
 export default function AstrologyApp() {
   const [screen, setScreen] = useState(SCREEN.SPLASH);
@@ -1959,6 +1995,10 @@ export default function AstrologyApp() {
   const [dailyData, setDailyData] = useState(null);
   const [dailyPrediction, setDailyPrediction] = useState("");
   const [dailyLoading, setDailyLoading] = useState(false);
+  // Calendar
+  const [calMonth, setCalMonth] = useState(new Date().getMonth());
+  const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [calSelected, setCalSelected] = useState(new Date().getDate());
   // Live clock for Horai (planetary hour) — updates every 30s
   const [liveClock, setLiveClock] = useState(new Date());
   useEffect(() => {
@@ -2159,7 +2199,8 @@ export default function AstrologyApp() {
       setD3Data(calcD3Drekkana(h.placements));
       setD12Data(calcD12Dwadasamsa(h.placements));
       // Calculate moon longitude for dasha
-      const dDate = new Date(dobISO);
+      const [dY,dM,dD] = dobISO.split('-').map(Number);
+      const dDate = new Date(dY, dM-1, dD); // local-time construction, matches new Date(2000,0,1) reference below — avoids UTC/local mismatch
       const T2 = ((dDate - new Date(2000,0,1)) / 86400000 / 36525);
       const Lm2 = ((218.3165+481267.8813*T2)%360+360)%360;
       const Dm2 = ((297.8502+445267.1115*T2)%360+360)%360;
@@ -2195,11 +2236,11 @@ Predict: பொது பலன், தொழில், திருமணம்
     setPredictionLoading(false);
   };
 
-  // ── DAILY PREDICTION (தினப்பலன்) ──
-  const openDailyScreen = () => {
+  // ── DAILY PREDICTION (தினப்பலன்) ── targetDate: null = "இப்போது" (live now), or a Date object for a future/past date
+  const openDailyScreen = (targetDate = null) => {
     if (!horoscope) return;
     const geo = geocodeCity(formData.pob);
-    const today = getTodayTranist(geo.lat, geo.lon);
+    const today = getTodayTranist(geo.lat, geo.lon, targetDate);
     const birthMoonRashi = RASHIS.indexOf(horoscope.moonRashi);
     const gochara = calculateGochara(birthMoonRashi, today.placements);
     const remedy = getPersonalizedRemedy(birthMoonRashi, today.dateObj.getDay(), gochara.isChandrashtama, today.tithi);
@@ -2211,12 +2252,29 @@ Predict: பொது பலன், தொழில், திருமணம்
     const sadeSati = saturnToday ? calcSadeSati(birthMoonRashi, RASHIS.indexOf(saturnToday.rashi)) : null;
     const guruPeyarchi = jupiterToday ? calcGuruPeyarchi(birthMoonRashi, RASHIS.indexOf(jupiterToday.rashi)) : null;
 
-    // Tara Bala (birth nakshatra vs today's transiting moon nakshatra)
+    // Tara Bala (birth nakshatra vs this date's transiting moon nakshatra)
     const birthNakIdx = NAKSHATRAS.indexOf(horoscope.nakshatra);
     const todayNakIdx = NAKSHATRAS.indexOf(today.nakshatra);
     const taraBala = (birthNakIdx>=0 && todayNakIdx>=0) ? calcTaraBala(birthNakIdx, todayNakIdx) : null;
 
-    setDailyData({ today, gochara, remedy, muhurtham, sadeSati, guruPeyarchi, taraBala });
+    // Running Dasha (Mahadasha) + Antardasha (Bhukti) as of the SELECTED date — key classical factor.
+    // Uses `refDate` (the target date if one was picked, else the live current moment) so that browsing
+    // to a future date correctly shows the dasha that will actually be running then, not today's dasha.
+    // IMPORTANT: never rely on dashaData.dashas[i].isCurrent — that's a snapshot frozen at the moment
+    // the horoscope was first generated and never updates again.
+    let currentDasha = null;
+    if (dashaData) {
+      const refDate = targetDate || new Date();
+      const mahadasha = dashaData.dashas.find(d => refDate >= d.startDate && refDate < d.endDate);
+      if (mahadasha) {
+        const bhukti = mahadasha.antardashas.find(ad => refDate >= ad.startDate && refDate < ad.endDate) || mahadasha.antardashas[0];
+        const msLeftInBhukti = bhukti ? bhukti.endDate.getTime() - refDate.getTime() : 0;
+        const daysLeftInBhukti = Math.max(0, Math.round(msLeftInBhukti / (24*3600000)));
+        currentDasha = { mahadasha, bhukti, daysLeftInBhukti };
+      }
+    }
+
+    setDailyData({ today, gochara, remedy, muhurtham, sadeSati, guruPeyarchi, taraBala, currentDasha });
     setDailyPrediction("");
     goTo(SCREEN.DAILY);
   };
@@ -2225,22 +2283,27 @@ Predict: பொது பலன், தொழில், திருமணம்
     if (!horoscope || !dailyData) return;
     setDailyLoading(true); setDailyPrediction("");
     try {
-      const { today, gochara, remedy, sadeSati, guruPeyarchi, taraBala } = dailyData;
+      const { today, gochara, remedy, sadeSati, guruPeyarchi, taraBala, currentDasha } = dailyData;
       const transitSummary = gochara.results.map(p =>
         `${p.ta}: ${p.rashi} (birth moon-க்கு ${p.houseFromMoon}ஆம் வீடு, ${p.effect==="good"?"சுபம்":p.effect==="bad"?"அசுபம்":"நடுநிலை"})`
       ).join(", ");
-      const prompt = `You are a Tamil Vedic astrologer giving a daily horoscope reading. Respond ONLY in Tamil.
+      const timeframe = today.isFuture ? `on the future date ${today.dateStr}` : today.isPast ? `on the past date ${today.dateStr}` : "today";
+      const dashaLine = currentDasha
+        ? `The period (Dasha-Bhukti) that will be running ${timeframe}: ${currentDasha.mahadasha.name} Mahadasha (main period) → ${currentDasha.bhukti?.name || currentDasha.mahadasha.name} Bhukti (sub-period), ${currentDasha.daysLeftInBhukti} days left in this Bhukti as of that date. This is the person's most important long-term astrological influence for that date — consider what themes this planet governs.`
+        : "Dasha data not available.";
+      const prompt = `You are a Tamil Vedic astrologer giving a ${today.isOtherDate ? "specific-date" : "daily"} horoscope reading. Respond ONLY in Tamil.
 Person: ${formData.name}
 Birth chart: Lagna ${horoscope.lagnaName}, Moon sign (Rashi) ${horoscope.moonRashi}, Nakshatra ${horoscope.nakshatra}
-Today's date: ${today.dateStr} (${today.dayName}கிழமை)
-Today's Panchangam: திதி ${today.tithi} ${today.paksham}, யோகம் ${today.yogam}, கரணம் ${today.karanam}, நட்சத்திரம் ${today.nakshatra}
-Today's planetary transits relative to birth moon sign: ${transitSummary}
-${gochara.isChandrashtama ? "இன்று சந்திராஷ்டமம் — கவனமாக இருக்க வேண்டிய நாள்." : ""}
-${sadeSati?.active ? `Sade Sati status: ${sadeSati.phase} — ${sadeSati.desc}` : "No Sade Sati currently."}
-Guru Peyarchi (Jupiter transit) effect: ${guruPeyarchi?.desc || "N/A"}
-Tara Bala today: ${taraBala?.name} (${taraBala?.mood === "good" ? "favorable" : "use caution"})
-Recommended remedy for this rashi today: worship ${remedy?.dayInfo?.deity}, ${remedy?.dayInfo?.remedy}
-Give a short, warm, practical daily prediction (170 words max) covering: today's general mood, favorable/unfavorable timing, one practical tip for the day. Weave in Sade Sati or Guru Peyarchi naturally ONLY if they are significant today. Do not repeat the raw planetary data back — synthesize it into natural guidance.`;
+${today.isOtherDate ? "Target date" : "Today's date"}: ${today.dateStr} (${today.dayName}கிழமை)${today.isFuture ? " — this is a FUTURE date, not today. Phrase the reading as 'அன்று' (on that day) not 'இன்று' (today)." : today.isPast ? " — this is a PAST date. Phrase the reading in past tense as 'அன்று' (on that day)." : ""}
+Panchangam for that date: திதி ${today.tithi} ${today.paksham}, யோகம் ${today.yogam}, கரணம் ${today.karanam}, நட்சத்திரம் ${today.nakshatra}
+Planetary transits relative to birth moon sign, as of that date: ${transitSummary}
+${dashaLine}
+${gochara.isChandrashtama ? `${today.isOtherDate ? "அன்று" : "இன்று"} சந்திராஷ்டமம் — கவனமாக இருக்க வேண்டிய நாள்.` : ""}
+${sadeSati?.active ? `Sade Sati status on that date: ${sadeSati.phase} — ${sadeSati.desc}` : "No Sade Sati on that date."}
+Guru Peyarchi (Jupiter transit) effect on that date: ${guruPeyarchi?.desc || "N/A"}
+Tara Bala on that date: ${taraBala?.name} (${taraBala?.mood === "good" ? "favorable" : "use caution"})
+Recommended remedy for this rashi: worship ${remedy?.dayInfo?.deity}, ${remedy?.dayInfo?.remedy}
+Give a short, warm, practical ${today.isFuture ? "prediction for that future date" : "daily prediction"} (170 words max) covering: general mood, favorable/unfavorable timing, one practical tip. The Dasha-Bhukti is the most important personalization factor — ground the reading in what the Mahadasha and Bhukti lords represent, then layer in the transits and panchangam on top. Do not repeat the raw planetary data back — synthesize it into natural guidance.`;
       const r = await fetch("https://api.anthropic.com/v1/messages",{
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:600,messages:[{role:"user",content:prompt}]})
@@ -2409,30 +2472,21 @@ Give a short, warm, practical daily prediction (170 words max) covering: today's
                   : "⚠ தவறான தேதி — சரிபார்க்கவும்"}
               </div>
             )}</div>
-            <div><label style={labelStyle}>பிறந்த நேரம் *</label>
+            <div><label style={labelStyle}>பிறந்த நேரம் * <span style={{fontSize:10,color:"#a78bfa60",fontWeight:400}}>(மணி:நிமிடம்)</span></label>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <input type="number" min="1" max="12" placeholder="மணி"
-                style={{...inputStyle, width:"28%", textAlign:"center", padding:"13px 8px"}}
-                value={formData.tob ? formData.tob.split(':')[0] : ""}
-                onChange={e=>{
-                  let h = Math.min(12, Math.max(0, parseInt(e.target.value)||0));
-                  const m = formData.tob ? formData.tob.split(':')[1]||"00" : "00";
-                  setFormData(d=>({...d, tob: h ? `${h}:${m}` : ""}));
-                }}/>
-              <span style={{color:"#f0c75e",fontSize:20,fontWeight:700}}>:</span>
-              <input type="number" min="0" max="59" placeholder="நிமிடம்"
-                style={{...inputStyle, width:"28%", textAlign:"center", padding:"13px 8px"}}
-                value={formData.tob ? formData.tob.split(':')[1]||"" : ""}
-                onChange={e=>{
-                  let m = Math.min(59, Math.max(0, parseInt(e.target.value)||0));
-                  const h = formData.tob ? formData.tob.split(':')[0]||"6" : "6";
-                  setFormData(d=>({...d, tob: `${h}:${String(m).padStart(2,'0')}`}));
-                }}/>
+              <input type="text" inputMode="numeric" maxLength={5}
+                style={{...inputStyle, width:"46%", textAlign:"center", padding:"13px 8px", letterSpacing:2, fontFamily:"monospace", fontSize:16}}
+                placeholder="06:30"
+                value={formData.tob}
+                onChange={e=>setFormData(d=>({...d, tob: formatTimeInput(e.target.value)}))}/>
+              {/^\d{2}:\d{2}$/.test(formData.tob) && (
+                <span style={{fontSize:16,color:"#4ade80"}}>✓</span>
+              )}
               {/* AM/PM Toggle */}
-              <div style={{display:"flex",borderRadius:10,overflow:"hidden",border:"1.5px solid #d4a85330",flexShrink:0}}>
+              <div style={{display:"flex",borderRadius:10,overflow:"hidden",border:"1.5px solid #d4a85330",flexShrink:0,flex:1}}>
                 {["AM","PM"].map(p=>(
                   <button key={p} onClick={()=>setFormData(d=>({...d,ampm:p}))} style={{
-                    padding:"12px 14px",border:"none",cursor:"pointer",fontSize:13,fontWeight:700,
+                    flex:1,padding:"12px 10px",border:"none",cursor:"pointer",fontSize:13,fontWeight:700,
                     transition:"all 0.2s",
                     background:formData.ampm===p
                       ? (p==="AM"
@@ -2505,6 +2559,10 @@ Give a short, warm, practical daily prediction (170 words max) covering: today's
         }}>
           <span style={{fontSize:18}}>💍</span> திருமண பொருத்தம் பார்க்க
         </button>
+        <button onClick={()=>goTo(SCREEN.CALENDAR)} style={{
+          ...btnOutline, marginTop:10, borderColor:"#4ade8030", color:"#4ade80",
+          display:"flex", alignItems:"center", justifyContent:"center", gap:8, fontSize:13
+        }}>📅 பஞ்சாங்க நாட்காட்டி</button>
       </div>
     </div>
   );
@@ -2687,7 +2745,7 @@ ${aiPart}
               background:"linear-gradient(135deg,#d4a85325,#a78bfa18)",
               color:"#f0c75e",fontSize:12,fontWeight:700,cursor:"pointer"
             }}>📜 ஜாதகம்</button>
-            <button onClick={openDailyScreen} style={{
+            <button onClick={()=>openDailyScreen()} style={{
               flex:1,padding:"10px 0",border:"none",borderRadius:10,
               background:"transparent",color:"#a78bfa80",fontSize:12,fontWeight:600,cursor:"pointer"
             }}>📅 இன்றைய பலன்</button>
@@ -3079,6 +3137,7 @@ ${aiPart}
             <button style={{...btnOutline,fontSize:10,padding:"9px 0",borderColor:"#ff6b8a30",color:"#ff6b8a"}} onClick={()=>goTo(SCREEN.PORUTHAM)}>💍 பொருத்தம்</button>
             <button style={{...btnOutline,fontSize:10,padding:"9px 0",borderColor:"#d4a85340",color:"#f0c75e"}} onClick={()=>goTo(SCREEN.PREMIUM)}>⭐ Premium</button>
           </div>
+          <button style={{...btnOutline,fontSize:11,padding:"9px 0",marginTop:6,borderColor:"#4ade8030",color:"#4ade80"}} onClick={()=>goTo(SCREEN.CALENDAR)}>📅 பஞ்சாங்க நாட்காட்டி</button>
         </div>
       </div>
     );
@@ -3177,9 +3236,9 @@ ${aiPart}
 
   // ═══════ DAILY PREDICTION (தினப்பலன்) ═══════
   if(screen===SCREEN.DAILY && dailyData) {
-    const { today, gochara, remedy, muhurtham, sadeSati, guruPeyarchi, taraBala } = dailyData;
+    const { today, gochara, remedy, muhurtham, sadeSati, guruPeyarchi, taraBala, currentDasha } = dailyData;
     const moodColor = gochara.overallMood==="good" ? "#4ade80" : gochara.overallMood==="caution" ? "#ff6b8a" : "#f0c75e";
-    const moodText = gochara.overallMood==="good" ? "இன்று நல்ல நாள்" : gochara.overallMood==="caution" ? "கவனமாக இருக்க வேண்டிய நாள்" : "சாதாரண நாள்";
+    const moodText = gochara.overallMood==="good" ? `${today.isOtherDate?"அன்று":"இன்று"} நல்ல நாள்` : gochara.overallMood==="caution" ? "கவனமாக இருக்க வேண்டிய நாள்" : "சாதாரண நாள்";
     const dailyGeo = geocodeCity(formData.pob);
     const currentHorai = calcCurrentHorai(liveClock, dailyGeo.lat, dailyGeo.lon); // live — refreshes every 30s via liveClock state
 
@@ -3203,13 +3262,52 @@ ${aiPart}
             }}>📅 இன்றைய பலன்</button>
           </div>
 
-          <div style={{textAlign:"center",marginBottom:16}}>
-            <div style={{fontSize:32,marginBottom:6}}>📅</div>
-            <h2 style={{fontSize:19,fontWeight:500,color:"#f0c75e",margin:"0 0 2px"}}>இன்றைய பலன்</h2>
+          <div style={{textAlign:"center",marginBottom:12}}>
+            <div style={{fontSize:32,marginBottom:6}}>{today.isFuture?"🔮":today.isPast?"🕰":"📅"}</div>
+            <h2 style={{fontSize:19,fontWeight:500,color:"#f0c75e",margin:"0 0 2px"}}>
+              {today.isFuture?"எதிர்கால பலன்":today.isPast?"கடந்த நாள் பலன்":"இன்றைய பலன்"}
+            </h2>
             <p style={{fontSize:12,color:"#a78bfa"}}>{today.dateStr} • {today.dayName}கிழமை</p>
+            {today.isOtherDate && (
+              <div style={{fontSize:9,color:today.isFuture?"#4ade80":"#a78bfa80",marginTop:3,fontWeight:600}}>
+                {today.isFuture?"✨ எதிர்கால கணிப்பு — அன்றைய தசை-புக்தி அடிப்படையில்":"📖 கடந்த நாளின் பலன் பார்வை"}
+              </div>
+            )}
           </div>
 
-          {/* Live Horai — updates every ~30s */}
+          {/* ═══ Date Navigator — browse to any past/future date ═══ */}
+          <div style={{...card,marginBottom:12,padding:"10px 12px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <button onClick={()=>{
+                const d = new Date(today.dateObj); d.setDate(d.getDate()-1);
+                openDailyScreen(d);
+              }} style={{background:"rgba(255,255,255,0.05)",border:"1px solid #d4a85325",borderRadius:8,
+                width:32,height:32,color:"#f0c75e",fontSize:15,cursor:"pointer",flexShrink:0}}>◂</button>
+
+              <input type="date" value={`${today.dateObj.getFullYear()}-${String(today.dateObj.getMonth()+1).padStart(2,'0')}-${String(today.dateObj.getDate()).padStart(2,'0')}`}
+                onChange={e=>{
+                  if(!e.target.value) return;
+                  const [y,m,d] = e.target.value.split('-').map(Number);
+                  openDailyScreen(new Date(y, m-1, d));
+                }}
+                style={{...inputStyle,flex:1,padding:"7px 10px",fontSize:12,colorScheme:"dark",textAlign:"center"}}/>
+
+              <button onClick={()=>{
+                const d = new Date(today.dateObj); d.setDate(d.getDate()+1);
+                openDailyScreen(d);
+              }} style={{background:"rgba(255,255,255,0.05)",border:"1px solid #d4a85325",borderRadius:8,
+                width:32,height:32,color:"#f0c75e",fontSize:15,cursor:"pointer",flexShrink:0}}>▸</button>
+            </div>
+            {today.isOtherDate && (
+              <button onClick={()=>openDailyScreen(null)} style={{
+                marginTop:8,width:"100%",background:"none",border:"none",color:"#4ade80",
+                fontSize:11,fontWeight:600,cursor:"pointer",padding:"4px 0"
+              }}>📍 இன்றைக்கு திரும்பு</button>
+            )}
+          </div>
+
+          {/* Live Horai — updates every ~30s. Only meaningful for "today"; hidden when browsing another date. */}
+          {!today.isOtherDate && (
           <div style={{...card,marginBottom:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,
             border:`1px solid ${currentHorai.isBenefic?"#4ade8030":"#ff6b8a30"}`}}>
             <div style={{fontSize:24}}>{currentHorai.symbol}</div>
@@ -3224,6 +3322,7 @@ ${aiPart}
               {currentHorai.isBenefic?"✓ சுப நேரம்":"⚠ கவனம்"}
             </div>
           </div>
+          )}
 
           {/* Mood Banner */}
           <div style={{...card,marginBottom:12,padding:"14px 16px",textAlign:"center",
@@ -3231,13 +3330,42 @@ ${aiPart}
             <div style={{fontSize:15,fontWeight:700,color:moodColor}}>{moodText}</div>
             {gochara.isChandrashtama && (
               <div style={{fontSize:11,color:"#ff6b8a",marginTop:6,fontWeight:600}}>
-                ⚠ இன்று சந்திராஷ்டமம் — புதிய காரியங்களைத் தவிர்க்கவும்
+                ⚠ {today.isOtherDate?"அன்று":"இன்று"} சந்திராஷ்டமம் — புதிய காரியங்களைத் தவிர்க்கவும்
               </div>
             )}
             <div style={{fontSize:10,color:"#a78bfa80",marginTop:6}}>
               சுப கிரகங்கள்: {gochara.goodCount} • எச்சரிக்கை: {gochara.badCount}
             </div>
           </div>
+
+          {/* ═══ Current Dasha-Bhukti — most important long-term personalization factor ═══ */}
+          {currentDasha && (
+            <div style={{...card,marginBottom:12,padding:"12px 14px",
+              background:"linear-gradient(135deg,#d4a85312,#a78bfa10)",border:"1px solid #d4a85325"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#a78bfa",marginBottom:8,letterSpacing:0.5}}>
+                ⏳ {today.isOtherDate?"அன்றைய தசை-புக்தி":"தற்போதைய தசை-புக்தி"}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{fontSize:8,color:"#a78bfa60",marginBottom:2}}>மகாதசை</div>
+                  <div style={{fontSize:14,fontWeight:800,color:"#f0c75e"}}>
+                    {currentDasha.mahadasha.symbol} {currentDasha.mahadasha.name}
+                  </div>
+                </div>
+                <div style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{fontSize:8,color:"#a78bfa60",marginBottom:2}}>புக்தி (சூட்சுமை)</div>
+                  <div style={{fontSize:14,fontWeight:800,color:"#a78bfa"}}>
+                    {currentDasha.bhukti?.symbol} {currentDasha.bhukti?.name || currentDasha.mahadasha.name}
+                  </div>
+                </div>
+              </div>
+              {currentDasha.daysLeftInBhukti > 0 && (
+                <div style={{fontSize:9,color:"#a78bfa60",marginTop:6,textAlign:"center"}}>
+                  இந்த புக்தி இன்னும் {currentDasha.daysLeftInBhukti} நாட்கள் நீடிக்கும்
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Sade Sati + Tara Bala row */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
@@ -3340,11 +3468,11 @@ ${aiPart}
             return (
               <div style={{...card,marginBottom:12,padding:"12px 14px"}}>
                 <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:10,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
-                  🍀 இன்றைய அதிர்ஷ்ட விவரங்கள்
+                  🍀 {today.isOtherDate?"அன்றைய அதிர்ஷ்ட விவரங்கள்":"இன்றைய அதிர்ஷ்ட விவரங்கள்"}
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                   <div style={{background:"linear-gradient(135deg,#f0c75e10,#d4a85308)",borderRadius:8,padding:"10px 12px",border:"1px solid #f0c75e18"}}>
-                    <div style={{fontSize:9,color:"#a78bfa80",marginBottom:4}}>🔢 இன்றைய அதிர்ஷ்ட எண்கள்</div>
+                    <div style={{fontSize:9,color:"#a78bfa80",marginBottom:4}}>🔢 {today.isOtherDate?"அன்றைய அதிர்ஷ்ட எண்கள்":"இன்றைய அதிர்ஷ்ட எண்கள்"}</div>
                     <div style={{fontSize:22,fontWeight:800,color:"#f0c75e",letterSpacing:6}}>
                       {dailyNums.join("  ")}
                     </div>
@@ -3366,7 +3494,7 @@ ${aiPart}
                     <div style={{fontSize:11,fontWeight:700,color:"#f0c75e"}}>{birthLucky.dir}</div>
                   </div>
                   <div style={{background:"#a78bfa08",borderRadius:6,padding:"6px 8px",textAlign:"center"}}>
-                    <div style={{fontSize:8,color:"#a78bfa60"}}>இன்று நட்சத்திரம்</div>
+                    <div style={{fontSize:8,color:"#a78bfa60"}}>{today.isOtherDate?"அன்று நட்சத்திரம்":"இன்று நட்சத்திரம்"}</div>
                     <div style={{fontSize:10,fontWeight:700,color:"#a78bfa"}}>{todayNakLord.symbol} {todayNakLord.name}</div>
                   </div>
                 </div>
@@ -3484,12 +3612,254 @@ ${aiPart}
               <div style={{fontSize:13,lineHeight:1.9,color:"#e8e0f0cc",whiteSpace:"pre-wrap"}}>{dailyPrediction}</div>
             ) : (
               <button style={{...btnGold,width:"auto",padding:"10px 24px",display:"inline-block",fontSize:13}} onClick={fetchDailyPrediction}>
-                🔮 இன்றைய பலன் பெறு →
+                🔮 {today.isOtherDate?"அன்றைய பலன் பெறு":"இன்றைய பலன் பெறு"} →
               </button>
             )}
           </div>
 
           <button style={{...btnOutline,fontSize:12,padding:"10px 0"}} onClick={()=>goTo(SCREEN.RESULT)}>← ஜாதகத்திற்கு திரும்பு</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ═══════ PANCHANGAM CALENDAR (Alb Astro style) ═══════
+  if(screen===SCREEN.CALENDAR) {
+    const MONTH_NAMES_TA = ["ஜனவரி","பிப்ரவரி","மார்ச்","ஏப்ரல்","மே","ஜூன்","ஜூலை","ஆகஸ்ட்","செப்டம்பர்","அக்டோபர்","நவம்பர்","டிசம்பர்"];
+    const DAY_NAMES_TA = ["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"];
+    const DAY_SHORT = ["ஞா","தி","செ","பு","வி","வெ","ச"];
+    const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
+
+    // Tamil month mapping (approximate Gregorian mid-month to Tamil month)
+    const TAMIL_MONTHS = ["தை","மாசி","பங்குனி","சித்திரை","வைகாசி","ஆனி","ஆடி","ஆவணி","புரட்டாசி","ஐப்பசி","கார்த்திகை","மார்கழி"];
+    const tamilMonthIdx = (calMonth + 9) % 12; // Approximate mapping
+
+    // Generate all day data for the month
+    const calData = [];
+    for(let d=1; d<=daysInMonth; d++){
+      const dt = new Date(calYear, calMonth, d);
+      const iso = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const h = generateHoroscope(iso, "06:00", 13.0827, 80.2707);
+      const muh = calcMuhurtham(dt, 13.0827, 80.2707, 5.5);
+
+      // Paksham calculation
+      const paksham = h.paksham || "";
+      const isPournami = h.tithi === "பௌர்ணமி/அமாவாசை" && paksham.includes("சுக்ல");
+      const isAmavasai = h.tithi === "பௌர்ணமி/அமாவாசை" && !paksham.includes("சுக்ல");
+      const isEkadashi = h.tithi === "ஏகாதசி";
+      const isPradosham = h.tithi === "திரயோதசி";
+      const isChaturthi = h.tithi === "சதுர்த்தி";
+
+      // Categorize day
+      let dayType = "normal"; // normal, good, bad, festival
+      if(isPournami || isAmavasai || isEkadashi) dayType = "festival";
+      else if(["பஞ்சமி","தசமி","சப்தமி"].includes(h.tithi)) dayType = "good";
+      else if(["நவமி","அஷ்டமி"].includes(h.tithi)) dayType = "bad";
+
+      calData.push({
+        d, dt, dayOfWeek: dt.getDay(),
+        tithi: h.tithi, nakshatra: h.nakshatra, yogam: h.yogam, karanam: h.karanam,
+        paksham, moonRashi: h.moonRashi,
+        sunrise: muh.sunrise, sunset: muh.sunset,
+        rahuKalam: muh.rahuKalam, yamagandam: muh.yamagandam, kuligai: muh.kuligai, abhijit: muh.abhijit,
+        dayType, isPournami, isAmavasai, isEkadashi, isPradosham, isChaturthi
+      });
+    }
+
+    const sel = calData[calSelected - 1]; // Selected day data
+    const today = new Date();
+    const isCurrentMonth = calMonth === today.getMonth() && calYear === today.getFullYear();
+
+    return(
+      <div style={base}>
+        <CosmicBackground/>
+        <div style={{...container,paddingTop:16,paddingBottom:30}}>
+          <button onClick={()=>goTo(horoscope?SCREEN.RESULT:SCREEN.FORM)} style={{background:"none",border:"none",color:"#a78bfa",fontSize:14,cursor:"pointer",padding:0,marginBottom:12}}>← பின் செல்</button>
+
+          {/* Header */}
+          <div style={{textAlign:"center",marginBottom:14}}>
+            <div style={{fontSize:11,color:"#a78bfa60",letterSpacing:3,marginBottom:2}}>✦ பஞ்சாங்கம் ✦</div>
+            <div style={{fontSize:11,color:"#4ade80",marginTop:4}}>{TAMIL_MONTHS[tamilMonthIdx]} மாதம்</div>
+          </div>
+
+          {/* Month Navigator */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,padding:"8px 12px",
+            background:"linear-gradient(135deg,#d4a85308,#a78bfa08)",borderRadius:12,border:"1px solid #d4a85315"}}>
+            <button onClick={()=>{ if(calMonth===0){setCalMonth(11);setCalYear(y=>y-1);} else setCalMonth(m=>m-1); setCalSelected(1); }}
+              style={{background:"none",border:"none",color:"#f0c75e",fontSize:20,cursor:"pointer",padding:"4px 8px"}}>◂</button>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:17,fontWeight:700,color:"#f0c75e",letterSpacing:1}}>{MONTH_NAMES_TA[calMonth]}</div>
+              <div style={{fontSize:11,color:"#a78bfa80"}}>{calYear}</div>
+            </div>
+            <button onClick={()=>{ if(calMonth===11){setCalMonth(0);setCalYear(y=>y+1);} else setCalMonth(m=>m+1); setCalSelected(1); }}
+              style={{background:"none",border:"none",color:"#f0c75e",fontSize:20,cursor:"pointer",padding:"4px 8px"}}>▸</button>
+          </div>
+
+          {/* Calendar Grid */}
+          <div style={{background:"rgba(255,255,255,0.02)",borderRadius:12,border:"1px solid #d4a85310",padding:"8px 6px",marginBottom:12}}>
+            {/* Day headers */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1,marginBottom:4}}>
+              {DAY_SHORT.map((dh,i)=>(
+                <div key={i} style={{textAlign:"center",fontSize:10,fontWeight:700,
+                  color:i===0?"#ff6b8a":i===6?"#60a5fa":"#a78bfa80",padding:"6px 0"}}>{dh}</div>
+              ))}
+            </div>
+            {/* Date cells */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
+              {Array.from({length:firstDay},(_,i)=>(<div key={`e${i}`}/>))}
+              {calData.map((cd,i)=>{
+                const isTodayCell = isCurrentMonth && cd.d === today.getDate();
+                const isSelected = cd.d === calSelected;
+                const bgMap = {festival:"#f0c75e10",good:"#4ade8008",bad:"#ff6b8a08",normal:"transparent"};
+                const borderMap = {festival:"#f0c75e30",good:"#4ade8015",bad:"#ff6b8a15",normal:"#ffffff06"};
+                return(
+                  <div key={i} onClick={()=>setCalSelected(cd.d)} style={{
+                    background:isSelected?"#a78bfa18":bgMap[cd.dayType],
+                    border:isSelected?"1.5px solid #a78bfa":isTodayCell?"1.5px solid #f0c75e50":`1px solid ${borderMap[cd.dayType]}`,
+                    borderRadius:8,padding:"3px 2px",minHeight:48,textAlign:"center",cursor:"pointer",
+                    transition:"all 0.15s",position:"relative"
+                  }}>
+                    {isTodayCell && <div style={{position:"absolute",top:2,right:3,width:5,height:5,borderRadius:"50%",background:"#f0c75e"}}/>}
+                    <div style={{fontSize:14,fontWeight:700,color:
+                      isSelected?"#a78bfa":
+                      cd.dayOfWeek===0?"#ff6b8a":
+                      cd.isPournami||cd.isAmavasai?"#f0c75e":
+                      cd.dayType==="bad"?"#ff6b8a80":"#e8e0f0"
+                    }}>{cd.d}</div>
+                    <div style={{fontSize:6.5,color:cd.dayType==="festival"?"#f0c75e":"#a78bfa80",lineHeight:1.2,marginTop:1,
+                      overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cd.nakshatra?cd.nakshatra.slice(0,4):""}</div>
+                    <div style={{fontSize:6,color:
+                      cd.dayType==="good"?"#4ade80":
+                      cd.dayType==="bad"?"#ff6b8a60":"#a78bfa50",lineHeight:1.2}}>
+                      {cd.isPournami?"🌕":cd.isAmavasai?"🌑":cd.isEkadashi?"🕉":""}
+                      {cd.tithi?cd.tithi.slice(0,4):""}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Legend */}
+          <div style={{display:"flex",justifyContent:"center",gap:12,marginBottom:14,flexWrap:"wrap"}}>
+            <span style={{fontSize:8,color:"#f0c75e"}}>🌕 பௌர்ணமி</span>
+            <span style={{fontSize:8,color:"#a78bfa"}}>🌑 அமாவாசை</span>
+            <span style={{fontSize:8,color:"#4ade80"}}>● சுபம்</span>
+            <span style={{fontSize:8,color:"#ff6b8a"}}>● அசுபம்</span>
+            <span style={{fontSize:8,color:"#f0c75e"}}>🕉 ஏகாதசி</span>
+          </div>
+
+          {/* ═══ Selected Day Detail — Full Panchangam ═══ */}
+          {sel && (
+            <div style={{...card,padding:0,overflow:"hidden",marginBottom:12}}>
+              {/* Day Header */}
+              <div style={{background:"linear-gradient(135deg,#d4a85318,#a78bfa10)",padding:"12px 14px",
+                borderBottom:"1px solid #d4a85320"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontSize:24,fontWeight:800,color:"#f0c75e"}}>{sel.d}</div>
+                    <div style={{fontSize:12,fontWeight:600,color:"#e8e0f0"}}>{DAY_NAMES_TA[sel.dayOfWeek]}</div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:12,color:"#a78bfa"}}>{MONTH_NAMES_TA[calMonth]} {calYear}</div>
+                    <div style={{fontSize:10,color:"#a78bfa60"}}>{TAMIL_MONTHS[tamilMonthIdx]}</div>
+                  </div>
+                </div>
+                {(sel.isPournami||sel.isAmavasai||sel.isEkadashi||sel.isPradosham||sel.isChaturthi) && (
+                  <div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {sel.isPournami && <span style={{fontSize:9,background:"#f0c75e20",color:"#f0c75e",padding:"2px 8px",borderRadius:10,fontWeight:600}}>🌕 பௌர்ணமி</span>}
+                    {sel.isAmavasai && <span style={{fontSize:9,background:"#a78bfa20",color:"#a78bfa",padding:"2px 8px",borderRadius:10,fontWeight:600}}>🌑 அமாவாசை</span>}
+                    {sel.isEkadashi && <span style={{fontSize:9,background:"#4ade8020",color:"#4ade80",padding:"2px 8px",borderRadius:10,fontWeight:600}}>🕉 ஏகாதசி</span>}
+                    {sel.isPradosham && <span style={{fontSize:9,background:"#f0c75e15",color:"#f0c75e",padding:"2px 8px",borderRadius:10,fontWeight:600}}>🔱 பிரதோஷம்</span>}
+                    {sel.isChaturthi && <span style={{fontSize:9,background:"#ff6b8a15",color:"#ff6b8a",padding:"2px 8px",borderRadius:10,fontWeight:600}}>🐘 சதுர்த்தி</span>}
+                  </div>
+                )}
+              </div>
+
+              {/* Panchangam 5 Angas */}
+              <div style={{padding:"10px 14px",borderBottom:"1px solid #ffffff08"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#a78bfa",marginBottom:8,letterSpacing:1}}>☸ பஞ்சாங்கம் (5 அங்கங்கள்)</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                  {[
+                    {label:"வாரம்", value: DAY_NAMES_TA[sel.dayOfWeek], icon:"📅", color:"#e8e0f0"},
+                    {label:"திதி", value: sel.tithi, icon:"🌙", color: sel.dayType==="bad"?"#ff6b8a":sel.dayType==="good"?"#4ade80":"#f0c75e"},
+                    {label:"நட்சத்திரம்", value: sel.nakshatra, icon:"⭐", color:"#a78bfa"},
+                    {label:"யோகம்", value: sel.yogam, icon:"☯", color:"#e8e0f0"},
+                    {label:"கரணம்", value: sel.karanam, icon:"⚡", color:"#e8e0f0"},
+                    {label:"பக்ஷம்", value: sel.paksham, icon: sel.paksham?.includes("சுக்ல")?"🌓":"🌗", color:"#a78bfa"},
+                  ].map((item,i)=>(
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",
+                      background:"rgba(255,255,255,0.02)",borderRadius:6}}>
+                      <span style={{fontSize:14}}>{item.icon}</span>
+                      <div>
+                        <div style={{fontSize:8,color:"#a78bfa60"}}>{item.label}</div>
+                        <div style={{fontSize:11,fontWeight:600,color:item.color}}>{item.value||"—"}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Moon Rashi */}
+              <div style={{padding:"8px 14px",borderBottom:"1px solid #ffffff08",display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:16}}>☽</span>
+                <div>
+                  <div style={{fontSize:8,color:"#a78bfa60"}}>சந்திர ராசி</div>
+                  <div style={{fontSize:12,fontWeight:600,color:"#f0c75e"}}>{sel.moonRashi||"—"}</div>
+                </div>
+              </div>
+
+              {/* Sunrise / Sunset */}
+              <div style={{padding:"8px 14px",borderBottom:"1px solid #ffffff08"}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:18}}>🌅</span>
+                    <div>
+                      <div style={{fontSize:8,color:"#a78bfa60"}}>சூரிய உதயம்</div>
+                      <div style={{fontSize:14,fontWeight:700,color:"#f0c75e",fontFamily:"monospace"}}>{sel.sunrise}</div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:18}}>🌇</span>
+                    <div>
+                      <div style={{fontSize:8,color:"#a78bfa60"}}>சூரிய அஸ்தமனம்</div>
+                      <div style={{fontSize:14,fontWeight:700,color:"#ff6b8a",fontFamily:"monospace"}}>{sel.sunset}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Kalam Table — Rahu, Ema, Gulikai, Abhijit */}
+              <div style={{padding:"10px 14px"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#a78bfa",marginBottom:8,letterSpacing:1}}>⏰ காலங்கள்</div>
+                {[
+                  {label:"ராகு காலம்", value:sel.rahuKalam, icon:"☊", color:"#ff6b8a", bg:"#ff6b8a08", desc:"தவிர்க்கவும்"},
+                  {label:"எமகண்டம்", value:sel.yamagandam, icon:"💀", color:"#ff6b8a80", bg:"#ff6b8a05", desc:"தவிர்க்கவும்"},
+                  {label:"குளிகை", value:sel.kuligai, icon:"⚠", color:"#a78bfa", bg:"#a78bfa05", desc:"கவனம்"},
+                  {label:"அபிஜித் முகூர்த்தம்", value:sel.abhijit, icon:"✨", color:"#4ade80", bg:"#4ade8008", desc:"மிகச் சிறந்தது"},
+                ].map((k,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 10px",marginBottom:4,
+                    background:k.bg,borderRadius:8,borderLeft:`3px solid ${k.color}30`}}>
+                    <span style={{fontSize:14,width:20,textAlign:"center"}}>{k.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:10,fontWeight:600,color:k.color}}>{k.label}</div>
+                      <div style={{fontSize:8,color:"#a78bfa50"}}>{k.desc}</div>
+                    </div>
+                    <div style={{fontSize:12,fontWeight:700,color:k.color,fontFamily:"monospace"}}>{k.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Quick Today Button */}
+          {!isCurrentMonth && (
+            <button onClick={()=>{setCalMonth(today.getMonth());setCalYear(today.getFullYear());setCalSelected(today.getDate());}}
+              style={{...btnOutline,fontSize:11,padding:"9px 0",borderColor:"#f0c75e30",color:"#f0c75e"}}>
+              📍 இன்றைய தேதிக்கு செல்
+            </button>
+          )}
         </div>
       </div>
     );
