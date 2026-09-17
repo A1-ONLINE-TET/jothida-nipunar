@@ -17,8 +17,11 @@ Deploy: Firebase Cloud Function / Google Cloud Run / AWS Lambda
 import swisseph as swe
 import json
 import sys
+import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+from urllib.request import Request, urlopen
+from urllib.error import URLError
 
 # ── Constants ──
 RASHIS_TA = ["மேஷம்","ரிஷபம்","மிதுனம்","கடகம்","சிம்மம்","கன்னி",
@@ -214,10 +217,50 @@ class HoroscopeHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(response.encode("utf-8"))
 
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        if parsed.path == "/api/predict":
+            api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+            if not api_key:
+                self._send_json(500, {"success": False, "error": "ANTHROPIC_API_KEY not configured"})
+                return
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length)) if length else {}
+                prompt = body.get("prompt", "")
+                max_tokens = min(body.get("max_tokens", 600), 1500)
+                if not prompt:
+                    self._send_json(400, {"success": False, "error": "prompt required"})
+                    return
+
+                req = Request(
+                    "https://api.anthropic.com/v1/messages",
+                    data=json.dumps({
+                        "model": "claude-sonnet-4-20250514",
+                        "max_tokens": max_tokens,
+                        "messages": [{"role": "user", "content": prompt}]
+                    }).encode("utf-8"),
+                    headers={
+                        "Content-Type": "application/json",
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01"
+                    }
+                )
+                with urlopen(req, timeout=30) as resp:
+                    data = json.loads(resp.read())
+                text = "".join(b.get("text", "") for b in data.get("content", []))
+                self._send_json(200, {"success": True, "text": text})
+            except URLError as e:
+                self._send_json(502, {"success": False, "error": f"AI service error: {e.reason}"})
+            except Exception as e:
+                self._send_json(500, {"success": False, "error": str(e)})
+        else:
+            self._send_json(404, {"success": False, "error": "Not found"})
+
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 

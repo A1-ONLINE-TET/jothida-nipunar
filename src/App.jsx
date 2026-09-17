@@ -50,10 +50,26 @@ function geocodeCity(cityName) {
   if (!cityName) return { lat:13.0827, lon:80.2707, matched:false, name:"Chennai (default)" };
   const clean = cityName.toLowerCase().trim().split(',')[0].trim();
   if (CITIES[clean]) return { lat:CITIES[clean][0], lon:CITIES[clean][1], matched:true, name:cityName };
-  // Substring match: e.g. "Thoothukudi, Tamil Nadu" or "near Madurai"
   const found = Object.keys(CITIES).find(key => clean.includes(key) || key.includes(clean));
   if (found) return { lat:CITIES[found][0], lon:CITIES[found][1], matched:true, name:cityName };
   return { lat:13.0827, lon:80.2707, matched:false, name:cityName };
+}
+
+// Async geocoding via Nominatim (OpenStreetMap) — used when local DB has no match
+async function geocodeCityAsync(cityName) {
+  const local = geocodeCity(cityName);
+  if (local.matched) return local;
+  try {
+    const q = encodeURIComponent(cityName.trim());
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=in`, {
+      headers: { "Accept-Language": "en" }
+    });
+    const data = await r.json();
+    if (data && data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), matched: true, name: data[0].display_name.split(',')[0] };
+    }
+  } catch (e) { /* network error — fall through to default */ }
+  return local;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -127,8 +143,8 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707) {
   // ── Obliquity of Ecliptic ──
   const eps = 23.4393 - 0.01300 * T;
 
-  // ── Lahiri Ayanamsa (Chitrapaksha) ──
-  const ayanamsa = 23.85 + (T * 100 * 50.29 / 3600);
+  // ── Lahiri Ayanamsa (Chitrapaksha) — IENA-adopted value at J2000.0 ──
+  const ayanamsa = 23.856 + (T * 100 * 50.29 / 3600);
 
   // ══════ SUN (Meeus Ch. 25) ══════
   const L0 = norm(280.46646 + 36000.76983 * T + 0.0003032 * T * T);
@@ -357,6 +373,7 @@ function calculateDasha(moonLongitude, birthDate) {
   const dashas = [];
   let currentDate = new Date(bd);
   // First: remaining balance of birth dasha
+  const now = new Date();
   let startIdx = lordIdx;
   for (let i = 0; i < 9; i++) {
     const idx = (startIdx + i) % 9;
@@ -376,14 +393,35 @@ function calculateDasha(moonLongitude, birthDate) {
       const adStart = new Date(adDate);
       const adEndMs = adDate.getTime() + adYrs * 365.25 * 24 * 3600000;
       const adEnd = new Date(adEndMs);
+
+      // Pratyantardasha (sub-sub periods within this antardasha)
+      const pratyantardashas = [];
+      let padDate = new Date(adStart);
+      for (let k = 0; k < 9; k++) {
+        const padIdx = (adIdx + k) % 9;
+        const pad = DASHA_LORDS[padIdx];
+        const padYrs = (adYrs * pad.years) / 120;
+        const padStart = new Date(padDate);
+        const padEndMs = padDate.getTime() + padYrs * 365.25 * 24 * 3600000;
+        const padEnd = new Date(padEndMs);
+        const padDays = Math.round(padYrs * 365.25);
+        pratyantardashas.push({
+          ...pad, startDate: padStart, endDate: padEnd,
+          duration: padDays >= 365 ? (padYrs.toFixed(1) + " வருடம்") : (padDays + " நாட்கள்"),
+          isCurrent: now >= padStart && now < padEnd
+        });
+        padDate = padEnd;
+      }
+
       antardashas.push({
         ...ad, startDate: adStart, endDate: adEnd,
-        duration: adYrs.toFixed(1) + " வருடம்"
+        duration: adYrs.toFixed(1) + " வருடம்",
+        isCurrent: now >= adStart && now < adEnd,
+        pratyantardashas
       });
       adDate = adEnd;
     }
 
-    const now = new Date();
     const isCurrent = now >= startDt && now < endDt;
     dashas.push({
       ...d, years: Math.round(yrs * 10) / 10,
@@ -405,9 +443,8 @@ function calculateNavamsa(placements) {
   // Dual signs (Gemini,Virgo,Sag,Pisces) start from Libra
   const movable = [0,3,6,9], fixed = [1,4,7,10], dual = [2,5,8,11];
   return placements.map(p => {
-    const rashiIdx = RASHIS.indexOf(p.rashi);
-    const deg = p.degree;
-    const navPart = Math.floor(deg / (30/9)); // 0-8
+    const rashiIdx = p.rashiIdx;
+    const navPart = Math.min(8, Math.floor((p.degExact || p.degree) / (30/9))); // 0-8, use exact fractional degree
 
     let startRashi;
     if (movable.includes(rashiIdx)) startRashi = 0;       // Aries
@@ -422,22 +459,25 @@ function calculateNavamsa(placements) {
 // ═══════════════════════════════════════════════════════════════════
 // 10 PORUTHAM — MARRIAGE MATCHING
 // ═══════════════════════════════════════════════════════════════════
-const GANAM = [0,0,2,0,0,1,0,0,2, 0,2,1,0,2,0, 2,0,2,2,1,1,0,2,2,1,1,0];
-// 0=Deva, 1=Manushya, 2=Rakshasa
+// Ashwini..Revati, 0=Deva 1=Manushya 2=Rakshasa — verified against classical Gana table
+const GANAM = [0,1,2,1,0,1,0,0,2, 2,1,1,0,2,0, 2,0,2,2,1,1,0,2,2,1,1,0];
 const GANAM_NAMES = ["தேவ கணம்","மனுஷ்ய கணம்","ராக்ஷஸ கணம்"];
 
-const YONI = [0,1,2,3,3,4,5,5,6, 7,7,8,9,9,9, 10,10,10,4,11,11,11,0,0,0,8,1];
-const YONI_NAMES = ["குதிரை","யானை","ஆடு","பாம்பு","நாய்","பூனை","எலி","பசு","எருமை","புலி","மான்","குரங்கு"];
+// Ashwini..Revati — 14 classical Yoni (animal) categories, verified against standard table
+const YONI = [0,1,2,3,3,4,5,2,5, 6,6,7,8,9,8, 9,10,10,4,11, 12,11,13,0,13,7,1];
+const YONI_NAMES = ["குதிரை","யானை","ஆடு","பாம்பு","நாய்","பூனை","எலி","பசு","எருமை","புலி","மான்","குரங்கு","கீரி","சிங்கம்"];
+// Classical Yoni-enemy animal pairs (Yoni Koota) — a match between these pairs is inauspicious
+const YONI_ENEMY_PAIRS = [[0,8],[1,13],[2,11],[3,12],[4,10],[5,6],[7,9]]; // horse-buffalo, elephant-lion, goat-monkey, serpent-mongoose, dog-deer, cat-rat, cow-tiger
 
-const NADI_MAP = [0,1,2,0,1,2,0,1,2, 0,1,2,0,1,2, 0,1,2,0,1,2,0,1,2,0,1,2];
+// Ashwini..Revati, 0=Vata(Aadi) 1=Pitta(Madhya) 2=Kapha(Antya) — verified against classical Nadi table
+const NADI_MAP = [0,1,2,2,1,0,0,1,2, 2,1,0,0,1,2, 2,1,0,0,1,2,2,1,0,0,1,2];
 const NADI_NAMES = ["வாத நாடி","பித்த நாடி","கப நாடி"];
 
-const RAJJU_MAP = [0,1,2,3,4,4,3,2,1, 0,1,2,3,4,4, 3,2,1,0,1,2,3,4,4,3,2,1];
+// Ashwini..Revati, 0=Pada 1=Kati 2=Nabhi 3=Kantha 4=Siro — verified against classical Rajju table
+const RAJJU_MAP = [0,1,2,3,4,3,2,1,0, 0,1,2,3,4,3, 2,1,0,0,1,2,3,4,3,2,1,0];
 const RAJJU_NAMES = ["பாத ரஜ்ஜு","கடி ரஜ்ஜு","நாபி ரஜ்ஜு","கண்ட ரஜ்ஜு","சிர ரஜ்ஜு"];
 
 const VEDHA_PAIRS = [[0,17],[1,16],[2,15],[3,14],[4,13],[5,12],[6,11],[7,10],[8,9],[18,26],[19,25],[20,24],[21,23]];
-
-const RASHI_LORD = [2,1,4,3,0,4,1,2,6,7,7,6]; // Sun=0,Moon=1..Mercury=4..Jup=6,Sat=7
 
 function calculate10Porutham(nak1, nak2, rashi1, rashi2) {
   const results = [];
@@ -457,9 +497,10 @@ function calculate10Porutham(nak1, nak2, rashi1, rashi2) {
     desc:`${GANAM_NAMES[g1]} + ${GANAM_NAMES[g2]} — ${ganOk?"குணப் பொருத்தம் உண்டு":"குணத்தில் வேறுபாடு"}` });
   if(ganOk) totalScore++;
 
-  // 3. YONI
+  // 3. YONI — classical Yoni Koota: only fixed animal-enemy pairs are incompatible
   const y1=YONI[nak1], y2=YONI[nak2];
-  const yoniOk = y1===y2 || Math.abs(y1-y2) > 2;
+  const isYoniEnemy = YONI_ENEMY_PAIRS.some(([a,b]) => (y1===a&&y2===b)||(y1===b&&y2===a));
+  const yoniOk = !isYoniEnemy;
   results.push({ name:"யோனி", en:"Yoni", ok:yoniOk, score:yoniOk?1:0, max:1,
     desc:`${YONI_NAMES[y1]} + ${YONI_NAMES[y2]} — ${yoniOk?"தாம்பத்ய ஒற்றுமை உண்டு":"தாம்பத்யத்தில் சிறு வேறுபாடு"}` });
   if(yoniOk) totalScore++;
@@ -471,9 +512,10 @@ function calculate10Porutham(nak1, nak2, rashi1, rashi2) {
     desc:rashiOk?"ராசி பொருத்தம் உள்ளது, செல்வம் சேரும்":"ராசி பொருத்தம் சரியில்லை" });
   if(rashiOk) totalScore++;
 
-  // 5. RASIYATHIPATI (Lord compatibility)
-  const l1=RASHI_LORD[rashi1], l2=RASHI_LORD[rashi2];
-  const lordOk = l1===l2 || [0,1].includes(l1)&&[0,1].includes(l2) || [6,7].includes(l1)&&[6,7].includes(l2);
+  // 5. RASIYATHIPATI (Lord compatibility) — uses the same graha-maitri (friendship) table
+  // as Graha Bala below, so this never contradicts that table's friend/enemy calls
+  const lName1 = RASHI_LORD_NAME[rashi1], lName2 = RASHI_LORD_NAME[rashi2];
+  const lordOk = lName1===lName2 || (GRAHA_FRIENDSHIP[lName1]?.friends.includes(lName2) ?? false);
   results.push({ name:"ராசியாதிபதி", en:"Rasiyathipati", ok:lordOk, score:lordOk?1:0, max:1,
     desc:lordOk?"இரு ராசிநாதர்களும் நட்பு — நல்ல பொருத்தம்":"ராசிநாதர்கள் நட்பில்லை" });
   if(lordOk) totalScore++;
@@ -2160,31 +2202,34 @@ export default function AstrologyApp() {
   const fetchFromBackend = async (dob, hour, minute, city) => {
     try {
       const [y, m, d] = dob.split('-').map(Number);
-      const url = `${backendUrl}/api/horoscope?year=${y}&month=${m}&day=${d}&hour=${hour}&minute=${minute}&city=${encodeURIComponent(city||"chennai")}&tz=5.5`;
+      const geo = geocodeCity(city);
+      const url = `${backendUrl}/api/horoscope?year=${y}&month=${m}&day=${d}&hour=${hour}&minute=${minute}&lat=${geo.lat}&lon=${geo.lon}&tz=5.5`;
       const res = await fetch(url);
       if (!res.ok) return null;
       const data = await res.json();
       if (!data || !data.success) return null;
 
-      const lagna = data.lagna.rashi;
+      const asc = data.ascendant;
+      const lagna = asc.rashi;
+      const toDMS = (deg) => { const dd=Math.floor(deg); const mf=(deg-dd)*60; const mm=Math.floor(mf); const ss=Math.floor((mf-mm)*60); return `${dd}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`; };
       const placements = PLANETS.map((p, i) => {
-        const ap = data.planets.find(pp => pp.ta === p.ta);
+        const ap = data.planets.find(pp => pp.name_ta === p.ta);
         if (!ap) return { ...p, rashi:RASHIS[0], rashiEn:RASHI_EN[0], degree:0, house:1, dms:"0:00:00", fullLong:0, nakshatraTa:"", pada:1, rashiIdx:0 };
         return {
           ...p, rashi:RASHIS[ap.rashi], rashiEn:RASHI_EN[ap.rashi], rashiIdx:ap.rashi,
-          degree:Math.floor(ap.degree), degExact:ap.degree, dms:ap.dms, fullLong:ap.fullLong,
-          house:ap.house, nakshatraTa:ap.nakshatra_ta, nakIdx:NAKSHATRAS.indexOf(ap.nakshatra_ta), pada:ap.pada
+          degree:Math.floor(ap.degree), degExact:ap.degree, dms:toDMS(ap.longitude), fullLong:ap.longitude,
+          house:ap.house, nakshatraTa:ap.nakshatra_ta, nakIdx:NAKSHATRAS.indexOf(ap.nakshatra_ta), pada:ap.nakshatra_pada
         };
       });
 
       return {
         lagna, lagnaName:RASHIS[lagna], lagnaEn:RASHI_EN[lagna],
-        lagnaDeg:Math.floor(data.lagna.degree), lagnaDMS:data.lagna.dms, lagnaFullLong:data.lagna.fullLong,
-        lagnaNakshatra:data.lagna.nakshatra_ta, lagnaPada:data.lagna.pada,
+        lagnaDeg:Math.floor(asc.degree), lagnaDMS:toDMS(asc.longitude), lagnaFullLong:asc.longitude,
+        lagnaNakshatra:asc.nakshatra_ta, lagnaPada: Math.floor((asc.longitude % (360/27)) / (360/108)) + 1,
         placements,
-        nakshatra:data.nakshatra_ta, nakshatraPada:data.nakshatra_pada,
-        moonRashi:data.moon_rashi_ta, sunSign:data.sun_rashi_ta,
-        tithi:data.tithi, paksham:data.paksham, yogam:data.yogam, karanam:data.karanam,
+        nakshatra:data.summary.nakshatra, nakshatraPada:data.summary.nakshatra_pada,
+        moonRashi:data.summary.moon_rashi, sunSign:data.summary.sun_rashi,
+        tithi:data.tithi||"", paksham:data.paksham||"", yogam:data.yogam||"", karanam:data.karanam||"",
         birthTime:`${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`,
         apiSource:"Swiss Ephemeris (NASA JPL DE431)"
       };
@@ -2255,7 +2300,7 @@ export default function AstrologyApp() {
       const Mm2 = ((134.9634+477198.8676*T2)%360+360)%360;
       const Fm2 = ((93.2721+483202.0175*T2)%360+360)%360;
       const Ms2 = ((357.52911+35999.05029*T2)%360+360)%360;
-      const ayanamsa2 = 23.85+(T2*100*50.29/3600);
+      const ayanamsa2 = 23.856+(T2*100*50.29/3600);
       const r = Math.PI/180;
       const mCorr = 6.289*Math.sin(Mm2*r)-1.274*Math.sin((2*Dm2-Mm2)*r)+0.658*Math.sin(2*Dm2*r)
         -0.214*Math.sin(2*Mm2*r)-0.186*Math.sin(Ms2*r)+0.110*Math.sin(2*Fm2*r);
@@ -2265,21 +2310,35 @@ export default function AstrologyApp() {
     goTo(SCREEN.RESULT);
   };
 
+  const getCurrentDashaInfo = () => {
+    if (!dashaData) return "";
+    const md = dashaData.dashas.find(d => d.isCurrent);
+    if (!md) return "";
+    const ad = md.antardashas?.find(a => a.isCurrent);
+    const pad = ad?.pratyantardashas?.find(p => p.isCurrent);
+    let info = `நடப்பு மகா தசை: ${md.name} (${md.startDate.toLocaleDateString("ta-IN")} — ${md.endDate.toLocaleDateString("ta-IN")})`;
+    if (ad) info += `\nநடப்பு புக்தி (அந்தர் தசை): ${md.name}-${ad.name} (${ad.duration})`;
+    if (pad) info += `\nநடப்பு பிரத்யந்தர் தசை: ${md.name}-${ad.name}-${pad.name} (${pad.duration})`;
+    return info;
+  };
+
   const fetchAIPrediction = async () => {
     if(!horoscope)return;
     setPredictionLoading(true); setPrediction("");
     try {
+      const dashaInfo = getCurrentDashaInfo();
       const prompt = `You are a world-class Vedic astrologer. Based on these birth chart details, give a personalized prediction in Tamil (with some English terms).
 Name: ${formData.name}, DOB: ${formData.dob}, TOB: ${formData.tob||"Unknown"}, POB: ${formData.pob||"Unknown"}
 Lagna: ${horoscope.lagnaName} (${horoscope.lagnaEn}), Moon: ${horoscope.moonRashi}, Nakshatra: ${horoscope.nakshatra}
 Planets: ${horoscope.placements.map(p=>`${p.ta}:${p.rashi} H${p.house} ${p.degree}°`).join(", ")}
-Predict: பொது பலன், தொழில், திருமணம், ஆரோக்கியம், நிதி. 200 words. Warm tone.`;
-      const r = await fetch("https://api.anthropic.com/v1/messages",{
+${dashaInfo ? `Dasha periods:\n${dashaInfo}` : ""}
+Predict: பொது பலன், தொழில், திருமணம், ஆரோக்கியம், நிதி. Consider the current Mahadasha-Antardasha-Pratyantardasha lords and their combined effects on each life area. 200 words. Warm tone.`;
+      const r = await fetch(`${backendUrl}/api/predict`,{
         method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})
+        body:JSON.stringify({prompt, max_tokens:1000})
       });
       const data = await r.json();
-      setPrediction(data.content?.map(b=>b.text||"").join("")||"பலன் கிடைக்கவில்லை.");
+      setPrediction(data.text||"பலன் கிடைக்கவில்லை.");
     } catch(e){ setPrediction("AI பலன் பெற இணைய இணைப்பு தேவை."); }
     setPredictionLoading(false);
   };
@@ -2337,7 +2396,7 @@ Predict: பொது பலன், தொழில், திருமணம்
       ).join(", ");
       const timeframe = today.isFuture ? `on the future date ${today.dateStr}` : today.isPast ? `on the past date ${today.dateStr}` : "today";
       const dashaLine = currentDasha
-        ? `The period (Dasha-Bhukti) that will be running ${timeframe}: ${currentDasha.mahadasha.name} Mahadasha (main period) → ${currentDasha.bhukti?.name || currentDasha.mahadasha.name} Bhukti (sub-period), ${currentDasha.daysLeftInBhukti} days left in this Bhukti as of that date. This is the person's most important long-term astrological influence for that date — consider what themes this planet governs.`
+        ? `The period (Dasha-Bhukti) that will be running ${timeframe}: ${currentDasha.mahadasha.name} Mahadasha (main period) → ${currentDasha.bhukti?.name || currentDasha.mahadasha.name} Bhukti (sub-period)${currentDasha.pratyantardasha ? ` → ${currentDasha.pratyantardasha.name} Pratyantardasha (sub-sub-period)` : ""}, ${currentDasha.daysLeftInBhukti} days left in this Bhukti as of that date. This is the person's most important long-term astrological influence for that date — consider what themes this planet governs.`
         : "Dasha data not available.";
       const prompt = `You are a Tamil Vedic astrologer giving a ${today.isOtherDate ? "specific-date" : "daily"} horoscope reading. Respond ONLY in Tamil.
 Person: ${formData.name}
@@ -2352,12 +2411,12 @@ Guru Peyarchi (Jupiter transit) effect on that date: ${guruPeyarchi?.desc || "N/
 Tara Bala on that date: ${taraBala?.name} (${taraBala?.mood === "good" ? "favorable" : "use caution"})
 Recommended remedy for this rashi: worship ${remedy?.dayInfo?.deity}, ${remedy?.dayInfo?.remedy}
 Give a short, warm, practical ${today.isFuture ? "prediction for that future date" : "daily prediction"} (170 words max) covering: general mood, favorable/unfavorable timing, one practical tip. The Dasha-Bhukti is the most important personalization factor — ground the reading in what the Mahadasha and Bhukti lords represent, then layer in the transits and panchangam on top. Do not repeat the raw planetary data back — synthesize it into natural guidance.`;
-      const r = await fetch("https://api.anthropic.com/v1/messages",{
+      const r = await fetch(`${backendUrl}/api/predict`,{
         method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:600,messages:[{role:"user",content:prompt}]})
+        body:JSON.stringify({prompt, max_tokens:600})
       });
       const data = await r.json();
-      setDailyPrediction(data.content?.map(b=>b.text||"").join("")||"இன்றைய பலன் கிடைக்கவில்லை.");
+      setDailyPrediction(data.text||"இன்றைய பலன் கிடைக்கவில்லை.");
     } catch(e){ setDailyPrediction("இணைய இணைப்பு தேவை."); }
     setDailyLoading(false);
   };
@@ -3221,19 +3280,57 @@ ${aiPart}
               நட்சத்திரம்: <span style={{color:"#e8e0f0"}}>{dashaData.birthNakshatra}</span> • நாதன்: <span style={{color:"#e8e0f0"}}>{dashaData.birthLord.name}</span>
             </div>
             {dashaData.dashas.map((d,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i<8?"1px solid #ffffff06":"none",
-                background:d.isCurrent?"#f0c75e08":"transparent"}}>
-                <span style={{fontSize:14,width:18}}>{d.symbol}</span>
-                <div style={{flex:1}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontSize:11,fontWeight:d.isCurrent?700:400,color:d.isCurrent?"#f0c75e":"#e8e0f0bb"}}>{d.name} தசை</span>
-                    {d.isCurrent&&<span style={{fontSize:7,background:"#f0c75e20",color:"#f0c75e",padding:"1px 5px",borderRadius:4,fontWeight:700}}>நடப்பு</span>}
+              <div key={i}>
+                <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:(expandedDasha===i||String(expandedDasha).startsWith(i+"-"))?"none":"1px solid #ffffff06",
+                  background:d.isCurrent?"#f0c75e08":"transparent",cursor:"pointer"}}
+                  onClick={()=>setExpandedDasha(expandedDasha===i||(typeof expandedDasha==='string'&&expandedDasha.startsWith(i+"-"))?null:i)}>
+                  <span style={{fontSize:14,width:18}}>{d.symbol}</span>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontSize:11,fontWeight:d.isCurrent?700:400,color:d.isCurrent?"#f0c75e":"#e8e0f0bb"}}>{d.name} தசை</span>
+                      {d.isCurrent&&<span style={{fontSize:7,background:"#f0c75e20",color:"#f0c75e",padding:"1px 5px",borderRadius:4,fontWeight:700}}>நடப்பு</span>}
+                    </div>
+                    <div style={{fontSize:9,color:"#a78bfa70",marginTop:1}}>
+                      {d.startDate.toLocaleDateString("ta-IN")} — {d.endDate.toLocaleDateString("ta-IN")}
+                    </div>
                   </div>
-                  <div style={{fontSize:9,color:"#a78bfa70",marginTop:1}}>
-                    {d.startDate.toLocaleDateString("ta-IN")} — {d.endDate.toLocaleDateString("ta-IN")}
-                  </div>
+                  <span style={{fontSize:9,color:"#a78bfa60"}}>{d.years}y</span>
+                  <span style={{fontSize:10,color:"#a78bfa50",transition:"transform 0.2s",transform:(expandedDasha===i||String(expandedDasha).startsWith(i+"-"))?"rotate(180deg)":"rotate(0)"}}> ▾</span>
                 </div>
-                <span style={{fontSize:9,color:"#a78bfa60"}}>{d.years}y</span>
+                {(expandedDasha===i||String(expandedDasha).startsWith(i+"-"))&&d.antardashas&&(
+                  <div style={{marginLeft:24,borderLeft:"2px solid #d4a85315",paddingLeft:10,marginBottom:6}}>
+                    <div style={{fontSize:9,color:"#a78bfa80",fontWeight:600,marginBottom:4,marginTop:2}}>புக்தி (Antardasha)</div>
+                    {d.antardashas.map((ad,j)=>(
+                      <div key={j}>
+                        <div style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",cursor:"pointer",
+                          background:ad.isCurrent?"#a78bfa10":"transparent",borderRadius:4}}
+                          onClick={(e)=>{e.stopPropagation();setExpandedDasha(expandedDasha===`${i}-${j}`?i:`${i}-${j}`)}}>
+                          <span style={{fontSize:11,width:14}}>{ad.symbol}</span>
+                          <span style={{fontSize:10,flex:1,color:ad.isCurrent?"#a78bfa":"#e8e0f0aa"}}>{ad.name}
+                            {ad.isCurrent&&<span style={{fontSize:7,background:"#a78bfa20",color:"#a78bfa",padding:"0 4px",borderRadius:3,marginLeft:4,fontWeight:700}}>நடப்பு</span>}
+                          </span>
+                          <span style={{fontSize:8,color:"#a78bfa50"}}>{ad.startDate.toLocaleDateString("ta-IN",{month:"short",year:"2-digit"})}</span>
+                          <span style={{fontSize:8,color:"#a78bfa40",transition:"transform 0.2s",transform:expandedDasha===`${i}-${j}`?"rotate(180deg)":"rotate(0)"}}>▾</span>
+                        </div>
+                        {expandedDasha===`${i}-${j}`&&ad.pratyantardashas&&(
+                          <div style={{marginLeft:18,borderLeft:"1px solid #a78bfa15",paddingLeft:8,marginBottom:4}}>
+                            <div style={{fontSize:8,color:"#a78bfa60",fontWeight:600,marginBottom:2,marginTop:2}}>பிரத்யந்தரம் (Pratyantardasha)</div>
+                            {ad.pratyantardashas.map((pad,k)=>(
+                              <div key={k} style={{display:"flex",alignItems:"center",gap:4,padding:"2px 0",
+                                background:pad.isCurrent?"#4ade8010":"transparent",borderRadius:3}}>
+                                <span style={{fontSize:9,width:12}}>{pad.symbol}</span>
+                                <span style={{fontSize:9,flex:1,color:pad.isCurrent?"#4ade80":"#e8e0f088"}}>{pad.name}
+                                  {pad.isCurrent&&<span style={{fontSize:6,background:"#4ade8020",color:"#4ade80",padding:"0 3px",borderRadius:3,marginLeft:3,fontWeight:700}}>நடப்பு</span>}
+                                </span>
+                                <span style={{fontSize:7,color:"#a78bfa40"}}>{pad.duration}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>)}
