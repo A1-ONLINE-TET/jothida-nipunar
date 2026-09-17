@@ -1902,29 +1902,32 @@ export default function AstrologyApp() {
       if (ctx.state === "suspended") ctx.resume().catch(()=>{});
       const now = ctx.currentTime;
       const duration = 4.2;
-      const baseFreq = 136.1; // "ஓம் அதிர்வெண்" — traditional cosmic/Om frequency
+      // One octave above 136.1Hz — same "Om frequency" lineage, but audible on small phone speakers
+      // (most phone speakers roll off heavily below ~250Hz)
+      const baseFreq = 272.2;
 
       // Master envelope — slow devotional swell in, gentle sustain, long fade out
       const master = ctx.createGain();
       master.gain.setValueAtTime(0.0001, now);
-      master.gain.exponentialRampToValueAtTime(0.22, now + 0.9);
-      master.gain.setValueAtTime(0.22, now + duration - 2.0);
+      master.gain.exponentialRampToValueAtTime(0.45, now + 0.9);
+      master.gain.setValueAtTime(0.45, now + duration - 2.0);
       master.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
-      // Soft low-pass filter — warm chant-like tone, not harsh
+      // Soft low-pass filter — warm chant-like tone, wide enough to stay clear on small speakers
       const filter = ctx.createBiquadFilter();
       filter.type = "lowpass";
-      filter.frequency.value = 1200;
-      filter.Q.value = 0.7;
+      filter.frequency.value = 2500;
+      filter.Q.value = 0.6;
       master.connect(filter);
       filter.connect(ctx.destination);
 
-      // Fundamental + harmonics blended for a rich "hum" timbre (approximating A-U-M)
+      // Fundamental + harmonics — most energy sits where phone speakers reproduce well
       const partials = [
-        { mult: 1,   gain: 1.0,  type: "sine" },
-        { mult: 2,   gain: 0.45, type: "sine" },
-        { mult: 3,   gain: 0.18, type: "sine" },
-        { mult: 1.5, gain: 0.12, type: "triangle" },
+        { mult: 0.5, gain: 0.35, type: "sine" },     // 136.1 Hz — felt more than heard, adds depth
+        { mult: 1,   gain: 1.0,  type: "sine" },     // 272.2 Hz — main audible tone
+        { mult: 2,   gain: 0.5,  type: "sine" },     // 544.4 Hz
+        { mult: 3,   gain: 0.28, type: "sine" },     // 816.6 Hz — brightness, cuts through small speakers
+        { mult: 1.5, gain: 0.18, type: "triangle" }, // overtone warmth
       ];
       const oscillators = [];
       partials.forEach(p => {
@@ -1944,9 +1947,9 @@ export default function AstrologyApp() {
       const lfo = ctx.createOscillator();
       lfo.frequency.value = 3.2;
       const lfoGain = ctx.createGain();
-      lfoGain.gain.value = 1.5;
+      lfoGain.gain.value = 2.5;
       lfo.connect(lfoGain);
-      lfoGain.connect(oscillators[0].frequency);
+      lfoGain.connect(oscillators[1].frequency); // vibrato on the main audible partial
       lfo.start(now);
       lfo.stop(now + duration + 0.1);
 
@@ -2209,12 +2212,12 @@ Give a short, warm, practical daily prediction (170 words max) covering: today's
       <CosmicBackground/>
       <MantraChakra speed={70} size={620} opacity={0.3}/>
       <div style={{textAlign:"center", zIndex:3, animation:"splashIn 1.2s ease-out"}}>
-        <div style={{
+        <div onClick={()=>{ const ok = playOmSound(); if(ok) setOmPlayed(true); }} style={{
           width:115, height:115, margin:"0 auto 28px", borderRadius:"50%",
           background:"radial-gradient(circle at 35% 35%, #f0c75e, #d4a853, #8b6914)",
           boxShadow:"0 0 80px #d4a85370, 0 0 160px #d4a85330, 0 0 240px #d4a85315",
           display:"flex", alignItems:"center", justifyContent:"center", fontSize:54,
-          animation:"sunPulse 3s ease-in-out infinite"
+          animation:"sunPulse 3s ease-in-out infinite", cursor:"pointer"
         }}>☉</div>
         <h1 style={{fontSize:32, fontWeight:300, margin:"0 0 8px", letterSpacing:3, color:"#f0c75e"}}>ஜோதிட நிபுணர்</h1>
         <p style={{fontSize:13, color:"#a78bfa", letterSpacing:5, fontWeight:300}}>JOTHIDA NIPUNAR</p>
