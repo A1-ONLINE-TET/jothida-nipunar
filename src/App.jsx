@@ -246,6 +246,55 @@ const DASHA_LORDS = [
 // Nakshatra → Dasha lord index: 0=Ketu,1=Venus,2=Sun,...
 const NAK_DASHA_MAP = [0,1,2,3,4,5,6,7,8,0,1,2,3,4,5,6,7,8,0,1,2,3,4,5,6,7,8];
 
+// ═══════════════════════════════════════════════════════════════════
+// நட்சத்திர அதிபதி — Nakshatra Lord (same as Vimshottari Dasha lord)
+// ═══════════════════════════════════════════════════════════════════
+function getNakshatraLord(nakIdx) {
+  if (nakIdx < 0 || nakIdx > 26) return { name:"—", symbol:"" };
+  return DASHA_LORDS[NAK_DASHA_MAP[nakIdx]];
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// அதிர்ஷ்ட எண்கள் & ராசி கற்கள் (Lucky Numbers & Rashi Stones)
+// Traditional Vedic astrology assignments per Rashi (0=மேஷம்..11=மீனம்)
+// ═══════════════════════════════════════════════════════════════════
+const RASHI_LUCKY = [
+  { nums:[9,1,8], gem:"பவளம் (Coral)", subGem:"கார்னீலியன்", color:"சிவப்பு", dir:"கிழக்கு" },        // மேஷம்
+  { nums:[6,5,8], gem:"வைரம் (Diamond)", subGem:"ஜிர்கான்", color:"வெள்ளை", dir:"தென்கிழக்கு" },     // ரிஷபம்
+  { nums:[5,3,6], gem:"மரகதம் (Emerald)", subGem:"பச்சை ஓனிக்ஸ்", color:"பச்சை", dir:"மேற்கு" },     // மிதுனம்
+  { nums:[2,1,4], gem:"முத்து (Pearl)", subGem:"முண்ஸ்டோன்", color:"வெள்ளை", dir:"வடமேற்கு" },       // கடகம்
+  { nums:[1,4,9], gem:"மாணிக்யம் (Ruby)", subGem:"கார்னெட்", color:"மஞ்சள் சிவப்பு", dir:"கிழக்கு" },// சிம்மம்
+  { nums:[5,2,6], gem:"மரகதம் (Emerald)", subGem:"பச்சை ஓனிக்ஸ்", color:"பச்சை", dir:"தெற்கு" },     // கன்னி
+  { nums:[6,5,8], gem:"வைரம் (Diamond)", subGem:"ஜிர்கான்", color:"வெள்ளை", dir:"மேற்கு" },           // துலாம்
+  { nums:[9,1,8], gem:"பவளம் (Coral)", subGem:"கார்னீலியன்", color:"சிவப்பு", dir:"வடக்கு" },          // விருச்சிகம்
+  { nums:[3,5,8], gem:"புஷ்பராகம் (Yellow Sapphire)", subGem:"சிட்ரின்", color:"மஞ்சள்", dir:"வடகிழக்கு" }, // தனுசு
+  { nums:[8,4,6], gem:"நீலம் (Blue Sapphire)", subGem:"அமிதிஸ்ட்", color:"கருப்பு நீலம்", dir:"தெற்கு" }, // மகரம்
+  { nums:[8,4,6], gem:"நீலம் (Blue Sapphire)", subGem:"அமிதிஸ்ட்", color:"கருப்பு நீலம்", dir:"மேற்கு" }, // கும்பம்
+  { nums:[3,7,9], gem:"புஷ்பராகம் (Yellow Sapphire)", subGem:"சிட்ரின்", color:"மஞ்சள்", dir:"வடகிழக்கு" },// மீனம்
+];
+
+// இன்றைய அதிர்ஷ்ட எண்கள் — Daily Lucky Numbers (changes every day)
+// Uses: birthMoonRashiIdx + today's tithi index + weekday + nakshatra index
+function calcDailyLuckyNumbers(birthMoonRashiIdx, todayTithiName, todayNakIdx, todayWeekday) {
+  const tithiList = ["பிரதமை","த்விதியை","திருதியை","சதுர்த்தி","பஞ்சமி","ஷஷ்டி","சப்தமி",
+    "அஷ்டமி","நவமி","தசமி","ஏகாதசி","த்வாதசி","திரயோதசி","சதுர்தசி","பௌர்ணமி/அமாவாசை"];
+  const tithiIdx = tithiList.indexOf(todayTithiName);
+  const t = tithiIdx >= 0 ? tithiIdx : 0;
+  const base = RASHI_LUCKY[birthMoonRashiIdx] ? RASHI_LUCKY[birthMoonRashiIdx].nums : [1,5,9];
+
+  // Rotate and mix based on daily astronomical values
+  const seed1 = (base[0] + t + todayWeekday) % 9 + 1;
+  const seed2 = (base[1] + todayNakIdx + todayWeekday) % 9 + 1;
+  const seed3 = (base[2] + t + todayNakIdx) % 9 + 1;
+
+  // Ensure all 3 are unique
+  const nums = [seed1];
+  if (!nums.includes(seed2)) nums.push(seed2); else nums.push((seed2 % 9) + 1);
+  if (!nums.includes(seed3)) nums.push(seed3); else nums.push(((seed3 + 2) % 9) + 1);
+
+  return nums;
+}
+
 function calculateDasha(moonLongitude, birthDate) {
   const nakIdx = Math.floor(moonLongitude / (360/27)) % 27;
   const lordIdx = NAK_DASHA_MAP[nakIdx];
@@ -1842,6 +1891,39 @@ td{border-bottom:1px solid #e8e0d0;}
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+// DATE HELPERS — dd-mm-yyyy format input
+// ═══════════════════════════════════════════════════════════════════
+// Auto-format as user types: "2" → "2", "25" → "25-", "25-1" → "25-1", "25-12" → "25-12-", etc.
+function formatDateInput(raw) {
+  // Strip non-digits
+  let digits = raw.replace(/\D/g, "").slice(0, 8); // max 8 digits: ddmmyyyy
+  let out = "";
+  for (let i = 0; i < digits.length; i++) {
+    if (i === 2 || i === 4) out += "-";
+    out += digits[i];
+  }
+  return out; // e.g. "25-12-1990"
+}
+
+// Convert dd-mm-yyyy → YYYY-MM-DD (ISO) for engine calculations
+function parseDDMMYYYY(str) {
+  if (!str) return "";
+  const parts = str.split("-");
+  if (parts.length !== 3 || parts[2].length !== 4) return "";
+  const [dd, mm, yyyy] = parts;
+  return `${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
+}
+
+// Validate: is it a complete dd-mm-yyyy with reasonable values?
+function isValidDDMMYYYY(str) {
+  if (!str || str.length !== 10) return false;
+  const iso = parseDDMMYYYY(str);
+  if (!iso) return false;
+  const d = new Date(iso);
+  return !isNaN(d.getTime()) && d.getFullYear() >= 1900 && d.getFullYear() <= 2100;
+}
+
 const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7 };
 
 export default function AstrologyApp() {
@@ -2025,8 +2107,11 @@ export default function AstrologyApp() {
   };
 
   const handleSubmit = async () => {
-    if(!formData.dob||!formData.name)return;
+    if(!formData.dob||!formData.name||!isValidDDMMYYYY(formData.dob))return;
     goTo(SCREEN.LOADING);
+
+    // Convert dd-mm-yyyy → YYYY-MM-DD (ISO) for all engine calculations
+    const dobISO = parseDDMMYYYY(formData.dob);
 
     // Convert time with AM/PM to 24h format
     let h24 = 6, min24 = 0;
@@ -2040,7 +2125,7 @@ export default function AstrologyApp() {
     const finalTime = `${String(h24).padStart(2,'0')}:${String(min24).padStart(2,'0')}`;
 
     // Try API first, fallback to local
-    let result = await fetchFromBackend(formData.dob, h24, min24, formData.pob);
+    let result = await fetchFromBackend(dobISO, h24, min24, formData.pob);
     if (result) {
       setApiSource("api");
       setHoroscope(result);
@@ -2057,11 +2142,11 @@ export default function AstrologyApp() {
       // Moon's precise sidereal longitude from backend = moonRashi index*30 + degree of Moon placement
       const moonP = result.placements.find(p => p.ta === "சந்திரன்");
       const moonLongFromApi = moonP ? (moonP.rashiIdx * 30 + moonP.degExact) : 0;
-      setDashaData(calculateDasha(moonLongFromApi, formData.dob));
+      setDashaData(calculateDasha(moonLongFromApi, dobISO));
     } else {
       setApiSource("local");
       const geo = geocodeCity(formData.pob);
-      const h = generateHoroscope(formData.dob, finalTime, geo.lat, geo.lon);
+      const h = generateHoroscope(dobISO, finalTime, geo.lat, geo.lon);
       setHoroscope(h);
       setNavamsaData(calculateNavamsa(h.placements));
       setGrahaBala(calcGrahaBala(h.placements));
@@ -2074,7 +2159,7 @@ export default function AstrologyApp() {
       setD3Data(calcD3Drekkana(h.placements));
       setD12Data(calcD12Dwadasamsa(h.placements));
       // Calculate moon longitude for dasha
-      const dDate = new Date(formData.dob);
+      const dDate = new Date(dobISO);
       const T2 = ((dDate - new Date(2000,0,1)) / 86400000 / 36525);
       const Lm2 = ((218.3165+481267.8813*T2)%360+360)%360;
       const Dm2 = ((297.8502+445267.1115*T2)%360+360)%360;
@@ -2086,7 +2171,7 @@ export default function AstrologyApp() {
       const mCorr = 6.289*Math.sin(Mm2*r)-1.274*Math.sin((2*Dm2-Mm2)*r)+0.658*Math.sin(2*Dm2*r)
         -0.214*Math.sin(2*Mm2*r)-0.186*Math.sin(Ms2*r)+0.110*Math.sin(2*Fm2*r);
       const mLong = (((Lm2+mCorr)%360+360)%360-ayanamsa2+360)%360;
-      setDashaData(calculateDasha(mLong, formData.dob));
+      setDashaData(calculateDasha(mLong, dobISO));
     }
     goTo(SCREEN.RESULT);
   };
@@ -2309,9 +2394,21 @@ Give a short, warm, practical daily prediction (170 words max) covering: today's
             <div><label style={labelStyle}>பெயர் *</label>
             <input style={inputStyle} placeholder="உங்கள் பெயர்" value={formData.name}
               onChange={e=>setFormData(d=>({...d,name:e.target.value}))}/></div>
-            <div><label style={labelStyle}>பிறந்த தேதி *</label>
-            <input type="date" style={{...inputStyle,colorScheme:"dark"}} value={formData.dob}
-              onChange={e=>setFormData(d=>({...d,dob:e.target.value}))}/></div>
+            <div><label style={labelStyle}>பிறந்த தேதி * <span style={{fontSize:10,color:"#a78bfa60",fontWeight:400}}>(நாள்-மாதம்-ஆண்டு)</span></label>
+            <input type="text" inputMode="numeric" maxLength={10}
+              style={{...inputStyle,letterSpacing:2,fontFamily:"monospace",fontSize:16}}
+              placeholder="நா-மா-ஆஆஆஆ" value={formData.dob}
+              onChange={e=>{
+                const formatted = formatDateInput(e.target.value);
+                setFormData(d=>({...d,dob:formatted}));
+              }}/>
+            {formData.dob && formData.dob.length === 10 && (
+              <div style={{fontSize:10,marginTop:4,color:isValidDDMMYYYY(formData.dob)?"#4ade80":"#ff6b8a"}}>
+                {isValidDDMMYYYY(formData.dob)
+                  ? `✓ ${formData.dob}`
+                  : "⚠ தவறான தேதி — சரிபார்க்கவும்"}
+              </div>
+            )}</div>
             <div><label style={labelStyle}>பிறந்த நேரம் *</label>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
               <input type="number" min="1" max="12" placeholder="மணி"
@@ -2367,8 +2464,8 @@ Give a short, warm, practical daily prediction (170 words max) covering: today's
               );
             })()}
             </div>
-            <button style={{...btnGold,opacity:(!formData.name||!formData.dob)?0.4:1,
-              pointerEvents:(!formData.name||!formData.dob)?"none":"auto"}} onClick={handleSubmit}>
+            <button style={{...btnGold,opacity:(!formData.name||!isValidDDMMYYYY(formData.dob))?0.4:1,
+              pointerEvents:(!formData.name||!isValidDDMMYYYY(formData.dob))?"none":"auto"}} onClick={handleSubmit}>
               ஜாதகம் உருவாக்கு ☉
             </button>
           </div>
@@ -2491,9 +2588,10 @@ Give a short, warm, practical daily prediction (170 words max) covering: today's
 
     const downloadPDF = () => {
       const h = horoscope;
-      const pRows = h.placements.map((p,i)=>
-        `<tr style="background:${i%2===0?"#fff":"#f9f9f0"}"><td style="padding:6px 8px">${p.symbol} ${p.ta}</td><td style="padding:6px 8px;font-family:monospace">${p.dms||p.fullLong}</td><td style="padding:6px 8px">${p.rashi}</td><td style="padding:6px 8px">${p.nakshatraTa||""} - ${p.pada||""}</td></tr>`
-      ).join("");
+      const pRows = h.placements.map((p,i)=>{
+        const lord = getNakshatraLord(p.nakIdx);
+        return `<tr style="background:${i%2===0?"#fff":"#f9f9f0"}"><td style="padding:6px 8px">${p.symbol} ${p.ta}</td><td style="padding:6px 8px;font-family:monospace">${p.dms||p.fullLong}</td><td style="padding:6px 8px">${p.rashi}</td><td style="padding:6px 8px">${p.nakshatraTa||""} - ${p.pada||""}</td><td style="padding:6px 8px;color:#8b4500">${lord.symbol} ${lord.name}</td></tr>`;
+      }).join("");
       // Full Dasha table (all 9 periods with dates)
       const dashaRows = dashaData ? dashaData.dashas.map((d,i)=>
         `<tr style="background:${d.isCurrent?"#e8f5e9":i%2===0?"#fff":"#f9f9f0"}${d.isCurrent?";font-weight:700":""}">
@@ -2553,7 +2651,7 @@ table.pt td{padding:6px 8px;border-bottom:1px solid #ddd}
 </table>
 ${chartSection}
 <div class="sec-title">நிராயண ஸ்புடங்கள்</div>
-<table class="pt"><thead><tr><th>கிரகம்</th><th>தீர்காம்சம்</th><th>ராசி</th><th>நட்சத்திரம்-பாதம்</th></tr></thead><tbody>
+<table class="pt"><thead><tr><th>கிரகம்</th><th>தீர்காம்சம்</th><th>ராசி</th><th>நட்சத்திரம்-பாதம்</th><th>அதிபதி</th></tr></thead><tbody>
 <tr style="background:#e8f5e9;font-weight:700"><td>லக்னம்</td><td style="font-family:monospace">${h.lagnaDMS||""}</td><td>${h.lagnaName}</td><td>${h.lagnaNakshatra||""} - ${h.lagnaPada||""}</td></tr>
 ${pRows}</tbody></table>
 ${dashaSection}
@@ -2625,28 +2723,40 @@ ${aiPart}
           <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
             <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>நிராயண ஸ்புடங்கள்</div>
             <div style={{overflowX:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:10.5}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
                 <thead><tr style={{borderBottom:"1.5px solid #d4a85340"}}>
-                  <th style={{padding:"5px 3px",color:"#a78bfa",fontWeight:700,textAlign:"left"}}>கிரகம்</th>
-                  <th style={{padding:"5px 3px",color:"#a78bfa",fontWeight:700,textAlign:"center"}}>தீர்காம்சம்</th>
-                  <th style={{padding:"5px 3px",color:"#a78bfa",fontWeight:700,textAlign:"left"}}>ராசி</th>
-                  <th style={{padding:"5px 3px",color:"#a78bfa",fontWeight:700,textAlign:"left"}}>நட்சத்திரம்-பாதம்</th>
+                  <th style={{padding:"5px 2px",color:"#a78bfa",fontWeight:700,textAlign:"left"}}>கிரகம்</th>
+                  <th style={{padding:"5px 2px",color:"#a78bfa",fontWeight:700,textAlign:"center"}}>தீர்காம்சம்</th>
+                  <th style={{padding:"5px 2px",color:"#a78bfa",fontWeight:700,textAlign:"left"}}>ராசி</th>
+                  <th style={{padding:"5px 2px",color:"#a78bfa",fontWeight:700,textAlign:"left"}}>நட்சத்திரம்-பாதம்</th>
+                  <th style={{padding:"5px 2px",color:"#a78bfa",fontWeight:700,textAlign:"left"}}>அதிபதி</th>
                 </tr></thead>
                 <tbody>
-                  <tr style={{borderBottom:"1px solid #ffffff0a",background:"#f0c75e08"}}>
-                    <td style={{padding:"5px 3px",fontWeight:700,color:"#f0c75e"}}>லக்னம்</td>
-                    <td style={{padding:"5px 3px",textAlign:"center",color:"#e8e0f0",fontFamily:"monospace"}}>{horoscope.lagnaDMS}</td>
-                    <td style={{padding:"5px 3px",color:"#f0c75e"}}>{horoscope.lagnaName}</td>
-                    <td style={{padding:"5px 3px",color:"#e8e0f0cc"}}>{horoscope.lagnaNakshatra} - {horoscope.lagnaPada}</td>
-                  </tr>
-                  {horoscope.placements.map((p,i)=>(
-                    <tr key={i} style={{borderBottom:"1px solid #ffffff06",background:i%2?"#ffffff03":"transparent"}}>
-                      <td style={{padding:"5px 3px",color:"#e8e0f0"}}>{p.symbol} {p.ta}</td>
-                      <td style={{padding:"5px 3px",textAlign:"center",color:"#e8e0f0",fontFamily:"monospace"}}>{p.dms}</td>
-                      <td style={{padding:"5px 3px",color:"#a78bfa"}}>{p.rashi}</td>
-                      <td style={{padding:"5px 3px",color:"#e8e0f0cc"}}>{p.nakshatraTa} - {p.pada}</td>
-                    </tr>
-                  ))}
+                  {(()=>{
+                    const lagnaNakIdx = NAKSHATRAS.indexOf(horoscope.lagnaNakshatra);
+                    const lagnaLord = getNakshatraLord(lagnaNakIdx);
+                    return (
+                      <tr style={{borderBottom:"1px solid #ffffff0a",background:"#f0c75e08"}}>
+                        <td style={{padding:"5px 2px",fontWeight:700,color:"#f0c75e"}}>லக்னம்</td>
+                        <td style={{padding:"5px 2px",textAlign:"center",color:"#e8e0f0",fontFamily:"monospace"}}>{horoscope.lagnaDMS}</td>
+                        <td style={{padding:"5px 2px",color:"#f0c75e"}}>{horoscope.lagnaName}</td>
+                        <td style={{padding:"5px 2px",color:"#e8e0f0cc"}}>{horoscope.lagnaNakshatra} - {horoscope.lagnaPada}</td>
+                        <td style={{padding:"5px 2px",color:"#d4a853"}}>{lagnaLord.symbol} {lagnaLord.name}</td>
+                      </tr>
+                    );
+                  })()}
+                  {horoscope.placements.map((p,i)=>{
+                    const lord = getNakshatraLord(p.nakIdx);
+                    return (
+                      <tr key={i} style={{borderBottom:"1px solid #ffffff06",background:i%2?"#ffffff03":"transparent"}}>
+                        <td style={{padding:"5px 2px",color:"#e8e0f0"}}>{p.symbol} {p.ta}</td>
+                        <td style={{padding:"5px 2px",textAlign:"center",color:"#e8e0f0",fontFamily:"monospace"}}>{p.dms}</td>
+                        <td style={{padding:"5px 2px",color:"#a78bfa"}}>{p.rashi}</td>
+                        <td style={{padding:"5px 2px",color:"#e8e0f0cc"}}>{p.nakshatraTa} - {p.pada}</td>
+                        <td style={{padding:"5px 2px",color:"#d4a853"}}>{lord.symbol} {lord.name}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -2654,6 +2764,55 @@ ${aiPart}
               தசை இருப்பு: {dashaData.birthLord.name} {dashaData.dashas[0]?.years} வருடம்
             </div>)}
           </div>
+
+          {/* ═══ 3.1 அதிர்ஷ்ட எண்கள் & ராசி கற்கள் (Birth-based) ═══ */}
+          {(()=>{
+            const moonRashiIdx = RASHIS.indexOf(horoscope.moonRashi);
+            const lucky = RASHI_LUCKY[moonRashiIdx >= 0 ? moonRashiIdx : 0];
+            const nakIdx = NAKSHATRAS.indexOf(horoscope.nakshatra);
+            const nakLord = getNakshatraLord(nakIdx);
+            return (
+              <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:10,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
+                  💎 அதிர்ஷ்ட விவரங்கள் & ராசி கற்கள்
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                  <div style={{background:"#f0c75e08",borderRadius:8,padding:"8px 10px"}}>
+                    <div style={{fontSize:9,color:"#a78bfa80",marginBottom:2}}>🔢 அதிர்ஷ்ட எண்கள்</div>
+                    <div style={{fontSize:18,fontWeight:800,color:"#f0c75e",letterSpacing:4}}>
+                      {lucky.nums.join("  ")}
+                    </div>
+                    <div style={{fontSize:8,color:"#a78bfa60",marginTop:2}}>ராசி அடிப்படை (நிரந்தரம்)</div>
+                  </div>
+                  <div style={{background:"#a78bfa08",borderRadius:8,padding:"8px 10px"}}>
+                    <div style={{fontSize:9,color:"#a78bfa80",marginBottom:2}}>🧭 அதிர்ஷ்ட திசை</div>
+                    <div style={{fontSize:14,fontWeight:700,color:"#a78bfa"}}>{lucky.dir}</div>
+                    <div style={{fontSize:8,color:"#a78bfa60",marginTop:2}}>சாதகமான திசை</div>
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                  <div style={{background:"linear-gradient(135deg,#d4a85308,#a78bfa08)",borderRadius:8,padding:"8px 10px",border:"1px solid #d4a85318"}}>
+                    <div style={{fontSize:9,color:"#a78bfa80",marginBottom:2}}>💎 ராசி ரத்தினம்</div>
+                    <div style={{fontSize:11,fontWeight:700,color:"#f0c75e"}}>{lucky.gem}</div>
+                  </div>
+                  <div style={{background:"linear-gradient(135deg,#a78bfa08,#d4a85308)",borderRadius:8,padding:"8px 10px",border:"1px solid #a78bfa18"}}>
+                    <div style={{fontSize:9,color:"#a78bfa80",marginBottom:2}}>💠 உப ரத்தினம்</div>
+                    <div style={{fontSize:11,fontWeight:700,color:"#a78bfa"}}>{lucky.subGem}</div>
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  <div style={{background:"#4ade8008",borderRadius:8,padding:"8px 10px"}}>
+                    <div style={{fontSize:9,color:"#a78bfa80",marginBottom:2}}>🌈 அதிர்ஷ்ட நிறம்</div>
+                    <div style={{fontSize:11,fontWeight:700,color:"#4ade80"}}>{lucky.color}</div>
+                  </div>
+                  <div style={{background:"#f0c75e08",borderRadius:8,padding:"8px 10px"}}>
+                    <div style={{fontSize:9,color:"#a78bfa80",marginBottom:2}}>⭐ நட்சத்திர அதிபதி</div>
+                    <div style={{fontSize:11,fontWeight:700,color:"#f0c75e"}}>{nakLord.symbol} {nakLord.name}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ═══ ADVANCED VIEW SELECTOR — தேர்ந்தெடுத்து பார்க்க ═══ */}
           <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
@@ -2928,9 +3087,9 @@ ${aiPart}
   // ═══════ PORUTHAM (Marriage Matching) ═══════
   if(screen===SCREEN.PORUTHAM) {
     const handlePorutham = () => {
-      if(!poruthBride.dob || !poruthGroom.dob) return;
-      const h1 = generateHoroscope(poruthBride.dob, poruthBride.tob || "06:00");
-      const h2 = generateHoroscope(poruthGroom.dob, poruthGroom.tob || "06:00");
+      if(!isValidDDMMYYYY(poruthBride.dob) || !isValidDDMMYYYY(poruthGroom.dob)) return;
+      const h1 = generateHoroscope(parseDDMMYYYY(poruthBride.dob), poruthBride.tob || "06:00");
+      const h2 = generateHoroscope(parseDDMMYYYY(poruthGroom.dob), poruthGroom.tob || "06:00");
       const nak1 = NAKSHATRAS.indexOf(h1.nakshatra);
       const nak2 = NAKSHATRAS.indexOf(h2.nakshatra);
       const rashi1 = RASHIS.indexOf(h1.moonRashi);
@@ -2956,8 +3115,10 @@ ${aiPart}
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               <input style={inputStyle} placeholder="பெண் பெயர்" value={poruthBride.name}
                 onChange={e=>setPoruthBride(d=>({...d,name:e.target.value}))}/>
-              <input type="date" style={{...inputStyle,colorScheme:"dark"}} value={poruthBride.dob}
-                onChange={e=>setPoruthBride(d=>({...d,dob:e.target.value}))}/>
+              <input type="text" inputMode="numeric" maxLength={10}
+                style={{...inputStyle,letterSpacing:2,fontFamily:"monospace",fontSize:15}}
+                placeholder="நா-மா-ஆஆஆஆ" value={poruthBride.dob}
+                onChange={e=>setPoruthBride(d=>({...d,dob:formatDateInput(e.target.value)}))}/>
             </div>
           </div>
 
@@ -2966,13 +3127,15 @@ ${aiPart}
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               <input style={inputStyle} placeholder="ஆண் பெயர்" value={poruthGroom.name}
                 onChange={e=>setPoruthGroom(d=>({...d,name:e.target.value}))}/>
-              <input type="date" style={{...inputStyle,colorScheme:"dark"}} value={poruthGroom.dob}
-                onChange={e=>setPoruthGroom(d=>({...d,dob:e.target.value}))}/>
+              <input type="text" inputMode="numeric" maxLength={10}
+                style={{...inputStyle,letterSpacing:2,fontFamily:"monospace",fontSize:15}}
+                placeholder="நா-மா-ஆஆஆஆ" value={poruthGroom.dob}
+                onChange={e=>setPoruthGroom(d=>({...d,dob:formatDateInput(e.target.value)}))}/>
             </div>
           </div>
 
-          <button style={{...btnGold,opacity:(!poruthBride.dob||!poruthGroom.dob)?0.4:1,
-            pointerEvents:(!poruthBride.dob||!poruthGroom.dob)?"none":"auto",
+          <button style={{...btnGold,opacity:(!isValidDDMMYYYY(poruthBride.dob)||!isValidDDMMYYYY(poruthGroom.dob))?0.4:1,
+            pointerEvents:(!isValidDDMMYYYY(poruthBride.dob)||!isValidDDMMYYYY(poruthGroom.dob))?"none":"auto",
             background:"linear-gradient(135deg,#ff6b8a,#ff8fab,#ff6b8a)"}} onClick={handlePorutham}>
             💍 பொருத்தம் பார் →
           </button>
@@ -3166,6 +3329,50 @@ ${aiPart}
               </tbody>
             </table>
           </div>
+
+          {/* ═══ இன்றைய அதிர்ஷ்ட எண்கள் (Daily Lucky Numbers) ═══ */}
+          {(()=>{
+            const moonRashiIdx = RASHIS.indexOf(horoscope.moonRashi);
+            const todayNakIdx = NAKSHATRAS.indexOf(today.nakshatra);
+            const dailyNums = calcDailyLuckyNumbers(moonRashiIdx >= 0 ? moonRashiIdx : 0, today.tithi, todayNakIdx >= 0 ? todayNakIdx : 0, today.dateObj.getDay());
+            const birthLucky = RASHI_LUCKY[moonRashiIdx >= 0 ? moonRashiIdx : 0];
+            const todayNakLord = getNakshatraLord(todayNakIdx);
+            return (
+              <div style={{...card,marginBottom:12,padding:"12px 14px"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:10,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
+                  🍀 இன்றைய அதிர்ஷ்ட விவரங்கள்
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  <div style={{background:"linear-gradient(135deg,#f0c75e10,#d4a85308)",borderRadius:8,padding:"10px 12px",border:"1px solid #f0c75e18"}}>
+                    <div style={{fontSize:9,color:"#a78bfa80",marginBottom:4}}>🔢 இன்றைய அதிர்ஷ்ட எண்கள்</div>
+                    <div style={{fontSize:22,fontWeight:800,color:"#f0c75e",letterSpacing:6}}>
+                      {dailyNums.join("  ")}
+                    </div>
+                    <div style={{fontSize:8,color:"#a78bfa50",marginTop:3}}>திதி + நட்சத்திரம் + கிழமை அடிப்படை</div>
+                  </div>
+                  <div style={{background:"linear-gradient(135deg,#a78bfa10,#d4a85308)",borderRadius:8,padding:"10px 12px",border:"1px solid #a78bfa18"}}>
+                    <div style={{fontSize:9,color:"#a78bfa80",marginBottom:4}}>💎 ராசி ரத்தினம்</div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#a78bfa"}}>{birthLucky.gem}</div>
+                    <div style={{fontSize:10,color:"#a78bfa60",marginTop:3}}>உப: {birthLucky.subGem}</div>
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:8}}>
+                  <div style={{background:"#4ade8008",borderRadius:6,padding:"6px 8px",textAlign:"center"}}>
+                    <div style={{fontSize:8,color:"#a78bfa60"}}>நிரந்தர எண்</div>
+                    <div style={{fontSize:13,fontWeight:700,color:"#4ade80"}}>{birthLucky.nums.join(", ")}</div>
+                  </div>
+                  <div style={{background:"#f0c75e08",borderRadius:6,padding:"6px 8px",textAlign:"center"}}>
+                    <div style={{fontSize:8,color:"#a78bfa60"}}>அதிர்ஷ்ட திசை</div>
+                    <div style={{fontSize:11,fontWeight:700,color:"#f0c75e"}}>{birthLucky.dir}</div>
+                  </div>
+                  <div style={{background:"#a78bfa08",borderRadius:6,padding:"6px 8px",textAlign:"center"}}>
+                    <div style={{fontSize:8,color:"#a78bfa60"}}>இன்று நட்சத்திரம்</div>
+                    <div style={{fontSize:10,fontWeight:700,color:"#a78bfa"}}>{todayNakLord.symbol} {todayNakLord.name}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ═══ NIYAMAM & PARIKARAM — ராசிக்கான நியமங்கள் & பரிகாரங்கள் ═══ */}
           {remedy && (
