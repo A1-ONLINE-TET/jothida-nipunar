@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { MURUGAN_IMG } from "./murugan-b64.js";
 
 const NAKSHATRAS = [
   "அசுவினி","பரணி","கார்த்திகை","ரோகிணி","மிருகசீரிடம்",
@@ -1852,7 +1853,7 @@ td{border-bottom:1px solid #e8e0d0;}
   <div class="temple-header">
     <div class="temple-border-top"></div>
     <div class="temple-inner">
-      <div class="om-symbol">ॐ</div>
+      <img src="${MURUGAN_IMG}" alt="முருகன்" style="width:90px;height:90px;object-fit:contain;border-radius:50%;border:2px solid #d4a853;box-shadow:0 0 20px #d4a85340;margin-bottom:8px;"/>
       <div class="header-stars">✦ ✦ ✦ ✦ ✦</div>
       <div class="header-title">ஜாதக விவரம்</div>
       <div class="header-name">${formData.name}</div>
@@ -2508,12 +2509,13 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
       <MantraChakra speed={70} size={620} opacity={0.3}/>
       <div style={{textAlign:"center", zIndex:3, animation:"splashIn 1.2s ease-out"}}>
         <div onClick={()=>{ const ok = playOmSound(); if(ok) setOmPlayed(true); }} style={{
-          width:115, height:115, margin:"0 auto 28px", borderRadius:"50%",
-          background:"radial-gradient(circle at 35% 35%, #f0c75e, #d4a853, #8b6914)",
+          width:160, height:160, margin:"0 auto 28px", borderRadius:"50%",
+          background:"radial-gradient(circle at 50% 50%, #f0c75e40, #d4a85320, transparent)",
           boxShadow:"0 0 80px #d4a85370, 0 0 160px #d4a85330, 0 0 240px #d4a85315",
-          display:"flex", alignItems:"center", justifyContent:"center", fontSize:54,
-          animation:"sunPulse 3s ease-in-out infinite", cursor:"pointer"
-        }}>☉</div>
+          display:"flex", alignItems:"center", justifyContent:"center",
+          animation:"sunPulse 3s ease-in-out infinite", cursor:"pointer",
+          overflow:"hidden", border:"3px solid #d4a85380"
+        }}><img src="/murugan.png" alt="முருகன்" style={{width:140,height:140,objectFit:"contain",borderRadius:"50%",filter:"drop-shadow(0 0 12px #d4a85360)"}}/></div>
         <h1 style={{fontSize:32, fontWeight:300, margin:"0 0 8px", letterSpacing:3, color:"#f0c75e"}}>ஜோதிட நிபுணர்</h1>
         <p style={{fontSize:13, color:"#a78bfa", letterSpacing:5, fontWeight:300}}>JOTHIDA NIPUNAR</p>
         <p style={{fontSize:11, color:"#a78bfa60", marginTop:12}}>✦ Advanced Vedic Astrology ✦</p>
