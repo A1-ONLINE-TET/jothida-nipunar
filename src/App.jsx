@@ -19,11 +19,49 @@ const PLANETS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════
+// CITY GEOCODING — Tamil Nadu + India lat/lon lookup
+// (Same database as the Python backend, ported to JS for the local engine)
+// ═══════════════════════════════════════════════════════════════════
+const CITIES = {
+  "chennai":[13.0827,80.2707],"madurai":[9.9252,78.1198],"coimbatore":[11.0168,76.9558],
+  "trichy":[10.7905,78.7047],"tiruchirappalli":[10.7905,78.7047],"salem":[11.6643,78.1460],
+  "tirunelveli":[8.7139,77.7567],"erode":[11.3410,77.7172],"vellore":[12.9165,79.1325],
+  "thoothukudi":[8.7642,78.1348],"tuticorin":[8.7642,78.1348],"thanjavur":[10.7870,79.1378],
+  "dindigul":[10.3624,77.9695],"karur":[10.9601,78.0766],"nagercoil":[8.1833,77.4119],
+  "kanchipuram":[12.8342,79.7036],"kumbakonam":[10.9617,79.3881],"rajapalayam":[9.4530,77.5568],
+  "sivakasi":[9.4533,77.7981],"pollachi":[10.6609,77.0084],"tiruppur":[11.1085,77.3411],
+  "nagapattinam":[10.7672,79.8449],"cuddalore":[11.7480,79.7714],"villupuram":[11.9401,79.4861],
+  "perunali":[9.72,78.85],"perambalur":[11.2340,78.8808],"ariyalur":[11.1400,79.0750],
+  "pudukkottai":[10.3833,78.8001],"sivagangai":[10.0000,78.4800],"virudhunagar":[9.5850,77.9570],
+  "theni":[10.0104,77.4768],"namakkal":[11.2190,78.1674],"tiruvannamalai":[12.2253,79.0747],
+  "krishnagiri":[12.5186,78.2137],"dharmapuri":[12.1211,78.1582],"nilgiris":[11.4916,76.7337],
+  "ooty":[11.4102,76.6950],"kodaikanal":[10.2381,77.4892],
+  "mumbai":[19.0760,72.8777],"delhi":[28.7041,77.1025],"bangalore":[12.9716,77.5946],
+  "hyderabad":[17.3850,78.4867],"kolkata":[22.5726,88.3639],"pune":[18.5204,73.8567],
+  "ahmedabad":[23.0225,72.5714],"jaipur":[26.9124,75.7873],"lucknow":[26.8467,80.9462],
+  "kochi":[9.9312,76.2673],"thiruvananthapuram":[8.5241,76.9366],"pondicherry":[11.9416,79.8083],
+  "srirangam":[10.8560,78.6921],"palani":[10.4505,77.5205],"rameswaram":[9.2876,79.3129],
+  "kanyakumari":[8.0883,77.5385],"chidambaram":[11.3992,79.6946],
+};
+
+// Fuzzy match: strips whitespace, lowercases, tries exact then substring match.
+// Falls back to Chennai (13.08,80.27) when city isn't found — most central TN reference.
+function geocodeCity(cityName) {
+  if (!cityName) return { lat:13.0827, lon:80.2707, matched:false, name:"Chennai (default)" };
+  const clean = cityName.toLowerCase().trim().split(',')[0].trim();
+  if (CITIES[clean]) return { lat:CITIES[clean][0], lon:CITIES[clean][1], matched:true, name:cityName };
+  // Substring match: e.g. "Thoothukudi, Tamil Nadu" or "near Madurai"
+  const found = Object.keys(CITIES).find(key => clean.includes(key) || key.includes(clean));
+  if (found) return { lat:CITIES[found][0], lon:CITIES[found][1], matched:true, name:cityName };
+  return { lat:13.0827, lon:80.2707, matched:false, name:cityName };
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // VEDIC HOROSCOPE ENGINE — Jean Meeus Astronomical Algorithms
 // Sun: ~0.01° accuracy | Moon: ~0.5° (6 perturbation terms)
 // Lagna: Local Sidereal Time method | Ayanamsa: Lahiri
 // ═══════════════════════════════════════════════════════════════════
-function generateHoroscope(dob, tob) {
+function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707) {
   const d = new Date(dob);
   const year = d.getFullYear(), month = d.getMonth() + 1, day = d.getDate();
   let birthH = 6, birthM = 0;
@@ -84,13 +122,13 @@ function generateHoroscope(dob, tob) {
   // Greenwich Mean Sidereal Time (in degrees)
   const GMST = norm(280.46061837 + 360.98564736629 * (JD - 2451545.0)
     + 0.000387933 * T * T);
-  // Local longitude (default: Thoothukudi 78.13°E, user can adjust)
-  const localLon = 78.13;
+  // Local longitude (from geocoded birth place, default Chennai)
+  const localLon = lon;
   const LST = norm(GMST + localLon); // Local Sidereal Time in degrees
   const LSTr = LST * rad, epsr = eps * rad;
-  // Ascendant formula
+  // Ascendant formula (uses geocoded birth latitude)
   let ascTropical = Math.atan2(Math.cos(LSTr),
-    -(Math.sin(epsr) * Math.tan(8.76 * rad) + Math.cos(epsr) * Math.sin(LSTr)));
+    -(Math.sin(epsr) * Math.tan(lat * rad) + Math.cos(epsr) * Math.sin(LSTr)));
   ascTropical = norm(ascTropical * deg);
   // Correct quadrant
   if (Math.cos(LSTr) < 0) ascTropical = norm(ascTropical + 180);
@@ -425,12 +463,12 @@ function calculateGochara(birthMoonRashi, todayPlacements) {
 }
 
 // Get today's panchangam + transit — reuses the Jean Meeus engine for TODAY's date
-function getTodayTranist() {
+function getTodayTranist(lat=13.0827, lon=80.2707) {
   const today = new Date();
   const dob = today.toISOString().split('T')[0];
   const hh = String(today.getHours()).padStart(2,'0');
   const mm = String(today.getMinutes()).padStart(2,'0');
-  const h = generateHoroscope(dob, `${hh}:${mm}`);
+  const h = generateHoroscope(dob, `${hh}:${mm}`, lat, lon);
   const dayNames = ["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"];
   return {
     ...h,
@@ -661,6 +699,350 @@ function calcTaraBala(birthNakIdx, todayNakIdx) {
   const count = ((todayNakIdx - birthNakIdx + 27) % 27) + 1; // 1-27
   const taraIdx = (count - 1) % 9;
   return { count, ...TARA_TYPES[taraIdx] };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// கிரக பலம் (GRAHA BALA) — Exaltation / Own-sign / Friendship strength
+// Classical Parashara system — foundational part of Shadbala
+// ═══════════════════════════════════════════════════════════════════
+const EXALT_RASHI = {"சூரியன்":0,"சந்திரன்":1,"செவ்வாய்":9,"புதன்":5,"குரு":3,"சுக்கிரன்":11,"சனி":6};
+const EXALT_DEGREE = {"சூரியன்":10,"சந்திரன்":3,"செவ்வாய்":28,"புதன்":15,"குரு":5,"சுக்கிரன்":27,"சனி":20};
+const DEBIL_RASHI  = {"சூரியன்":6,"சந்திரன்":7,"செவ்வாய்":3,"புதன்":11,"குரு":9,"சுக்கிரன்":5,"சனி":0};
+const OWN_RASHI = {"சூரியன்":[4],"சந்திரன்":[3],"செவ்வாய்":[0,7],"புதன்":[2,5],"குரு":[8,11],"சுக்கிரன்":[1,6],"சனி":[9,10]};
+const RASHI_LORD_NAME = ["செவ்வாய்","சுக்கிரன்","புதன்","சந்திரன்","சூரியன்","புதன்","சுக்கிரன்","செவ்வாய்","குரு","சனி","சனி","குரு"];
+const GRAHA_FRIENDSHIP = {
+  "சூரியன்": {friends:["சந்திரன்","செவ்வாய்","குரு"], enemies:["சுக்கிரன்","சனி"]},
+  "சந்திரன்": {friends:["சூரியன்","புதன்"], enemies:[]},
+  "செவ்வாய்": {friends:["சூரியன்","சந்திரன்","குரு"], enemies:["புதன்"]},
+  "புதன்":    {friends:["சூரியன்","சுக்கிரன்"], enemies:["சந்திரன்"]},
+  "குரு":     {friends:["சூரியன்","சந்திரன்","செவ்வாய்"], enemies:["புதன்","சுக்கிரன்"]},
+  "சுக்கிரன்": {friends:["புதன்","சனி"], enemies:["சூரியன்","சந்திரன்"]},
+  "சனி":      {friends:["புதன்","சுக்கிரன்"], enemies:["சூரியன்","சந்திரன்","செவ்வாய்"]},
+};
+
+function calcGrahaBala(placements) {
+  return placements
+    .filter(p => EXALT_RASHI[p.ta] !== undefined) // only the 7 classical planets (not Rahu/Ketu)
+    .map(p => {
+      const rashiIdx = p.rashiIdx;
+      let score, status, statusEn;
+
+      if (rashiIdx === EXALT_RASHI[p.ta]) {
+        const closeness = 1 - Math.abs(p.degExact - EXALT_DEGREE[p.ta]) / 30;
+        score = Math.round((7 + closeness * 3) * 10) / 10; // 7-10
+        status = "உச்சம்"; statusEn = "Exalted";
+      } else if (rashiIdx === DEBIL_RASHI[p.ta]) {
+        score = 1.5; status = "நீசம்"; statusEn = "Debilitated";
+      } else if (OWN_RASHI[p.ta].includes(rashiIdx)) {
+        score = 8; status = "சொந்த வீடு"; statusEn = "Own Sign";
+      } else {
+        const lord = RASHI_LORD_NAME[rashiIdx];
+        const fr = GRAHA_FRIENDSHIP[p.ta];
+        if (fr.friends.includes(lord)) { score = 6.5; status = "நட்பு வீடு"; statusEn = "Friend's Sign"; }
+        else if (fr.enemies.includes(lord)) { score = 3.5; status = "எதிரி வீடு"; statusEn = "Enemy's Sign"; }
+        else { score = 5; status = "சமன் வீடு"; statusEn = "Neutral Sign"; }
+      }
+
+      return { ta: p.ta, symbol: p.symbol, rashi: p.rashi, score, status, statusEn };
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// பஞ்ச மகாபுருஷ யோகம் (PANCHA MAHAPURUSHA YOGA)
+// 5 classical yogas — well-documented, verifiable, high-confidence rules
+// ═══════════════════════════════════════════════════════════════════
+const MAHAPURUSHA_INFO = {
+  "செவ்வாய்": {name:"ருசக யோகம்", nameEn:"Ruchaka Yoga", effect:"தலைமைத்துவம், தைரியம், வீரம், போட்டித்துறையில் வெற்றி"},
+  "புதன்":    {name:"பத்ர யோகம்",  nameEn:"Bhadra Yoga",  effect:"கூர்மையான அறிவு, வணிக வெற்றி, சிறந்த பேச்சாற்றல்"},
+  "குரு":     {name:"ஹம்ச யோகம்",  nameEn:"Hamsa Yoga",   effect:"ஞானம், புகழ், ஆன்மீக வளர்ச்சி, நல்லொழுக்கம்"},
+  "சுக்கிரன்": {name:"மாளவ்ய யோகம்",nameEn:"Malavya Yoga", effect:"அழகு, செல்வம், கலைத்திறமை, சுகபோகம்"},
+  "சனி":      {name:"சச யோகம்",   nameEn:"Sasa Yoga",    effect:"அதிகாரம், நீண்ட ஆயுள், தலைமைப் பொறுப்பு"},
+};
+function detectMahapurushaYogas(placements, lagna) {
+  const kendras = [1,4,7,10]; // houses from Lagna
+  const found = [];
+  ["செவ்வாய்","புதன்","குரு","சுக்கிரன்","சனி"].forEach(planetName => {
+    const p = placements.find(pp => pp.ta === planetName);
+    if (!p) return;
+    const inOwnOrExalt = OWN_RASHI[planetName].includes(p.rashiIdx) || p.rashiIdx === EXALT_RASHI[planetName];
+    if (inOwnOrExalt && kendras.includes(p.house)) {
+      found.push({ planet: planetName, symbol: p.symbol, house: p.house, ...MAHAPURUSHA_INFO[planetName] });
+    }
+  });
+  return found;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// கூடுதல் கிளாசிக்கல் யோகங்கள் (ADVANCED CLASSICAL YOGAS)
+// Gajakesari, Budh-Aditya, Chandra-Mangal, Kemadruma, Raja Yoga,
+// Dhana Yoga, Viparita Raja Yoga — Parashari house-lordship system
+// NOTE: Raja/Dhana Yoga here check CONJUNCTION only (same house), not
+// mutual aspect or parivartana — a defensible common-usage simplification.
+// ═══════════════════════════════════════════════════════════════════
+const KENDRA_HOUSES = [1,4,7,10];
+const TRIKONA_HOUSES = [1,5,9];
+const DUSTHANA_HOUSES = [6,8,12];
+
+function getHouseLord(lagnaRashiIdx, houseNum) {
+  const rashiOfHouse = (lagnaRashiIdx + houseNum - 1) % 12;
+  return RASHI_LORD_NAME[rashiOfHouse];
+}
+
+function detectClassicalYogas(placements, lagnaRashiIdx) {
+  const yogas = [];
+  const find = (name) => placements.find(p => p.ta === name);
+  const moon = find("சந்திரன்"), sun = find("சூரியன்"), guru = find("குரு"),
+        mercury = find("புதன்"), mars = find("செவ்வாய்");
+
+  // 1. கஜகேசரி யோகம் — சந்திரனும் குருவும் ஒருவருக்கொருவர் கேந்திர ஸ்தானத்தில்
+  if (moon && guru) {
+    const rashiDiff = ((guru.rashiIdx - moon.rashiIdx + 12) % 12) + 1;
+    if (KENDRA_HOUSES.includes(rashiDiff)) {
+      yogas.push({
+        name:"கஜகேசரி யோகம்", nameEn:"Gajakesari Yoga", type:"yoga", icon:"☽♃",
+        desc:"புகழ், அறிவு, தலைமைத்துவம், நல்ல பெயர் — சந்திரனும் குருவும் ஒருவருக்கொருவர் கேந்திரத்தில் இருப்பதால் ஏற்படும் சிறந்த யோகம்"
+      });
+    }
+  }
+
+  // 2. புத ஆதித்ய யோகம் — சூரியன் + புதன் ஒரே ராசியில்
+  if (sun && mercury && sun.rashiIdx === mercury.rashiIdx) {
+    yogas.push({
+      name:"புத ஆதித்ய யோகம்", nameEn:"Budh-Aditya Yoga", type:"yoga", icon:"☉☿",
+      desc:"அறிவுக்கூர்மை, தொழில் வெற்றி, நல்ல பேச்சாற்றல் — சூரியனும் புதனும் ஒரே ராசியில் சேர்வதால் ஏற்படும் யோகம்"
+    });
+  }
+
+  // 3. சந்திர மங்கள யோகம் — சந்திரன் + செவ்வாய் ஒரே ராசியில்
+  if (moon && mars && moon.rashiIdx === mars.rashiIdx) {
+    yogas.push({
+      name:"சந்திர மங்கள யோகம்", nameEn:"Chandra-Mangal Yoga", type:"yoga", icon:"☽♂",
+      desc:"செல்வம் ஈட்டும் திறன், தொழில் முனைவோர் குணம் — சந்திரனும் செவ்வாயும் இணைவதால் ஏற்படும் தன யோகம்"
+    });
+  }
+
+  // 4. கேமத்ரும யோகம் (தோஷம்) — சந்திரனுக்கு 2,12ல் வேறு கிரகங்கள் இல்லை
+  if (moon) {
+    const others = placements.filter(p => CLASSICAL_7.includes(p.ta) && p.ta !== "சந்திரன்" && p.ta !== "சூரியன்");
+    const h2 = (moon.rashiIdx + 1) % 12, h12 = (moon.rashiIdx + 11) % 12;
+    const hasSupport = others.some(p => p.rashiIdx === h2 || p.rashiIdx === h12);
+    if (!hasSupport) {
+      yogas.push({
+        name:"கேமத்ரும யோகம்", nameEn:"Kemadruma Yoga", type:"dosha", icon:"☽⚠",
+        desc:"சந்திரனுக்கு இரு பக்கமும் (2,12ஆம் வீடு) கிரகங்கள் இல்லாததால் ஏற்படும் மன சவால்கள் — பரிகாரம் தேவை"
+      });
+    }
+  }
+
+  // 5. ராஜயோகம் — கேந்திர நாதனும் திரிகோண நாதனும் ஒரே வீட்டில்
+  const kendraLords = [...new Set(KENDRA_HOUSES.map(h => getHouseLord(lagnaRashiIdx, h)))];
+  const trikonaLords = [...new Set(TRIKONA_HOUSES.map(h => getHouseLord(lagnaRashiIdx, h)))];
+  kendraLords.forEach(kLord => {
+    trikonaLords.forEach(tLord => {
+      if (kLord === tLord) return;
+      const kP = find(kLord), tP = find(tLord);
+      if (kP && tP && kP.rashiIdx === tP.rashiIdx) {
+        yogas.push({
+          name:"ராஜயோகம்", nameEn:"Raja Yoga", type:"yoga", icon:"👑",
+          desc:`கேந்திர நாதன் (${kLord}) மற்றும் திரிகோண நாதன் (${tLord}) ${kP.house}ஆம் வீட்டில் சேர்வதால் அதிகாரம், செல்வாக்கு தரும் யோகம்`
+        });
+      }
+    });
+  });
+
+  // 6. தன யோகம் — 2,11 நாதர்கள் ஒரே வீட்டில்
+  const lord2 = getHouseLord(lagnaRashiIdx, 2), lord11 = getHouseLord(lagnaRashiIdx, 11);
+  if (lord2 !== lord11) {
+    const p2 = find(lord2), p11 = find(lord11);
+    if (p2 && p11 && p2.rashiIdx === p11.rashiIdx) {
+      yogas.push({
+        name:"தன யோகம்", nameEn:"Dhana Yoga", type:"yoga", icon:"💰",
+        desc:`செல்வ நாதர்கள் (2,11) ${p2.house}ஆம் வீட்டில் சேர்வதால் பொருளாதார செழிப்பு தரும் யோகம்`
+      });
+    }
+  }
+
+  // 7. விபரீத ராஜயோகம் — 6,8,12 நாதர்கள் 6,8,12 வீட்டிலேயே
+  DUSTHANA_HOUSES.forEach(houseNum => {
+    const lord = getHouseLord(lagnaRashiIdx, houseNum);
+    const p = find(lord);
+    if (p && DUSTHANA_HOUSES.includes(p.house)) {
+      yogas.push({
+        name:"விபரீத ராஜயோகம்", nameEn:"Viparita Raja Yoga", type:"yoga", icon:"🔄",
+        desc:`${houseNum}ஆம் வீட்டு நாதன் (${lord}) ${p.house}ஆம் வீட்டில் — தடைகளுக்குப் பிறகு எதிர்பாராத வெற்றி தரும் யோகம்`
+      });
+    }
+  });
+
+  return yogas;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// அஷ்டகவர்க்கம் (ASHTAKAVARGA) — Classical Parashari bindu system
+// 7 கிரகங்கள் × 8 reference points (7 கிரகங்கள் + லக்னம்) × 12 வீடுகள்
+// Totals verified against traditional values: Sun48 Moon49 Mars39
+// Mercury54 Jupiter56 Venus52 Saturn39 → Sarvashtakavarga total 337
+// ═══════════════════════════════════════════════════════════════════
+const BAV_RULES = {
+  "சூரியன்": {
+    "சூரியன்":[1,2,4,7,8,9,10,11], "சந்திரன்":[3,6,10,11], "செவ்வாய்":[1,2,4,7,8,9,10,11],
+    "புதன்":[3,5,6,9,10,11,12], "குரு":[5,6,9,11], "சுக்கிரன்":[6,7,12],
+    "சனி":[1,2,4,7,8,9,10,11], "லக்னம்":[3,4,6,10,11,12]
+  },
+  "சந்திரன்": {
+    "சூரியன்":[3,6,7,8,10,11], "சந்திரன்":[1,3,6,7,10,11], "செவ்வாய்":[2,3,5,6,9,10,11],
+    "புதன்":[1,3,4,5,7,8,10,11], "குரு":[1,4,7,8,10,11,12], "சுக்கிரன்":[3,4,5,7,9,10,11],
+    "சனி":[3,5,6,11], "லக்னம்":[3,6,10,11]
+  },
+  "செவ்வாய்": {
+    "சூரியன்":[3,5,6,10,11], "சந்திரன்":[3,6,11], "செவ்வாய்":[1,2,4,7,8,10,11],
+    "புதன்":[3,5,6,11], "குரு":[6,10,11,12], "சுக்கிரன்":[6,8,11,12],
+    "சனி":[1,4,7,8,9,10,11], "லக்னம்":[1,3,6,10,11]
+  },
+  "புதன்": {
+    "சூரியன்":[5,6,9,11,12], "சந்திரன்":[2,4,6,8,10,11], "செவ்வாய்":[1,2,4,7,8,9,10,11],
+    "புதன்":[1,3,5,6,9,10,11,12], "குரு":[6,8,11,12], "சுக்கிரன்":[1,2,3,4,5,8,9,11],
+    "சனி":[1,2,4,7,8,9,10,11], "லக்னம்":[1,2,4,6,8,10,11]
+  },
+  "குரு": {
+    "சூரியன்":[1,2,3,4,7,8,9,10,11], "சந்திரன்":[2,5,7,9,11], "செவ்வாய்":[1,2,4,7,8,10,11],
+    "புதன்":[1,2,4,5,6,9,10,11], "குரு":[1,2,3,4,7,8,10,11], "சுக்கிரன்":[2,5,6,9,10,11],
+    "சனி":[3,5,6,12], "லக்னம்":[1,2,4,5,6,7,9,10,11]
+  },
+  "சுக்கிரன்": {
+    "சூரியன்":[8,11,12], "சந்திரன்":[1,2,3,4,5,8,9,11,12], "செவ்வாய்":[3,4,6,9,11,12],
+    "புதன்":[3,5,6,9,11], "குரு":[5,8,9,10,11], "சுக்கிரன்":[1,2,3,4,5,8,9,10,11],
+    "சனி":[3,4,5,8,9,10,11], "லக்னம்":[1,2,3,4,5,8,9,11]
+  },
+  "சனி": {
+    "சூரியன்":[1,2,4,7,8,10,11], "சந்திரன்":[3,6,11], "செவ்வாய்":[3,5,6,10,11,12],
+    "புதன்":[6,8,9,10,11,12], "குரு":[5,6,11,12], "சுக்கிரன்":[6,11,12],
+    "சனி":[3,5,6,11], "லக்னம்":[1,3,4,6,10,11]
+  }
+};
+const BAV_TOTALS = {"சூரியன்":48,"சந்திரன்":49,"செவ்வாய்":39,"புதன்":54,"குரு":56,"சுக்கிரன்":52,"சனி":39};
+
+function calcAshtakavarga(placements, lagnaRashiIdx) {
+  // Reference rashi index for each of the 8 contributors
+  const refRashi = { "லக்னம்": lagnaRashiIdx };
+  ["சூரியன்","சந்திரன்","செவ்வாய்","புதன்","குரு","சுக்கிரன்","சனி"].forEach(name => {
+    const p = placements.find(pp => pp.ta === name);
+    if (p) refRashi[name] = p.rashiIdx;
+  });
+
+  const bav = {}; // per-planet 12-house bindu array
+  const targetPlanets = ["சூரியன்","சந்திரன்","செவ்வாய்","புதன்","குரு","சுக்கிரன்","சனி"];
+
+  targetPlanets.forEach(target => {
+    const houseCounts = new Array(12).fill(0);
+    const rules = BAV_RULES[target];
+    Object.keys(rules).forEach(refName => {
+      const refIdx = refRashi[refName];
+      if (refIdx === undefined) return;
+      rules[refName].forEach(houseNum => {
+        const actualRashi = (refIdx + houseNum - 1) % 12;
+        houseCounts[actualRashi]++;
+      });
+    });
+    bav[target] = houseCounts;
+  });
+
+  // Sarvashtakavarga — sum of all 7 planets' bindus per rashi
+  const sav = new Array(12).fill(0);
+  targetPlanets.forEach(t => bav[t].forEach((v,i) => sav[i]+=v));
+
+  const savAvg = sav.reduce((a,b)=>a+b,0) / 12; // ~28.08
+
+  return { bav, sav, savAvg: Math.round(savAvg*10)/10, totals: BAV_TOTALS };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// கிரக திருஷ்டி (GRAHA DRISHTI) — Classical Parashari planetary aspects
+// எல்லா கிரகங்களும் 7ஆம் வீட்டை பார்க்கும் (universal aspect)
+// செவ்வாய்: 4,7,8 | குரு: 5,7,9 | சனி: 3,7,10 (special aspects)
+// ═══════════════════════════════════════════════════════════════════
+const DRISHTI_RULES = {
+  default: [7],
+  "செவ்வாய்": [4,7,8],
+  "குரு": [5,7,9],
+  "சனி": [3,7,10]
+};
+const CLASSICAL_7 = ["சூரியன்","சந்திரன்","செவ்வாய்","புதன்","குரு","சுக்கிரன்","சனி"];
+
+function calcGrahaDrishti(placements) {
+  const aspects = [];
+  const classicalPlanets = placements.filter(p => CLASSICAL_7.includes(p.ta));
+  classicalPlanets.forEach(from => {
+    const rule = DRISHTI_RULES[from.ta] || DRISHTI_RULES.default;
+    classicalPlanets.forEach(to => {
+      if (from.ta === to.ta) return;
+      const houseOffset = ((to.rashiIdx - from.rashiIdx + 12) % 12) + 1;
+      if (rule.includes(houseOffset)) {
+        aspects.push({
+          from: from.ta, fromSymbol: from.symbol,
+          to: to.ta, toSymbol: to.symbol,
+          houseOffset, isSpecial: houseOffset !== 7
+        });
+      }
+    });
+  });
+  return aspects;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// D10 தசாம்சம் (DASAMSA) — தொழில் / பதவி பிரிவு சக்கரம்
+// ஒவ்வொரு ராசியும் 10 பாகங்களாக (3° ஒவ்வொன்றும்) பிரிக்கப்படுகிறது
+// ஒற்றைப்படை ராசி: அதே ராசியிலிருந்து தொடங்கும் | இரட்டைப்படை: 9ஆம் ராசியிலிருந்து
+// ═══════════════════════════════════════════════════════════════════
+function calcD10Dasamsa(placements) {
+  return placements.map(p => {
+    const part = Math.min(9, Math.floor(p.degExact / 3)); // 0-9
+    const isOddRashi = p.rashiIdx % 2 === 0; // rashiIdx 0=மேஷம் is traditionally "odd" sign
+    const startRashi = isOddRashi ? p.rashiIdx : (p.rashiIdx + 8) % 12;
+    const d10Rashi = (startRashi + part) % 12;
+    return { ...p, d10Rashi, d10RashiName: RASHIS[d10Rashi] };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// D2 ஹோரை (HORA) — செல்வம் பிரிவு சக்கரம்
+// ஒற்றைப்படை ராசி: 0-15°→சூரிய ஹோரை(சிம்மம்), 15-30°→சந்திர ஹோரை(கடகம்)
+// இரட்டைப்படை ராசி: நேர்மாறு. D2-ல் இரண்டே ராசிகள் மட்டுமே சாத்தியம்.
+// ═══════════════════════════════════════════════════════════════════
+function calcD2Hora(placements) {
+  const SIMMAM = 4, KADAKAM = 3; // சிம்மம், கடகம்
+  return placements.map(p => {
+    const isOddRashi = p.rashiIdx % 2 === 0;
+    const firstHalf = p.degExact < 15;
+    let d2Rashi;
+    if (isOddRashi) d2Rashi = firstHalf ? SIMMAM : KADAKAM;
+    else d2Rashi = firstHalf ? KADAKAM : SIMMAM;
+    return { ...p, d2Rashi, d2RashiName: RASHIS[d2Rashi], d2Lord: d2Rashi === SIMMAM ? "சூரிய ஹோரை" : "சந்திர ஹோரை" };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// D3 திரேக்காணம் (DREKKANA) — சகோதரர்கள் பிரிவு சக்கரம்
+// ஒவ்வொரு ராசியும் 3 பாகங்கள் (10° ஒவ்வொன்றும்): அதே ராசி → 5ஆம் ராசி → 9ஆம் ராசி
+// ═══════════════════════════════════════════════════════════════════
+function calcD3Drekkana(placements) {
+  return placements.map(p => {
+    const part = Math.min(2, Math.floor(p.degExact / 10)); // 0-2
+    const d3Rashi = (p.rashiIdx + part * 4) % 12;
+    return { ...p, d3Rashi, d3RashiName: RASHIS[d3Rashi] };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// D12 துவாதசாம்சம் (DWADASAMSA) — பெற்றோர் பிரிவு சக்கரம்
+// ஒவ்வொரு ராசியும் 12 பாகங்கள் (2.5° ஒவ்வொன்றும்), எப்போதும் அதே ராசியிலிருந்து தொடங்கும்
+// ═══════════════════════════════════════════════════════════════════
+function calcD12Dwadasamsa(placements) {
+  return placements.map(p => {
+    const part = Math.min(11, Math.floor(p.degExact / 2.5)); // 0-11
+    const d12Rashi = (p.rashiIdx + part) % 12;
+    return { ...p, d12Rashi, d12RashiName: RASHIS[d12Rashi] };
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1475,6 +1857,15 @@ export default function AstrologyApp() {
   // New states
   const [dashaData, setDashaData] = useState(null);
   const [navamsaData, setNavamsaData] = useState(null);
+  const [grahaBala, setGrahaBala] = useState(null);
+  const [mahapurushaYogas, setMahapurushaYogas] = useState([]);
+  const [classicalYogas, setClassicalYogas] = useState([]);
+  const [ashtakavargaData, setAshtakavargaData] = useState(null);
+  const [drishtiData, setDrishtiData] = useState([]);
+  const [d10Data, setD10Data] = useState(null);
+  const [d2Data, setD2Data] = useState(null);
+  const [d3Data, setD3Data] = useState(null);
+  const [d12Data, setD12Data] = useState(null);
   const [expandedDasha, setExpandedDasha] = useState(null);
   // Porutham
   const [poruthBride, setPoruthBride] = useState({ name:"", dob:"", tob:"", ampm:"AM" });
@@ -1563,15 +1954,34 @@ export default function AstrologyApp() {
       setApiSource("api");
       setHoroscope(result);
       setNavamsaData(calculateNavamsa(result.placements));
+      setGrahaBala(calcGrahaBala(result.placements));
+      setMahapurushaYogas(detectMahapurushaYogas(result.placements, result.lagna));
+      setClassicalYogas(detectClassicalYogas(result.placements, result.lagna));
+      setAshtakavargaData(calcAshtakavarga(result.placements, result.lagna));
+      setDrishtiData(calcGrahaDrishti(result.placements));
+      setD10Data(calcD10Dasamsa(result.placements));
+      setD2Data(calcD2Hora(result.placements));
+      setD3Data(calcD3Drekkana(result.placements));
+      setD12Data(calcD12Dwadasamsa(result.placements));
       // Moon's precise sidereal longitude from backend = moonRashi index*30 + degree of Moon placement
       const moonP = result.placements.find(p => p.ta === "சந்திரன்");
       const moonLongFromApi = moonP ? (moonP.rashiIdx * 30 + moonP.degExact) : 0;
       setDashaData(calculateDasha(moonLongFromApi, formData.dob));
     } else {
       setApiSource("local");
-      const h = generateHoroscope(formData.dob, finalTime);
+      const geo = geocodeCity(formData.pob);
+      const h = generateHoroscope(formData.dob, finalTime, geo.lat, geo.lon);
       setHoroscope(h);
       setNavamsaData(calculateNavamsa(h.placements));
+      setGrahaBala(calcGrahaBala(h.placements));
+      setMahapurushaYogas(detectMahapurushaYogas(h.placements, h.lagna));
+      setClassicalYogas(detectClassicalYogas(h.placements, h.lagna));
+      setAshtakavargaData(calcAshtakavarga(h.placements, h.lagna));
+      setDrishtiData(calcGrahaDrishti(h.placements));
+      setD10Data(calcD10Dasamsa(h.placements));
+      setD2Data(calcD2Hora(h.placements));
+      setD3Data(calcD3Drekkana(h.placements));
+      setD12Data(calcD12Dwadasamsa(h.placements));
       // Calculate moon longitude for dasha
       const dDate = new Date(formData.dob);
       const T2 = ((dDate - new Date(2000,0,1)) / 86400000 / 36525);
@@ -1612,11 +2022,12 @@ Predict: பொது பலன், தொழில், திருமணம்
   // ── DAILY PREDICTION (தினப்பலன்) ──
   const openDailyScreen = () => {
     if (!horoscope) return;
-    const today = getTodayTranist();
+    const geo = geocodeCity(formData.pob);
+    const today = getTodayTranist(geo.lat, geo.lon);
     const birthMoonRashi = RASHIS.indexOf(horoscope.moonRashi);
     const gochara = calculateGochara(birthMoonRashi, today.placements);
     const remedy = getPersonalizedRemedy(birthMoonRashi, today.dateObj.getDay(), gochara.isChandrashtama, today.tithi);
-    const muhurtham = calcMuhurtham(today.dateObj);
+    const muhurtham = calcMuhurtham(today.dateObj, geo.lat, geo.lon);
 
     // Sade Sati (Saturn transit) & Guru Peyarchi (Jupiter transit)
     const saturnToday = today.placements.find(p => p.ta === "சனி");
@@ -1853,7 +2264,18 @@ Give a short, warm, practical daily prediction (170 words max) covering: today's
             </div>
             <div><label style={labelStyle}>பிறந்த இடம்</label>
             <input style={inputStyle} placeholder="எ.கா. சென்னை, தமிழ்நாடு" value={formData.pob}
-              onChange={e=>setFormData(d=>({...d,pob:e.target.value}))}/></div>
+              onChange={e=>setFormData(d=>({...d,pob:e.target.value}))}/>
+            {formData.pob && formData.pob.trim() && (() => {
+              const geo = geocodeCity(formData.pob);
+              return (
+                <div style={{fontSize:10,marginTop:5,color:geo.matched?"#4ade80":"#f0c75e"}}>
+                  {geo.matched
+                    ? `✓ கண்டறியப்பட்டது — ${geo.lat.toFixed(2)}°N, ${geo.lon.toFixed(2)}°E (துல்லியமான லக்னம்)`
+                    : `⚠ இந்த ஊர் database-ல் இல்லை — Chennai coordinates பயன்படுத்தப்படும் (சிறிய பிழை வரலாம்)`}
+                </div>
+              );
+            })()}
+            </div>
             <button style={{...btnGold,opacity:(!formData.name||!formData.dob)?0.4:1,
               pointerEvents:(!formData.name||!formData.dob)?"none":"auto"}} onClick={handleSubmit}>
               ஜாதகம் உருவாக்கு ☉
@@ -2142,6 +2564,196 @@ ${aiPart}
             </div>)}
           </div>
 
+          {/* ═══ 3.5 GRAHA BALA (Planet Strength) ═══ */}
+          {grahaBala && grahaBala.length > 0 && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
+                💪 கிரக பலம் (Graha Bala)
+              </div>
+              {grahaBala.map((g,i) => {
+                const statusColor = g.status==="உச்சம்"||g.status==="சொந்த வீடு" ? "#4ade80"
+                  : g.status==="நீசம்" ? "#ff6b8a"
+                  : g.status==="நட்பு வீடு" ? "#a78bfa" : "#e8e0f0aa";
+                return (
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",
+                    borderBottom:i<grahaBala.length-1?"1px solid #ffffff06":"none"}}>
+                    <span style={{fontSize:14,width:20}}>{g.symbol}</span>
+                    <span style={{fontSize:11,color:"#e8e0f0",width:70}}>{g.ta}</span>
+                    <div style={{flex:1,background:"#ffffff08",borderRadius:4,height:6,overflow:"hidden"}}>
+                      <div style={{width:`${g.score*10}%`,height:"100%",background:statusColor,borderRadius:4}}/>
+                    </div>
+                    <span style={{fontSize:9,fontWeight:700,color:statusColor,width:32,textAlign:"right"}}>{g.score}/10</span>
+                    <span style={{fontSize:9,color:statusColor,width:62,textAlign:"right"}}>{g.status}</span>
+                  </div>
+                );
+              })}
+              <div style={{fontSize:9,color:"#a78bfa50",marginTop:8}}>
+                உச்சம்/நீசம்/சொந்த வீடு/நட்பு அடிப்படையிலான பலம் — Parashara முறை
+              </div>
+            </div>
+          )}
+
+          {/* ═══ 3.6 PANCHA MAHAPURUSHA YOGA ═══ */}
+          {mahapurushaYogas && mahapurushaYogas.length > 0 && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px",border:"1px solid #f0c75e40",
+              background:"linear-gradient(135deg,rgba(212,168,83,0.08),rgba(167,139,250,0.04))"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8}}>
+                ⭐ பஞ்ச மகாபுருஷ யோகம் கண்டறியப்பட்டது!
+              </div>
+              {mahapurushaYogas.map((y,i) => (
+                <div key={i} style={{marginBottom:i<mahapurushaYogas.length-1?10:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:18}}>{y.symbol}</span>
+                    <span style={{fontSize:13,fontWeight:700,color:"#f0c75e"}}>{y.name}</span>
+                    <span style={{fontSize:9,color:"#a78bfa80"}}>({y.house}ஆம் வீடு)</span>
+                  </div>
+                  <div style={{fontSize:11,color:"#e8e0f0cc",marginTop:3,lineHeight:1.5}}>{y.effect}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ═══ 3.6b CLASSICAL YOGAS — Gajakesari, Raja, Dhana, Kemadruma etc. ═══ */}
+          {classicalYogas && classicalYogas.length > 0 && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
+                🕉 யோகங்கள் கண்டறியப்பட்டது ({classicalYogas.length})
+              </div>
+              {classicalYogas.map((y,i) => {
+                const isDosha = y.type === "dosha";
+                const col = isDosha ? "#ff6b8a" : "#f0c75e";
+                return (
+                  <div key={i} style={{
+                    marginBottom:i<classicalYogas.length-1?10:0, padding:"8px 10px",
+                    background:`${col}08`, borderLeft:`3px solid ${col}`, borderRadius:"0 6px 6px 0"
+                  }}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:14}}>{y.icon}</span>
+                      <span style={{fontSize:12,fontWeight:700,color:col}}>{y.name}</span>
+                      <span style={{fontSize:8,color:`${col}90`}}>{y.nameEn}</span>
+                      {isDosha && <span style={{fontSize:7,background:"#ff6b8a20",color:"#ff6b8a",padding:"1px 6px",borderRadius:5,marginLeft:"auto",fontWeight:700}}>தோஷம்</span>}
+                    </div>
+                    <div style={{fontSize:10.5,color:"#e8e0f0bb",marginTop:4,lineHeight:1.6}}>{y.desc}</div>
+                  </div>
+                );
+              })}
+              <div style={{fontSize:9,color:"#a78bfa50",marginTop:8}}>
+                கேந்திர/திரிகோண நாத conjunction அடிப்படையில் — mutual aspect/parivartana இன்னும் சேர்க்கப்படவில்லை
+              </div>
+            </div>
+          )}
+
+          {/* ═══ 3.7 ASHTAKAVARGA — SARVASHTAKAVARGA ═══ */}
+          {ashtakavargaData && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
+                🔢 சர்வாஷ்டகவர்க்கம் (Sarvashtakavarga)
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:6}}>
+                {ashtakavargaData.sav.map((count,i) => {
+                  const strong = count > ashtakavargaData.savAvg + 2;
+                  const weak = count < ashtakavargaData.savAvg - 2;
+                  const col = strong ? "#4ade80" : weak ? "#ff6b8a" : "#a78bfa";
+                  return (
+                    <div key={i} style={{
+                      background:`${col}10`, border:`1px solid ${col}30`, borderRadius:8,
+                      padding:"6px 4px", textAlign:"center"
+                    }}>
+                      <div style={{fontSize:8,color:"#a78bfa80"}}>{RASHIS[i].slice(0,3)}</div>
+                      <div style={{fontSize:14,fontWeight:700,color:col}}>{count}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{fontSize:9,color:"#a78bfa50",marginTop:8,lineHeight:1.5}}>
+                சராசரி: {ashtakavargaData.savAvg} bindus/வீடு • பச்சை=வலிமை (Gochara-க்கு நல்லது) • சிவப்பு=பலவீனம் • மொத்தம்: 337 bindus, 7 கிரகங்கள் × 8 reference points
+              </div>
+            </div>
+          )}
+
+          {/* ═══ 3.8 GRAHA DRISHTI — PLANETARY ASPECTS ═══ */}
+          {drishtiData && drishtiData.length > 0 && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
+                👁 கிரக திருஷ்டி (Graha Drishti)
+              </div>
+              {drishtiData.map((a,i) => (
+                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",
+                  borderBottom:i<drishtiData.length-1?"1px solid #ffffff06":"none"}}>
+                  <span style={{fontSize:15}}>{a.fromSymbol}</span>
+                  <span style={{fontSize:11,color:"#e8e0f0",width:60}}>{a.from}</span>
+                  <span style={{fontSize:12,color:"#a78bfa"}}>→</span>
+                  <span style={{fontSize:15}}>{a.toSymbol}</span>
+                  <span style={{fontSize:11,color:"#e8e0f0",flex:1}}>{a.to}</span>
+                  <span style={{
+                    fontSize:9,fontWeight:600,padding:"2px 7px",borderRadius:5,
+                    background:a.isSpecial?"#f0c75e15":"#a78bfa10",
+                    color:a.isSpecial?"#f0c75e":"#a78bfa80"
+                  }}>{a.houseOffset}ஆம் வீடு{a.isSpecial?" (சிறப்பு)":""}</span>
+                </div>
+              ))}
+              <div style={{fontSize:9,color:"#a78bfa50",marginTop:8}}>
+                எல்லா கிரகங்களும் 7ஆம் வீட்டை பார்க்கும் • செவ்வாய்:4,8 • குரு:5,9 • சனி:3,10
+              </div>
+            </div>
+          )}
+
+          {/* ═══ 3.9 D10 DASAMSA — CAREER CHART ═══ */}
+          {d10Data && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
+                💼 தசாம்சம் D10 (தொழில் பிரிவு சக்கரம்)
+              </div>
+              {d10Data.map((p,i) => (
+                <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",
+                  borderBottom:i<d10Data.length-1?"1px solid #ffffff06":"none"}}>
+                  <span style={{fontSize:15,width:20}}>{p.symbol}</span>
+                  <span style={{fontSize:11,color:"#e8e0f0",width:64}}>{p.ta}</span>
+                  <span style={{fontSize:10,color:"#a78bfa60"}}>D1: {p.rashi}</span>
+                  <span style={{fontSize:11,color:"#a78bfa"}}>→</span>
+                  <span style={{fontSize:11,fontWeight:600,color:"#f0c75e",flex:1,textAlign:"right"}}>{p.d10RashiName}</span>
+                </div>
+              ))}
+              <div style={{fontSize:9,color:"#a78bfa50",marginTop:8}}>
+                தொழில், பதவி, சமூக அந்தஸ்து பற்றிய நுணுக்கமான பலன் — Parashari முறை
+              </div>
+            </div>
+          )}
+
+          {/* ═══ 3.10 D2/D3/D12 — COMBINED DIVISIONAL TABLE ═══ */}
+          {d2Data && d3Data && d12Data && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:8,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>
+                🔀 பிரிவு சக்கரங்கள் (Divisional Charts)
+              </div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:10.5}}>
+                  <thead>
+                    <tr style={{borderBottom:"1.5px solid #d4a85340"}}>
+                      <th style={{padding:"5px 4px",color:"#a78bfa",fontWeight:700,textAlign:"left"}}>கிரகம்</th>
+                      <th style={{padding:"5px 4px",color:"#a78bfa",fontWeight:700,textAlign:"center"}}>D2 செல்வம்</th>
+                      <th style={{padding:"5px 4px",color:"#a78bfa",fontWeight:700,textAlign:"center"}}>D3 சகோதரர்</th>
+                      <th style={{padding:"5px 4px",color:"#a78bfa",fontWeight:700,textAlign:"center"}}>D12 பெற்றோர்</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {d2Data.map((p,i) => (
+                      <tr key={i} style={{borderBottom:"1px solid #ffffff06",background:i%2?"#ffffff03":"transparent"}}>
+                        <td style={{padding:"6px 4px",color:"#e8e0f0"}}>{p.symbol} {p.ta}</td>
+                        <td style={{padding:"6px 4px",textAlign:"center",color:"#f0c75e",fontWeight:600}}>{p.d2RashiName?.slice(0,4)}</td>
+                        <td style={{padding:"6px 4px",textAlign:"center",color:"#f0c75e",fontWeight:600}}>{d3Data[i]?.d3RashiName?.slice(0,4)}</td>
+                        <td style={{padding:"6px 4px",textAlign:"center",color:"#f0c75e",fontWeight:600}}>{d12Data[i]?.d12RashiName?.slice(0,4)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{fontSize:9,color:"#a78bfa50",marginTop:8,lineHeight:1.5}}>
+                D2=செல்வம் (சூரிய/சந்திர ஹோரை) • D3=சகோதரர்கள் • D12=பெற்றோர் — Parashari முறை
+              </div>
+            </div>
+          )}
+
           {/* ═══ 4. DASHA SUMMARY (with dates) ═══ */}
           {dashaData&&(<div style={{...card,marginBottom:10,padding:"12px 14px"}}>
             <div style={{fontSize:12,fontWeight:700,color:"#f0c75e",marginBottom:4,borderBottom:"1px solid #d4a85330",paddingBottom:4}}>📅 விம்சோத்தரி தசா காலக்கணக்கு</div>
@@ -2283,7 +2895,8 @@ ${aiPart}
     const { today, gochara, remedy, muhurtham, sadeSati, guruPeyarchi, taraBala } = dailyData;
     const moodColor = gochara.overallMood==="good" ? "#4ade80" : gochara.overallMood==="caution" ? "#ff6b8a" : "#f0c75e";
     const moodText = gochara.overallMood==="good" ? "இன்று நல்ல நாள்" : gochara.overallMood==="caution" ? "கவனமாக இருக்க வேண்டிய நாள்" : "சாதாரண நாள்";
-    const currentHorai = calcCurrentHorai(liveClock); // live — refreshes every 30s via liveClock state
+    const dailyGeo = geocodeCity(formData.pob);
+    const currentHorai = calcCurrentHorai(liveClock, dailyGeo.lat, dailyGeo.lon); // live — refreshes every 30s via liveClock state
 
     return (
       <div style={base}>
