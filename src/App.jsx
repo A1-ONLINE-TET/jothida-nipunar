@@ -1474,6 +1474,237 @@ function calcTransitOverlay(birthPlacements, transitPlacements, birthMoonRashiId
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// ராகு காலம் / எமகண்டம் / குளிகை (RAHU KALAM / YAMA GANDAM / GULIKAI)
+// ═══════════════════════════════════════════════════════════════════
+const RAHU_KALAM_ORDER = [7,1,6,4,5,3,2]; // Sun=7, Mon=1, Tue=6...
+const YAMA_GANDAM_ORDER = [4,3,2,1,0,6,5];
+const GULIKAI_ORDER = [6,5,4,3,2,1,0];
+function calcInauspiciousTimes(date, lat=13.0827) {
+  const d = date || new Date();
+  const dayOfWeek = d.getDay(); // 0=Sun
+  const dayIdx = dayOfWeek === 0 ? 0 : dayOfWeek;
+  const sunriseH = 6, sunriseM = 0, sunsetH = 18, sunsetM = 0;
+  const dayMinutes = (sunsetH * 60 + sunsetM) - (sunriseH * 60 + sunriseM);
+  const slotMin = dayMinutes / 8;
+  const getSlot = (order) => {
+    const idx = order[dayIdx % 7];
+    const startMin = sunriseH * 60 + sunriseM + idx * slotMin;
+    const endMin = startMin + slotMin;
+    const fmtTime = (m) => {
+      const h = Math.floor(m / 60), mm = Math.round(m % 60);
+      const ampm = h >= 12 ? "PM" : "AM";
+      const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+      return `${h12}:${String(mm).padStart(2,'0')} ${ampm}`;
+    };
+    return { start: fmtTime(startMin), end: fmtTime(endMin) };
+  };
+  const vaaram = ["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"][dayIdx];
+  return {
+    date: d,
+    vaaram,
+    rahuKalam: getSlot(RAHU_KALAM_ORDER),
+    yamaGandam: getSlot(YAMA_GANDAM_ORDER),
+    gulikai: getSlot(GULIKAI_ORDER),
+    sunrise: "6:00 AM",
+    sunset: "6:00 PM"
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// முஹூர்த்தம் (MUHURTHA — சுப நேரம் கணிப்பு)
+// ═══════════════════════════════════════════════════════════════════
+const SUBA_NAKSHATRAS = [2,4,6,7,10,12,13,15,16,20,21,24,26]; // Rohini,Mrigasira,Pushya,Punarvasu...
+const SUBA_TITHIS = [2,3,5,7,10,11,13]; // Dwitiya,Tritiya,Panchami,Saptami,Dasami,Ekadasi,Trayodasi
+const ASUBA_YOGAS = ["Vishkambha","Atiganda","Shoola","Ganda","Vyaghata","Vajra","Vyatipata","Parigha","Vaidhrti"];
+function calcMuhurtha(targetDate, birthMoonNakIdx) {
+  const d = targetDate || new Date();
+  const dayOfWeek = d.getDay();
+  const vaaramTa = ["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"][dayOfWeek];
+  const goodDays = [1,3,4,5]; // Mon,Wed,Thu,Fri
+  const badDays = [0,2,6]; // Sun,Tue,Sat
+  const inauspicious = calcInauspiciousTimes(d);
+  const dayJ = Math.floor((d - new Date(2000,0,1)) / 86400000);
+  const approxTithi = ((dayJ * 12.19) % 30 + 30) % 30;
+  const tithiIdx = Math.floor(approxTithi) + 1;
+  const approxNak = ((dayJ * 0.9856 * 27/360 + birthMoonNakIdx) % 27 + 27) % 27;
+  const nakIdx = Math.floor(approxNak);
+  const tithiNames = ["பிரதமை","துவிதியை","திருதியை","சதுர்த்தி","பஞ்சமி","சஷ்டி","சப்தமி","அஷ்டமி","நவமி","தசமி","ஏகாதசி","துவாதசி","திரயோதசி","சதுர்த்தசி","பூர்ணிமை/அமாவாசை"];
+  const tithiName = tithiNames[(tithiIdx - 1) % 15];
+  const isTithiGood = SUBA_TITHIS.includes(tithiIdx % 15);
+  const isNakGood = SUBA_NAKSHATRAS.includes(nakIdx);
+  const isDayGood = goodDays.includes(dayOfWeek);
+  let score = 0;
+  if (isDayGood) score += 30;
+  if (isTithiGood) score += 30;
+  if (isNakGood) score += 25;
+  score += 15; // base
+  const verdict = score >= 80 ? "மிகச் சிறந்த முஹூர்த்தம்" : score >= 60 ? "நல்ல முஹூர்த்தம்" : score >= 40 ? "சுமாரான நாள்" : "தவிர்க்கவும்";
+  const subaNeramSlots = [];
+  if (isDayGood) {
+    subaNeramSlots.push("6:00 AM - 7:30 AM (பிரம்ம முஹூர்த்தம்)");
+    subaNeramSlots.push("10:00 AM - 11:30 AM (அபிஜித் முஹூர்த்தம்)");
+  }
+  if (isNakGood) {
+    subaNeramSlots.push("7:30 AM - 9:00 AM");
+  }
+  if (isTithiGood) {
+    subaNeramSlots.push("3:00 PM - 4:30 PM");
+  }
+  return {
+    date: d, vaaram: vaaramTa, tithiName, tithiIdx, nakIdx, isDayGood, isTithiGood, isNakGood,
+    score, verdict, subaNeramSlots, inauspicious,
+    activities: score >= 60 ? ["திருமணம்","கிரகப்பிரவேசம்","தொழில் ஆரம்பம்","வாகனம் வாங்குதல்","நகை வாங்குதல்"] :
+                score >= 40 ? ["சாதாரண பூஜை","யாத்திரை","கல்வி ஆரம்பம்"] : ["பூஜை மட்டும்"]
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// சனி / குரு பெயர்ச்சி (SATURN / JUPITER TRANSIT ANALYSIS)
+// ═══════════════════════════════════════════════════════════════════
+const SANI_TRANSIT_EFFECTS = {
+  1: {effect:"அசுபம்",desc:"உடல்நலக் குறைவு, மனக்கவலை, பொருளாதாரச் சிக்கல்கள். சனி ஜெபம், எள் தானம் செய்யவும்."},
+  2: {effect:"அசுபம்",desc:"குடும்பத்தில் சிக்கல், பணவரவு தடை, கண் சம்பந்தமான பிரச்சனை. எள் விளக்கு ஏற்றவும்."},
+  3: {effect:"சுபம்",desc:"எதிரிகள் தோல்வி, புதிய வாய்ப்புகள், தைரியம் அதிகரிக்கும். நல்ல காலம்."},
+  4: {effect:"அசுபம்",desc:"வீடு/வாகன பிரச்சனை, தாயார் ஆரோக்கியம் பாதிக்கும், மனநிம்மதி குறையும்."},
+  5: {effect:"அசுபம்",desc:"குழந்தை சம்பந்த கவலை, படிப்பில் தடை, முதலீட்டு நஷ்டம்."},
+  6: {effect:"சுபம்",desc:"எதிரிகள் அழிவு, கடன் தீரும், நோய் குணமாகும், வழக்கில் வெற்றி."},
+  7: {effect:"அசுபம்",desc:"கண்டச் சனி — திருமண வாழ்க்கையில் சிக்கல், கூட்டாளிகளுடன் பிரச்சனை, சுகம் குறையும்."},
+  8: {effect:"அசுபம்",desc:"அஷ்டமச் சனி — ஆபத்து, விபத்து ஆபாயம், நீண்ட நோய், பெரிய நஷ்டம்."},
+  9: {effect:"நடுநிலை",desc:"தந்தை ஆரோக்கியம் பாதிப்பு, யாத்திரை தடை, பாக்கிய குறைவு. புண்ணியக் கடன் செய்யவும்."},
+  10: {effect:"நடுநிலை",desc:"தொழிலில் மாற்றம், பதவி இழப்பு அல்லது மாற்றம், கடின உழைப்பு தேவை."},
+  11: {effect:"சுபம்",desc:"மிகச் சிறந்த காலம்! லாபம், புதிய வருமானம், ஆசைகள் நிறைவேறும்."},
+  12: {effect:"அசுபம்",desc:"செலவு அதிகம், தூக்கமின்மை, வெளிநாடு பயணம், கண் பிரச்சனை. விரயம் அதிகம்."}
+};
+const GURU_TRANSIT_EFFECTS = {
+  1: {effect:"நடுநிலை",desc:"உடல் பருமன் அதிகரிக்கும், புதிய திட்டங்கள் தொடங்கும், சுய மாற்றம்."},
+  2: {effect:"சுபம்",desc:"குடும்பத்தில் சுபநிகழ்வுகள், பணவரவு அதிகம், நல்ல உணவு, வாக்கு பலம்."},
+  3: {effect:"அசுபம்",desc:"சகோதரர்களுடன் பிரச்சனை, தைரியக் குறைவு, குறுகிய பயணங்களில் இடர்."},
+  4: {effect:"அசுபம்",desc:"வீடு/வாகனம் பிரச்சனை, மனநிம்மதி குறையும், தாயார் ஆரோக்கியம்."},
+  5: {effect:"சுபம்",desc:"புத்திரப் பாக்கியம், கல்வியில் வெற்றி, மந்திர சித்தி, முதலீட்டில் லாபம்."},
+  6: {effect:"அசுபம்",desc:"எதிரிகளால் கவலை, கடன் பிரச்சனை, நோய் வரலாம்."},
+  7: {effect:"சுபம்",desc:"திருமண வாழ்க்கை சிறப்பு, கூட்டாளிகள் ஒத்துழைப்பு, சமூக மரியாதை."},
+  8: {effect:"அசுபம்",desc:"திடீர் மாற்றங்கள், ஆன்மீக ஈடுபாடு அதிகரிக்கும், மறைவான பிரச்சனைகள்."},
+  9: {effect:"சுபம்",desc:"மிகச் சிறந்த காலம்! பாக்கியம், புண்ணிய யாத்திரை, குரு அருள், உயர் கல்வி."},
+  10: {effect:"நடுநிலை",desc:"தொழிலில் மாற்றம், புதிய பொறுப்பு, கடின உழைப்பு மூலம் வெற்றி."},
+  11: {effect:"சுபம்",desc:"லாபம், புதிய நண்பர்கள், ஆசைகள் நிறைவேறும், சமூக உயர்வு."},
+  12: {effect:"அசுபம்",desc:"செலவு அதிகம், வெளிநாடு வாய்ப்பு, ஆன்மீகம், தூக்கமின்மை."}
+};
+function calcPlanetTransitAnalysis(birthMoonRashiIdx, transitPlacements) {
+  if (!transitPlacements) return null;
+  const saturn = transitPlacements.find(p => p.ta === "சனி");
+  const jupiter = transitPlacements.find(p => p.ta === "குரு");
+  const saniHouse = saturn ? ((saturn.rashiIdx - birthMoonRashiIdx + 12) % 12) + 1 : null;
+  const guruHouse = jupiter ? ((jupiter.rashiIdx - birthMoonRashiIdx + 12) % 12) + 1 : null;
+  const saniIn712or8 = saniHouse && [7,7.5,8,1,2].includes(saniHouse);
+  const isSadeSati = saniHouse && (saniHouse === 12 || saniHouse === 1 || saniHouse === 2);
+  const sadeSatiPhase = saniHouse === 12 ? "ஏறு பாதை (12th)" : saniHouse === 1 ? "உச்ச பாதை (1st — ஜென்ம சனி)" : saniHouse === 2 ? "இறங்கு பாதை (2nd)" : null;
+  return {
+    sani: saturn ? {
+      currentRashi: saturn.rashi,
+      houseFromMoon: saniHouse,
+      ...SANI_TRANSIT_EFFECTS[saniHouse],
+      isSadeSati,
+      sadeSatiPhase,
+      isAshtama: saniHouse === 8,
+      isKandaka: saniHouse === 7
+    } : null,
+    guru: jupiter ? {
+      currentRashi: jupiter.rashi,
+      houseFromMoon: guruHouse,
+      ...GURU_TRANSIT_EFFECTS[guruHouse]
+    } : null
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// பரிகாரம் (REMEDIES — கோயில், மந்திரம், ரத்தினம், நிறம்)
+// ═══════════════════════════════════════════════════════════════════
+const PLANET_REMEDIES = {
+  "சூரியன்": {
+    gem:"மாணிக்கம் (Ruby)", gemColor:"#e53e3e", metal:"தங்கம்",
+    mantra:"ஓம் ஹ்ராம் ஹ்ரீம் ஹ்ரௌம் ஸஃ சூர்யாய நமஃ", mantraCount:"7000 ஜெபம்",
+    temple:"சூரியனார் கோயில், கும்பகோணம்", day:"ஞாயிறு",
+    color:"சிவப்பு", food:"கோதுமை, வெல்லம்", donate:"கோதுமை, செம்பு",
+    flower:"செந்தாமரை", direction:"கிழக்கு"
+  },
+  "சந்திரன்": {
+    gem:"முத்து (Pearl)", gemColor:"#f0f0f0", metal:"வெள்ளி",
+    mantra:"ஓம் ஷ்ராம் ஷ்ரீம் ஷ்ரௌம் ஸஃ சந்த்ராய நமஃ", mantraCount:"11000 ஜெபம்",
+    temple:"திங்களூர் சந்திரமௌலீஸ்வரர்", day:"திங்கள்",
+    color:"வெள்ளை", food:"அரிசி, பால்", donate:"வெள்ளை துணி, பால்",
+    flower:"வெண் தாமரை", direction:"வடமேற்கு"
+  },
+  "செவ்வாய்": {
+    gem:"பவளம் (Red Coral)", gemColor:"#e85d26", metal:"செம்பு",
+    mantra:"ஓம் க்ராம் க்ரீம் க்ரௌம் ஸஃ பௌமாய நமஃ", mantraCount:"7000 ஜெபம்",
+    temple:"வைத்தீஸ்வரன் கோயில்", day:"செவ்வாய்",
+    color:"சிவப்பு, பவள நிறம்", food:"துவரம் பருப்பு", donate:"சிவப்பு துணி, கோதுமை",
+    flower:"செவ்வரளி", direction:"தெற்கு"
+  },
+  "புதன்": {
+    gem:"மரகதம் (Emerald)", gemColor:"#22c55e", metal:"வெங்கலம்",
+    mantra:"ஓம் ப்ராம் ப்ரீம் ப்ரௌம் ஸஃ புதாய நமஃ", mantraCount:"9000 ஜெபம்",
+    temple:"திருவேங்கடு புதன் ஸ்தலம்", day:"புதன்",
+    color:"பச்சை", food:"பாசிப் பருப்பு", donate:"பச்சை துணி, பாசிப் பருப்பு",
+    flower:"வில்வம்", direction:"வடக்கு"
+  },
+  "குரு": {
+    gem:"புஷ்பராகம் (Yellow Sapphire)", gemColor:"#eab308", metal:"தங்கம்",
+    mantra:"ஓம் க்ராம் க்ரீம் க்ரௌம் ஸஃ குரவே நமஃ", mantraCount:"19000 ஜெபம்",
+    temple:"ஆலங்குடி குரு ஸ்தலம்", day:"வியாழன்",
+    color:"மஞ்சள்", food:"கடலைப் பருப்பு", donate:"மஞ்சள் துணி, வாழைப்பழம்",
+    flower:"முல்லை", direction:"வடகிழக்கு"
+  },
+  "சுக்கிரன்": {
+    gem:"வைரம் (Diamond)", gemColor:"#e2e8f0", metal:"வெள்ளி",
+    mantra:"ஓம் த்ராம் த்ரீம் த்ரௌம் ஸஃ சுக்ராய நமஃ", mantraCount:"16000 ஜெபம்",
+    temple:"கஞ்சனூர் சுக்ர ஸ்தலம்", day:"வெள்ளி",
+    color:"வெள்ளை, பன்னீர் நிறம்", food:"மொச்சைப் பருப்பு", donate:"வெள்ளை பட்டு, வெண்ணெய்",
+    flower:"வெண் தாமரை", direction:"தென்கிழக்கு"
+  },
+  "சனி": {
+    gem:"நீலம் (Blue Sapphire)", gemColor:"#1e3a5f", metal:"இரும்பு",
+    mantra:"ஓம் ப்ராம் ப்ரீம் ப்ரௌம் ஸஃ சனைஸ்சராய நமஃ", mantraCount:"23000 ஜெபம்",
+    temple:"திருநள்ளாறு சனி ஸ்தலம்", day:"சனி",
+    color:"கருப்பு, நீலம்", food:"எள், கருப்பு உளுந்து", donate:"எள் எண்ணெய், கருப்பு துணி",
+    flower:"எருக்கு", direction:"மேற்கு"
+  },
+  "ராகு": {
+    gem:"கோமேதகம் (Hessonite)", gemColor:"#a78bfa", metal:"பஞ்சலோகம்",
+    mantra:"ஓம் ப்ராம் ப்ரீம் ப்ரௌம் ஸஃ ராஹவே நமஃ", mantraCount:"18000 ஜெபம்",
+    temple:"திருநாகேஸ்வரம்", day:"சனி / ராகு காலம்",
+    color:"கருநீலம்", food:"உளுந்து", donate:"நீல துணி, கருப்பு உளுந்து",
+    flower:"மந்தாரை", direction:"தென்மேற்கு"
+  },
+  "கேது": {
+    gem:"வைடூரியம் (Cat's Eye)", gemColor:"#6b7280", metal:"பஞ்சலோகம்",
+    mantra:"ஓம் ஸ்ராம் ஸ்ரீம் ஸ்ரௌம் ஸஃ கேதவே நமஃ", mantraCount:"7000 ஜெபம்",
+    temple:"கீழ்ப்பெரும்பள்ளம் கேது ஸ்தலம்", day:"செவ்வாய் / கேது ஹோரை",
+    color:"சாம்பல், புகை நிறம்", food:"குதிரைவாலி", donate:"போர்வை, எள்",
+    flower:"அரளி", direction:"—"
+  }
+};
+function getRemedies(placements, grahaBala) {
+  if (!placements || !grahaBala) return [];
+  const weakPlanets = grahaBala.filter(g => g.score <= 4).map(g => g.ta);
+  const doshaRemedies = [];
+  placements.forEach(p => {
+    const remedy = PLANET_REMEDIES[p.ta];
+    if (!remedy) return;
+    const isWeak = weakPlanets.includes(p.ta);
+    const isDebilitated = p.rashiIdx === DEBIL_RASHI[p.ta];
+    const isEnemy = GRAHA_FRIENDSHIP[p.ta]?.enemies?.includes(RASHI_LORD_NAME[p.rashiIdx]);
+    const needsRemedy = isWeak || isDebilitated || isEnemy;
+    doshaRemedies.push({
+      ...remedy, ta: p.ta, rashi: p.rashi,
+      isWeak, isDebilitated, isEnemy, needsRemedy,
+      priority: isDebilitated ? 3 : isWeak ? 2 : isEnemy ? 1 : 0
+    });
+  });
+  return doshaRemedies.sort((a,b) => b.priority - a.priority);
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // ROTATING MANTRA CHAKRA
 // ═══════════════════════════════════════════════════════════════════
 function MantraChakra({ speed = 90, size = 500, opacity = 0.25 }) {
@@ -2213,6 +2444,10 @@ export default function AstrologyApp() {
   const [navamsaStrength, setNavamsaStrength] = useState(null);
   const [shadBala, setShadBala] = useState(null);
   const [transitOverlay, setTransitOverlay] = useState(null);
+  const [inauspiciousTimes, setInauspiciousTimes] = useState(null);
+  const [muhurthaData, setMuhurthaData] = useState(null);
+  const [planetTransitAnalysis, setPlanetTransitAnalysis] = useState(null);
+  const [remediesData, setRemediesData] = useState(null);
   const [expandedDasha, setExpandedDasha] = useState(null);
   // Porutham
   const [poruthBride, setPoruthBride] = useState({ name:"", dob:"", tob:"", ampm:"AM" });
@@ -2426,6 +2661,11 @@ export default function AstrologyApp() {
       const transitH = generateHoroscope(todayISO, `${nowH}:${nowM}`, geoT.lat, geoT.lon);
       const birthMoon = result.placements.find(p => p.ta === "சந்திரன்");
       setTransitOverlay(calcTransitOverlay(result.placements, transitH.placements, birthMoon?.rashiIdx || 0));
+      setInauspiciousTimes(calcInauspiciousTimes(new Date(), geoT.lat));
+      const birthNakP = result.placements.find(p => p.ta === "சந்திரன்");
+      setMuhurthaData(calcMuhurtha(new Date(), birthNakP?.nakIdx || 0));
+      setPlanetTransitAnalysis(calcPlanetTransitAnalysis(birthMoon?.rashiIdx || 0, transitH.placements));
+      setRemediesData(getRemedies(result.placements, calcGrahaBala(result.placements)));
       const moonP = result.placements.find(p => p.ta === "சந்திரன்");
       const moonLongFromApi = moonP ? (moonP.rashiIdx * 30 + moonP.degExact) : 0;
       setDashaData(calculateDasha(moonLongFromApi, dobISO));
@@ -2460,6 +2700,10 @@ export default function AstrologyApp() {
       const transitH2 = generateHoroscope(todayISO2, `${nowH2}:${nowM2}`, geo.lat, geo.lon);
       const birthMoon2 = h.placements.find(p => p.ta === "சந்திரன்");
       setTransitOverlay(calcTransitOverlay(h.placements, transitH2.placements, birthMoon2?.rashiIdx || 0));
+      setInauspiciousTimes(calcInauspiciousTimes(new Date(), geo.lat));
+      setMuhurthaData(calcMuhurtha(new Date(), birthMoon2?.nakIdx || 0));
+      setPlanetTransitAnalysis(calcPlanetTransitAnalysis(birthMoon2?.rashiIdx || 0, transitH2.placements));
+      setRemediesData(getRemedies(h.placements, calcGrahaBala(h.placements)));
       // Calculate moon longitude for dasha
       const [dY,dM,dD] = dobISO.split('-').map(Number);
       const dDate = new Date(dY, dM-1, dD); // local-time construction, matches new Date(2000,0,1) reference below — avoids UTC/local mismatch
@@ -3267,6 +3511,10 @@ ${aiPart}
               <option value="navamsastrength">💎 நவாம்ச பலம் (D9 Strength)</option>
               <option value="shadbala">⚖ ஷட்பலம் (Shadbala)</option>
               <option value="transitoverlay">🌍 கோசாரம் (Transit Overlay)</option>
+              <option value="rahukalam">⏰ ராகு காலம் / எமகண்டம் / குளிகை</option>
+              <option value="muhurtha">🕉 முஹூர்த்தம் (சுப நேரம்)</option>
+              <option value="saniguru">🪐 சனி-குரு பெயர்ச்சி பலன்</option>
+              <option value="remedies">💎 பரிகாரம் (கோயில், மந்திரம், ரத்தினம்)</option>
             </select>
           </div>
 
@@ -3761,6 +4009,211 @@ ${aiPart}
                   <div style={{fontSize:10,color:"#666",marginTop:4}}>Swiss Ephemeris API மூலம் இன்றைய கிரக நிலைகள் பெறப்படும்போது கோசாரம் காட்டப்படும்</div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ═══ ராகு காலம் / எமகண்டம் / குளிகை ═══ */}
+          {advancedView==="rahukalam" && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:8,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                ⏰ இன்றைய ராகு காலம் / எமகண்டம் / குளிகை
+              </div>
+              {(() => {
+                const times = inauspiciousTimes || calcInauspiciousTimes(new Date());
+                return (
+                  <div>
+                    <div style={{fontSize:12,color:"#b8860b",fontWeight:600,marginBottom:10}}>
+                      📅 {times.vaaram} — {times.date.toLocaleDateString("ta-IN")}
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                      <div style={{padding:"12px 10px",background:"#fde8e8",borderRadius:8,border:"1px solid #f5c6c6",textAlign:"center"}}>
+                        <div style={{fontSize:10,color:"#cc1a1a",fontWeight:700,marginBottom:4}}>🐍 ராகு காலம்</div>
+                        <div style={{fontSize:13,color:"#cc1a1a",fontWeight:800}}>{times.rahuKalam.start}</div>
+                        <div style={{fontSize:10,color:"#666"}}>முதல்</div>
+                        <div style={{fontSize:13,color:"#cc1a1a",fontWeight:800}}>{times.rahuKalam.end}</div>
+                      </div>
+                      <div style={{padding:"12px 10px",background:"#fff3e0",borderRadius:8,border:"1px solid #ffe0b2",textAlign:"center"}}>
+                        <div style={{fontSize:10,color:"#7a5200",fontWeight:700,marginBottom:4}}>💀 எமகண்டம்</div>
+                        <div style={{fontSize:13,color:"#7a5200",fontWeight:800}}>{times.yamaGandam.start}</div>
+                        <div style={{fontSize:10,color:"#666"}}>முதல்</div>
+                        <div style={{fontSize:13,color:"#7a5200",fontWeight:800}}>{times.yamaGandam.end}</div>
+                      </div>
+                      <div style={{padding:"12px 10px",background:"#f3e8ff",borderRadius:8,border:"1px solid #d8b4fe",textAlign:"center"}}>
+                        <div style={{fontSize:10,color:"#6b21a8",fontWeight:700,marginBottom:4}}>⚫ குளிகை</div>
+                        <div style={{fontSize:13,color:"#6b21a8",fontWeight:800}}>{times.gulikai.start}</div>
+                        <div style={{fontSize:10,color:"#666"}}>முதல்</div>
+                        <div style={{fontSize:13,color:"#6b21a8",fontWeight:800}}>{times.gulikai.end}</div>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",marginTop:10,padding:"8px 12px",background:"#f8f8f8",borderRadius:8,border:"1px solid #e8e8e8"}}>
+                      <div style={{fontSize:10,color:"#333"}}><span style={{color:"#b8860b",fontWeight:600}}>🌅 சூரிய உதயம்:</span> {times.sunrise}</div>
+                      <div style={{fontSize:10,color:"#333"}}><span style={{color:"#7b1c1c",fontWeight:600}}>🌇 சூரிய அஸ்தமனம்:</span> {times.sunset}</div>
+                    </div>
+                    <div style={{fontSize:9,color:"#777",marginTop:8,lineHeight:1.5}}>
+                      இந்த நேரங்களில் சுபகாரியங்கள் தொடங்க வேண்டாம் • ராகு காலத்தில் புதிய பணி ஆரம்பிக்க வேண்டாம்
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* ═══ முஹூர்த்தம் ═══ */}
+          {advancedView==="muhurtha" && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:8,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                🕉 முஹூர்த்தம் — இன்றைய சுப நேரம்
+              </div>
+              {(() => {
+                const m = muhurthaData || calcMuhurtha(new Date(), 0);
+                return (
+                  <div>
+                    <div style={{padding:"12px",background:m.score>=60?"#e6f4ea":"#fff3e0",borderRadius:8,border:`1px solid ${m.score>=60?"#b7e1c7":"#ffe0b2"}`,marginBottom:10}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <div>
+                          <div style={{fontSize:14,fontWeight:700,color:m.score>=60?"#0d7a30":"#7a5200"}}>{m.verdict}</div>
+                          <div style={{fontSize:11,color:"#333",marginTop:2}}>{m.vaaram} — திதி: {m.tithiName}</div>
+                        </div>
+                        <div style={{fontSize:28,fontWeight:900,color:m.score>=60?"#0d7a30":"#7a5200"}}>{m.score}%</div>
+                      </div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+                      <div style={{padding:"8px",background:m.isDayGood?"#e6f4ea":"#fde8e8",borderRadius:8,textAlign:"center",border:`1px solid ${m.isDayGood?"#b7e1c7":"#f5c6c6"}`}}>
+                        <div style={{fontSize:9,color:"#666",marginBottom:2}}>கிழமை</div>
+                        <div style={{fontSize:11,fontWeight:700,color:m.isDayGood?"#0d7a30":"#cc1a1a"}}>{m.isDayGood?"✓ சுபம்":"✗ அசுபம்"}</div>
+                      </div>
+                      <div style={{padding:"8px",background:m.isTithiGood?"#e6f4ea":"#fde8e8",borderRadius:8,textAlign:"center",border:`1px solid ${m.isTithiGood?"#b7e1c7":"#f5c6c6"}`}}>
+                        <div style={{fontSize:9,color:"#666",marginBottom:2}}>திதி</div>
+                        <div style={{fontSize:11,fontWeight:700,color:m.isTithiGood?"#0d7a30":"#cc1a1a"}}>{m.isTithiGood?"✓ சுபம்":"✗ அசுபம்"}</div>
+                      </div>
+                      <div style={{padding:"8px",background:m.isNakGood?"#e6f4ea":"#fde8e8",borderRadius:8,textAlign:"center",border:`1px solid ${m.isNakGood?"#b7e1c7":"#f5c6c6"}`}}>
+                        <div style={{fontSize:9,color:"#666",marginBottom:2}}>நட்சத்திரம்</div>
+                        <div style={{fontSize:11,fontWeight:700,color:m.isNakGood?"#0d7a30":"#cc1a1a"}}>{m.isNakGood?"✓ சுபம்":"✗ அசுபம்"}</div>
+                      </div>
+                    </div>
+                    {m.subaNeramSlots.length > 0 && (
+                      <div style={{padding:"10px 12px",background:"#f8f8f8",borderRadius:8,border:"1px solid #e8e8e8",marginBottom:10}}>
+                        <div style={{fontSize:10,fontWeight:700,color:"#7b1c1c",marginBottom:6}}>🕐 சுப நேரங்கள்</div>
+                        {m.subaNeramSlots.map((s,i) => (
+                          <div key={i} style={{fontSize:10,color:"#0d7a30",fontWeight:600,padding:"3px 0",borderBottom:i<m.subaNeramSlots.length-1?"1px solid #eee":"none"}}>✓ {s}</div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{padding:"10px 12px",background:"#f0f9ff",borderRadius:8,border:"1px solid #bae6fd"}}>
+                      <div style={{fontSize:10,fontWeight:700,color:"#0369a1",marginBottom:6}}>📋 இன்று தொடங்கலாம்</div>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                        {m.activities.map((a,i) => (
+                          <span key={i} style={{fontSize:9,padding:"3px 8px",borderRadius:4,background:"#e0f2fe",color:"#0369a1",border:"1px solid #bae6fd"}}>{a}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* ═══ சனி-குரு பெயர்ச்சி ═══ */}
+          {advancedView==="saniguru" && planetTransitAnalysis && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:8,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                🪐 சனி-குரு பெயர்ச்சி பலன்கள்
+              </div>
+              {planetTransitAnalysis.sani && (
+                <div style={{padding:"12px",background:planetTransitAnalysis.sani.effect==="சுபம்"?"#e6f4ea":planetTransitAnalysis.sani.effect==="அசுபம்"?"#fde8e8":"#fff8e1",
+                  borderRadius:8,border:`1px solid ${planetTransitAnalysis.sani.effect==="சுபம்"?"#b7e1c7":planetTransitAnalysis.sani.effect==="அசுபம்"?"#f5c6c6":"#ffe082"}`,marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                    <div style={{fontSize:13,fontWeight:700,color:"#1e3a5f"}}>🪐 சனி பெயர்ச்சி</div>
+                    <div style={{fontSize:10,fontWeight:600,padding:"3px 8px",borderRadius:4,
+                      background:planetTransitAnalysis.sani.effect==="சுபம்"?"#dcfce7":planetTransitAnalysis.sani.effect==="அசுபம்"?"#fee2e2":"#fef9c3",
+                      color:planetTransitAnalysis.sani.effect==="சுபம்"?"#0d7a30":planetTransitAnalysis.sani.effect==="அசுபம்"?"#cc1a1a":"#7a5200"}}>
+                      {planetTransitAnalysis.sani.effect}
+                    </div>
+                  </div>
+                  <div style={{fontSize:11,color:"#333",marginBottom:4}}>
+                    தற்போது: <span style={{fontWeight:700,color:"#7b1c1c"}}>{planetTransitAnalysis.sani.currentRashi}</span> — சந்திரனிலிருந்து <span style={{fontWeight:700}}>{planetTransitAnalysis.sani.houseFromMoon}ம் வீடு</span>
+                  </div>
+                  <div style={{fontSize:10,color:"#333",lineHeight:1.6}}>{planetTransitAnalysis.sani.desc}</div>
+                  {planetTransitAnalysis.sani.isSadeSati && (
+                    <div style={{marginTop:8,padding:"8px 10px",background:"#fde8e8",borderRadius:6,border:"1px solid #f5c6c6"}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"#cc1a1a"}}>⚠ சாடே-சாதி (7½ சனி) நடப்பில் உள்ளது!</div>
+                      <div style={{fontSize:10,color:"#333",marginTop:2}}>நிலை: {planetTransitAnalysis.sani.sadeSatiPhase}</div>
+                    </div>
+                  )}
+                  {planetTransitAnalysis.sani.isAshtama && (
+                    <div style={{marginTop:8,padding:"8px 10px",background:"#fde8e8",borderRadius:6,border:"1px solid #f5c6c6"}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"#cc1a1a"}}>⚠ அஷ்டமச் சனி — மிகவும் எச்சரிக்கையாக இருக்கவும்</div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {planetTransitAnalysis.guru && (
+                <div style={{padding:"12px",background:planetTransitAnalysis.guru.effect==="சுபம்"?"#e6f4ea":planetTransitAnalysis.guru.effect==="அசுபம்"?"#fde8e8":"#fff8e1",
+                  borderRadius:8,border:`1px solid ${planetTransitAnalysis.guru.effect==="சுபம்"?"#b7e1c7":planetTransitAnalysis.guru.effect==="அசுபம்"?"#f5c6c6":"#ffe082"}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                    <div style={{fontSize:13,fontWeight:700,color:"#eab308"}}>🔮 குரு பெயர்ச்சி</div>
+                    <div style={{fontSize:10,fontWeight:600,padding:"3px 8px",borderRadius:4,
+                      background:planetTransitAnalysis.guru.effect==="சுபம்"?"#dcfce7":planetTransitAnalysis.guru.effect==="அசுபம்"?"#fee2e2":"#fef9c3",
+                      color:planetTransitAnalysis.guru.effect==="சுபம்"?"#0d7a30":planetTransitAnalysis.guru.effect==="அசுபம்"?"#cc1a1a":"#7a5200"}}>
+                      {planetTransitAnalysis.guru.effect}
+                    </div>
+                  </div>
+                  <div style={{fontSize:11,color:"#333",marginBottom:4}}>
+                    தற்போது: <span style={{fontWeight:700,color:"#7b1c1c"}}>{planetTransitAnalysis.guru.currentRashi}</span> — சந்திரனிலிருந்து <span style={{fontWeight:700}}>{planetTransitAnalysis.guru.houseFromMoon}ம் வீடு</span>
+                  </div>
+                  <div style={{fontSize:10,color:"#333",lineHeight:1.6}}>{planetTransitAnalysis.guru.desc}</div>
+                </div>
+              )}
+              <div style={{fontSize:9,color:"#777",marginTop:8,lineHeight:1.5}}>
+                சனி ஒரு ராசியில் 2½ வருடம் • குரு ஒரு ராசியில் 1 வருடம் தங்கும் • சந்திர ராசியிலிருந்து கணிக்கப்பட்டது
+              </div>
+            </div>
+          )}
+
+          {/* ═══ பரிகாரம் ═══ */}
+          {advancedView==="remedies" && remediesData && remediesData.length > 0 && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:8,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                💎 பரிகாரம் — கோயில், மந்திரம், ரத்தினம்
+              </div>
+              {remediesData.filter(r => r.needsRemedy).length > 0 && (
+                <div style={{padding:"10px 12px",background:"#fff3e0",borderRadius:8,border:"1px solid #ffe0b2",marginBottom:10}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#7a5200",marginBottom:4}}>⚠ பரிகாரம் தேவையான கிரகங்கள்</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                    {remediesData.filter(r=>r.needsRemedy).map((r,i)=>(
+                      <span key={i} style={{fontSize:10,padding:"3px 8px",borderRadius:4,fontWeight:600,
+                        background:r.isDebilitated?"#fde8e8":"#fff8e1",
+                        color:r.isDebilitated?"#cc1a1a":"#7a5200",
+                        border:`1px solid ${r.isDebilitated?"#f5c6c6":"#ffe082"}`}}>
+                        {r.ta} {r.isDebilitated?"(நீசம்)":r.isWeak?"(பலவீனம்)":"(பகை)"}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {remediesData.map((r,i) => (
+                <div key={i} style={{marginBottom:8,padding:"10px 12px",background:r.needsRemedy?"#fffbeb":"#f8f8f8",
+                  borderRadius:8,border:`1px solid ${r.needsRemedy?"#fde68a":"#e8e8e8"}`,
+                  borderLeft:r.needsRemedy?`3px solid ${r.gemColor}`:"3px solid #e0e0e0"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#1a1a1a"}}>{r.ta} <span style={{fontSize:10,color:"#666",fontWeight:400}}>({r.rashi})</span></div>
+                    {r.needsRemedy && <span style={{fontSize:8,padding:"2px 6px",borderRadius:4,background:"#fde8e8",color:"#cc1a1a",fontWeight:700}}>பரிகாரம் தேவை</span>}
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,fontSize:10}}>
+                    <div><span style={{color:"#b8860b",fontWeight:600}}>💎 ரத்தினம்:</span> <span style={{color:"#333"}}>{r.gem}</span></div>
+                    <div><span style={{color:"#b8860b",fontWeight:600}}>🏛 கோயில்:</span> <span style={{color:"#333"}}>{r.temple}</span></div>
+                    <div><span style={{color:"#b8860b",fontWeight:600}}>📅 கிழமை:</span> <span style={{color:"#333"}}>{r.day}</span></div>
+                    <div><span style={{color:"#b8860b",fontWeight:600}}>🎨 நிறம்:</span> <span style={{color:"#333"}}>{r.color}</span></div>
+                    <div><span style={{color:"#b8860b",fontWeight:600}}>🌸 மலர்:</span> <span style={{color:"#333"}}>{r.flower}</span></div>
+                    <div><span style={{color:"#b8860b",fontWeight:600}}>🧭 திசை:</span> <span style={{color:"#333"}}>{r.direction}</span></div>
+                    <div style={{gridColumn:"1/3"}}><span style={{color:"#b8860b",fontWeight:600}}>🙏 தானம்:</span> <span style={{color:"#333"}}>{r.donate}</span></div>
+                  </div>
+                  <div style={{marginTop:6,padding:"6px 8px",background:"#f0f9ff",borderRadius:4,border:"1px solid #bae6fd"}}>
+                    <div style={{fontSize:9,color:"#0369a1",fontWeight:600}}>🔔 மந்திரம்: <span style={{fontWeight:400}}>{r.mantra}</span></div>
+                    <div style={{fontSize:9,color:"#666",marginTop:2}}>ஜெப எண்ணிக்கை: {r.mantraCount}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
