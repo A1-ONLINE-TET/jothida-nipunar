@@ -1631,7 +1631,6 @@ function generateJathagamPDF(formData, horoscope, prediction) {
   const planetRows = horoscope.placements.map((p,i) => {
     const isL2 = horoscope.placements[i].house === 1;
     return `<tr style="background:${i%2===0?"#fffdf5":"#fdf6e3"}">
-      <td style="padding:8px 10px;text-align:center;font-size:18px;color:${planetColors[i]||"#333"}">${p.symbol}</td>
       <td style="padding:8px 10px;font-weight:700;color:#7b1c1c;font-size:13px;">${p.ta}</td>
       <td style="padding:8px 10px;color:#555;font-size:12px;">${p.en}</td>
       <td style="padding:8px 10px;font-weight:600;color:#1a1a2e;font-size:13px;">${p.rashi}</td>
@@ -2743,12 +2742,12 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
       const h = horoscope;
       const pRows = h.placements.map((p,i)=>{
         const lord = getNakshatraLord(p.nakIdx);
-        return `<tr style="background:${i%2===0?"#fff":"#f9f9f0"}"><td style="padding:6px 8px">${p.symbol} ${p.ta}</td><td style="padding:6px 8px;font-family:monospace">${p.dms||p.fullLong}</td><td style="padding:6px 8px">${p.rashi}</td><td style="padding:6px 8px">${p.nakshatraTa||""} - ${p.pada||""}</td><td style="padding:6px 8px;color:#8b4500">${lord.symbol} ${lord.name}</td></tr>`;
+        return `<tr style="background:${i%2===0?"#fff":"#f9f9f0"}"><td style="padding:6px 8px">${p.ta}</td><td style="padding:6px 8px;font-family:monospace">${p.dms||p.fullLong}</td><td style="padding:6px 8px">${p.rashi}</td><td style="padding:6px 8px">${p.nakshatraTa||""} - ${p.pada||""}</td><td style="padding:6px 8px;color:#8b4500">${lord.name}</td></tr>`;
       }).join("");
       // Full Dasha table (all 9 periods with dates)
       const dashaRows = dashaData ? dashaData.dashas.map((d,i)=>
         `<tr style="background:${d.isCurrent?"#e8f5e9":i%2===0?"#fff":"#f9f9f0"}${d.isCurrent?";font-weight:700":""}">
-          <td style="padding:6px 8px">${d.symbol} ${d.name}${d.isCurrent?' <span style="color:#1a8d1a;font-size:10px">(நடப்பு)</span>':""}</td>
+          <td style="padding:6px 8px">${d.name}${d.isCurrent?' <span style="color:#1a8d1a;font-size:10px">(நடப்பு)</span>':""}</td>
           <td style="padding:6px 8px;text-align:center">${d.years} ஆண்டு</td>
           <td style="padding:6px 8px">${d.startDate.toLocaleDateString("ta-IN")}</td>
           <td style="padding:6px 8px">${d.endDate.toLocaleDateString("ta-IN")}</td>
@@ -2892,7 +2891,7 @@ ${aiPart}
                         <td style={{padding:"5px 2px",textAlign:"center",color:"#1a1a1a",fontFamily:"monospace"}}>{horoscope.lagnaDMS}</td>
                         <td style={{padding:"5px 2px",color:"#7b1c1c"}}>{horoscope.lagnaName}</td>
                         <td style={{padding:"5px 2px",color:"#333333"}}>{horoscope.lagnaNakshatra} - {horoscope.lagnaPada}</td>
-                        <td style={{padding:"5px 2px",color:"#8b6914",fontWeight:600}}>{lagnaLord.symbol} {lagnaLord.name}</td>
+                        <td style={{padding:"5px 2px",color:"#8b6914",fontWeight:600}}>{lagnaLord.name}</td>
                       </tr>
                     );
                   })()}
@@ -2900,11 +2899,11 @@ ${aiPart}
                     const lord = getNakshatraLord(p.nakIdx);
                     return (
                       <tr key={i} style={{borderBottom:"1px solid #e8e0e0",background:i%2?"#faf5f0":"transparent"}}>
-                        <td style={{padding:"5px 2px",color:"#1a1a1a",fontWeight:600}}>{p.symbol} {p.ta}</td>
+                        <td style={{padding:"5px 2px",color:"#1a1a1a",fontWeight:600}}>{p.ta}</td>
                         <td style={{padding:"5px 2px",textAlign:"center",color:"#1a1a1a",fontFamily:"monospace"}}>{p.dms}</td>
                         <td style={{padding:"5px 2px",color:"#7b1c1c",fontWeight:600}}>{p.rashi}</td>
                         <td style={{padding:"5px 2px",color:"#333333"}}>{p.nakshatraTa} - {p.pada}</td>
-                        <td style={{padding:"5px 2px",color:"#8b6914",fontWeight:600}}>{lord.symbol} {lord.name}</td>
+                        <td style={{padding:"5px 2px",color:"#8b6914",fontWeight:600}}>{lord.name}</td>
                       </tr>
                     );
                   })}
@@ -2958,7 +2957,7 @@ ${aiPart}
                   </div>
                   <div style={{background:"#f0c75e08",borderRadius:8,padding:"8px 10px"}}>
                     <div style={{fontSize:9,color:"#555555",marginBottom:2}}>⭐ நட்சத்திர அதிபதி</div>
-                    <div style={{fontSize:11,fontWeight:700,color:"#7b1c1c"}}>{nakLord.symbol} {nakLord.name}</div>
+                    <div style={{fontSize:11,fontWeight:700,color:"#7b1c1c"}}>{nakLord.name}</div>
                   </div>
                 </div>
               </div>
@@ -3139,8 +3138,7 @@ ${aiPart}
               {d10Data.map((p,i) => (
                 <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",
                   borderBottom:i<d10Data.length-1?"1px solid #e8e0e0":"none"}}>
-                  <span style={{fontSize:15,width:20}}>{p.symbol}</span>
-                  <span style={{fontSize:11,color:"#1a1a1a",width:64}}>{p.ta}</span>
+                  <span style={{fontSize:11,color:"#1a1a1a",width:64,fontWeight:600}}>{p.ta}</span>
                   <span style={{fontSize:10,color:"#666666"}}>D1: {p.rashi}</span>
                   <span style={{fontSize:11,color:"#b8860b"}}>→</span>
                   <span style={{fontSize:11,fontWeight:600,color:"#7b1c1c",flex:1,textAlign:"right"}}>{p.d10RashiName}</span>
@@ -3172,7 +3170,7 @@ ${aiPart}
                   <tbody>
                     {d2Data.map((p,i) => (
                       <tr key={i} style={{borderBottom:"1px solid #eee",background:i%2?"#fafafa":"transparent"}}>
-                        <td style={{padding:"6px 4px",color:"#1a1a1a"}}>{p.symbol} {p.ta}</td>
+                        <td style={{padding:"6px 4px",color:"#1a1a1a",fontWeight:600}}>{p.ta}</td>
                         <td style={{padding:"6px 4px",textAlign:"center",color:"#7b1c1c",fontWeight:600}}>{p.d2RashiName?.slice(0,4)}</td>
                         <td style={{padding:"6px 4px",textAlign:"center",color:"#7b1c1c",fontWeight:600}}>{d3Data[i]?.d3RashiName?.slice(0,4)}</td>
                         <td style={{padding:"6px 4px",textAlign:"center",color:"#7b1c1c",fontWeight:600}}>{d12Data[i]?.d12RashiName?.slice(0,4)}</td>
@@ -3191,7 +3189,7 @@ ${aiPart}
                         background:p.d60Nature==="நல்ல"?"#e6f4ea":p.d60Nature==="தீய"?"#fde8e8":"#f5f5f5",
                         color:p.d60Nature==="நல்ல"?"#0d7a30":p.d60Nature==="தீய"?"#cc1a1a":"#666",
                         border:`1px solid ${p.d60Nature==="நல்ல"?"#b7e1c7":p.d60Nature==="தீய"?"#f5c6c6":"#ddd"}`}}>
-                        {p.symbol} {p.d60Name} ({p.d60Nature})
+                        {p.ta} — {p.d60Name} ({p.d60Nature})
                       </div>
                     ))}
                   </div>
@@ -3214,7 +3212,6 @@ ${aiPart}
                 <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:(expandedDasha===i||String(expandedDasha).startsWith(i+"-"))?"none":"1px solid #e8e0e0",
                   background:d.isCurrent?"#fdf6e3":"transparent",cursor:"pointer"}}
                   onClick={()=>setExpandedDasha(expandedDasha===i||(typeof expandedDasha==='string'&&expandedDasha.startsWith(i+"-"))?null:i)}>
-                  <span style={{fontSize:14,width:18}}>{d.symbol}</span>
                   <div style={{flex:1}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <span style={{fontSize:11,fontWeight:d.isCurrent?700:400,color:d.isCurrent?"#7b1c1c":"#333333"}}>{d.name} தசை</span>
@@ -3235,7 +3232,6 @@ ${aiPart}
                         <div style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",cursor:"pointer",
                           background:ad.isCurrent?"#f0e8d0":"transparent",borderRadius:4}}
                           onClick={(e)=>{e.stopPropagation();setExpandedDasha(expandedDasha===`${i}-${j}`?i:`${i}-${j}`)}}>
-                          <span style={{fontSize:11,width:14}}>{ad.symbol}</span>
                           <span style={{fontSize:10,flex:1,color:ad.isCurrent?"#b8860b":"#333333"}}>{ad.name}
                             {ad.isCurrent&&<span style={{fontSize:7,background:"#e8dcc0",color:"#b8860b",padding:"0 4px",borderRadius:3,marginLeft:4,fontWeight:700}}>நடப்பு</span>}
                           </span>
@@ -3248,7 +3244,6 @@ ${aiPart}
                             {ad.pratyantardashas.map((pad,k)=>(
                               <div key={k} style={{display:"flex",alignItems:"center",gap:4,padding:"2px 0",
                                 background:pad.isCurrent?"#e8f5e9":"transparent",borderRadius:3}}>
-                                <span style={{fontSize:9,width:12}}>{pad.symbol}</span>
                                 <span style={{fontSize:9,flex:1,color:pad.isCurrent?"#0d7a30":"#555555"}}>{pad.name}
                                   {pad.isCurrent&&<span style={{fontSize:6,background:"#d4edda",color:"#0d7a30",padding:"0 3px",borderRadius:3,marginLeft:3,fontWeight:700}}>நடப்பு</span>}
                                 </span>
@@ -3493,13 +3488,13 @@ ${aiPart}
                 <div style={{background:"#f8f4ea",borderRadius:8,padding:"8px 10px"}}>
                   <div style={{fontSize:8,color:"#666666",marginBottom:2}}>மகாதசை</div>
                   <div style={{fontSize:14,fontWeight:800,color:"#7b1c1c"}}>
-                    {currentDasha.mahadasha.symbol} {currentDasha.mahadasha.name}
+                    {currentDasha.mahadasha.name}
                   </div>
                 </div>
                 <div style={{background:"#f8f4ea",borderRadius:8,padding:"8px 10px"}}>
                   <div style={{fontSize:8,color:"#666666",marginBottom:2}}>புக்தி (சூட்சுமை)</div>
                   <div style={{fontSize:14,fontWeight:800,color:"#b8860b"}}>
-                    {currentDasha.bhukti?.symbol} {currentDasha.bhukti?.name || currentDasha.mahadasha.name}
+                    {currentDasha.bhukti?.name || currentDasha.mahadasha.name}
                   </div>
                 </div>
               </div>
@@ -3639,7 +3634,7 @@ ${aiPart}
                   </div>
                   <div style={{background:"#f2ecda",borderRadius:6,padding:"6px 8px",textAlign:"center"}}>
                     <div style={{fontSize:8,color:"#666666"}}>{today.isOtherDate?"அன்று நட்சத்திரம்":"இன்று நட்சத்திரம்"}</div>
-                    <div style={{fontSize:10,fontWeight:700,color:"#b8860b"}}>{todayNakLord.symbol} {todayNakLord.name}</div>
+                    <div style={{fontSize:10,fontWeight:700,color:"#b8860b"}}>{todayNakLord.name}</div>
                   </div>
                 </div>
               </div>
@@ -3729,8 +3724,7 @@ ${aiPart}
                 borderBottom:i<gochara.results.length-1?"1px solid #7b1c1c08":"none",
                 borderLeft:`3px solid ${grahaCardBorder(p.ta)}`,marginBottom:2,borderRadius:4,
                 background:`${grahaCardBorder(p.ta)}08`}}>
-                <span style={{fontSize:15,width:20}}>{p.symbol}</span>
-                <span style={{fontSize:11,color:T.text,flex:1}}>{p.ta} — {p.rashi}</span>
+                <span style={{fontSize:11,color:T.text,flex:1,fontWeight:600}}>{p.ta} — {p.rashi}</span>
                 <span style={{fontSize:9,color:T.textMuted}}>{p.houseFromMoon}ஆம் வீடு</span>
                 <span style={{
                   fontSize:8, fontWeight:700, padding:"2px 7px", borderRadius:5,
