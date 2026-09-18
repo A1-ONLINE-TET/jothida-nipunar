@@ -2655,8 +2655,12 @@ export default function AstrologyApp() {
       setNavamsaStrength(calcNavamsaStrength(result.placements));
       setShadBala(calcShadbala(result.placements, result.lagna));
       // Transit: generate today's planetary positions for Gochara overlay
-      const todayISO = new Date().toISOString().slice(0,10);
-      const nowH = new Date().getHours(), nowM = new Date().getMinutes();
+      // Fixed: new Date().toISOString() is UTC-based and incorrectly shows YESTERDAY's
+      // date for IST users between 12:00–5:29 AM (UTC lags IST by 5:30 hours). Use local
+      // date components instead so the transit date always matches the viewer's actual day.
+      const _now1 = new Date();
+      const todayISO = `${_now1.getFullYear()}-${String(_now1.getMonth()+1).padStart(2,'0')}-${String(_now1.getDate()).padStart(2,'0')}`;
+      const nowH = _now1.getHours(), nowM = _now1.getMinutes();
       const geoT = resolveBirthGeo(formData);
       const transitH = generateHoroscope(todayISO, `${nowH}:${nowM}`, geoT.lat, geoT.lon);
       const birthMoon = result.placements.find(p => p.ta === "சந்திரன்");
@@ -2695,8 +2699,10 @@ export default function AstrologyApp() {
       setNavamsaStrength(calcNavamsaStrength(h.placements));
       setShadBala(calcShadbala(h.placements, h.lagna));
       // Transit: generate today's planetary positions for Gochara overlay
-      const todayISO2 = new Date().toISOString().slice(0,10);
-      const nowH2 = new Date().getHours(), nowM2 = new Date().getMinutes();
+      // Fixed: same UTC/local timezone bug as above — use local date components.
+      const _now2 = new Date();
+      const todayISO2 = `${_now2.getFullYear()}-${String(_now2.getMonth()+1).padStart(2,'0')}-${String(_now2.getDate()).padStart(2,'0')}`;
+      const nowH2 = _now2.getHours(), nowM2 = _now2.getMinutes();
       const transitH2 = generateHoroscope(todayISO2, `${nowH2}:${nowM2}`, geo.lat, geo.lon);
       const birthMoon2 = h.placements.find(p => p.ta === "சந்திரன்");
       setTransitOverlay(calcTransitOverlay(h.placements, transitH2.placements, birthMoon2?.rashiIdx || 0));
@@ -2725,10 +2731,13 @@ export default function AstrologyApp() {
 
   const getCurrentDashaInfo = () => {
     if (!dashaData) return "";
-    const md = dashaData.dashas.find(d => d.isCurrent);
+    // Fixed: never rely on .isCurrent — it's a snapshot frozen at the moment the horoscope
+    // was first generated and never updates again. Always recompute fresh against live "now".
+    const now = new Date();
+    const md = dashaData.dashas.find(d => now >= d.startDate && now < d.endDate);
     if (!md) return "";
-    const ad = md.antardashas?.find(a => a.isCurrent);
-    const pad = ad?.pratyantardashas?.find(p => p.isCurrent);
+    const ad = md.antardashas?.find(a => now >= a.startDate && now < a.endDate);
+    const pad = ad?.pratyantardashas?.find(p => now >= p.startDate && now < p.endDate);
     let info = `நடப்பு மகா தசை: ${md.name} (${md.startDate.toLocaleDateString("ta-IN")} — ${md.endDate.toLocaleDateString("ta-IN")})`;
     if (ad) info += `\nநடப்பு புக்தி (அந்தர் தசை): ${md.name}-${ad.name} (${ad.duration})`;
     if (pad) info += `\nநடப்பு பிரத்யந்தர் தசை: ${md.name}-${ad.name}-${pad.name} (${pad.duration})`;
