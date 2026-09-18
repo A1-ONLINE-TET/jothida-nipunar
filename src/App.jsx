@@ -2419,6 +2419,13 @@ export default function AstrologyApp() {
       setBhavaChart(calcBhavaChart(result.placements, lagnaFullDeg));
       setNavamsaStrength(calcNavamsaStrength(result.placements));
       setShadBala(calcShadbala(result.placements, result.lagna));
+      // Transit: generate today's planetary positions for Gochara overlay
+      const todayISO = new Date().toISOString().slice(0,10);
+      const nowH = new Date().getHours(), nowM = new Date().getMinutes();
+      const geoT = resolveBirthGeo(formData);
+      const transitH = generateHoroscope(todayISO, `${nowH}:${nowM}`, geoT.lat, geoT.lon);
+      const birthMoon = result.placements.find(p => p.ta === "சந்திரன்");
+      setTransitOverlay(calcTransitOverlay(result.placements, transitH.placements, birthMoon?.rashiIdx || 0));
       const moonP = result.placements.find(p => p.ta === "சந்திரன்");
       const moonLongFromApi = moonP ? (moonP.rashiIdx * 30 + moonP.degExact) : 0;
       setDashaData(calculateDasha(moonLongFromApi, dobISO));
@@ -2447,6 +2454,12 @@ export default function AstrologyApp() {
       setBhavaChart(calcBhavaChart(h.placements, lagnaFullDeg2));
       setNavamsaStrength(calcNavamsaStrength(h.placements));
       setShadBala(calcShadbala(h.placements, h.lagna));
+      // Transit: generate today's planetary positions for Gochara overlay
+      const todayISO2 = new Date().toISOString().slice(0,10);
+      const nowH2 = new Date().getHours(), nowM2 = new Date().getMinutes();
+      const transitH2 = generateHoroscope(todayISO2, `${nowH2}:${nowM2}`, geo.lat, geo.lon);
+      const birthMoon2 = h.placements.find(p => p.ta === "சந்திரன்");
+      setTransitOverlay(calcTransitOverlay(h.placements, transitH2.placements, birthMoon2?.rashiIdx || 0));
       // Calculate moon longitude for dasha
       const [dY,dM,dD] = dobISO.split('-').map(Number);
       const dDate = new Date(dY, dM-1, dD); // local-time construction, matches new Date(2000,0,1) reference below — avoids UTC/local mismatch
