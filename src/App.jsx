@@ -110,9 +110,30 @@ async function searchPlacesOSM(query) {
 // 2. Fallback: fuzzy match against the offline ~51-city CITIES database (geocodeCity)
 function resolveBirthGeo(fd) {
   if (fd.pobLat != null && fd.pobLon != null) {
-    return { lat: fd.pobLat, lon: fd.pobLon, matched: true, precise: true, name: fd.pob };
+    // Reject geographically invalid coordinates (e.g. a mistyped manual entry like
+    // lat=950) rather than feeding them into the astronomical engine — fall back to
+    // the fuzzy city-database match instead, same as if no precise coords were set.
+    const validLat = fd.pobLat >= -90 && fd.pobLat <= 90;
+    const validLon = fd.pobLon >= -180 && fd.pobLon <= 180;
+    if (validLat && validLon) {
+      return { lat: fd.pobLat, lon: fd.pobLon, matched: true, precise: true, name: fd.pob };
+    }
   }
   return { ...geocodeCity(fd.pob), precise: false };
+}
+
+// Escapes HTML special characters before interpolating user-entered text (name, place)
+// or AI-generated text into a raw HTML string (PDF generation via document.write/Blob).
+// JSX auto-escapes on its own, so this is only needed for these raw HTML template paths —
+// without it, a name containing '<', '>', '&' or '"' could corrupt the generated PDF's markup.
+function escapeHtml(str) {
+  if (str == null) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2130,7 +2151,7 @@ function generateJathagamPDF(formData, horoscope, prediction) {
 <html lang="ta">
 <head>
 <meta charset="UTF-8"/>
-<title>${formData.name} — ஜாதகம்</title>
+<title>${escapeHtml(formData.name)} — ஜாதகம்</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@300;400;600;700&family=Noto+Serif+Tamil:wght@400;700&display=swap" rel="stylesheet"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -2215,7 +2236,7 @@ td{border-bottom:1px solid #e8e0d0;}
       <img src="${MURUGAN_IMG}" alt="முருகன்" style="width:90px;height:90px;object-fit:contain;border-radius:50%;border:2px solid #d4a853;box-shadow:0 0 20px #d4a85340;margin-bottom:8px;"/>
       <div class="header-stars">✦ ✦ ✦ ✦ ✦</div>
       <div class="header-title">ஜாதக விவரம்</div>
-      <div class="header-name">${formData.name}</div>
+      <div class="header-name">${escapeHtml(formData.name)}</div>
       <div class="header-sub">JATHAGAM &nbsp;•&nbsp; VEDIC BIRTH CHART &nbsp;•&nbsp; தமிழ் ஜோதிடம்</div>
       <div class="header-stars" style="margin-top:10px;">★ ★ ★ ★ ★</div>
     </div>
@@ -2236,7 +2257,7 @@ td{border-bottom:1px solid #e8e0d0;}
       <div class="info-grid">
         <div class="info-card">
           <div class="info-lbl">பெயர் / Name</div>
-          <div class="info-val">${formData.name}</div>
+          <div class="info-val">${escapeHtml(formData.name)}</div>
         </div>
         <div class="info-card">
           <div class="info-lbl">பிறந்த தேதி / Date of Birth</div>
@@ -2249,7 +2270,7 @@ td{border-bottom:1px solid #e8e0d0;}
         </div>
         <div class="info-card">
           <div class="info-lbl">பிறந்த இடம் / Place of Birth</div>
-          <div class="info-val">${formData.pob||"—"}</div>
+          <div class="info-val">${escapeHtml(formData.pob||"—")}</div>
         </div>
       </div>
     </div>
@@ -2343,6 +2364,10 @@ td{border-bottom:1px solid #e8e0d0;}
 </html>`;
 
   const win = window.open("", "_blank");
+  if (!win) {
+    alert("பாப்-அப் தடுக்கப்பட்டுள்ளது. இந்த தளத்திற்கு pop-ups-ஐ browser-ல் அனுமதித்துவிட்டு மீண்டும் முயற்சிக்கவும்.");
+    return;
+  }
   win.document.write(html);
   win.document.close();
   win.onload = () => setTimeout(() => win.print(), 1000);
@@ -2421,6 +2446,7 @@ export default function AstrologyApp() {
   const [placeDropdownOpen, setPlaceDropdownOpen] = useState(false);
   const [showManualGeo, setShowManualGeo] = useState(false);
   const placeSearchTimer = useRef(null);
+  const isSubmittingRef = useRef(false); // guards against a rapid double-click firing handleSubmit twice during the 300ms screen-fade transition
   // New states
   const [dashaData, setDashaData] = useState(null);
   const [navamsaData, setNavamsaData] = useState(null);
@@ -2613,6 +2639,13 @@ export default function AstrologyApp() {
 
   const handleSubmit = async () => {
     if(!formData.dob||!formData.name||!isValidDDMMYYYY(formData.dob))return;
+    // Prevent a rapid double-click from firing this twice: goTo()'s screen switch is
+    // delayed by a 300ms fade, so the FORM screen (and this button) stays mounted briefly
+    // after the first click. isSubmittingRef is a ref (updates synchronously, unlike state)
+    // so this check is reliable even for clicks that land within that same tick.
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setTimeout(() => { isSubmittingRef.current = false; }, 500);
     goTo(SCREEN.LOADING);
 
     // Convert dd-mm-yyyy → YYYY-MM-DD (ISO) for all engine calculations
@@ -2969,7 +3002,7 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
             {authMode==="register"&&(
               <div><label style={labelStyle}>பெயர்</label>
-              <input style={inputStyle} placeholder="உங்கள் பெயர்" value={formData.name}
+              <input style={inputStyle} placeholder="உங்கள் பெயர்" value={formData.name} maxLength={60}
                 onChange={e=>setFormData(d=>({...d,name:e.target.value}))}/></div>
             )}
             <div><label style={labelStyle}>மின்னஞ்சல்</label>
@@ -3009,7 +3042,7 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
         <div style={card}>
           <div style={{display:"flex",flexDirection:"column",gap:18}}>
             <div><label style={labelStyle}>பெயர் *</label>
-            <input style={inputStyle} placeholder="உங்கள் பெயர்" value={formData.name}
+            <input style={inputStyle} placeholder="உங்கள் பெயர்" value={formData.name} maxLength={60}
               onChange={e=>setFormData(d=>({...d,name:e.target.value}))}/></div>
             <div><label style={labelStyle}>பிறந்த தேதி * <span style={{fontSize:10,color:"#555555",fontWeight:400}}>(DD.MM.YYYY)</span></label>
             <input type="text" inputMode="numeric" maxLength={10}
@@ -3127,21 +3160,28 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
               }}>{showManualGeo?"▲ கைமுறை Lat/Lon மறை":"✏️ கூடுதல் துல்லியம்: Lat/Lon நேரடியாக உள்ளிடவும்"}</button>
 
               {showManualGeo && (
-                <div style={{display:"flex",gap:8,marginTop:6}}>
-                  <input type="number" step="0.0001" placeholder="Latitude (எ.கா. 9.9252)"
-                    style={{...inputStyle,fontSize:12,padding:"9px 10px"}}
-                    value={formData.pobSource==="manual" ? (formData.pobLat ?? "") : ""}
-                    onChange={e=>{
-                      const lat = e.target.value === "" ? null : parseFloat(e.target.value);
-                      setFormData(d=>({...d, pobLat:lat, pobSource: lat!=null && d.pobLon!=null ? "manual" : d.pobSource}));
-                    }}/>
-                  <input type="number" step="0.0001" placeholder="Longitude (எ.கா. 78.1198)"
-                    style={{...inputStyle,fontSize:12,padding:"9px 10px"}}
-                    value={formData.pobSource==="manual" ? (formData.pobLon ?? "") : ""}
-                    onChange={e=>{
-                      const lon = e.target.value === "" ? null : parseFloat(e.target.value);
-                      setFormData(d=>({...d, pobLon:lon, pobSource: lon!=null && d.pobLat!=null ? "manual" : d.pobSource}));
-                    }}/>
+                <div>
+                  <div style={{display:"flex",gap:8,marginTop:6}}>
+                    <input type="number" step="0.0001" min="-90" max="90" placeholder="Latitude (எ.கா. 9.9252)"
+                      style={{...inputStyle,fontSize:12,padding:"9px 10px"}}
+                      value={formData.pobSource==="manual" ? (formData.pobLat ?? "") : ""}
+                      onChange={e=>{
+                        const lat = e.target.value === "" ? null : parseFloat(e.target.value);
+                        setFormData(d=>({...d, pobLat:lat, pobSource: lat!=null && d.pobLon!=null ? "manual" : d.pobSource}));
+                      }}/>
+                    <input type="number" step="0.0001" min="-180" max="180" placeholder="Longitude (எ.கா. 78.1198)"
+                      style={{...inputStyle,fontSize:12,padding:"9px 10px"}}
+                      value={formData.pobSource==="manual" ? (formData.pobLon ?? "") : ""}
+                      onChange={e=>{
+                        const lon = e.target.value === "" ? null : parseFloat(e.target.value);
+                        setFormData(d=>({...d, pobLon:lon, pobSource: lon!=null && d.pobLat!=null ? "manual" : d.pobSource}));
+                      }}/>
+                  </div>
+                  {formData.pobSource==="manual" && ((formData.pobLat!=null && (formData.pobLat<-90||formData.pobLat>90)) || (formData.pobLon!=null && (formData.pobLon<-180||formData.pobLon>180))) && (
+                    <div style={{fontSize:10,marginTop:4,color:"#ff6b8a"}}>
+                      ⚠ தவறான coordinates — Latitude -90 முதல் 90 வரையும், Longitude -180 முதல் 180 வரையும் மட்டுமே செல்லுபடியாகும். சரிசெய்யும் வரை city database மதிப்பு பயன்படுத்தப்படும்.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -3299,8 +3339,8 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
           <div style="flex:1;min-width:280px;max-width:340px">${rashiSVG}</div>
           ${navSVG?`<div style="flex:1;min-width:280px;max-width:340px">${navSVG}</div>`:""}
         </div>`;
-      const aiPart = prediction ? `<div style="margin-top:20px;border-top:2px solid #1a8d1a;padding-top:16px"><h3 style="color:#1a8d1a;font-size:14px">🤖 AI ஜோதிட பலன்</h3><p style="font-size:13px;line-height:2;white-space:pre-wrap;margin-top:8px">${prediction}</p></div>` : "";
-      const html = `<!DOCTYPE html><html lang="ta"><head><meta charset="UTF-8"/><title>${formData.name} — ஜாதகம்</title>
+      const aiPart = prediction ? `<div style="margin-top:20px;border-top:2px solid #1a8d1a;padding-top:16px"><h3 style="color:#1a8d1a;font-size:14px">🤖 AI ஜோதிட பலன்</h3><p style="font-size:13px;line-height:2;white-space:pre-wrap;margin-top:8px">${escapeHtml(prediction)}</p></div>` : "";
+      const html = `<!DOCTYPE html><html lang="ta"><head><meta charset="UTF-8"/><title>${escapeHtml(formData.name)} — ஜாதகம்</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet"/>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Noto Sans Tamil',sans-serif;background:#fff;color:#222;padding:20px}
 .page{max-width:700px;margin:0 auto;border:3px solid #1a8d1a;border-radius:4px;overflow:hidden}
@@ -3316,13 +3356,13 @@ table.pt td{padding:6px 8px;border-bottom:1px solid #ddd}
 @media print{body{padding:0}.page{border:none}.no-print{display:none!important}}
 .btn{position:fixed;bottom:20px;right:20px;background:#1a8d1a;color:#fff;border:none;border-radius:30px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans Tamil',sans-serif;box-shadow:0 4px 16px #0003}
 </style></head><body><div class="page">
-<div class="hdr"><img src="${MURUGAN_IMG}" alt="முருகன்" style="width:70px;height:70px;object-fit:contain;border-radius:50%;border:2px solid #fff8;margin-bottom:8px;"/><h1>☉ ${formData.name} — ஜாதக விவரம்</h1><p>JATHAGAM • VEDIC BIRTH CHART</p></div>
+<div class="hdr"><img src="${MURUGAN_IMG}" alt="முருகன்" style="width:70px;height:70px;object-fit:contain;border-radius:50%;border:2px solid #fff8;margin-bottom:8px;"/><h1>☉ ${escapeHtml(formData.name)} — ஜாதக விவரம்</h1><p>JATHAGAM • VEDIC BIRTH CHART</p></div>
 <div class="body">
 <table class="info-tbl">
-<tr><td>பெயர்</td><td>: ${formData.name}</td></tr>
+<tr><td>பெயர்</td><td>: ${escapeHtml(formData.name)}</td></tr>
 <tr><td>பிறந்த நாள்</td><td>: ${formData.dob}</td></tr>
 <tr><td>பிறந்த நேரம்</td><td>: ${birthTime}</td></tr>
-<tr><td>பிறந்த இடம்</td><td>: ${formData.pob||"—"}</td></tr>
+<tr><td>பிறந்த இடம்</td><td>: ${escapeHtml(formData.pob||"—")}</td></tr>
 <tr><td>உதய லக்னம்</td><td>: ${h.lagnaName}</td></tr>
 <tr><td>ராசி</td><td>: ${h.moonRashi}</td></tr>
 <tr><td>விண்மீன்</td><td>: ${h.nakshatra}, பாதம் ${h.nakshatraPada||1}</td></tr>
@@ -3342,11 +3382,13 @@ ${aiPart}
       try {
         const blob = new Blob([html],{type:'text/html;charset=utf-8'});
         const url = URL.createObjectURL(blob);
-        window.open(url,'_blank');
+        const opened = window.open(url,'_blank');
         setTimeout(()=>URL.revokeObjectURL(url),10000);
+        if (!opened) throw new Error("popup-blocked");
       } catch(e) {
         const w = window.open('','_blank');
         if(w){w.document.write(html);w.document.close();}
+        else alert("பாப்-அப் தடுக்கப்பட்டுள்ளது. இந்த தளத்திற்கு pop-ups-ஐ browser-ல் அனுமதித்துவிட்டு மீண்டும் முயற்சிக்கவும்.");
       }
     };
 
