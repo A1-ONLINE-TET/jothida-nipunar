@@ -2630,26 +2630,31 @@ export default function AstrologyApp() {
       const data = await res.json();
       if (!data || !data.success) return null;
 
-      const asc = data.ascendant;
+      // NOTE: field names below match the LIVE API response schema exactly (verified against
+      // a real /api/horoscope call). Earlier this read data.ascendant/data.summary/pp.name_ta/
+      // .longitude, none of which exist in the actual response (real fields: data.lagna,
+      // root-level tithi/nakshatra_ta/moon_rashi_ta/etc, pp.ta, .fullLong) — so this always
+      // threw inside the try block and silently fell back to the local Jean Meeus engine,
+      // meaning the live Swiss Ephemeris backend was never actually being used.
+      const asc = data.lagna;
       const lagna = asc.rashi;
-      const toDMS = (deg) => { const dd=Math.floor(deg); const mf=(deg-dd)*60; const mm=Math.floor(mf); const ss=Math.floor((mf-mm)*60); return `${dd}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`; };
       const placements = PLANETS.map((p, i) => {
-        const ap = data.planets.find(pp => pp.name_ta === p.ta);
+        const ap = data.planets.find(pp => pp.ta === p.ta);
         if (!ap) return { ...p, rashi:RASHIS[0], rashiEn:RASHI_EN[0], degree:0, house:1, dms:"0:00:00", fullLong:0, nakshatraTa:"", pada:1, rashiIdx:0 };
         return {
           ...p, rashi:RASHIS[ap.rashi], rashiEn:RASHI_EN[ap.rashi], rashiIdx:ap.rashi,
-          degree:Math.floor(ap.degree), degExact:ap.degree, dms:toDMS(ap.longitude), fullLong:ap.longitude,
+          degree:Math.floor(ap.degree), degExact:ap.degree, dms:ap.dms, fullLong:ap.fullLong,
           house:ap.house, nakshatraTa:ap.nakshatra_ta, nakIdx:NAKSHATRAS.indexOf(ap.nakshatra_ta), pada:ap.nakshatra_pada
         };
       });
 
       return {
         lagna, lagnaName:RASHIS[lagna], lagnaEn:RASHI_EN[lagna],
-        lagnaDeg:Math.floor(asc.degree), lagnaDMS:toDMS(asc.longitude), lagnaFullLong:asc.longitude,
-        lagnaNakshatra:asc.nakshatra_ta, lagnaPada: Math.floor((asc.longitude % (360/27)) / (360/108)) + 1,
+        lagnaDeg:Math.floor(asc.degree), lagnaDMS:asc.dms, lagnaFullLong:asc.fullLong,
+        lagnaNakshatra:asc.nakshatra_ta, lagnaPada: asc.pada,
         placements,
-        nakshatra:data.summary.nakshatra, nakshatraPada:data.summary.nakshatra_pada,
-        moonRashi:data.summary.moon_rashi, sunSign:data.summary.sun_rashi,
+        nakshatra:data.nakshatra_ta, nakshatraPada:data.nakshatra_pada,
+        moonRashi:data.moon_rashi_ta, sunSign:data.sun_rashi_ta,
         tithi:data.tithi||"", paksham:data.paksham||"", yogam:data.yogam||"", karanam:data.karanam||"",
         birthTime:`${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`,
         apiSource:"Swiss Ephemeris (NASA JPL DE431)"
