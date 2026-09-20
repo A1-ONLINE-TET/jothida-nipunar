@@ -272,8 +272,20 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707) {
   const venusLong   = planetCalc(181.980, 58517.816, 0.00677, 131.53);
   const saturnLong  = planetCalc(50.077, 1222.114, 0.05415, 93.06);
 
-  // Rahu (Mean Node — retrograde)
-  const rahuLong = norm(norm(125.0446 - 1934.1363 * T) - ayanamsa);
+  // Rahu — True Node (includes nutation wobble for ±1.5° more accuracy than Mean Node)
+  // Mean longitude of ascending node
+  const rahuMeanLong = norm(125.0446 - 1934.1363 * T);
+  // Nutation correction terms (Meeus Ch.22, 5 principal terms) for True Node
+  const Om_r = rahuMeanLong * rad;
+  const Ls = norm(280.4665 + 36000.7698 * T) * rad; // mean Sun longitude
+  const Lm2 = Lm * rad; // mean Moon longitude (already computed above)
+  const trueNodeCorr =
+    - 1.4979 * Math.sin(2 * (Lm2 - Om_r))
+    - 0.1500 * Math.sin(Ls)
+    - 0.1226 * Math.sin(2 * Lm2)
+    + 0.1176 * Math.sin(2 * Om_r)
+    - 0.0801 * Math.sin(2 * (Ls - Om_r));
+  const rahuLong = norm(rahuMeanLong + trueNodeCorr - ayanamsa);
   const ketuLong = norm(rahuLong + 180);
 
   const allPlanetLongs = [sunLong, moonLong, marsLong, mercuryLong, jupiterLong, venusLong, saturnLong, rahuLong, ketuLong];
@@ -1430,6 +1442,30 @@ function detectClassicalYogas(placements, lagnaRashiIdx) {
     });
   }
 
+  // ═══ ITEM #15: SARASWATI & LAKSHMI YOGA ═══
+
+  // Saraswati Yoga: Jupiter, Venus, Mercury ALL in kendra/trikona/2nd house
+  if (guru && venus && mercury) {
+    const goodHouses = [1,2,4,5,7,9,10]; // kendra + trikona + 2nd
+    if (goodHouses.includes(guru.house) && goodHouses.includes(venus.house) && goodHouses.includes(mercury.house)) {
+      yogas.push({ name:"சரஸ்வதி யோகம்", nameEn:"Saraswati Yoga", type:"yoga", icon:"📚",
+        desc:"குரு, சுக்கிரன், புதன் மூவரும் கேந்திர/திரிகோண/2ஆம் வீட்டில் — அசாதாரண கல்வி, கலை, எழுத்தாற்றல், ஞானம் தரும் அரிய யோகம்" });
+    }
+  }
+
+  // Lakshmi Yoga: 9th lord in kendra/trikona AND strong (own/exalt/MT), lagna lord also strong
+  {
+    const lord9Name = getHouseLord(lagnaRashiIdx, 9);
+    const lord1Name = getHouseLord(lagnaRashiIdx, 1);
+    const lord9P = find(lord9Name), lord1P = find(lord1Name);
+    const isStrong = (p) => p && (p.rashiIdx === EXALT_RASHI[p.ta] || OWN_RASHI[p.ta]?.includes(p.rashiIdx) || isMoolaTrikona(p.ta, p.rashiIdx, p.degExact));
+    const inGoodHouse = (p) => p && [1,4,5,7,9,10].includes(p.house);
+    if (isStrong(lord9P) && inGoodHouse(lord9P) && isStrong(lord1P)) {
+      yogas.push({ name:"லக்ஷ்மி யோகம்", nameEn:"Lakshmi Yoga", type:"yoga", icon:"🪷",
+        desc:`9ஆம் வீட்டு நாதன் (${lord9Name}) பலமாக கேந்திர/திரிகோணத்தில் + லக்ன நாதன் (${lord1Name}) பலமாக — செல்வம், பாக்கியம், தெய்வ அருள் தரும் அரிய யோகம்` });
+    }
+  }
+
   return yogas;
 }
 
@@ -2056,19 +2092,58 @@ function calcShadbala(placements, lagnaIdx, dobISO, tob, lat, lon) {
   const dailyMotion = calcActualDailyMotion(dobISO, tob, lat, lon);
 
   const results = placements.filter(p => EXALT_RASHI[p.ta] !== undefined).map(p => {
-    // 1. ஸ்தான பலம் (Positional Strength) — includes Moolatrikona
-    let sthanaBala = 0;
-    if (p.rashiIdx === EXALT_RASHI[p.ta]) sthanaBala = 60;
-    else if (isMoolaTrikona(p.ta, p.rashiIdx, p.degExact)) sthanaBala = 55;
-    else if (OWN_RASHI[p.ta].includes(p.rashiIdx)) sthanaBala = 50;
-    else if (GRAHA_FRIENDSHIP[p.ta]?.friends.includes(RASHI_LORD_NAME[p.rashiIdx])) sthanaBala = 35;
-    else if (p.rashiIdx === DEBIL_RASHI[p.ta]) sthanaBala = 5;
-    else if (GRAHA_FRIENDSHIP[p.ta]?.enemies.includes(RASHI_LORD_NAME[p.rashiIdx])) sthanaBala = 15;
-    else sthanaBala = 25;
+    // 1. ஸ்தான பலம் (Positional Strength) — BPHS Ch.27 five classical sub-parts:
+
+    // 1a. உச்ச பலம் (Uchcha Bala) — distance from exaltation point, 0-60 virupas
+    const exaltDeg = (EXALT_RASHI[p.ta] || 0) * 30 + (EXALT_DEGREE[p.ta] || 15);
+    const fullDeg = p.rashiIdx * 30 + p.degExact;
+    let distFromExalt = Math.abs(fullDeg - exaltDeg);
+    if (distFromExalt > 180) distFromExalt = 360 - distFromExalt;
+    const uchchaBala = Math.max(0, (180 - distFromExalt) / 3); // 0 at debil, 60 at exalt
+
+    // 1b. ஓஜயுக்மராச்யம்ச பலம் (Ojhayugma Rashi-Amsa Bala) — odd/even sign+navamsa bonus
+    //     Masculine planets (Sun,Mars,Jup) gain 15 in odd rashi; feminine (Moon,Ven) in even;
+    //     Mercury gains in both. Same logic for the navamsa sign.
+    const isOddRashi = p.rashiIdx % 2 === 0; // 0-indexed: 0=Aries(odd), 1=Taurus(even)...
+    const navPart = Math.floor(p.degExact / (30/9));
+    const navRashi = (p.rashiIdx * 9 + navPart) % 12;
+    const isOddNav = navRashi % 2 === 0;
+    const MASCULINE = ["சூரியன்","செவ்வாய்","குரு"];
+    const FEMININE = ["சந்திரன்","சுக்கிரன்"];
+    let ojhRashi = 0, ojhNav = 0;
+    if (MASCULINE.includes(p.ta)) { if (isOddRashi) ojhRashi = 15; if (isOddNav) ojhNav = 15; }
+    else if (FEMININE.includes(p.ta)) { if (!isOddRashi) ojhRashi = 15; if (!isOddNav) ojhNav = 15; }
+    else { ojhRashi = 15; ojhNav = 15; } // Mercury — always 15
+    const ojhayugmaBala = ojhRashi + ojhNav; // 0/15/30
+
+    // 1c. கேந்திராதி பலம் (Kendradi Bala) — 60 in Kendra(1,4,7,10), 30 Panapara(2,5,8,11), 15 Apoklima(3,6,9,12)
+    const houseFromLagna = ((p.rashiIdx - lagnaIdx + 12) % 12) + 1;
+    const kendradiBala = KENDRA_HOUSES.includes(houseFromLagna) ? 60 : [2,5,8,11].includes(houseFromLagna) ? 30 : 15;
+
+    // 1d. த்ரேக்காண பலம் (Drekkana Bala) — 15 if masculine planet in 1st drekkana,
+    //     feminine in 2nd, neutral(mercury) in 3rd; else 0
+    const drekkana = Math.min(2, Math.floor(p.degExact / 10)); // 0,1,2
+    let drekkanaBala = 0;
+    if (MASCULINE.includes(p.ta) && drekkana === 0) drekkanaBala = 15;
+    else if (FEMININE.includes(p.ta) && drekkana === 1) drekkanaBala = 15;
+    else if (p.ta === "புதன்" && drekkana === 2) drekkanaBala = 15;
+    else if (p.ta === "சனி" && drekkana === 2) drekkanaBala = 15; // Saturn also 3rd drekkana
+
+    // 1e. Dignity-based score (incorporates Moolatrikona)
+    let dignityScore = 0;
+    if (p.rashiIdx === EXALT_RASHI[p.ta]) dignityScore = 20;
+    else if (isMoolaTrikona(p.ta, p.rashiIdx, p.degExact)) dignityScore = 18;
+    else if (OWN_RASHI[p.ta].includes(p.rashiIdx)) dignityScore = 15;
+    else if (GRAHA_FRIENDSHIP[p.ta]?.friends.includes(RASHI_LORD_NAME[p.rashiIdx])) dignityScore = 10;
+    else if (p.rashiIdx === DEBIL_RASHI[p.ta]) dignityScore = 2;
+    else if (GRAHA_FRIENDSHIP[p.ta]?.enemies.includes(RASHI_LORD_NAME[p.rashiIdx])) dignityScore = 5;
+    else dignityScore = 7; // neutral
+
+    const sthanaBala = Math.round(uchchaBala + ojhayugmaBala + kendradiBala + drekkanaBala + dignityScore);
 
     // 2. திக் பலம் (Directional Strength)
     const digHouse = DIG_BALA_HOUSES[p.ta] || 1;
-    const houseFromLagna = ((p.rashiIdx - lagnaIdx + 12) % 12) + 1;
+    // houseFromLagna already computed above in Kendradi Bala
     const digDist = Math.min(Math.abs(houseFromLagna - digHouse), 12 - Math.abs(houseFromLagna - digHouse));
     const digBala = Math.max(0, 60 - digDist * 10);
 
@@ -2128,9 +2203,21 @@ function calcShadbala(placements, lagnaIdx, dobISO, tob, lat, lon) {
                      p.ta === "புதன்" ? 420 : p.ta === "குரு" ? 390 : p.ta === "சுக்கிரன்" ? 330 : 300;
     const strong = total >= required * 0.6;
 
+    // ITEM #21: இஷ்ட பலம் & கஷ்ட பலம் (Ishta Phala / Kashta Phala) — BPHS Ch.27.40-41
+    // The FINAL PURPOSE of Shadbala: tells how much "desired" vs "undesired" results a planet gives.
+    // Ishta = sqrt(Uchcha Bala × Cheshta Bala), Kashta = sqrt((60 - Uchcha) × (60 - Cheshta))
+    const uBClamped = Math.max(0, Math.min(60, uchchaBala));
+    const cBClamped = Math.max(0, Math.min(60, cheshtaBala));
+    const ishtaPhala = Math.round(Math.sqrt(uBClamped * cBClamped) * 10) / 10;
+    const kashtaPhala = Math.round(Math.sqrt((60 - uBClamped) * (60 - cBClamped)) * 10) / 10;
+
     return {
       ta: p.ta, rashi: p.rashi,
       sthanaBala, digBala, kalaBala, cheshtaBala, naisargikaBala, drikBala,
+      // Sthana Bala sub-parts (Item #20)
+      uchchaBala: Math.round(uchchaBala * 10) / 10, ojhayugmaBala, kendradiBala, drekkanaBala, dignityScore,
+      // Ishta/Kashta Phala (Item #21)
+      ishtaPhala, kashtaPhala,
       total, required, strong,
       status: strong ? "பலமுள்ளது" : "பலவீனம்",
       yuddha: null // filled in below if this planet is in a Grahayuddha
