@@ -299,8 +299,59 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707) {
     return {
       ...p, rashi: RASHIS[rashi], rashiEn: RASHI_EN[rashi], rashiIdx: rashi,
       degree, degExact: degInSign, dms: toDMS(lng), fullLong: Math.round(lng*100)/100,
-      house, nakshatraTa: NAKSHATRAS[nak], nakIdx: nak, pada
+      house, nakshatraTa: NAKSHATRAS[nak], nakIdx: nak, pada,
+      isRetrograde: false, isCombust: false, isMoolaTri: false // enriched below
     };
+  });
+
+  // ── Enrich placements: Retrograde, Combustion, Moolatrikona ──
+  // Retrograde: compare planet longitude with +1 day using same engine internals
+  {
+    const JD2 = JD + 1; // next day
+    const T2 = (JD2 - 2451545.0) / 36525;
+    const norm2 = norm;
+    const ayanamsa2 = 23.856 + (T2 * 100 * 50.29 / 3600);
+    const planetCalc2 = (L0p, Tp, ep, wp) => {
+      const L = norm2(L0p + Tp * T2);
+      const w = norm2(wp + (Tp * 0.001) * T2);
+      const Ma = norm2(L - w);
+      const Mar = Ma * rad;
+      const C = (2 * ep - ep*ep*ep/4) * Math.sin(Mar) + (5/4) * ep * ep * Math.sin(2 * Mar);
+      return norm2(norm2(L + C * deg) - ayanamsa2);
+    };
+    const nextDayLongs = {
+      "செவ்வாய்":  planetCalc2(355.433, 19140.299, 0.09340, 336.06),
+      "புதன்":     planetCalc2(252.251, 149472.675, 0.20563, 77.46),
+      "குரு":      planetCalc2(34.351, 3034.906, 0.04839, 14.33),
+      "சுக்கிரன்": planetCalc2(181.980, 58517.816, 0.00677, 131.53),
+      "சனி":       planetCalc2(50.077, 1222.114, 0.05415, 93.06),
+    };
+    placements.forEach(p => {
+      if (p.ta === "ராகு" || p.ta === "கேது") { p.isRetrograde = true; return; }
+      if (p.ta === "சூரியன்" || p.ta === "சந்திரன்") return; // never retrograde
+      const nextLong = nextDayLongs[p.ta];
+      if (nextLong !== undefined) {
+        let diff = nextLong - p.fullLong;
+        if (diff > 180) diff -= 360;
+        if (diff < -180) diff += 360;
+        p.isRetrograde = diff < 0;
+      }
+    });
+  }
+  // Combustion: angular distance from Sun
+  const sunPl = placements.find(pp => pp.ta === "சூரியன்");
+  if (sunPl) {
+    placements.forEach(p => {
+      if (p.ta !== "சூரியன்" && p.ta !== "ராகு" && p.ta !== "கேது") {
+        p.isCombust = isCombust(p.ta, p.fullLong, sunPl.fullLong, p.isRetrograde);
+      }
+    });
+  }
+  // Moolatrikona flag
+  placements.forEach(p => {
+    if (MOOLA_TRIKONA[p.ta]) {
+      p.isMoolaTri = isMoolaTrikona(p.ta, p.rashiIdx, p.degExact);
+    }
   });
 
   // ── Tithi (Moon - Sun / 12) ──
@@ -952,6 +1003,31 @@ const EXALT_RASHI = {"சூரியன்":0,"சந்திரன்":1,"ச
 const EXALT_DEGREE = {"சூரியன்":10,"சந்திரன்":3,"செவ்வாய்":28,"புதன்":15,"குரு":5,"சுக்கிரன்":27,"சனி":20};
 const DEBIL_RASHI  = {"சூரியன்":6,"சந்திரன்":7,"செவ்வாய்":3,"புதன்":11,"குரு":9,"சுக்கிரன்":5,"சனி":0};
 const OWN_RASHI = {"சூரியன்":[4],"சந்திரன்":[3],"செவ்வாய்":[0,7],"புதன்":[2,5],"குரு":[8,11],"சுக்கிரன்":[1,6],"சனி":[9,10]};
+
+// ── MOOLATRIKONA — BPHS Ch.3: specific sign + degree range where a planet is
+// in its "office" (stronger than Own Sign, weaker than Exaltation). This is the
+// MOST important missing dignity level — every serious Jyotish software uses it.
+const MOOLA_TRIKONA = {
+  "சூரியன்":   { rashi:4,  fromDeg:0,  toDeg:20  },  // Leo 0°-20°
+  "சந்திரன்":  { rashi:1,  fromDeg:4,  toDeg:20  },  // Taurus 4°-20°
+  "செவ்வாய்":  { rashi:0,  fromDeg:0,  toDeg:12  },  // Aries 0°-12°
+  "புதன்":     { rashi:5,  fromDeg:16, toDeg:20  },  // Virgo 16°-20°
+  "குரு":      { rashi:8,  fromDeg:0,  toDeg:10  },  // Sagittarius 0°-10°
+  "சுக்கிரன்": { rashi:6,  fromDeg:0,  toDeg:15  },  // Libra 0°-15°
+  "சனி":       { rashi:10, fromDeg:0,  toDeg:20  },  // Aquarius 0°-20°
+};
+
+// ── COMBUSTION (Astangata/Dagdha) — BPHS Ch.25: when a planet is within these
+// degrees of the Sun's longitude, it is "burnt" and loses strength. Critical for
+// Graha Bala accuracy. Retrograde planets have slightly wider tolerance.
+const COMBUSTION_LIMITS = {
+  "சந்திரன்":  { normal:12, retro:12 },   // Moon: 12° (no retrograde)
+  "செவ்வாய்":  { normal:17, retro:17 },   // Mars: 17°
+  "புதன்":     { normal:14, retro:12 },   // Mercury: 14° (12° retro)
+  "குரு":      { normal:11, retro:11 },   // Jupiter: 11°
+  "சுக்கிரன்": { normal:10, retro:8  },   // Venus: 10° (8° retro)
+  "சனி":       { normal:15, retro:15 },   // Saturn: 15°
+};
 const RASHI_LORD_NAME = ["செவ்வாய்","சுக்கிரன்","புதன்","சந்திரன்","சூரியன்","புதன்","சுக்கிரன்","செவ்வாய்","குரு","சனி","சனி","குரு"];
 const GRAHA_FRIENDSHIP = {
   "சூரியன்": {friends:["சந்திரன்","செவ்வாய்","குரு"], enemies:["சுக்கிரன்","சனி"]},
@@ -963,19 +1039,40 @@ const GRAHA_FRIENDSHIP = {
   "சனி":      {friends:["புதன்","சுக்கிரன்"], enemies:["சூரியன்","சந்திரன்","செவ்வாய்"]},
 };
 
+// ── Helper: check if planet is in its Moolatrikona sign AND degree range
+function isMoolaTrikona(planetName, rashiIdx, degExact) {
+  const mt = MOOLA_TRIKONA[planetName];
+  if (!mt) return false;
+  return rashiIdx === mt.rashi && degExact >= mt.fromDeg && degExact <= mt.toDeg;
+}
+
+// ── Helper: check combustion — angular distance from Sun within limit
+function isCombust(planetName, planetFullLong, sunFullLong, isRetrograde) {
+  const limit = COMBUSTION_LIMITS[planetName];
+  if (!limit) return false; // Sun, Rahu, Ketu can't be combust
+  let angDist = Math.abs(planetFullLong - sunFullLong);
+  if (angDist > 180) angDist = 360 - angDist;
+  const threshold = isRetrograde ? limit.retro : limit.normal;
+  return angDist <= threshold;
+}
+
 function calcGrahaBala(placements) {
+  const sunP = placements.find(p => p.ta === "சூரியன்");
   return placements
     .filter(p => EXALT_RASHI[p.ta] !== undefined) // only the 7 classical planets (not Rahu/Ketu)
     .map(p => {
       const rashiIdx = p.rashiIdx;
       let score, status, statusEn;
 
+      // Full classical dignity hierarchy: Exalted > Moolatrikona > Own > Friend > Neutral > Enemy > Debilitated
       if (rashiIdx === EXALT_RASHI[p.ta]) {
         const closeness = 1 - Math.abs(p.degExact - EXALT_DEGREE[p.ta]) / 30;
         score = Math.round((7 + closeness * 3) * 10) / 10; // 7-10
         status = "உச்சம்"; statusEn = "Exalted";
       } else if (rashiIdx === DEBIL_RASHI[p.ta]) {
         score = 1.5; status = "நீசம்"; statusEn = "Debilitated";
+      } else if (isMoolaTrikona(p.ta, rashiIdx, p.degExact)) {
+        score = 8.5; status = "மூலத்திரிகோணம்"; statusEn = "Moolatrikona";
       } else if (OWN_RASHI[p.ta].includes(rashiIdx)) {
         score = 8; status = "சொந்த வீடு"; statusEn = "Own Sign";
       } else {
@@ -986,7 +1083,11 @@ function calcGrahaBala(placements) {
         else { score = 5; status = "சமன் வீடு"; statusEn = "Neutral Sign"; }
       }
 
-      return { ta: p.ta, symbol: p.symbol, rashi: p.rashi, score, status, statusEn };
+      // Combustion penalty — planet loses ~30% strength when combust
+      const combust = p.ta !== "சூரியன்" && sunP && isCombust(p.ta, p.fullLong, sunP.fullLong, p.isRetrograde);
+      if (combust) score = Math.round(Math.max(1, score * 0.7) * 10) / 10;
+
+      return { ta: p.ta, symbol: p.symbol, rashi: p.rashi, score, status, statusEn, combust };
     });
 }
 
@@ -1007,7 +1108,7 @@ function detectMahapurushaYogas(placements, lagna) {
   ["செவ்வாய்","புதன்","குரு","சுக்கிரன்","சனி"].forEach(planetName => {
     const p = placements.find(pp => pp.ta === planetName);
     if (!p) return;
-    const inOwnOrExalt = OWN_RASHI[planetName].includes(p.rashiIdx) || p.rashiIdx === EXALT_RASHI[planetName];
+    const inOwnOrExalt = OWN_RASHI[planetName].includes(p.rashiIdx) || p.rashiIdx === EXALT_RASHI[planetName] || isMoolaTrikona(planetName, p.rashiIdx, p.degExact);
     if (inOwnOrExalt && kendras.includes(p.house)) {
       found.push({ planet: planetName, symbol: p.symbol, house: p.house, ...MAHAPURUSHA_INFO[planetName] });
     }
@@ -1483,6 +1584,7 @@ function calcNavamsaStrength(placements) {
     let d9Status, d9StatusColor;
     if (navRashi === EXALT_RASHI[p.ta]) { d9Status = "உச்சம்"; d9StatusColor = "#0d7a30"; }
     else if (navRashi === DEBIL_RASHI[p.ta]) { d9Status = "நீசம்"; d9StatusColor = "#cc1a1a"; }
+    else if (MOOLA_TRIKONA[p.ta] && navRashi === MOOLA_TRIKONA[p.ta].rashi) { d9Status = "மூலத்திரிகோணம்"; d9StatusColor = "#0d7a30"; }
     else if (OWN_RASHI[p.ta].includes(navRashi)) { d9Status = "சொந்த வீடு"; d9StatusColor = "#0d7a30"; }
     else {
       const lord = RASHI_LORD_NAME[navRashi];
@@ -1742,9 +1844,10 @@ function calcShadbala(placements, lagnaIdx, dobISO, tob, lat, lon) {
   const dailyMotion = calcActualDailyMotion(dobISO, tob, lat, lon);
 
   const results = placements.filter(p => EXALT_RASHI[p.ta] !== undefined).map(p => {
-    // 1. ஸ்தான பலம் (Positional Strength)
+    // 1. ஸ்தான பலம் (Positional Strength) — includes Moolatrikona
     let sthanaBala = 0;
     if (p.rashiIdx === EXALT_RASHI[p.ta]) sthanaBala = 60;
+    else if (isMoolaTrikona(p.ta, p.rashiIdx, p.degExact)) sthanaBala = 55;
     else if (OWN_RASHI[p.ta].includes(p.rashiIdx)) sthanaBala = 50;
     else if (GRAHA_FRIENDSHIP[p.ta]?.friends.includes(RASHI_LORD_NAME[p.rashiIdx])) sthanaBala = 35;
     else if (p.rashiIdx === DEBIL_RASHI[p.ta]) sthanaBala = 5;
@@ -3787,7 +3890,8 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
       const h = horoscope;
       const pRows = h.placements.map((p,i)=>{
         const lord = getNakshatraLord(p.nakIdx);
-        return `<tr style="background:${i%2===0?"#fff":"#f9f9f0"}"><td style="padding:6px 8px">${p.ta}</td><td style="padding:6px 8px;font-family:monospace">${p.dms||p.fullLong}</td><td style="padding:6px 8px">${p.rashi}</td><td style="padding:6px 8px">${p.nakshatraTa||""} - ${p.pada||""}</td><td style="padding:6px 8px;color:#8b4500">${lord.name}</td></tr>`;
+        const flags = `${p.isRetrograde && p.ta !== "ராகு" && p.ta !== "கேது" ? ' <span style="color:#c00;font-size:9px">℞</span>' : ""}${p.isCombust ? ' <span style="color:#f60;font-size:9px">🔥</span>' : ""}${p.isMoolaTri ? ' <span style="color:#0a7;font-size:8px">MT</span>' : ""}`;
+        return `<tr style="background:${i%2===0?"#fff":"#f9f9f0"}"><td style="padding:6px 8px">${p.ta}${flags}</td><td style="padding:6px 8px;font-family:monospace">${p.dms||p.fullLong}</td><td style="padding:6px 8px">${p.rashi}</td><td style="padding:6px 8px">${p.nakshatraTa||""} - ${p.pada||""}</td><td style="padding:6px 8px;color:#8b4500">${lord.name}</td></tr>`;
       }).join("");
       // Full Dasha table (all 9 periods with dates)
       const dashaRows = dashaData ? dashaData.dashas.map((d,i)=>
@@ -3946,7 +4050,12 @@ ${aiPart}
                     const lord = getNakshatraLord(p.nakIdx);
                     return (
                       <tr key={i} style={{borderBottom:"1px solid #e8e0e0",background:i%2?"#faf5f0":"transparent"}}>
-                        <td style={{padding:"5px 2px",color:"#1a1a1a",fontWeight:600}}>{p.ta}</td>
+                        <td style={{padding:"5px 2px",color:"#1a1a1a",fontWeight:600}}>
+                          {p.ta}
+                          {p.isRetrograde && p.ta !== "ராகு" && p.ta !== "கேது" && <span style={{color:"#cc1a1a",fontSize:9,marginLeft:2}} title="வக்ரம் (Retrograde)">℞</span>}
+                          {p.isCombust && <span style={{color:"#ff6600",fontSize:9,marginLeft:2}} title="அஸ்தங்கம் (Combust)">🔥</span>}
+                          {p.isMoolaTri && <span style={{color:"#0d7a30",fontSize:8,marginLeft:2}} title="மூலத்திரிகோணம்">MT</span>}
+                        </td>
                         <td style={{padding:"5px 2px",textAlign:"center",color:"#1a1a1a",fontFamily:"monospace"}}>{p.dms}</td>
                         <td style={{padding:"5px 2px",color:"#7b1c1c",fontWeight:600}}>{p.rashi}</td>
                         <td style={{padding:"5px 2px",color:"#333333"}}>{p.nakshatraTa} - {p.pada}</td>
