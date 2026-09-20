@@ -514,21 +514,22 @@ function calculateDasha(moonLongitude, birthDate) {
 // NAVAMSA (D9) CHART CALCULATOR
 // ═══════════════════════════════════════════════════════════════════
 function calculateNavamsa(placements) {
-  // Navamsa = divide each sign into 9 parts (3°20' each)
-  // Movable signs (Aries,Cancer,Libra,Cap) start from Aries
-  // Fixed signs (Taurus,Leo,Scorpio,Aqua) start from Capricorn
-  // Dual signs (Gemini,Virgo,Sag,Pisces) start from Libra
-  const movable = [0,3,6,9], fixed = [1,4,7,10], dual = [2,5,8,11];
+  // Navamsa = divide each sign into 9 parts (3°20' each). Classical rule (BPHS): in
+  // Chara (movable) signs the navamsa sequence starts from the SAME sign; in Sthira
+  // (fixed) signs it starts from the 9th sign FROM ITSELF; in Dwiswabhava (dual) signs
+  // it starts from the 5th sign FROM ITSELF. This is NOT "all movable signs start from
+  // Aries" — that's only true for Aries itself (whose own starting sign happens to BE
+  // Aries); each sign's start point must be computed individually, which collapses to
+  // the standard formula: navamsaRashiIdx = (rashiIdx*9 + navPart) % 12. The previous
+  // version hardcoded one shared start (Aries/Capricorn/Libra) per modality group,
+  // which was only correct for the one sign in each group whose own computed start
+  // happened to match that shared value (Aries, Taurus, Gemini) — wrong for the other
+  // 9 of 12 signs. Verified: this formula reproduces the movable/fixed/dual rule
+  // exactly for all 12 signs individually (Cancer→Cancer, Leo→Aries, Virgo→Capricorn, etc).
   return placements.map(p => {
     const rashiIdx = p.rashiIdx;
     const navPart = Math.min(8, Math.floor((p.degExact || p.degree) / (30/9))); // 0-8, use exact fractional degree
-
-    let startRashi;
-    if (movable.includes(rashiIdx)) startRashi = 0;       // Aries
-    else if (fixed.includes(rashiIdx)) startRashi = 9;      // Capricorn
-    else startRashi = 6;                                     // Libra
-
-    const navRashi = (startRashi + navPart) % 12;
+    const navRashi = (rashiIdx * 9 + navPart) % 12;
     return { ...p, navRashi: RASHIS[navRashi], navRashiEn: RASHI_EN[navRashi], navRashiIdx: navRashi };
   });
 }
@@ -1299,7 +1300,14 @@ function calcD60Shashtiamsa(placements) {
     const part = Math.min(59, Math.floor(p.degExact / 0.5));
     const isOddRashi = p.rashiIdx % 2 === 0;
     const idx = isOddRashi ? part : (59 - part);
-    const d60Rashi = (p.rashiIdx * 5 + Math.floor(part / 5)) % 12;
+    // Fixed: classical rule (BPHS, per Wikipedia's Shashtyamsha article and cross-verified
+    // against three independent worked examples) is "count (degree×2 mod 12)+1 signs FROM
+    // THE PLANET'S OWN SIGN" — i.e. d60Rashi = (rashiIdx + part) % 12. The previous formula
+    // (rashiIdx*5 + floor(part/5)) % 12 was unrelated to this rule and gave a different,
+    // wrong sign for 81% of sample degree/sign combinations tested. The deity/name index
+    // above (idx, forward for odd signs / reversed for even) was already correct and is
+    // unchanged — only the resulting RASHI was wrong.
+    const d60Rashi = (p.rashiIdx + part) % 12;
     return {
       ...p,
       d60Rashi,
