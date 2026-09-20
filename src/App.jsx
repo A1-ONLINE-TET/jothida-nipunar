@@ -4051,7 +4051,7 @@ export default function AstrologyApp() {
       // Render free tier cold start can take 30-60s — cap at 10s so the user doesn't
       // stare at the loading screen forever. Falls back to the local engine.
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
       const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
       if (!res.ok) return null;
@@ -4085,7 +4085,7 @@ export default function AstrologyApp() {
       // that's too long for what should feel like an instant "today's panchangam"
       // screen, so cap the wait at 8s and fall back to the local engine past that.
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
       const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
       if (!res.ok) return null;
