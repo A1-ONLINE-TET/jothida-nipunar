@@ -3197,15 +3197,17 @@ function calcBhavaPhalam(horoscope, grahaBala, chevvaiDosham, dashaData, classic
       };
     });
 
-    // Special linkage for specific areas
+    // Special linkage for specific areas — state FACTS only, not a verdict.
+    // The final marriage verdict comes from the deep analysis (🔮 section) to
+    // avoid contradicting it. Here we just note the Chevvai dosham status factually.
     let specialNote = "";
     if (area.key === "marriage" && chevvaiDosham) {
       if (chevvaiDosham.present && !chevvaiDosham.cancelled) {
-        specialNote = `⚠ செவ்வாய் தோஷம் உண்டு (${chevvaiDosham.severityText}) — திருமணப் பொருத்தம் பார்க்கும்போது கவனம் தேவை. ${chevvaiDosham.remedy}`;
+        specialNote = `செவ்வாய் தோஷம்: உண்டு (${chevvaiDosham.severityText}). ${chevvaiDosham.remedy}`;
       } else if (chevvaiDosham.present && chevvaiDosham.cancelled) {
-        specialNote = `செவ்வாய் தோஷம் இருந்தாலும் நிவர்த்தி உள்ளது (${chevvaiDosham.cancelReason}) — கவலை தேவையில்லை.`;
+        specialNote = `செவ்வாய் தோஷம்: உண்டு ஆனால் நிவர்த்தி (${chevvaiDosham.cancelReason}). மொத்த திருமண பகுப்பாய்வுக்கு மேலே 🔮 பிரிவைப் பார்க்கவும்.`;
       } else {
-        specialNote = "செவ்வாய் தோஷம் இல்லை — திருமண விஷயத்தில் இந்த தடை இல்லை.";
+        specialNote = "செவ்வாய் தோஷம்: இல்லை. மொத்த திருமண பகுப்பாய்வுக்கு மேலே 🔮 பிரிவைப் பார்க்கவும்.";
       }
     }
 
@@ -5279,7 +5281,10 @@ ${aiPart}
           {/* ═══ 3.4 பாவ பலன் (LIFE-AREA READINGS) ═══ */}
           {bhavaPhalam && (
             <div style={{...card,marginBottom:10,padding:"14px 16px"}}>
-              <div style={{fontSize:15,fontWeight:700,color:"#7b1c1c",marginBottom:4,textAlign:"center"}}>📖 ஜாதக பலன்கள்</div>
+              <div style={{fontSize:15,fontWeight:700,color:"#7b1c1c",marginBottom:4,textAlign:"center"}}>📖 ஜாதக பலன்கள் (விவரம்)</div>
+              <div style={{fontSize:9,color:"#8b6914",textAlign:"center",marginBottom:4,fontStyle:"italic"}}>
+                கீழே ஒவ்வொரு கிரகத்தின் தனிப்பட்ட classical பொருள் — மொத்த முடிவுக்கு மேலே 🔮 பகுப்பாய்வைப் பார்க்கவும்
+              </div>
               <div style={{fontSize:10,color:"#8b6914",textAlign:"center",marginBottom:12}}>
                 லக்னம்: {bhavaPhalam.lagna} • ராசி: {bhavaPhalam.moonRashi} • நட்சத்திரம்: {bhavaPhalam.nakshatra}
               </div>
