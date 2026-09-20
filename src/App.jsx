@@ -535,7 +535,7 @@ function calculateNavamsa(placements) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// 10 PORUTHAM — MARRIAGE MATCHING
+// 11 PORUTHAM — MARRIAGE MATCHING (10 Tamil classical + Nadi bonus)
 // ═══════════════════════════════════════════════════════════════════
 // Ashwini..Revati, 0=Deva 1=Manushya 2=Rakshasa — verified against classical Gana table
 const GANAM = [0,1,2,1,0,1,0,0,2, 2,1,1,0,2,0, 2,0,2,2,1,1,0,2,2,1,1,0];
@@ -561,16 +561,19 @@ function calculate10Porutham(nak1, nak2, rashi1, rashi2) {
   const results = [];
   let totalScore = 0;
 
-  // 1. DINAM — count from bride to groom nakshatra
+  // 1. DINAM — count from bride's nakshatra to groom's nakshatra, then map to 9-tara cycle
+  // remainder 0=Parama Mitra(9), 2=Sampat, 4=Kshema, 6=Sadhana, 8=Mitra → GOOD
+  // remainder 1=Janma, 3=Vipat, 5=Pratyak, 7=Vadha → BAD
   const dinCount = ((nak2 - nak1 + 27) % 27) + 1;
-  const dinOk = ![2,4,6,8,9].includes(dinCount % 9);
+  const dinOk = [0,2,4,6,8].includes(dinCount % 9);
   results.push({ name:"தினம்", en:"Dinam", ok:dinOk, score:dinOk?1:0, max:1,
     desc:dinOk?"இருவரின் ஆரோக்கியமும் நலமும் நன்றாக இருக்கும்":"ஆரோக்கியத்தில் சிறு பாதிப்பு இருக்கலாம்" });
   if(dinOk) totalScore++;
 
-  // 2. GANAM
+  // 2. GANAM — classical rule: same gana always OK; Deva+Manushya OK (both ways);
+  // Deva+Rakshasa = WORST combination (removed); Manushya+Rakshasa = not OK
   const g1=GANAM[nak1], g2=GANAM[nak2];
-  const ganOk = g1===g2 || (g1===0&&g2===1) || (g1===1&&g2===0) || (g1===0&&g2===2);
+  const ganOk = g1===g2 || (g1===0&&g2===1) || (g1===1&&g2===0);
   results.push({ name:"கணம்", en:"Ganam", ok:ganOk, score:ganOk?1:0, max:1,
     desc:`${GANAM_NAMES[g1]} + ${GANAM_NAMES[g2]} — ${ganOk?"குணப் பொருத்தம் உண்டு":"குணத்தில் வேறுபாடு"}` });
   if(ganOk) totalScore++;
@@ -583,9 +586,10 @@ function calculate10Porutham(nak1, nak2, rashi1, rashi2) {
     desc:`${YONI_NAMES[y1]} + ${YONI_NAMES[y2]} — ${yoniOk?"தாம்பத்ய ஒற்றுமை உண்டு":"தாம்பத்யத்தில் சிறு வேறுபாடு"}` });
   if(yoniOk) totalScore++;
 
-  // 4. RASHI
+  // 4. RASHI — count from bride's rashi to groom's rashi
+  // Favorable: 1(same),2,3,4,5,7 | Bad: 6(ari),8(ashtama),9,10,11,12(vyaya)
   const rDiff = ((rashi2 - rashi1 + 12) % 12) + 1;
-  const rashiOk = [1,2,3,4,5,7,12].includes(rDiff);
+  const rashiOk = [1,2,3,4,5,7].includes(rDiff);
   results.push({ name:"ராசி", en:"Rasi", ok:rashiOk, score:rashiOk?1:0, max:1,
     desc:rashiOk?"ராசி பொருத்தம் உள்ளது, செல்வம் சேரும்":"ராசி பொருத்தம் சரியில்லை" });
   if(rashiOk) totalScore++;
@@ -611,8 +615,11 @@ function calculate10Porutham(nak1, nak2, rashi1, rashi2) {
     desc:vedhaOk?"வேதை இல்லை — தடையில்லா வாழ்க்கை":"வேதை உள்ளது — சில தடைகள் வரலாம்" });
   if(vedhaOk) totalScore++;
 
-  // 8. VASIYAM
-  const vasiyaPairs = {0:[3,4],1:[0,2],2:[11],3:[1],4:[5],5:[0,4],6:[3],7:[2],8:[10],9:[0],10:[8],11:[9]};
+  // 8. VASIYAM — classical Vasya pairs (Parashara / standard Tamil tradition)
+  // Mesha→Simha,Vrischika | Rishabha→Karka,Tula | Mithuna→Kanya | Karka→Vrischika,Dhanus
+  // Simha→Tula | Kanya→Mithuna,Meena | Tula→Makara | Vrischika→Karka
+  // Dhanus→Meena | Makara→Mesha,Kumbha | Kumbha→Mesha | Meena→Makara
+  const vasiyaPairs = {0:[4,7],1:[3,6],2:[5],3:[7,8],4:[6],5:[2,11],6:[9],7:[3],8:[11],9:[0,10],10:[0],11:[9]};
   const vasiyamOk = (vasiyaPairs[rashi1]||[]).includes(rashi2) || (vasiyaPairs[rashi2]||[]).includes(rashi1) || rashi1===rashi2;
   results.push({ name:"வசியம்", en:"Vasiyam", ok:vasiyamOk, score:vasiyamOk?1:0, max:1,
     desc:vasiyamOk?"ஒருவர் மீது ஒருவர் ஈர்ப்பு உண்டு":"வசிய பொருத்தம் குறைவு" });
@@ -625,17 +632,28 @@ function calculate10Porutham(nak1, nak2, rashi1, rashi2) {
     desc:mahOk?"சந்ததி பாக்கியம் உண்டு, வம்ச விருத்தி":"மகேந்திர பொருத்தம் இல்லை" });
   if(mahOk) totalScore++;
 
-  // 10. NADI
+  // 10. ஸ்திரீ தீர்க்கம் (STREE DEERGHAM) — classical Tamil porutham rule
+  // Count from bride's nakshatra to groom's nakshatra; if ≥ 13, groom's star is
+  // sufficiently "longer" (deergha) → OK. Part of the standard Tamil 10-porutham system.
+  const sdCount = ((nak2 - nak1 + 27) % 27) + 1;
+  const sdOk = sdCount >= 13;
+  results.push({ name:"ஸ்திரீ தீர்க்கம்", en:"Stree Deergham", ok:sdOk, score:sdOk?1:0, max:1,
+    desc:sdOk ? `நட்சத்திர எண்ணிக்கை ${sdCount} (≥13) — தீர்க்க பொருத்தம் உண்டு` : `நட்சத்திர எண்ணிக்கை ${sdCount} (<13) — தீர்க்க பொருத்தம் இல்லை` });
+  if(sdOk) totalScore++;
+
+  // 11. நாடி (NADI) — Naisargika dosha check (also used in North Indian Ashta Koota;
+  // included as bonus since many modern Tamil astrologers verify it too)
   const n1=NADI_MAP[nak1], n2=NADI_MAP[nak2];
   const nadiOk = n1 !== n2;
   results.push({ name:"நாடி", en:"Nadi", ok:nadiOk, score:nadiOk?1:0, max:1,
     desc:`${NADI_NAMES[n1]} + ${NADI_NAMES[n2]} — ${nadiOk?"நாடி பொருத்தம் உண்டு — ஆரோக்கியம் நல்லது":"⚠ நாடி தோஷம் — பரிகாரம் தேவை"}` });
   if(nadiOk) totalScore++;
 
-  const grade = totalScore >= 8 ? "மிகச் சிறந்த பொருத்தம்" : totalScore >= 6 ? "நல்ல பொருத்தம்" : totalScore >= 4 ? "சுமாரான பொருத்தம்" : "பொருத்தம் குறைவு";
-  const gradeEn = totalScore >= 8 ? "Excellent" : totalScore >= 6 ? "Good" : totalScore >= 4 ? "Average" : "Poor";
+  const maxScore = results.length; // 11 (10 Tamil + Nadi bonus)
+  const grade = totalScore >= 9 ? "மிகச் சிறந்த பொருத்தம்" : totalScore >= 7 ? "நல்ல பொருத்தம்" : totalScore >= 5 ? "சுமாரான பொருத்தம்" : "பொருத்தம் குறைவு";
+  const gradeEn = totalScore >= 9 ? "Excellent" : totalScore >= 7 ? "Good" : totalScore >= 5 ? "Average" : "Poor";
 
-  return { results, totalScore, maxScore: 10, grade, gradeEn };
+  return { results, totalScore, maxScore, grade, gradeEn };
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -4880,7 +4898,7 @@ ${aiPart}
           <div style={{textAlign:"center",marginBottom:24}}>
             <div style={{fontSize:36,marginBottom:6}}>💍</div>
             <h2 style={{fontSize:20,fontWeight:500,color:"#dc2626",margin:"0 0 4px"}}>திருமண பொருத்தம்</h2>
-            <p style={{fontSize:12,color:"#b8860b"}}>10 பொருத்தம் — Kundali Matching</p>
+            <p style={{fontSize:12,color:"#b8860b"}}>திருமணப் பொருத்தம் — Kundali Matching</p>
           </div>
 
           <div style={{...card,marginBottom:12,borderLeft:"3px solid #ff6b8a"}}>
@@ -4920,14 +4938,14 @@ ${aiPart}
                   <svg viewBox="0 0 100 100" style={{width:100,height:100}}>
                     <circle cx="50" cy="50" r="42" fill="none" stroke="#ffffff10" strokeWidth="6"/>
                     <circle cx="50" cy="50" r="42" fill="none"
-                      stroke={poruthResult.totalScore>=8?"#4ade80":poruthResult.totalScore>=6?"#7b1c1c":"#dc2626"}
-                      strokeWidth="6" strokeDasharray={`${poruthResult.totalScore*26.4} 264`}
+                      stroke={poruthResult.totalScore>=9?"#4ade80":poruthResult.totalScore>=7?"#7b1c1c":"#dc2626"}
+                      strokeWidth="6" strokeDasharray={`${poruthResult.totalScore*(264/poruthResult.maxScore)} 264`}
                       strokeLinecap="round" transform="rotate(-90 50 50)"/>
                     <text x="50" y="46" textAnchor="middle" fill="#7b1c1c" fontSize="24" fontWeight="700">{poruthResult.totalScore}</text>
-                    <text x="50" y="62" textAnchor="middle" fill="#b8860b" fontSize="10">/10</text>
+                    <text x="50" y="62" textAnchor="middle" fill="#b8860b" fontSize="10">/{poruthResult.maxScore}</text>
                   </svg>
                 </div>
-                <div style={{fontSize:16,fontWeight:700,color:poruthResult.totalScore>=8?"#4ade80":poruthResult.totalScore>=6?"#7b1c1c":"#dc2626"}}>
+                <div style={{fontSize:16,fontWeight:700,color:poruthResult.totalScore>=9?"#4ade80":poruthResult.totalScore>=7?"#7b1c1c":"#dc2626"}}>
                   {poruthResult.grade}
                 </div>
                 <div style={{fontSize:11,color:"#b8860b",marginTop:4}}>{poruthResult.brideName||"பெண்"} ❤ {poruthResult.groomName||"ஆண்"}</div>
