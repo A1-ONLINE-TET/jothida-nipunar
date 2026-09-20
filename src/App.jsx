@@ -1546,6 +1546,33 @@ function calcShadbala(placements, lagnaIdx, dobISO, tob, lat, lon) {
   const sunriseMin = sunrise.decimal * 60, sunsetMin = sunset.decimal * 60;
   const isDayBirth = birthMinutesOfDay >= sunriseMin && birthMinutesOfDay < sunsetMin;
 
+  // Ayana Bala setup — recomputes the same T (Julian centuries from J2000, day-level
+  // precision), ayanamsa and obliquity formulas generateHoroscope() uses internally, so
+  // that nirayana (sidereal) longitude can be converted back to sayana (tropical)
+  // longitude here. Declination (Kranti) must be measured from the tropical framework
+  // (relative to the equinoxes), not the sidereal zodiac — using nirayana longitude
+  // directly would give a systematically wrong Kranti.
+  const T_ayana = (birthDateObj - new Date(2000,0,1)) / 86400000 / 36525;
+  const ayanamsaAtBirth = 23.856 + (T_ayana * 100 * 50.29 / 3600);
+  const eps = 23.4393 - 0.01300 * T_ayana;
+  const epsRad = eps * Math.PI/180;
+  function krantiOf(fullLong) {
+    const tropicalLong = ((fullLong + ayanamsaAtBirth) % 360 + 360) % 360;
+    return Math.asin(Math.sin(epsRad) * Math.sin(tropicalLong * Math.PI/180)) * 180/Math.PI;
+  }
+  // Kesava's formula (Saravali/BPHS-corroborated): (24° + Kranti)/48 × 60, reversed for
+  // Moon/Saturn, and using |Kranti| for Mercury (which gains from EITHER extreme).
+  // Verified: 30 at the equinoxes, 60/0 at the respective solstice extremes for each group.
+  const AYANA_REVERSED = ["சந்திரன்","சனி"];
+  function ayanaBalaOf(p) {
+    const k = krantiOf(p.fullLong);
+    let val;
+    if (p.ta === "புதன்") val = (24 + Math.abs(k)) / 48 * 60;
+    else if (AYANA_REVERSED.includes(p.ta)) val = (24 - k) / 48 * 60;
+    else val = (24 + k) / 48 * 60;
+    return Math.max(0, Math.min(60, val));
+  }
+
   // Nathonnata Bala (day/night strength) — BPHS 27.8-9 / Saravali 4.36: ghati-distance of
   // birth time from the nearest true noon (0 at noon, 30 ghatis at midnight), doubled to
   // virupas. Nata Bala goes to nocturnal planets, Unnata Bala to diurnal ones; the two
@@ -1606,11 +1633,16 @@ function calcShadbala(placements, lagnaIdx, dobISO, tob, lat, lon) {
     const digDist = Math.min(Math.abs(houseFromLagna - digHouse), 12 - Math.abs(houseFromLagna - digHouse));
     const digBala = Math.max(0, 60 - digDist * 10);
 
-    // 3. கால பலம் (Temporal Strength) — 5 of the 6 classical sub-parts, computed from this
-    // chart's actual birth date/time: Nathonnata, Paksha, Tribhaga, Vara, Hora Bala. Not
-    // included: Abda Bala (year lord) and Masa Bala (month lord), both of which require an
-    // Ahargana (days-since-creation-epoch) calculation — a materially larger separate
-    // undertaking; and Ayana Bala (declination-based), tracked separately too.
+    // 3. கால பலம் (Temporal Strength) — 6 of the classical sub-parts, computed from this
+    // chart's actual birth date/time: Nathonnata, Paksha, Tribhaga, Vara, Hora and now
+    // Ayana Bala (declination-based, added below). Not included: Abda Bala (year lord) and
+    // Masa Bala (month lord), both of which require an Ahargana (days-since-creation-epoch)
+    // calculation with lunar-month correction rules (adhimasa/kshaya-masa) that couldn't be
+    // verified against a precise, unambiguous modern reference with confidence — attempting
+    // a guessed algorithm risked presenting a wrong result as "classical accuracy," so these
+    // two remain out rather than risk that. Yuddha Bala (planetary war) is also not included:
+    // determining the winner classically needs each planet's ecliptic LATITUDE, which this
+    // engine doesn't compute at all (only longitude) — a separate, larger feature.
     const isNocturnal = ["சந்திரன்","செவ்வாய்","சனி"].includes(p.ta);
     const natonnataBala = p.ta === "புதன்" ? 60 : (isNocturnal ? nataBala : unnataBala);
     const isBeneficForPaksha = ["குரு","சுக்கிரன்","புதன்","சந்திரன்"].includes(p.ta);
@@ -1618,18 +1650,19 @@ function calcShadbala(placements, lagnaIdx, dobISO, tob, lat, lon) {
     const tribhagaBala = (p.ta === tribhagaLord || p.ta === "குரு") ? 60 : 0;
     const varaBala = p.ta === varaLord ? 45 : 0;
     const horaBala = p.ta === horaLord ? 60 : 0;
-    const kalaBala = natonnataBala + thisPakshaBala + tribhagaBala + varaBala + horaBala;
+    const ayanaBala = ayanaBalaOf(p);
+    const kalaBala = natonnataBala + thisPakshaBala + tribhagaBala + varaBala + horaBala + ayanaBala;
 
     // 4. சேஷ்ட பலம் (Motional Strength) — Sun and Moon use their BPHS 27.18 substitutions
-    // (Sun→Ayana Bala, not yet implemented, neutral placeholder here; Moon→her own Paksha
-    // Bala). The 5 star planets now use ACTUAL computed daily motion against each planet's
-    // classical mean motion, mapped onto the 8-fold Vakra/Anuvakra/Vikala/Manda/Sama/Chara/
-    // Atichara ladder — a well-grounded approximation of that ladder, not the degree-precise
-    // Chesta-Kendra/Sighrocca formula (whose exact definition varies even between classical
-    // commentators). Previously this ignored actual motion entirely (exalted?60:debil?10:30).
+    // (Sun→his own Ayana Bala; Moon→her own Paksha Bala). The 5 star planets use ACTUAL
+    // computed daily motion against each planet's classical mean motion, mapped onto the
+    // 8-fold Vakra/Anuvakra/Vikala/Manda/Sama/Chara/Atichara ladder — a well-grounded
+    // approximation of that ladder, not the degree-precise Chesta-Kendra/Sighrocca formula
+    // (whose exact definition varies even between classical commentators). Previously this
+    // ignored actual motion/declination entirely (exalted?60:debil?10:30 for everyone).
     let cheshtaBala;
     if (p.ta === "சூரியன்") {
-      cheshtaBala = 30; // Sun's true Cheshta = Ayana Bala (declination-based), not yet implemented
+      cheshtaBala = ayanaBala; // BPHS 27.18: Sun's Cheshta Bala IS his own Ayana Bala
     } else if (p.ta === "சந்திரன்") {
       cheshtaBala = thisPakshaBala; // BPHS 27.18: Moon's Cheshta Bala IS her Paksha Bala
     } else {
