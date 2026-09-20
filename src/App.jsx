@@ -1136,9 +1136,27 @@ function detectClassicalYogas(placements, lagnaRashiIdx) {
   const yogas = [];
   const find = (name) => placements.find(p => p.ta === name);
   const moon = find("சந்திரன்"), sun = find("சூரியன்"), guru = find("குரு"),
-        mercury = find("புதன்"), mars = find("செவ்வாய்");
+        mercury = find("புதன்"), mars = find("செவ்வாய்"), venus = find("சுக்கிரன்"),
+        saturn = find("சனி"), rahu = find("ராகு"), ketu = find("கேது");
+  const BENEFICS = ["குரு","சுக்கிரன்","புதன்"]; // natural benefics (Mercury when unafflicted)
 
-  // 1. கஜகேசரி யோகம் — சந்திரனும் குருவும் ஒருவருக்கொருவர் கேந்திர ஸ்தானத்தில்
+  // Helper: check if planet A aspects planet B (Parashari special + universal 7th)
+  const aspectsFrom = (fromP, toP) => {
+    if (!fromP || !toP || fromP.ta === toP.ta) return false;
+    const houseOffset = ((toP.rashiIdx - fromP.rashiIdx + 12) % 12) + 1;
+    const rules = DRISHTI_RULES[fromP.ta] || DRISHTI_RULES.default;
+    return rules.includes(houseOffset);
+  };
+
+  // Helper: check parivartana (sign exchange) between two planets
+  const isParivartana = (p1, p2) => {
+    if (!p1 || !p2 || p1.ta === p2.ta) return false;
+    const lord1 = RASHI_LORD_NAME[p1.rashiIdx]; // lord of sign p1 is in
+    const lord2 = RASHI_LORD_NAME[p2.rashiIdx]; // lord of sign p2 is in
+    return lord1 === p2.ta && lord2 === p1.ta; // each sits in the other's sign
+  };
+
+  // 1. கஜகேசரி யோகம் — Moon & Jupiter in mutual kendras
   if (moon && guru) {
     const rashiDiff = ((guru.rashiIdx - moon.rashiIdx + 12) % 12) + 1;
     if (KENDRA_HOUSES.includes(rashiDiff)) {
@@ -1149,7 +1167,7 @@ function detectClassicalYogas(placements, lagnaRashiIdx) {
     }
   }
 
-  // 2. புத ஆதித்ய யோகம் — சூரியன் + புதன் ஒரே ராசியில்
+  // 2. புத ஆதித்ய யோகம் — Sun + Mercury same sign
   if (sun && mercury && sun.rashiIdx === mercury.rashiIdx) {
     yogas.push({
       name:"புத ஆதித்ய யோகம்", nameEn:"Budh-Aditya Yoga", type:"yoga", icon:"☉☿",
@@ -1157,7 +1175,7 @@ function detectClassicalYogas(placements, lagnaRashiIdx) {
     });
   }
 
-  // 3. சந்திர மங்கள யோகம் — சந்திரன் + செவ்வாய் ஒரே ராசியில்
+  // 3. சந்திர மங்கள யோகம் — Moon + Mars same sign
   if (moon && mars && moon.rashiIdx === mars.rashiIdx) {
     yogas.push({
       name:"சந்திர மங்கள யோகம்", nameEn:"Chandra-Mangal Yoga", type:"yoga", icon:"☽♂",
@@ -1165,7 +1183,7 @@ function detectClassicalYogas(placements, lagnaRashiIdx) {
     });
   }
 
-  // 4. கேமத்ரும யோகம் (தோஷம்) — சந்திரனுக்கு 2,12ல் வேறு கிரகங்கள் இல்லை
+  // 4. கேமத்ரும யோகம் (தோஷம்) — no planets in 2nd/12th from Moon
   if (moon) {
     const others = placements.filter(p => CLASSICAL_7.includes(p.ta) && p.ta !== "சந்திரன்" && p.ta !== "சூரியன்");
     const h2 = (moon.rashiIdx + 1) % 12, h12 = (moon.rashiIdx + 11) % 12;
@@ -1178,23 +1196,32 @@ function detectClassicalYogas(placements, lagnaRashiIdx) {
     }
   }
 
-  // 5. ராஜயோகம் — கேந்திர நாதனும் திரிகோண நாதனும் ஒரே வீட்டில்
+  // 5. ராஜயோகம் — EXPANDED: conjunction + mutual aspect + parivartana (ITEM #6 FIX)
   const kendraLords = [...new Set(KENDRA_HOUSES.map(h => getHouseLord(lagnaRashiIdx, h)))];
   const trikonaLords = [...new Set(TRIKONA_HOUSES.map(h => getHouseLord(lagnaRashiIdx, h)))];
+  const rajaYogaFound = new Set(); // avoid duplicates
   kendraLords.forEach(kLord => {
     trikonaLords.forEach(tLord => {
       if (kLord === tLord) return;
       const kP = find(kLord), tP = find(tLord);
-      if (kP && tP && kP.rashiIdx === tP.rashiIdx) {
+      if (!kP || !tP) return;
+      const key = [kLord, tLord].sort().join("-");
+      if (rajaYogaFound.has(key)) return;
+      const conj = kP.rashiIdx === tP.rashiIdx;
+      const asp = aspectsFrom(kP, tP) || aspectsFrom(tP, kP);
+      const pariv = isParivartana(kP, tP);
+      if (conj || asp || pariv) {
+        rajaYogaFound.add(key);
+        const how = conj ? "சேர்க்கை" : asp ? "பார்வை" : "பரிவர்த்தனை";
         yogas.push({
           name:"ராஜயோகம்", nameEn:"Raja Yoga", type:"yoga", icon:"👑",
-          desc:`கேந்திர நாதன் (${kLord}) மற்றும் திரிகோண நாதன் (${tLord}) ${kP.house}ஆம் வீட்டில் சேர்வதால் அதிகாரம், செல்வாக்கு தரும் யோகம்`
+          desc:`கேந்திர நாதன் (${kLord}) + திரிகோண நாதன் (${tLord}) — ${how} மூலம் அதிகாரம், செல்வாக்கு தரும் யோகம்`
         });
       }
     });
   });
 
-  // 6. தன யோகம் — 2,11 நாதர்கள் ஒரே வீட்டில்
+  // 6. தன யோகம் — 2,11 lords conjunction
   const lord2 = getHouseLord(lagnaRashiIdx, 2), lord11 = getHouseLord(lagnaRashiIdx, 11);
   if (lord2 !== lord11) {
     const p2 = find(lord2), p11 = find(lord11);
@@ -1206,7 +1233,7 @@ function detectClassicalYogas(placements, lagnaRashiIdx) {
     }
   }
 
-  // 7. விபரீத ராஜயோகம் — 6,8,12 நாதர்கள் 6,8,12 வீட்டிலேயே
+  // 7. விபரீத ராஜயோகம் — dusthana lord in dusthana
   DUSTHANA_HOUSES.forEach(houseNum => {
     const lord = getHouseLord(lagnaRashiIdx, houseNum);
     const p = find(lord);
@@ -1217,6 +1244,191 @@ function detectClassicalYogas(placements, lagnaRashiIdx) {
       });
     }
   });
+
+  // ═══ ITEM #5: நீசபங்க ராஜயோகம் (NEECHABHANGA RAJA YOGA) ═══
+  // When a debilitated planet's debilitation is cancelled, it becomes EXTREMELY powerful.
+  // 5 classical cancellation rules (BPHS):
+  placements.filter(p => DEBIL_RASHI[p.ta] !== undefined && p.rashiIdx === DEBIL_RASHI[p.ta]).forEach(debP => {
+    const debSign = DEBIL_RASHI[debP.ta];
+    const lordOfDebSign = RASHI_LORD_NAME[debSign];
+    const exaltSign = EXALT_RASHI[debP.ta];
+    const lordOfExaltSign = RASHI_LORD_NAME[exaltSign];
+    let cancelled = false, reason = "";
+
+    // Rule 1: Lord of debilitation sign in kendra from Lagna or Moon
+    const debLordP = find(lordOfDebSign);
+    if (debLordP) {
+      const hFromLagna = ((debLordP.rashiIdx - lagnaRashiIdx + 12) % 12) + 1;
+      const hFromMoon = moon ? ((debLordP.rashiIdx - moon.rashiIdx + 12) % 12) + 1 : 0;
+      if (KENDRA_HOUSES.includes(hFromLagna) || KENDRA_HOUSES.includes(hFromMoon)) {
+        cancelled = true; reason = `${lordOfDebSign} (நீச ராசி நாதன்) கேந்திரத்தில்`;
+      }
+    }
+    // Rule 2: Lord of exaltation sign in kendra from Lagna or Moon
+    if (!cancelled) {
+      const exLordP = find(lordOfExaltSign);
+      if (exLordP) {
+        const hFromLagna = ((exLordP.rashiIdx - lagnaRashiIdx + 12) % 12) + 1;
+        if (KENDRA_HOUSES.includes(hFromLagna)) {
+          cancelled = true; reason = `${lordOfExaltSign} (உச்ச ராசி நாதன்) கேந்திரத்தில்`;
+        }
+      }
+    }
+    // Rule 3: Planet that gets exalted in the debilitation sign is in kendra
+    if (!cancelled) {
+      const planetExaltedHere = Object.keys(EXALT_RASHI).find(name => EXALT_RASHI[name] === debSign);
+      if (planetExaltedHere) {
+        const pEx = find(planetExaltedHere);
+        if (pEx) {
+          const hFromLagna = ((pEx.rashiIdx - lagnaRashiIdx + 12) % 12) + 1;
+          if (KENDRA_HOUSES.includes(hFromLagna)) {
+            cancelled = true; reason = `${planetExaltedHere} (இங்கு உச்சம்) கேந்திரத்தில்`;
+          }
+        }
+      }
+    }
+    // Rule 4: Debilitated planet itself is in kendra
+    if (!cancelled && KENDRA_HOUSES.includes(debP.house)) {
+      cancelled = true; reason = `${debP.ta} நீசமாக இருந்தாலும் கேந்திரத்தில்`;
+    }
+
+    if (cancelled) {
+      yogas.push({
+        name:"நீசபங்க ராஜயோகம்", nameEn:"Neechabhanga Raja Yoga", type:"yoga", icon:"⚡",
+        desc:`${debP.ta} ${debP.rashi}-ல் நீசம் — ஆனால் ${reason} → நீசபங்கம்! மிகச் சக்தி வாய்ந்த யோகம், தடைகளை வென்று உயர்வு தரும்`
+      });
+    }
+  });
+
+  // ═══ ITEM #7: பரிவர்த்தன யோகம் (PARIVARTANA YOGA — Sign Exchange) ═══
+  const parivChecked = new Set();
+  CLASSICAL_7.forEach(name1 => {
+    CLASSICAL_7.forEach(name2 => {
+      if (name1 >= name2) return;
+      const key = name1 + "-" + name2;
+      if (parivChecked.has(key)) return;
+      const p1 = find(name1), p2 = find(name2);
+      if (isParivartana(p1, p2)) {
+        parivChecked.add(key);
+        // Classify: Maha (both in 1,2,4,5,7,9,10,11), Khala (one in 3,6), Dainya (one in 6,8,12)
+        const good = [1,2,4,5,7,9,10,11];
+        const dusth = [6,8,12];
+        const isMaha = good.includes(p1.house) && good.includes(p2.house);
+        const isDainya = dusth.includes(p1.house) || dusth.includes(p2.house);
+        const pType = isMaha ? "மஹா" : isDainya ? "தைன்ய" : "கல";
+        const pTypeEn = isMaha ? "Maha" : isDainya ? "Dainya" : "Khala";
+        yogas.push({
+          name:`${pType} பரிவர்த்தன யோகம்`, nameEn:`${pTypeEn} Parivartana Yoga`, type: isMaha ? "yoga" : "dosha", icon:"🔀",
+          desc:`${name1} (${p1.house}ஆம் வீடு) ↔ ${name2} (${p2.house}ஆம் வீடு) — ராசி பரிமாற்றம்${isMaha ? ", அதிகார/செல்வ யோகம்" : isDainya ? ", சவால்கள் வழியே வளர்ச்சி" : ""}`
+        });
+      }
+    });
+  });
+
+  // ═══ ITEMS #8-10: Moon-based Yogas (Sunapha, Anapha, Durudhara) ═══
+  if (moon) {
+    const h2Rashi = (moon.rashiIdx + 1) % 12;
+    const h12Rashi = (moon.rashiIdx + 11) % 12;
+    const planetsIn2 = placements.filter(p => CLASSICAL_7.includes(p.ta) && p.ta !== "சந்திரன்" && p.ta !== "சூரியன்" && p.rashiIdx === h2Rashi);
+    const planetsIn12 = placements.filter(p => CLASSICAL_7.includes(p.ta) && p.ta !== "சந்திரன்" && p.ta !== "சூரியன்" && p.rashiIdx === h12Rashi);
+
+    if (planetsIn2.length > 0 && planetsIn12.length > 0) {
+      yogas.push({ name:"துருதரா யோகம்", nameEn:"Durudhara Yoga", type:"yoga", icon:"☽🛡",
+        desc:`சந்திரனுக்கு இரு பக்கமும் கிரகங்கள் — செல்வம், புகழ், நல்ல நிலை தரும் மிகச் சிறந்த யோகம்` });
+    } else if (planetsIn2.length > 0) {
+      yogas.push({ name:"சுனாபா யோகம்", nameEn:"Sunapha Yoga", type:"yoga", icon:"☽→",
+        desc:`சந்திரனுக்கு 2ல் ${planetsIn2.map(p=>p.ta).join(",")} — சுய முயற்சியால் செல்வம் ஈட்டும் யோகம்` });
+    } else if (planetsIn12.length > 0) {
+      yogas.push({ name:"அனாபா யோகம்", nameEn:"Anapha Yoga", type:"yoga", icon:"←☽",
+        desc:`சந்திரனுக்கு 12ல் ${planetsIn12.map(p=>p.ta).join(",")} — அதிகாரம், ஆரோக்கியம், நல்ல குணம் தரும் யோகம்` });
+    }
+  }
+
+  // ═══ ITEM #11: சகட யோகம் (Shakata Dosha) — Moon 6th/8th from Jupiter ═══
+  if (moon && guru) {
+    const moonFromGuru = ((moon.rashiIdx - guru.rashiIdx + 12) % 12) + 1;
+    if (moonFromGuru === 6 || moonFromGuru === 8) {
+      yogas.push({ name:"சகட யோகம்", nameEn:"Shakata Yoga", type:"dosha", icon:"☽⚙",
+        desc:`சந்திரன் குருவிலிருந்து ${moonFromGuru}ஆம் வீட்டில் — வாழ்க்கையில் ஏற்ற இறக்கங்கள், முயற்சி அதிகம் தேவைப்படும்` });
+    }
+  }
+
+  // ═══ ITEM #12: சந்திர ஆதி யோகம் (Chandra-Adhi Yoga) — benefics in 6,7,8 from Moon ═══
+  if (moon) {
+    const beneficCount678 = BENEFICS.filter(name => {
+      const p = find(name);
+      if (!p) return false;
+      const hFromMoon = ((p.rashiIdx - moon.rashiIdx + 12) % 12) + 1;
+      return [6,7,8].includes(hFromMoon);
+    }).length;
+    if (beneficCount678 >= 2) {
+      yogas.push({ name:"சந்திர ஆதி யோகம்", nameEn:"Chandra-Adhi Yoga", type:"yoga", icon:"☽👑",
+        desc:`சந்திரனிலிருந்து 6,7,8ல் ${beneficCount678} சுப கிரகங்கள் — தலைமை, அதிகாரம், மக்கள் மதிப்பு தரும் அரிய யோகம்` });
+    }
+  }
+
+  // ═══ ITEM #13: அமல யோகம் (Amala Yoga) — benefic in 10th from Lagna/Moon ═══
+  {
+    const rashi10FromLagna = (lagnaRashiIdx + 9) % 12;
+    const beneficIn10 = BENEFICS.some(name => { const p = find(name); return p && p.rashiIdx === rashi10FromLagna; });
+    if (beneficIn10) {
+      yogas.push({ name:"அமல யோகம்", nameEn:"Amala Yoga", type:"yoga", icon:"✨",
+        desc:"10ஆம் வீட்டில் சுப கிரகம் — நற்பெயர், தர்மம், தூய நடத்தை, சமூக மதிப்பு தரும் யோகம்" });
+    }
+  }
+
+  // ═══ ITEM #14: வேசி/வாசி/உபயசாரி (Sun-based triple yoga) ═══
+  if (sun) {
+    const h2FromSun = (sun.rashiIdx + 1) % 12;
+    const h12FromSun = (sun.rashiIdx + 11) % 12;
+    const pin2 = placements.filter(p => CLASSICAL_7.includes(p.ta) && p.ta !== "சூரியன்" && p.ta !== "சந்திரன்" && p.rashiIdx === h2FromSun);
+    const pin12 = placements.filter(p => CLASSICAL_7.includes(p.ta) && p.ta !== "சூரியன்" && p.ta !== "சந்திரன்" && p.rashiIdx === h12FromSun);
+    if (pin2.length > 0 && pin12.length > 0) {
+      yogas.push({ name:"உபயசாரி யோகம்", nameEn:"Ubhayachari Yoga", type:"yoga", icon:"☉🛡",
+        desc:`சூரியனுக்கு இரு பக்கமும் கிரகங்கள் — புகழ், அதிகாரம், எல்லா துறையிலும் வெற்றி தரும் அரிய யோகம்` });
+    } else if (pin2.length > 0) {
+      yogas.push({ name:"வேசி யோகம்", nameEn:"Veshi Yoga", type:"yoga", icon:"☉→",
+        desc:`சூரியனுக்கு 2ல் ${pin2.map(p=>p.ta).join(",")} — நல்ல புகழ், உழைப்பின் மூலம் வெற்றி` });
+    } else if (pin12.length > 0) {
+      yogas.push({ name:"வாசி யோகம்", nameEn:"Vashi Yoga", type:"yoga", icon:"←☉",
+        desc:`சூரியனுக்கு 12ல் ${pin12.map(p=>p.ta).join(",")} — செல்வாக்கு, கல்வி, திறமை யோகம்` });
+    }
+  }
+
+  // ═══ ITEMS #16-19: DOSHAS ═══
+
+  // ITEM #16: பித்ரு தோஷம் (Pitru Dosha) — Sun afflicted by Rahu/Saturn or 9th house afflicted
+  if (sun && rahu && sun.rashiIdx === rahu.rashiIdx) {
+    yogas.push({ name:"பித்ரு தோஷம்", nameEn:"Pitru Dosha", type:"dosha", icon:"☉☊",
+      desc:"சூரியன் + ராகு சேர்க்கை — பூர்வ புண்ணிய குறை, தந்தை வழி தடைகள். பரிகாரம்: பித்ரு தர்ப்பணம், சூரிய வழிபாடு" });
+  } else if (sun && saturn && sun.rashiIdx === saturn.rashiIdx) {
+    yogas.push({ name:"பித்ரு தோஷம்", nameEn:"Pitru Dosha", type:"dosha", icon:"☉♄",
+      desc:"சூரியன் + சனி சேர்க்கை — தந்தை/அரசாங்க தொடர்பில் தடைகள். பரிகாரம்: சனிக்கிழமை எள் தானம், பித்ரு வழிபாடு" });
+  }
+
+  // ITEM #17: குரு சண்டாள யோகம் (Guru Chandal Yoga)
+  if (guru && rahu && guru.rashiIdx === rahu.rashiIdx) {
+    yogas.push({ name:"குரு சண்டாள யோகம்", nameEn:"Guru Chandal Yoga", type:"dosha", icon:"♃☊",
+      desc:"குரு + ராகு சேர்க்கை — ஞான/தர்ம பாதையில் குழப்பம், தவறான ஆலோசனை கிடைக்கும் வாய்ப்பு. பரிகாரம்: குரு வழிபாடு, வியாழக்கிழமை விரதம்" });
+  }
+
+  // ITEM #18: அங்காரக யோகம் (Angarak Yoga) — Mars + Rahu
+  if (mars && rahu && mars.rashiIdx === rahu.rashiIdx) {
+    yogas.push({ name:"அங்காரக யோகம்", nameEn:"Angarak Yoga", type:"dosha", icon:"♂☊",
+      desc:"செவ்வாய் + ராகு சேர்க்கை — ஆபத்து, விபத்து, கோபம் அதிகரிக்கும் வாய்ப்பு. பரிகாரம்: செவ்வாய்க்கிழமை விரதம், ஹனுமான் வழிபாடு" });
+  }
+
+  // ITEM #19: கண்டாந்தம் (Gandanta) — Moon at water/fire sign junction (last 3°20' or first 3°20')
+  if (moon) {
+    const GANDANTA_JUNCTIONS = [[3,4],[7,8],[11,0]]; // Cancer-Leo, Scorpio-Sagittarius, Pisces-Aries
+    GANDANTA_JUNCTIONS.forEach(([waterSign, fireSign]) => {
+      if ((moon.rashiIdx === waterSign && moon.degExact >= 26.667) ||
+          (moon.rashiIdx === fireSign && moon.degExact <= 3.333)) {
+        yogas.push({ name:"கண்டாந்த தோஷம்", nameEn:"Gandanta Dosha", type:"dosha", icon:"☽🌊",
+          desc:`சந்திரன் நீர்-நெருப்பு ராசி சந்திப்பில் (${RASHIS[waterSign]}/${RASHIS[fireSign]}) — ஆழ்மன சவால்கள், ஆன்மீக மாற்றம். பரிகாரம்: கண்டாந்த பூஜை, நீர் வழிபாடு` });
+      }
+    });
+  }
 
   return yogas;
 }
@@ -4228,7 +4440,7 @@ ${aiPart}
                     );
                   })}
                   <div style={{fontSize:9,color:"#777777",marginTop:8}}>
-                    கேந்திர/திரிகோண நாத conjunction அடிப்படையில் — mutual aspect/parivartana இன்னும் சேர்க்கப்படவில்லை
+                    கேந்திர/திரிகோண நாத சேர்க்கை + பார்வை + பரிவர்த்தனை அடிப்படையில் — BPHS classical rules
                   </div>
                 </div>
               )}
