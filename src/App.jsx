@@ -421,8 +421,8 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false
   // ── Special Lagnas (BPHS Ch.33) — skipped in lightweight mode ──
   let horaLagna=null, ghatiLagna=null, arudhaLagna=null, upapadaLagna=null, charaKarakas=null;
   if (!lightweight) {
-    const birthMin = h * 60 + m;
-    const { sunrise: sr } = calcSunriseSunset(new Date(yr, mo-1, dy), lat, lon, 5.5);
+    const birthMin = birthH * 60 + birthM;
+    const { sunrise: sr } = calcSunriseSunset(new Date(year, month-1, day), lat, lon, 5.5);
     const srMin = sr.decimal * 60;
     horaLagna = calcHoraLagna(sunLong, birthMin, srMin);
     ghatiLagna = calcGhatiLagna(sunLong, birthMin, srMin);
