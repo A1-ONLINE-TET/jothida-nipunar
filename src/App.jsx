@@ -804,6 +804,124 @@ function calcPapaSamyam(placements1, lagna1, placements2, lagna2) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// #22 விம்சோபக பலம் (VIMSHOPAKA BALA) — BPHS Ch.17
+// Planet strength across 6 divisional charts (Shad Varga scheme)
+// D1(6pts), D2(2pts), D3(4pts), D9(5pts), D12(2pts), D30(1pt) = 20 max
+// ═══════════════════════════════════════════════════════════════════
+const SHAD_VARGA_WEIGHTS = [
+  { name:"D1 ராசி",   weight:6 },
+  { name:"D2 ஹோரை",  weight:2 },
+  { name:"D3 திரேக்காணம்", weight:4 },
+  { name:"D9 நவாம்சம்", weight:5 },
+  { name:"D12 துவாதசாம்சம்", weight:2 },
+  { name:"D30 திரிம்சாம்சம்", weight:1 },
+];
+
+function calcVimshopakaBala(p, lagnaIdx, placements) {
+  // Compute rashi in each of the 6 vargas
+  const d1 = p.rashiIdx;
+  const isOdd = p.rashiIdx % 2 === 0;
+  const d2 = isOdd ? (p.degExact < 15 ? 4 : 3) : (p.degExact < 15 ? 3 : 4);
+  const d3 = (p.rashiIdx + Math.min(2, Math.floor(p.degExact / 10)) * 4) % 12;
+  const d9 = (p.rashiIdx * 9 + Math.floor(p.degExact / (30/9))) % 12;
+  const d12 = (p.rashiIdx + Math.min(11, Math.floor(p.degExact / 2.5))) % 12;
+  const isOddD30 = p.rashiIdx % 2 === 0;
+  const d30Rules = isOddD30 ? D30_ODD_RULERS : D30_EVEN_RULERS;
+  const d30Ruler = d30Rules.find(([from, to]) => p.degExact >= from && p.degExact < to);
+  const d30Lord = d30Ruler ? d30Ruler[2] : "செவ்வாய்";
+  const d30 = MOOLA_TRIKONA[d30Lord] ? MOOLA_TRIKONA[d30Lord].rashi : OWN_RASHI[d30Lord]?.[0] ?? 0;
+
+  const vargas = [d1, d2, d3, d9, d12, d30];
+
+  // Dignity fraction per varga (BPHS Ch.17.13-15)
+  // Exalted/MT/Own = 1.0, Friend = 0.75 (Tatkalika not applied here per most implementations),
+  // Neutral = 0.5, Enemy = 0.25, Debilitated = 0.125
+  function dignityFraction(planetName, vargaRashi) {
+    if (vargaRashi === EXALT_RASHI[planetName]) return 1.0;
+    if (MOOLA_TRIKONA[planetName] && vargaRashi === MOOLA_TRIKONA[planetName].rashi) return 1.0;
+    if (OWN_RASHI[planetName]?.includes(vargaRashi)) return 1.0;
+    if (vargaRashi === DEBIL_RASHI[planetName]) return 0.125;
+    const lord = RASHI_LORD_NAME[vargaRashi];
+    const fr = GRAHA_FRIENDSHIP[planetName];
+    if (!fr) return 0.5;
+    if (fr.friends.includes(lord)) return 0.75;
+    if (fr.enemies.includes(lord)) return 0.25;
+    return 0.5; // neutral
+  }
+
+  let total = 0;
+  let favorableCount = 0;
+  const breakdown = vargas.map((vRashi, i) => {
+    const frac = dignityFraction(p.ta, vRashi);
+    const pts = Math.round(SHAD_VARGA_WEIGHTS[i].weight * frac * 100) / 100;
+    if (frac >= 0.75) favorableCount++; // own/exalt/MT/friend = favorable
+    total += pts;
+    return { varga: SHAD_VARGA_WEIGHTS[i].name, rashi: RASHIS[vRashi], fraction: frac, points: pts };
+  });
+
+  // #23 ஷட்வர்க classification (BPHS Ch.17.16-20)
+  const SHAD_VARGA_CLASSES = ["—","—","கிம்சுகம்","வ்யஞ்ஜனம்","சாமரம்","சத்ரசாமரம்","குண்டலம்"];
+  // favorableCount 0-1 = no title, 2=Kimshuka, 3=Vyanjana, 4=Chamara, 5=Chatrchamara, 6=Kundala
+  const classification = SHAD_VARGA_CLASSES[favorableCount] || "—";
+
+  return {
+    total: Math.round(total * 100) / 100,
+    max: 20,
+    percentage: Math.round(total / 20 * 100),
+    classification,
+    favorableCount,
+    breakdown
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TIER 3: #40 புஷ்கர பாகம் & மிருத்யு பாகம்
+// PUSHKARA BHAGA — specific lucky degrees in each sign (BPHS/classical)
+// MRITYU BHAGA — inauspicious death degrees per sign per planet
+// ═══════════════════════════════════════════════════════════════════
+
+// Pushkara Bhaga: specific degree in each sign that gives extra auspiciousness
+// Source: Narada Samhita / classical texts
+const PUSHKARA_BHAGA = [21,14,18,8,19,9,24,11,23,14,19,9]; // one per rashi (0=Mesha...11=Meena)
+
+// Mrityu Bhaga: inauspicious degree per sign per planet (BPHS Ch.44 / Sarvartha Chintamani)
+// [Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn] for each rashi
+const MRITYU_BHAGA = [
+  [20,26,19,15,18,12,10], // Mesha
+  [9,12,28,14,29,4,4],    // Rishabha
+  [12,13,25,13,12,6,7],   // Mithuna
+  [6,25,23,12,27,8,9],    // Kadaka
+  [8,24,29,11,6,4,12],    // Simma
+  [24,11,28,10,13,18,16], // Kanni
+  [16,26,14,9,10,20,3],   // Thula
+  [17,14,21,8,14,12,18],  // Vrischika
+  [22,13,2,7,6,8,28],     // Dhanusu
+  [2,25,15,6,12,12,14],   // Makara
+  [3,5,11,5,15,4,13],     // Kumbha
+  [23,12,6,4,13,20,10],   // Meena
+];
+const PLANET_MRITYU_IDX = {"சூரியன்":0,"சந்திரன்":1,"செவ்வாய்":2,"புதன்":3,"குரு":4,"சுக்கிரன்":5,"சனி":6};
+
+function checkPushkaraMrityu(placements) {
+  return placements.filter(p => EXALT_RASHI[p.ta] !== undefined).map(p => {
+    const deg = Math.round(p.degExact);
+    const pushkaraDeg = PUSHKARA_BHAGA[p.rashiIdx];
+    const isPushkara = Math.abs(deg - pushkaraDeg) <= 1; // within 1° of Pushkara point
+
+    const mIdx = PLANET_MRITYU_IDX[p.ta];
+    const mrityuDeg = mIdx !== undefined ? MRITYU_BHAGA[p.rashiIdx][mIdx] : null;
+    const isMrityu = mrityuDeg !== null && Math.abs(deg - mrityuDeg) <= 1; // within 1°
+
+    return {
+      ta: p.ta, rashi: p.rashi, degree: deg,
+      isPushkara, pushkaraDeg,
+      isMrityu, mrityuDeg,
+      status: isPushkara ? "புஷ்கர பாகம் — மிகச் சுபம்!" : isMrityu ? "மிருத்யு பாகம் — கவனம்" : null
+    };
+  }).filter(r => r.isPushkara || r.isMrityu);
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // NAVAMSA (D9) CHART CALCULATOR
 // ═══════════════════════════════════════════════════════════════════
 function calculateNavamsa(placements) {
