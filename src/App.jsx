@@ -720,21 +720,24 @@ function calculateYoginiDasha(moonLongitude, birthDate) {
 // ═══════════════════════════════════════════════════════════════════
 
 // #24 ஹோரா லக்னம் (HORA LAGNA) — BPHS 33.1-2: for wealth analysis
-// Formula: ghatis from sunrise × 2.5, added to Sun's longitude at birth
+// "1 sign per 2.5 ghatis" = 30° / 2.5 ghatis = 12° per ghati.
+// HL completes 2 full cycles (720°) in 24 hours.
+// Verified against PVR Narasimha Rao's Jagannatha Hora documentation.
 function calcHoraLagna(sunLong, birthMinutes, sunriseMin) {
   const ghatis = (birthMinutes - sunriseMin) / 24; // 1 ghati = 24 minutes
-  const horaLong = (sunLong + ghatis * 2.5) % 360;
-  const rashi = Math.floor(((horaLong % 360) + 360) % 360 / 30);
-  return { longitude: horaLong, rashi, rashiName: RASHIS[rashi] };
+  const horaLong = ((sunLong + ghatis * 12) % 360 + 360) % 360;
+  const rashi = Math.floor(horaLong / 30);
+  return { longitude: Math.round(horaLong * 100) / 100, rashi, rashiName: RASHIS[rashi] };
 }
 
 // #25 காடி லக்னம் (GHATI LAGNA) — BPHS 33.3-4: for authority/power
-// Formula: ghatis from sunrise × 5, added to Sun's longitude at birth
+// "1 sign per 5 ghatis" = 30° / 5 ghatis = 6° per ghati.
+// GL completes 1 full cycle (360°) in 24 hours.
 function calcGhatiLagna(sunLong, birthMinutes, sunriseMin) {
   const ghatis = (birthMinutes - sunriseMin) / 24;
-  const ghatiLong = (sunLong + ghatis * 5) % 360;
-  const rashi = Math.floor(((ghatiLong % 360) + 360) % 360 / 30);
-  return { longitude: ghatiLong, rashi, rashiName: RASHIS[rashi] };
+  const ghatiLong = ((sunLong + ghatis * 6) % 360 + 360) % 360;
+  const rashi = Math.floor(ghatiLong / 30);
+  return { longitude: Math.round(ghatiLong * 100) / 100, rashi, rashiName: RASHIS[rashi] };
 }
 
 // #26 ஆருட லக்னம் (ARUDHA LAGNA / PADA LAGNA) — BPHS 29.1-3
