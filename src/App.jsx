@@ -1095,9 +1095,10 @@ function calcGrahaBala(placements) {
         else { score = 5; status = "சமன் வீடு"; statusEn = "Neutral Sign"; }
       }
 
-      // Combustion penalty — planet loses ~30% strength when combust
+      // Combustion flag — BPHS Ch.25: combust planet is functionally weakened ("burnt"),
+      // but this does NOT modify the positional dignity score (no classical formula exists
+      // for a Shadbala/Graha Bala combustion penalty). Shown as a separate warning flag.
       const combust = p.ta !== "சூரியன்" && sunP && isCombust(p.ta, p.fullLong, sunP.fullLong, p.isRetrograde);
-      if (combust) score = Math.round(Math.max(1, score * 0.7) * 10) / 10;
 
       return { ta: p.ta, symbol: p.symbol, rashi: p.rashi, score, status, statusEn, combust };
     });
@@ -4189,7 +4190,7 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
       const h = horoscope;
       const pRows = h.placements.map((p,i)=>{
         const lord = getNakshatraLord(p.nakIdx);
-        const flags = `${p.isRetrograde && p.ta !== "ராகு" && p.ta !== "கேது" ? ' <span style="color:#c00;font-size:9px">℞</span>' : ""}${p.isCombust ? ' <span style="color:#f60;font-size:9px">🔥</span>' : ""}${p.isMoolaTri ? ' <span style="color:#0a7;font-size:8px">MT</span>' : ""}`;
+        const flags = `${p.isRetrograde && p.ta !== "ராகு" && p.ta !== "கேது" ? ' <span style="color:#c00;font-size:9px">℞</span>' : ""}${p.isCombust ? ' <span style="color:#fff;background:#f60;font-size:7px;padding:0 2px;border-radius:2px;font-weight:700">C</span>' : ""}${p.isMoolaTri ? ' <span style="color:#0a7;font-size:8px">MT</span>' : ""}`;
         return `<tr style="background:${i%2===0?"#fff":"#f9f9f0"}"><td style="padding:6px 8px">${p.ta}${flags}</td><td style="padding:6px 8px;font-family:monospace">${p.dms||p.fullLong}</td><td style="padding:6px 8px">${p.rashi}</td><td style="padding:6px 8px">${p.nakshatraTa||""} - ${p.pada||""}</td><td style="padding:6px 8px;color:#8b4500">${lord.name}</td></tr>`;
       }).join("");
       // Full Dasha table (all 9 periods with dates)
@@ -4352,7 +4353,7 @@ ${aiPart}
                         <td style={{padding:"5px 2px",color:"#1a1a1a",fontWeight:600}}>
                           {p.ta}
                           {p.isRetrograde && p.ta !== "ராகு" && p.ta !== "கேது" && <span style={{color:"#cc1a1a",fontSize:9,marginLeft:2}} title="வக்ரம் (Retrograde)">℞</span>}
-                          {p.isCombust && <span style={{color:"#ff6600",fontSize:9,marginLeft:2}} title="அஸ்தங்கம் (Combust)">🔥</span>}
+                          {p.isCombust && <span style={{color:"#fff",background:"#ff6600",fontSize:7,marginLeft:2,padding:"0 2px",borderRadius:2,fontWeight:700}} title="அஸ்தங்கம் (Combust)">C</span>}
                           {p.isMoolaTri && <span style={{color:"#0d7a30",fontSize:8,marginLeft:2}} title="மூலத்திரிகோணம்">MT</span>}
                         </td>
                         <td style={{padding:"5px 2px",textAlign:"center",color:"#1a1a1a",fontFamily:"monospace"}}>{p.dms}</td>
