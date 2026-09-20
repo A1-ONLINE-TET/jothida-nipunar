@@ -150,22 +150,55 @@ function parseBackendResponse(data) {
   const lagna = asc.rashi;
   const placements = PLANETS.map((p) => {
     const ap = data.planets.find(pp => pp.ta === p.ta);
-    if (!ap) return { ...p, rashi:RASHIS[0], rashiEn:RASHI_EN[0], degree:0, house:1, dms:"0:00:00", fullLong:0, nakshatraTa:"", pada:1, rashiIdx:0 };
+    if (!ap) return { ...p, rashi:RASHIS[0], rashiEn:RASHI_EN[0], degree:0, house:1, dms:"0:00:00", fullLong:0, nakshatraTa:"", pada:1, rashiIdx:0, isRetrograde:false, isCombust:false, isMoolaTri:false };
     return {
       ...p, rashi:RASHIS[ap.rashi], rashiEn:RASHI_EN[ap.rashi], rashiIdx:ap.rashi,
       degree:Math.floor(ap.degree), degExact:ap.degree, dms:ap.dms, fullLong:ap.fullLong,
-      house:ap.house, nakshatraTa:ap.nakshatra_ta, nakIdx:NAKSHATRAS.indexOf(ap.nakshatra_ta), pada:ap.nakshatra_pada
+      house:ap.house, nakshatraTa:ap.nakshatra_ta, nakIdx:NAKSHATRAS.indexOf(ap.nakshatra_ta), pada:ap.nakshatra_pada,
+      isRetrograde: ap.speed !== undefined ? ap.speed < 0 : false, // backend may provide speed
+      isCombust:false, isMoolaTri:false // enriched below
     };
   });
+  // Enrich placements with combustion, moolatrikona (same logic as local engine)
+  enrichPlacementsWithStates(placements);
   return {
     lagna, lagnaName:RASHIS[lagna], lagnaEn:RASHI_EN[lagna],
     lagnaDeg:Math.floor(asc.degree), lagnaDMS:asc.dms, lagnaFullLong:asc.fullLong,
     lagnaNakshatra:asc.nakshatra_ta, lagnaPada: asc.pada,
     placements,
+    // Chara Karakas (works with any placements)
+    charaKarakas: calcCharaKarakas(placements),
     nakshatra:data.nakshatra_ta, nakshatraPada:data.nakshatra_pada,
     moonRashi:data.moon_rashi_ta, sunSign:data.sun_rashi_ta,
     tithi:data.tithi||"", paksham:data.paksham||"", yogam:data.yogam||"", karanam:data.karanam||""
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SHARED ENRICHMENT — adds planetary state flags to any placements array
+// Called by BOTH the local engine (generateHoroscope) and the backend
+// (parseBackendResponse) so all features work regardless of data source.
+// ═══════════════════════════════════════════════════════════════════
+function enrichPlacementsWithStates(placements) {
+  // Combustion
+  const sunPl = placements.find(pp => pp.ta === "சூரியன்");
+  if (sunPl) {
+    placements.forEach(p => {
+      if (p.ta !== "சூரியன்" && p.ta !== "ராகு" && p.ta !== "கேது") {
+        p.isCombust = isCombust(p.ta, p.fullLong, sunPl.fullLong, p.isRetrograde);
+      }
+    });
+  }
+  // Moolatrikona
+  placements.forEach(p => {
+    if (MOOLA_TRIKONA[p.ta]) {
+      p.isMoolaTri = isMoolaTrikona(p.ta, p.rashiIdx, p.degExact);
+    }
+  });
+  // Rahu/Ketu always retrograde
+  placements.forEach(p => {
+    if (p.ta === "ராகு" || p.ta === "கேது") p.isRetrograde = true;
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -339,8 +372,8 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707) {
       "சனி":       planetCalc2(50.077, 1222.114, 0.05415, 93.06),
     };
     placements.forEach(p => {
-      if (p.ta === "ராகு" || p.ta === "கேது") { p.isRetrograde = true; return; }
       if (p.ta === "சூரியன்" || p.ta === "சந்திரன்") return; // never retrograde
+      if (p.ta === "ராகு" || p.ta === "கேது") return; // handled by enrichPlacementsWithStates
       const nextLong = nextDayLongs[p.ta];
       if (nextLong !== undefined) {
         let diff = nextLong - p.fullLong;
@@ -350,21 +383,8 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707) {
       }
     });
   }
-  // Combustion: angular distance from Sun
-  const sunPl = placements.find(pp => pp.ta === "சூரியன்");
-  if (sunPl) {
-    placements.forEach(p => {
-      if (p.ta !== "சூரியன்" && p.ta !== "ராகு" && p.ta !== "கேது") {
-        p.isCombust = isCombust(p.ta, p.fullLong, sunPl.fullLong, p.isRetrograde);
-      }
-    });
-  }
-  // Moolatrikona flag
-  placements.forEach(p => {
-    if (MOOLA_TRIKONA[p.ta]) {
-      p.isMoolaTri = isMoolaTrikona(p.ta, p.rashiIdx, p.degExact);
-    }
-  });
+  // Shared enrichment: combustion, moolatrikona, Rahu/Ketu retrograde
+  enrichPlacementsWithStates(placements);
 
   // ── Tithi (Moon - Sun / 12) ──
   const tithiAngle = norm(moonLong - sunLong);
