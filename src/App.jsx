@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { MURUGAN_IMG } from "./murugan-b64.js";
+import { PLANET_IN_HOUSE, HOUSE_THEMES, LIFE_AREAS } from "./bhava-phalam.js";
 
 const NAKSHATRAS = [
   "அசுவினி","பரணி","கார்த்திகை","ரோகிணி","மிருகசீரிடம்",
@@ -3112,6 +3113,147 @@ const PLANET_REMEDIES = {
     flower:"அரளி", direction:"—"
   }
 };
+// ═══════════════════════════════════════════════════════════════════
+// பாவ பலன் (BHAVA PHALAM) — Life-area readings that LINK all app logic
+// Uses the 4 fundamental components (Lagna, Rashi/Nakshatra, Planets, Dasha)
+// plus Graha Bala, House Lords, Doshas — every statement traces to computed
+// data. NO guessing, NO interpretation beyond classical planet-in-house rules.
+// ═══════════════════════════════════════════════════════════════════
+function calcBhavaPhalam(horoscope, grahaBala, chevvaiDosham, dashaData, classicalYogas) {
+  if (!horoscope || !horoscope.placements) return null;
+
+  const lagnaIdx = horoscope.lagna;
+  const placements = horoscope.placements;
+  const find = (name) => placements.find(p => p.ta === name);
+
+  // Build a strength lookup from Graha Bala (the app already computed this)
+  const strengthOf = {};
+  if (grahaBala) grahaBala.forEach(g => { strengthOf[g.ta] = g; });
+
+  // Which planets sit in a given house (house is 1-12 from Lagna)
+  const planetsInHouse = (houseNum) => {
+    const targetRashi = (lagnaIdx + houseNum - 1) % 12;
+    return placements.filter(p => p.rashiIdx === targetRashi);
+  };
+
+  // The lord of a house and where that lord currently sits
+  const houseLordInfo = (houseNum) => {
+    const houseRashi = (lagnaIdx + houseNum - 1) % 12;
+    const lordName = RASHI_LORD_NAME[houseRashi];
+    const lordP = find(lordName);
+    if (!lordP) return { lordName, lordHouse: null, lordRashi: null, lordStrength: null };
+    const lordHouse = ((lordP.rashiIdx - lagnaIdx + 12) % 12) + 1;
+    return {
+      lordName,
+      lordHouse,
+      lordRashi: lordP.rashi,
+      lordStrength: strengthOf[lordName] || null,
+      lordRetro: lordP.isRetrograde,
+      lordCombust: lordP.isCombust
+    };
+  };
+
+  // Describe a planet's condition using the app's computed flags
+  const planetCondition = (p) => {
+    const parts = [];
+    const gb = strengthOf[p.ta];
+    if (gb) parts.push(gb.status); // உச்சம்/நீசம்/சொந்த வீடு/நட்பு etc — from Graha Bala
+    if (p.isRetrograde && p.ta !== "ராகு" && p.ta !== "கேது") parts.push("வக்ரம்");
+    if (p.isCombust) parts.push("அஸ்தங்கம்");
+    if (p.isMoolaTri) parts.push("மூலத்திரிகோணம்");
+    return parts.join(", ");
+  };
+
+  // Build reading for each life area (from the user's document grouping)
+  const areas = LIFE_AREAS.map(area => {
+    const houseReadings = area.houses.map(houseNum => {
+      const theme = HOUSE_THEMES[houseNum];
+      const occupants = planetsInHouse(houseNum);
+      const lordInfo = houseLordInfo(houseNum);
+      const houseRashiIdx = (lagnaIdx + houseNum - 1) % 12;
+
+      // Planet-in-house classical effects (only for planets actually there)
+      const occupantEffects = occupants.map(p => ({
+        planet: p.ta,
+        symbol: p.symbol,
+        condition: planetCondition(p),
+        effect: PLANET_IN_HOUSE[p.ta] ? PLANET_IN_HOUSE[p.ta][houseNum] : ""
+      }));
+
+      // House lord strength → determines if the house's matters flourish
+      let lordVerdict = "";
+      if (lordInfo.lordStrength) {
+        const score = lordInfo.lordStrength.score;
+        const lordHouseGood = [1,4,5,7,9,10,11].includes(lordInfo.lordHouse);
+        if (score >= 7 && lordHouseGood) lordVerdict = "மிகச் சிறந்த நிலை — இந்த விஷயங்கள் நன்கு செழிக்கும்";
+        else if (score >= 5 && lordHouseGood) lordVerdict = "நல்ல நிலை — சாதகமான பலன்";
+        else if (score < 4 || [6,8,12].includes(lordInfo.lordHouse)) lordVerdict = "சவால்கள் இருக்கலாம் — முயற்சி/பரிகாரம் தேவை";
+        else lordVerdict = "நடுத்தர நிலை";
+      }
+
+      return {
+        houseNum,
+        houseTheme: theme,
+        houseRashi: RASHIS[houseRashiIdx],
+        occupants: occupantEffects,
+        lordInfo,
+        lordVerdict,
+        isEmpty: occupants.length === 0
+      };
+    });
+
+    // Special linkage for specific areas
+    let specialNote = "";
+    if (area.key === "marriage" && chevvaiDosham) {
+      if (chevvaiDosham.present && !chevvaiDosham.cancelled) {
+        specialNote = `⚠ செவ்வாய் தோஷம் உண்டு (${chevvaiDosham.severityText}) — திருமணப் பொருத்தம் பார்க்கும்போது கவனம் தேவை. ${chevvaiDosham.remedy}`;
+      } else if (chevvaiDosham.present && chevvaiDosham.cancelled) {
+        specialNote = `செவ்வாய் தோஷம் இருந்தாலும் நிவர்த்தி உள்ளது (${chevvaiDosham.cancelReason}) — கவலை தேவையில்லை.`;
+      } else {
+        specialNote = "செவ்வாய் தோஷம் இல்லை — திருமண விஷயத்தில் இந்த தடை இல்லை.";
+      }
+    }
+
+    return { ...area, houseReadings, specialNote };
+  });
+
+  // Current Dasha context — links the time dimension (4th fundamental component)
+  let dashaContext = null;
+  if (dashaData && dashaData.dashas) {
+    const now = new Date();
+    const md = dashaData.dashas.find(d => now >= d.startDate && now < d.endDate);
+    if (md) {
+      const ad = md.antardashas?.find(a => now >= a.startDate && now < a.endDate);
+      const dashaLordP = find(md.name);
+      const dashaLordHouse = dashaLordP ? ((dashaLordP.rashiIdx - lagnaIdx + 12) % 12) + 1 : null;
+      const dashaLordStrength = strengthOf[md.name];
+      dashaContext = {
+        mahaLord: md.name,
+        antarLord: ad?.name || null,
+        dashaLordHouse,
+        dashaLordRashi: dashaLordP?.rashi || null,
+        dashaLordStrength: dashaLordStrength?.status || null,
+        // Which life areas the current dasha lord activates (houses it rules + sits in)
+        rulesHouses: [1,2,3,4,5,6,7,8,9,10,11,12].filter(h => RASHI_LORD_NAME[(lagnaIdx + h - 1) % 12] === md.name)
+      };
+    }
+  }
+
+  // Relevant yogas summary
+  const yogaList = (classicalYogas || []).filter(y => y.type === "yoga").map(y => y.name);
+  const doshaList = (classicalYogas || []).filter(y => y.type === "dosha").map(y => y.name);
+
+  return {
+    lagna: horoscope.lagnaName,
+    moonRashi: horoscope.moonRashi,
+    nakshatra: horoscope.nakshatra,
+    areas,
+    dashaContext,
+    yogaList,
+    doshaList
+  };
+}
+
 function getRemedies(placements, grahaBala) {
   if (!placements || !grahaBala) return [];
   const weakPlanets = grahaBala.filter(g => g.score <= 4).map(g => g.ta);
@@ -3881,6 +4023,7 @@ export default function AstrologyApp() {
   const [muhurthaData, setMuhurthaData] = useState(null);
   const [planetTransitAnalysis, setPlanetTransitAnalysis] = useState(null);
   const [remediesData, setRemediesData] = useState(null);
+  const [bhavaPhalam, setBhavaPhalam] = useState(null);
   const [expandedDasha, setExpandedDasha] = useState(null);
   // Porutham
   const [poruthBride, setPoruthBride] = useState({ name:"", dob:"", tob:"", ampm:"AM" });
@@ -4190,7 +4333,13 @@ export default function AstrologyApp() {
       setRemediesData(getRemedies(result.placements, calcGrahaBala(result.placements)));
       const moonP = result.placements.find(p => p.ta === "சந்திரன்");
       const moonLongFromApi = moonP ? (moonP.rashiIdx * 30 + moonP.degExact) : 0;
-      setDashaData(calculateDasha(moonLongFromApi, dobISO));
+      const dashaResult = calculateDasha(moonLongFromApi, dobISO);
+      setDashaData(dashaResult);
+      // Bhava Phalam — links all computed logic (lagna, planets, graha bala, dosha, dasha, yogas)
+      const gbResult = calcGrahaBala(result.placements);
+      const cdResult = detectChevvaiDosham(result.placements, result.lagna);
+      const cyResult = detectClassicalYogas(result.placements, result.lagna);
+      setBhavaPhalam(calcBhavaPhalam(result, gbResult, cdResult, dashaResult, cyResult));
     } else {
       setApiSource("local");
       const geo = resolveBirthGeo(formData);
@@ -4242,7 +4391,13 @@ export default function AstrologyApp() {
       const mCorr = 6.289*Math.sin(Mm2*r)-1.274*Math.sin((2*Dm2-Mm2)*r)+0.658*Math.sin(2*Dm2*r)
         -0.214*Math.sin(2*Mm2*r)-0.186*Math.sin(Ms2*r)+0.110*Math.sin(2*Fm2*r);
       const mLong = (((Lm2+mCorr)%360+360)%360-ayanamsa2+360)%360;
-      setDashaData(calculateDasha(mLong, dobISO));
+      const dashaResult2 = calculateDasha(mLong, dobISO);
+      setDashaData(dashaResult2);
+      // Bhava Phalam — links all computed logic
+      const gbResult2 = calcGrahaBala(h.placements);
+      const cdResult2 = detectChevvaiDosham(h.placements, h.lagna);
+      const cyResult2 = detectClassicalYogas(h.placements, h.lagna);
+      setBhavaPhalam(calcBhavaPhalam(h, gbResult2, cdResult2, dashaResult2, cyResult2));
     }
     goTo(SCREEN.RESULT);
   };
@@ -5079,6 +5234,92 @@ ${aiPart}
               <option value="remedies">💎 பரிகாரம் (கோயில், மந்திரம், ரத்தினம்)</option>
             </select>
           </div>
+
+          {/* ═══ 3.4 பாவ பலன் (LIFE-AREA READINGS) ═══ */}
+          {bhavaPhalam && (
+            <div style={{...card,marginBottom:10,padding:"14px 16px"}}>
+              <div style={{fontSize:15,fontWeight:700,color:"#7b1c1c",marginBottom:4,textAlign:"center"}}>📖 ஜாதக பலன்கள்</div>
+              <div style={{fontSize:10,color:"#8b6914",textAlign:"center",marginBottom:12}}>
+                லக்னம்: {bhavaPhalam.lagna} • ராசி: {bhavaPhalam.moonRashi} • நட்சத்திரம்: {bhavaPhalam.nakshatra}
+              </div>
+
+              {bhavaPhalam.areas.map((area, ai) => (
+                <div key={ai} style={{marginBottom:14,borderLeft:"3px solid #f0c75e",paddingLeft:10}}>
+                  <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:6}}>
+                    {area.icon} {area.ta}
+                  </div>
+
+                  {area.houseReadings.map((hr, hi) => (
+                    <div key={hi} style={{marginBottom:8}}>
+                      <div style={{fontSize:11,color:"#8b6914",fontWeight:600,marginBottom:3}}>
+                        {hr.houseNum}ஆம் வீடு ({hr.houseTheme.ta}) — {hr.houseRashi}
+                      </div>
+
+                      {/* Planets sitting in this house — classical effects */}
+                      {hr.occupants.length > 0 ? (
+                        hr.occupants.map((occ, oi) => (
+                          <div key={oi} style={{fontSize:11,color:"#333",marginBottom:4,lineHeight:1.5}}>
+                            <span style={{fontWeight:700,color:"#7b1c1c"}}>{occ.symbol} {occ.planet}</span>
+                            {occ.condition && <span style={{fontSize:9,color:"#0d7a30",marginLeft:4}}>({occ.condition})</span>}
+                            <br/>{occ.effect}
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{fontSize:10,color:"#999",marginBottom:4,fontStyle:"italic"}}>
+                          இந்த வீட்டில் கிரகம் இல்லை — வீட்டு அதிபதி நிலை பார்க்கவும்
+                        </div>
+                      )}
+
+                      {/* House lord placement — links where the significator sits */}
+                      {hr.lordInfo.lordHouse && (
+                        <div style={{fontSize:10,color:"#555",marginTop:2}}>
+                          அதிபதி <b>{hr.lordInfo.lordName}</b> → {hr.lordInfo.lordHouse}ஆம் வீட்டில்
+                          {hr.lordInfo.lordStrength && <span> ({hr.lordInfo.lordStrength.status})</span>}
+                          {hr.lordVerdict && <span style={{color:hr.lordVerdict.includes("சிறந்த")?"#0d7a30":hr.lordVerdict.includes("சவால்")?"#cc1a1a":"#8b6914"}}> — {hr.lordVerdict}</span>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Special note (e.g. Chevvai Dosham for marriage) */}
+                  {area.specialNote && (
+                    <div style={{fontSize:10,color:area.specialNote.includes("⚠")?"#cc1a1a":"#0d7a30",background:area.specialNote.includes("⚠")?"#fff0f0":"#f0fff0",padding:"6px 8px",borderRadius:6,marginTop:4}}>
+                      {area.specialNote}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Current Dasha context — the time dimension */}
+              {bhavaPhalam.dashaContext && (
+                <div style={{marginTop:12,padding:"8px 10px",background:"#f0e8d0",borderRadius:8}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#7b1c1c",marginBottom:4}}>⏳ தற்போதைய காலம் (திசா-புக்தி)</div>
+                  <div style={{fontSize:11,color:"#333",lineHeight:1.5}}>
+                    நடப்பு தசை: <b>{bhavaPhalam.dashaContext.mahaLord}</b>
+                    {bhavaPhalam.dashaContext.antarLord && <span> / புக்தி: <b>{bhavaPhalam.dashaContext.antarLord}</b></span>}
+                    <br/>
+                    {bhavaPhalam.dashaContext.mahaLord} {bhavaPhalam.dashaContext.dashaLordHouse}ஆம் வீட்டில் ({bhavaPhalam.dashaContext.dashaLordRashi})
+                    {bhavaPhalam.dashaContext.dashaLordStrength && <span> — {bhavaPhalam.dashaContext.dashaLordStrength}</span>}
+                    {bhavaPhalam.dashaContext.rulesHouses.length > 0 && (
+                      <span><br/>இந்த தசையில் {bhavaPhalam.dashaContext.rulesHouses.join(",")}ஆம் வீட்டு விஷயங்கள் முன்னணியில் இருக்கும்</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Yogas & Doshas summary */}
+              {(bhavaPhalam.yogaList.length > 0 || bhavaPhalam.doshaList.length > 0) && (
+                <div style={{marginTop:10,fontSize:10,color:"#555"}}>
+                  {bhavaPhalam.yogaList.length > 0 && <div>✅ சுப யோகங்கள்: {bhavaPhalam.yogaList.join(", ")}</div>}
+                  {bhavaPhalam.doshaList.length > 0 && <div style={{marginTop:2}}>⚠ தோஷங்கள்: {bhavaPhalam.doshaList.join(", ")}</div>}
+                </div>
+              )}
+
+              <div style={{fontSize:8,color:"#aaa",textAlign:"center",marginTop:10,fontStyle:"italic"}}>
+                BPHS / சாராவளி classical grantha அடிப்படையில் — கிரக நிலை, வீட்டு அதிபதி, கிரக பலம், தசை இணைத்து
+              </div>
+            </div>
+          )}
 
           {/* ═══ 3.5 GRAHA BALA (Planet Strength) ═══ */}
           {advancedView==="grahabala" && grahaBala && grahaBala.length > 0 && (
