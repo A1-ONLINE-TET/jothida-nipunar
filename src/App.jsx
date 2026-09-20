@@ -657,9 +657,16 @@ const ASHTOTTARI_LORDS = [
 ]; // Total: 6+15+8+17+10+19+12+21 = 108 years
 
 // Nakshatra → Ashtottari lord mapping (BPHS Ch.47):
-// Ardra,Punarvasu,Pushya,Ashlesha → Sun; Magha...Uttara → Moon; etc.
+// Venus(7): Ashwini(0),Bharani(1),Krittika(2),Rohini(3),Mrigashira(4),Revati(26)
+// Sun(0): Ardra(5),Punarvasu(6),Pushya(7),Ashlesha(8)
+// Moon(1): Magha(9),P.Phalguni(10),U.Phalguni(11)
+// Mars(2): Hasta(12),Chitra(13),Swati(14)
+// Mercury(3): Vishakha(15),Anuradha(16),Jyeshtha(17)
+// Saturn(4): Mula(18),P.Ashadha(19),U.Ashadha(20)
+// Jupiter(5): Shravana(21),Dhanishta(22),Shatabhisha(23)
+// Rahu(6): P.Bhadrapada(24),U.Bhadrapada(25)
 const ASHTOTTARI_NAK_LORD = [
-  5,5,5,6,6,0,0,0,0, 1,1,1,2,2,2,3,3,3, 4,4,4,5,5,6,6,7,7
+  7,7,7,7,7,0,0,0,0, 1,1,1,2,2,2,3,3,3, 4,4,4,5,5,5,6,6,7
 ]; // index into ASHTOTTARI_LORDS
 
 function calculateAshtottariDasha(moonLongitude, birthDate) {
@@ -709,8 +716,9 @@ const YOGINI_LORDS = [
 
 function calculateYoginiDasha(moonLongitude, birthDate) {
   const nakIdx = Math.floor(moonLongitude / (360 / 27)) % 27;
-  // Yogini lord = (nakshatra number + 3) mod 8 (classical formula)
-  const lordIdx = (nakIdx + 3) % 8;
+  // Yogini lord: cycle repeats every 8 nakshatras starting from Ashwini=Mangala
+  // Ashwini(0)→Mangala, Bharani(1)→Pingala, ..., Pushya(7)→Sankata, Ashlesha(8)→Mangala again
+  const lordIdx = nakIdx % 8;
   const lord = YOGINI_LORDS[lordIdx];
 
   const nakSpan = 360 / 27;
