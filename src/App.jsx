@@ -206,7 +206,7 @@ function enrichPlacementsWithStates(placements) {
 // Sun: ~0.01° accuracy | Moon: ~0.5° (6 perturbation terms)
 // Lagna: Local Sidereal Time method | Ayanamsa: Lahiri
 // ═══════════════════════════════════════════════════════════════════
-function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707) {
+function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false) {
   // Parse Y/M/D directly from "YYYY-MM-DD" string — avoids the classic JS bug where
   // new Date("YYYY-MM-DD") parses as UTC midnight, then local getters (getDate()) can
   // shift the day backward by one for users in negative-UTC-offset timezones (e.g. Americas).
@@ -350,6 +350,10 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707) {
   });
 
   // ── Enrich placements: Retrograde, Combustion, Moolatrikona ──
+  // SKIPPED in lightweight mode (internal helper calls like Sankranti-finder and
+  // daily-motion only need raw positions — this avoids the enrichment running dozens
+  // of times per chart, which was causing severe slowdown).
+  if (!lightweight) {
   // Retrograde: compare planet longitude with +1 day using same engine internals
   {
     const JD2 = JD + 1; // next day
@@ -385,6 +389,7 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707) {
   }
   // Shared enrichment: combustion, moolatrikona, Rahu/Ketu retrograde
   enrichPlacementsWithStates(placements);
+  }
 
   // ── Tithi (Moon - Sun / 12) ──
   const tithiAngle = norm(moonLong - sunLong);
@@ -412,17 +417,18 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707) {
   const lagnaNakIdx = Math.floor(lagnaFullLong / (360/27)) % 27;
   const lagnaPada = Math.floor((lagnaFullLong % (360/27)) / (360/108)) + 1;
 
-  // ── Special Lagnas (BPHS Ch.33) ──
-  const birthMin = h * 60 + m;
-  const { sunrise: sr } = calcSunriseSunset(new Date(yr, mo-1, dy), lat, lon, 5.5);
-  const srMin = sr.decimal * 60;
-  const horaLagna = calcHoraLagna(sunLong, birthMin, srMin);
-  const ghatiLagna = calcGhatiLagna(sunLong, birthMin, srMin);
-  const arudhaLagna = calcArudhaLagna(lagna, placements);
-  const upapadaLagna = calcUpapadaLagna(lagna, placements);
-
-  // ── Chara Karakas (Jaimini) ──
-  const charaKarakas = calcCharaKarakas(placements);
+  // ── Special Lagnas (BPHS Ch.33) — skipped in lightweight mode ──
+  let horaLagna=null, ghatiLagna=null, arudhaLagna=null, upapadaLagna=null, charaKarakas=null;
+  if (!lightweight) {
+    const birthMin = h * 60 + m;
+    const { sunrise: sr } = calcSunriseSunset(new Date(yr, mo-1, dy), lat, lon, 5.5);
+    const srMin = sr.decimal * 60;
+    horaLagna = calcHoraLagna(sunLong, birthMin, srMin);
+    ghatiLagna = calcGhatiLagna(sunLong, birthMin, srMin);
+    arudhaLagna = calcArudhaLagna(lagna, placements);
+    upapadaLagna = calcUpapadaLagna(lagna, placements);
+    charaKarakas = calcCharaKarakas(placements);
+  }
 
   return {
     lagna, lagnaName: RASHIS[lagna], lagnaEn: RASHI_EN[lagna], lagnaDeg,
@@ -2516,8 +2522,8 @@ function findSankrantiDate(targetRashiIdx, estimateDaysBack, birthDateObj, lat, 
     const dPrev = new Date(d.getTime() - 86400000);
     const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const isoPrev = `${dPrev.getFullYear()}-${String(dPrev.getMonth()+1).padStart(2,'0')}-${String(dPrev.getDate()).padStart(2,'0')}`;
-    const h = generateHoroscope(iso, "12:00", lat, lon);
-    const hPrev = generateHoroscope(isoPrev, "12:00", lat, lon);
+    const h = generateHoroscope(iso, "12:00", lat, lon, true);
+    const hPrev = generateHoroscope(isoPrev, "12:00", lat, lon, true);
     const sunToday = h.placements.find(p => p.ta === "சூரியன்");
     const sunPrev = hPrev.placements.find(p => p.ta === "சூரியன்");
     if (sunToday && sunPrev && Math.floor(sunToday.fullLong/30) === targetRashiIdx && Math.floor(sunPrev.fullLong/30) !== targetRashiIdx) {
@@ -2588,11 +2594,11 @@ function calcEclipticLatitude(planetTa, T) {
 // its longitude at birth time against 24 hours later, using the same Jean Meeus engine as
 // the rest of the chart — needed so Cheshta Bala can reflect real motion instead of a guess.
 function calcActualDailyMotion(dobISO, tob, lat, lon) {
-  const h1 = generateHoroscope(dobISO, tob, lat, lon);
+  const h1 = generateHoroscope(dobISO, tob, lat, lon, true);
   const [y, m, d] = dobISO.split('-').map(Number);
   const next = new Date(y, m - 1, d + 1);
   const dob2 = `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}-${String(next.getDate()).padStart(2,'0')}`;
-  const h2 = generateHoroscope(dob2, tob, lat, lon);
+  const h2 = generateHoroscope(dob2, tob, lat, lon, true);
   const motions = {};
   h1.placements.forEach(p1 => {
     const p2 = h2.placements.find(pl => pl.ta === p1.ta);
