@@ -589,6 +589,133 @@ function calculateDasha(moonLongitude, birthDate) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// #37 AYANAMSA OPTIONS — multiple classical Ayanamsa systems
+// Default: Lahiri (Chitrapaksha, IENA standard). Alternatives provided
+// for users who follow KP, Raman, or Yukteshwar systems.
+// Each returns the ayanamsa value in degrees for Julian century T.
+// ═══════════════════════════════════════════════════════════════════
+const AYANAMSA_SYSTEMS = {
+  lahiri: {
+    name: "லாஹிரி (சித்ரபக்ஷ)", nameEn: "Lahiri (Chitrapaksha)",
+    desc: "IENA standard — most widely used in India",
+    calc: (T) => 23.856 + (T * 100 * 50.29 / 3600) // current formula in the app
+  },
+  kp: {
+    name: "கிருஷ்ணமூர்த்தி (KP)", nameEn: "Krishnamurti Paddhati",
+    desc: "KP system — popular for horary astrology",
+    // KP Ayanamsa = Lahiri - 0°06' (approximately; KP uses a precession rate of 50.2388475"/year)
+    calc: (T) => 23.756 + (T * 100 * 50.2388475 / 3600)
+  },
+  raman: {
+    name: "பி.வி. ராமன்", nameEn: "B.V. Raman",
+    desc: "Raman's Ayanamsa — slightly different from Lahiri",
+    // Raman: 22°27'37.76" at 1900 + precession 50.3333"/year
+    calc: (T) => 22.4605 + ((T + 1) * 100 * 50.3333 / 3600) // T+1 because T is from J2000, Raman epoch is 1900
+  },
+  yukteshwar: {
+    name: "யுக்தேஸ்வர்", nameEn: "Sri Yukteshwar",
+    desc: "Yukteshwar's system from Holy Science (1894)",
+    // Yukteshwar: 22°27'59" at 1893 + 54"/year
+    calc: (T) => 22.4664 + ((T + 1.07) * 100 * 54 / 3600) // epoch ~1893
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// #38 அஷ்டோத்தரி தசை (ASHTOTTARI DASHA) — BPHS Ch.47
+// 108-year cycle, used when Rahu is in kendra/trikona from Lagna lord.
+// 8 planets (no Ketu), starting from the birth nakshatra's dasha lord.
+// ═══════════════════════════════════════════════════════════════════
+const ASHTOTTARI_LORDS = [
+  { name:"சூரியன்",   en:"Sun",     years:6,  symbol:"☉" },
+  { name:"சந்திரன்",  en:"Moon",    years:15, symbol:"☽" },
+  { name:"செவ்வாய்",  en:"Mars",    years:8,  symbol:"♂" },
+  { name:"புதன்",     en:"Mercury", years:17, symbol:"☿" },
+  { name:"சனி",       en:"Saturn",  years:10, symbol:"♄" },
+  { name:"குரு",      en:"Jupiter", years:19, symbol:"♃" },
+  { name:"ராகு",      en:"Rahu",    years:12, symbol:"☊" },
+  { name:"சுக்கிரன்", en:"Venus",   years:21, symbol:"♀" },
+]; // Total: 6+15+8+17+10+19+12+21 = 108 years
+
+// Nakshatra → Ashtottari lord mapping (BPHS Ch.47):
+// Ardra,Punarvasu,Pushya,Ashlesha → Sun; Magha...Uttara → Moon; etc.
+const ASHTOTTARI_NAK_LORD = [
+  5,5,5,6,6,0,0,0,0, 1,1,1,2,2,2,3,3,3, 4,4,4,5,5,6,6,7,7
+]; // index into ASHTOTTARI_LORDS
+
+function calculateAshtottariDasha(moonLongitude, birthDate) {
+  const nakIdx = Math.floor(moonLongitude / (360 / 27)) % 27;
+  const lordIdx = ASHTOTTARI_NAK_LORD[nakIdx];
+  const lord = ASHTOTTARI_LORDS[lordIdx];
+
+  // Remaining dasha balance at birth
+  const nakSpan = 360 / 27;
+  const elapsed = (moonLongitude % nakSpan) / nakSpan;
+  const remainYears = lord.years * (1 - elapsed);
+
+  const dashas = [];
+  let currentDate = new Date(birthDate);
+  const now = new Date();
+
+  for (let i = 0; i < 8; i++) {
+    const idx = (lordIdx + i) % 8;
+    const d = ASHTOTTARI_LORDS[idx];
+    const yrs = i === 0 ? remainYears : d.years;
+    const ms = yrs * 365.25 * 24 * 3600000;
+    const startDt = new Date(currentDate);
+    const endDt = new Date(currentDate.getTime() + ms);
+    const isCurrent = now >= startDt && now < endDt;
+    dashas.push({ ...d, years: Math.round(yrs * 10) / 10, startDate: startDt, endDate: endDt, isCurrent });
+    currentDate = endDt;
+  }
+  return { dashas, system: "அஷ்டோத்தரி (108 வருடம்)", systemEn: "Ashtottari (108 years)" };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// #39 யோகினி தசை (YOGINI DASHA) — Classical 36-year cycle
+// 8 Yoginis, each with a planet lord and specific year count.
+// Popular in North India; based on birth nakshatra.
+// Source: Tajika Neelakanthi / classical texts
+// ═══════════════════════════════════════════════════════════════════
+const YOGINI_LORDS = [
+  { name:"மங்களா",  en:"Mangala",  planet:"சந்திரன்",  years:1, symbol:"☽" },
+  { name:"பிங்களா", en:"Pingala",  planet:"சூரியன்",   years:2, symbol:"☉" },
+  { name:"தன்யா",   en:"Dhanya",   planet:"குரு",      years:3, symbol:"♃" },
+  { name:"பிராம்மி", en:"Bhramari", planet:"செவ்வாய்",  years:4, symbol:"♂" },
+  { name:"பத்ரிகா", en:"Bhadrika", planet:"புதன்",     years:5, symbol:"☿" },
+  { name:"உல்கா",   en:"Ulka",     planet:"சனி",       years:6, symbol:"♄" },
+  { name:"சித்தா",  en:"Siddha",   planet:"சுக்கிரன்", years:7, symbol:"♀" },
+  { name:"சங்கடா",  en:"Sankata",  planet:"ராகு",      years:8, symbol:"☊" },
+]; // Total: 1+2+3+4+5+6+7+8 = 36 years
+
+function calculateYoginiDasha(moonLongitude, birthDate) {
+  const nakIdx = Math.floor(moonLongitude / (360 / 27)) % 27;
+  // Yogini lord = (nakshatra number + 3) mod 8 (classical formula)
+  const lordIdx = (nakIdx + 3) % 8;
+  const lord = YOGINI_LORDS[lordIdx];
+
+  const nakSpan = 360 / 27;
+  const elapsed = (moonLongitude % nakSpan) / nakSpan;
+  const remainYears = lord.years * (1 - elapsed);
+
+  const dashas = [];
+  let currentDate = new Date(birthDate);
+  const now = new Date();
+
+  for (let i = 0; i < 8; i++) {
+    const idx = (lordIdx + i) % 8;
+    const d = YOGINI_LORDS[idx];
+    const yrs = i === 0 ? remainYears : d.years;
+    const ms = yrs * 365.25 * 24 * 3600000;
+    const startDt = new Date(currentDate);
+    const endDt = new Date(currentDate.getTime() + ms);
+    const isCurrent = now >= startDt && now < endDt;
+    dashas.push({ ...d, years: Math.round(yrs * 10) / 10, startDate: startDt, endDate: endDt, isCurrent });
+    currentDate = endDt;
+  }
+  return { dashas, system: "யோகினி (36 வருடம்)", systemEn: "Yogini (36 years)" };
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // TIER 2: SPECIAL LAGNAS — BPHS Ch.33
 // ═══════════════════════════════════════════════════════════════════
 
