@@ -1507,13 +1507,89 @@ const NAISARGIKA_BALA = {
 // the Moon's condition (conjunction, waxing/waning) rather than a fixed classification.
 const NATURAL_BENEFICS = ["குரு","சுக்கிரன்","புதன்","சந்திரன்"];
 const NATURAL_MALEFICS = ["சூரியன்","செவ்வாய்","சனி"];
-function calcShadbala(placements, lagnaIdx) {
-  // Fixed: Drik Bala (aspectual strength) below previously ignored the chart entirely —
-  // it was a flat 25 for every planet in every chart, contributing zero differentiating
-  // information. calcGrahaDrishti() already computes the real classical aspects
-  // (Parashari special aspects for Mars/Jupiter/Saturn, universal 7th for the rest) —
-  // reuse it here so Drik Bala actually reflects who aspects whom in this chart.
+// Mean daily motion in degrees/day — classical reference speed for the 5 star planets,
+// used by Cheshta Bala below (Sun/Moon use their own BPHS-specified substitutions instead).
+const MEAN_DAILY_MOTION = { "செவ்வாய்":0.524, "புதன்":1.383, "குரு":0.083, "சுக்கிரன்":1.2, "சனி":0.034 };
+
+// Computes each planet's ACTUAL daily motion (°/day; negative = retrograde) by comparing
+// its longitude at birth time against 24 hours later, using the same Jean Meeus engine as
+// the rest of the chart — needed so Cheshta Bala can reflect real motion instead of a guess.
+function calcActualDailyMotion(dobISO, tob, lat, lon) {
+  const h1 = generateHoroscope(dobISO, tob, lat, lon);
+  const [y, m, d] = dobISO.split('-').map(Number);
+  const next = new Date(y, m - 1, d + 1);
+  const dob2 = `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}-${String(next.getDate()).padStart(2,'0')}`;
+  const h2 = generateHoroscope(dob2, tob, lat, lon);
+  const motions = {};
+  h1.placements.forEach(p1 => {
+    const p2 = h2.placements.find(pl => pl.ta === p1.ta);
+    if (!p2) return;
+    let diff = p2.fullLong - p1.fullLong;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    motions[p1.ta] = diff;
+  });
+  return motions;
+}
+
+function calcShadbala(placements, lagnaIdx, dobISO, tob, lat, lon) {
   const drishti = calcGrahaDrishti(placements);
+
+  // Birth date/time breakdown, needed for the Kala Bala sub-components below
+  const [by, bm, bd] = dobISO.split('-').map(Number);
+  let [bh, bmin] = (tob || "06:00").split(':').map(Number);
+  bh = bh || 6; bmin = bmin || 0;
+  const birthDateObj = new Date(by, bm - 1, bd);
+  const birthDateTimeObj = new Date(by, bm - 1, bd, bh, bmin);
+  const { sunrise, sunset } = calcSunriseSunset(birthDateObj, lat, lon, 5.5);
+  const birthMinutesOfDay = bh * 60 + bmin;
+  const sunriseMin = sunrise.decimal * 60, sunsetMin = sunset.decimal * 60;
+  const isDayBirth = birthMinutesOfDay >= sunriseMin && birthMinutesOfDay < sunsetMin;
+
+  // Nathonnata Bala (day/night strength) — BPHS 27.8-9 / Saravali 4.36: ghati-distance of
+  // birth time from the nearest true noon (0 at noon, 30 ghatis at midnight), doubled to
+  // virupas. Nata Bala goes to nocturnal planets, Unnata Bala to diurnal ones; the two
+  // always sum to 60.
+  const noonMin = 12 * 60;
+  let distFromNoon = Math.abs(birthMinutesOfDay - noonMin);
+  distFromNoon = Math.min(distFromNoon, 24*60 - distFromNoon);
+  const nataGhatis = Math.min(30, distFromNoon / 24);
+  const nataBala = 2 * nataGhatis;
+  const unnataBala = 60 - nataBala;
+
+  // Paksha Bala (lunar fortnight strength) — BPHS 27.10-11: Moon-Sun angular distance,
+  // folded to 0-180°, divided by 3 gives the benefics' share; malefics get 60 minus that.
+  const sunP = placements.find(p => p.ta === "சூரியன்");
+  const moonP = placements.find(p => p.ta === "சந்திரன்");
+  let moonSunDiff = ((moonP?.fullLong || 0) - (sunP?.fullLong || 0) + 360) % 360;
+  if (moonSunDiff > 180) moonSunDiff = 360 - moonSunDiff;
+  const pakshaBenefic = moonSunDiff / 3;
+  const pakshaMalefic = 60 - pakshaBenefic;
+
+  // Tribhaga Bala — day and night are each split into 3 equal parts; the lord of the part
+  // containing birth gets 60. Jupiter additionally always gets 60 regardless of birth time.
+  const TRIBHAGA_DAY = ["புதன்","சூரியன்","சனி"];
+  const TRIBHAGA_NIGHT = ["சந்திரன்","சுக்கிரன்","செவ்வாய்"];
+  let tribhagaLord;
+  if (isDayBirth) {
+    const third = Math.min(2, Math.floor((birthMinutesOfDay - sunriseMin) / ((sunsetMin - sunriseMin) / 3)));
+    tribhagaLord = TRIBHAGA_DAY[third];
+  } else {
+    const nightLen = (24*60 - sunsetMin) + sunriseMin;
+    const sinceSunset = birthMinutesOfDay >= sunsetMin ? (birthMinutesOfDay - sunsetMin) : (24*60 - sunsetMin + birthMinutesOfDay);
+    const third = Math.min(2, Math.floor(sinceSunset / (nightLen / 3)));
+    tribhagaLord = TRIBHAGA_NIGHT[third];
+  }
+
+  // Vara Bala (weekday lord, 45) and Hora Bala (planetary-hour lord, 60) — reuses the
+  // app's existing weekday-lord table and Horai engine rather than recomputing them.
+  const varaLord = DAY_LORD_BY_WEEKDAY[birthDateObj.getDay()];
+  const horaLord = calcCurrentHorai(birthDateTimeObj, lat, lon, 5.5).planet;
+
+  // Real daily motion (birth time vs +24h, same engine as the rest of the chart), for
+  // Cheshta Bala below.
+  const dailyMotion = calcActualDailyMotion(dobISO, tob, lat, lon);
+
   return placements.filter(p => EXALT_RASHI[p.ta] !== undefined).map(p => {
     // 1. ஸ்தான பலம் (Positional Strength)
     let sthanaBala = 0;
@@ -1530,11 +1606,43 @@ function calcShadbala(placements, lagnaIdx) {
     const digDist = Math.min(Math.abs(houseFromLagna - digHouse), 12 - Math.abs(houseFromLagna - digHouse));
     const digBala = Math.max(0, 60 - digDist * 10);
 
-    // 3. கால பலம் (Temporal Strength — simplified)
-    const kalaBala = p.ta === "சூரியன்" || p.ta === "குரு" || p.ta === "செவ்வாய்" ? 40 : 35;
+    // 3. கால பலம் (Temporal Strength) — 5 of the 6 classical sub-parts, computed from this
+    // chart's actual birth date/time: Nathonnata, Paksha, Tribhaga, Vara, Hora Bala. Not
+    // included: Abda Bala (year lord) and Masa Bala (month lord), both of which require an
+    // Ahargana (days-since-creation-epoch) calculation — a materially larger separate
+    // undertaking; and Ayana Bala (declination-based), tracked separately too.
+    const isNocturnal = ["சந்திரன்","செவ்வாய்","சனி"].includes(p.ta);
+    const natonnataBala = p.ta === "புதன்" ? 60 : (isNocturnal ? nataBala : unnataBala);
+    const isBeneficForPaksha = ["குரு","சுக்கிரன்","புதன்","சந்திரன்"].includes(p.ta);
+    const thisPakshaBala = isBeneficForPaksha ? pakshaBenefic : pakshaMalefic;
+    const tribhagaBala = (p.ta === tribhagaLord || p.ta === "குரு") ? 60 : 0;
+    const varaBala = p.ta === varaLord ? 45 : 0;
+    const horaBala = p.ta === horaLord ? 60 : 0;
+    const kalaBala = natonnataBala + thisPakshaBala + tribhagaBala + varaBala + horaBala;
 
-    // 4. சேஷ்ட பலம் (Motional Strength — simplified)
-    const cheshtaBala = p.rashiIdx === EXALT_RASHI[p.ta] ? 60 : p.rashiIdx === DEBIL_RASHI[p.ta] ? 10 : 30;
+    // 4. சேஷ்ட பலம் (Motional Strength) — Sun and Moon use their BPHS 27.18 substitutions
+    // (Sun→Ayana Bala, not yet implemented, neutral placeholder here; Moon→her own Paksha
+    // Bala). The 5 star planets now use ACTUAL computed daily motion against each planet's
+    // classical mean motion, mapped onto the 8-fold Vakra/Anuvakra/Vikala/Manda/Sama/Chara/
+    // Atichara ladder — a well-grounded approximation of that ladder, not the degree-precise
+    // Chesta-Kendra/Sighrocca formula (whose exact definition varies even between classical
+    // commentators). Previously this ignored actual motion entirely (exalted?60:debil?10:30).
+    let cheshtaBala;
+    if (p.ta === "சூரியன்") {
+      cheshtaBala = 30; // Sun's true Cheshta = Ayana Bala (declination-based), not yet implemented
+    } else if (p.ta === "சந்திரன்") {
+      cheshtaBala = thisPakshaBala; // BPHS 27.18: Moon's Cheshta Bala IS her Paksha Bala
+    } else {
+      const actual = dailyMotion[p.ta] || 0;
+      const mean = MEAN_DAILY_MOTION[p.ta] || 1;
+      const rel = actual / mean;
+      if (actual < 0) cheshtaBala = 60;        // Vakra — retrograde
+      else if (rel < 0.25) cheshtaBala = 50;   // Vikala — near-stationary
+      else if (rel < 0.75) cheshtaBala = 40;   // Manda — slower than mean
+      else if (rel < 1.25) cheshtaBala = 30;   // Sama — mean speed
+      else if (rel < 1.75) cheshtaBala = 20;   // Chara — faster than mean
+      else cheshtaBala = 15;                    // Atichara — much faster than mean
+    }
 
     // 5. நைசர்கிக பலம் (Natural Strength)
     const naisargikaBala = NAISARGIKA_BALA[p.ta] || 20;
@@ -2817,6 +2925,7 @@ export default function AstrologyApp() {
     if (result) {
       setApiSource("api");
       setHoroscope(result);
+      const geoT = resolveBirthGeo(formData);
       setNavamsaData(calculateNavamsa(result.placements));
       setGrahaBala(calcGrahaBala(result.placements));
       setMahapurushaYogas(detectMahapurushaYogas(result.placements, result.lagna));
@@ -2836,13 +2945,12 @@ export default function AstrologyApp() {
       const lagnaFullDeg = result.lagna * 30 + (lagnaP.degExact || 0);
       setBhavaChart(calcBhavaChart(result.placements, lagnaFullDeg));
       setNavamsaStrength(calcNavamsaStrength(result.placements));
-      setShadBala(calcShadbala(result.placements, result.lagna));
+      setShadBala(calcShadbala(result.placements, result.lagna, dobISO, finalTime, geoT.lat, geoT.lon));
       // Transit: generate today's planetary positions for Gochara overlay.
       // Try the live backend first (same accuracy source as the birth chart above),
       // fall back to the local engine on any failure — matches the same
       // backend-first/local-fallback pattern used for the birth chart and Daily Prediction.
       const _now1 = new Date();
-      const geoT = resolveBirthGeo(formData);
       let transitH = await fetchTransitFromBackend(_now1, geoT.lat, geoT.lon);
       if (!transitH) {
         // Fixed: new Date().toISOString() is UTC-based and incorrectly shows YESTERDAY's
@@ -2886,7 +2994,7 @@ export default function AstrologyApp() {
       const lagnaFullDeg2 = h.lagna * 30 + (lagnaP2.degExact || 0);
       setBhavaChart(calcBhavaChart(h.placements, lagnaFullDeg2));
       setNavamsaStrength(calcNavamsaStrength(h.placements));
-      setShadBala(calcShadbala(h.placements, h.lagna));
+      setShadBala(calcShadbala(h.placements, h.lagna, dobISO, finalTime, geo.lat, geo.lon));
       // Transit: generate today's planetary positions for Gochara overlay
       // Fixed: same UTC/local timezone bug as above — use local date components.
       const _now2 = new Date();
