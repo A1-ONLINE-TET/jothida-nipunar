@@ -3941,6 +3941,14 @@ export default function AstrologyApp() {
     if(screen===SCREEN.SPLASH){ const t=setTimeout(()=>goTo(SCREEN.AUTH),3200); return()=>clearTimeout(t); }
   }, [screen, goTo]);
 
+  // ── Backend warm-up ping — Render free tier sleeps after 15min inactivity.
+  // Send a lightweight ping during Splash screen so the server wakes up while
+  // the user fills the form (~20-30s). By submit time, backend will be ready.
+  useEffect(() => {
+    fetch("https://jothida-api.onrender.com/api/horoscope?year=2000&month=1&day=1&hour=6&minute=0&lat=13&lon=80&tz=5.5")
+      .catch(() => {}); // silent — failure is fine, local engine is the fallback
+  }, []);
+
   // ── ஓம் ஒலி (Om Sound) — synthesized, free, plays once on app open ──
   const playOmSound = useCallback(() => {
     try {
