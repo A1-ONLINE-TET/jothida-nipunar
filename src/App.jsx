@@ -1318,7 +1318,7 @@ const KALA_SARPA_TYPES = [
   "அனந்த","குளிக","வாசுகி","சங்கபால","பதும","மஹாபதும",
   "தக்ஷக","கார்கோடக","சங்கசூட","பாதாள","விஷதர","சேஷநாக"
 ];
-function detectKalaSarpa(placements) {
+function detectKalaSarpa(placements, lagnaIdx) {
   const rahu = placements.find(p => p.ta === "ராகு");
   const ketu = placements.find(p => p.ta === "கேது");
   if (!rahu || !ketu) return null;
@@ -1338,8 +1338,14 @@ function detectKalaSarpa(placements) {
   });
   if (!allBetweenForward && !allBetweenReverse) return { present: false };
   const isForward = allBetweenForward;
-  const typeIdx = isForward ? rahuIdx : ketuIdx;
-  const typeName = KALA_SARPA_TYPES[typeIdx] || "";
+  // Fixed: the classical 12 Kala Sarpa type names (Ananta, Kulika, Vasuki, ...) are
+  // determined by which HOUSE (bhava, counted from Lagna) Rahu occupies — not by
+  // Rahu's absolute zodiac sign, which is what this previously (incorrectly) indexed
+  // KALA_SARPA_TYPES with. A chart with Rahu in the same sign but a different Lagna
+  // would then get the wrong type name. Now computes the actual house-from-Lagna.
+  const typeRashiIdx = isForward ? rahuIdx : ketuIdx;
+  const typeHouseFromLagna = lagnaIdx != null ? ((typeRashiIdx - lagnaIdx + 12) % 12) + 1 : typeRashiIdx + 1;
+  const typeName = KALA_SARPA_TYPES[typeHouseFromLagna - 1] || "";
   return {
     present: true,
     type: typeName + " கால சர்ப்பம்",
@@ -1373,11 +1379,17 @@ function detectChevvaiDosham(placements, lagnaIdx) {
     if (mars.rashiIdx === EXALT_RASHI["செவ்வாய்"] || OWN_RASHI["செவ்வாய்"].includes(mars.rashiIdx)) {
       cancelled = true; cancelReason = "செவ்வாய் சொந்த/உச்ச வீட்டில் — தோஷ நிவர்த்தி";
     }
-    if (jupiter && ((jupiter.rashiIdx - lagnaIdx + 12) % 12) + 1 === marsHouseFromLagna) {
-      cancelled = true; cancelReason = "குரு பார்வை/சேர்க்கையால் தோஷ நிவர்த்தி";
-    }
-    if ([1,3].includes(mars.rashiIdx) || [4,7].includes(mars.rashiIdx)) {
-      // Mars in Aries/Cancer or Leo/Scorpio has reduced effect in some traditions
+    if (jupiter) {
+      const isConjunct = ((jupiter.rashiIdx - lagnaIdx + 12) % 12) + 1 === marsHouseFromLagna;
+      // Fixed: this previously only checked conjunction (same house) despite the
+      // cancelReason text claiming "aspect or conjunction". Classical Jupiter aspects
+      // (per DRISHTI_RULES) are the 5th, 7th and 9th house counted from Jupiter itself —
+      // now actually checks whether Mars falls in one of those houses from Jupiter.
+      const marsHouseFromJupiter = ((mars.rashiIdx - jupiter.rashiIdx + 12) % 12) + 1;
+      const isAspected = [5,7,9].includes(marsHouseFromJupiter);
+      if (isConjunct || isAspected) {
+        cancelled = true; cancelReason = "குரு பார்வை/சேர்க்கையால் தோஷ நிவர்த்தி";
+      }
     }
   }
   return {
@@ -1396,7 +1408,16 @@ function detectChevvaiDosham(placements, lagnaIdx) {
 function calcBhavaChart(placements, lagnaFullDeg) {
   const bhavaCusps = [];
   for (let i = 0; i < 12; i++) {
-    const cusp = (lagnaFullDeg - (lagnaFullDeg % 30) + i * 30) % 360;
+    // Fixed: this previously rounded lagnaFullDeg down to its sign's start
+    // (lagnaFullDeg - (lagnaFullDeg % 30)) before placing cusps at 30° sign boundaries —
+    // which makes every cusp coincide with a whole-sign boundary, so bhavaHouse always
+    // equals the already-existing whole-sign p.house and bhavaDiff was always false,
+    // silently defeating the entire point of a separate Bhava/Chalit chart. Using the
+    // exact lagna degree directly makes House 1's cusp the true ascendant point, with
+    // each house exactly 30° further — a genuine Equal-House-from-Lagna system whose
+    // cusps generally do NOT align with sign boundaries, so planets near a sign edge can
+    // now correctly show a different Bhava house than their simple Rashi house.
+    const cusp = (lagnaFullDeg + i * 30) % 360;
     const mid = (cusp + 15) % 360;
     bhavaCusps.push({
       house: i + 1,
@@ -1480,7 +1501,19 @@ const NAISARGIKA_BALA = {
   "சூரியன்":60, "சந்திரன்":51.43, "செவ்வாய்":17.14, "புதன்":25.71,
   "குரு":34.28, "சுக்கிரன்":42.86, "சனி":8.57
 };
+// Static natural benefic/malefic split for Drik Bala below — a common-usage
+// simplification (mirrors the same kind of simplification already documented for
+// Raja/Dhana Yoga above): full classical treatment would also check Mercury's and
+// the Moon's condition (conjunction, waxing/waning) rather than a fixed classification.
+const NATURAL_BENEFICS = ["குரு","சுக்கிரன்","புதன்","சந்திரன்"];
+const NATURAL_MALEFICS = ["சூரியன்","செவ்வாய்","சனி"];
 function calcShadbala(placements, lagnaIdx) {
+  // Fixed: Drik Bala (aspectual strength) below previously ignored the chart entirely —
+  // it was a flat 25 for every planet in every chart, contributing zero differentiating
+  // information. calcGrahaDrishti() already computes the real classical aspects
+  // (Parashari special aspects for Mars/Jupiter/Saturn, universal 7th for the rest) —
+  // reuse it here so Drik Bala actually reflects who aspects whom in this chart.
+  const drishti = calcGrahaDrishti(placements);
   return placements.filter(p => EXALT_RASHI[p.ta] !== undefined).map(p => {
     // 1. ஸ்தான பலம் (Positional Strength)
     let sthanaBala = 0;
@@ -1506,8 +1539,11 @@ function calcShadbala(placements, lagnaIdx) {
     // 5. நைசர்கிக பலம் (Natural Strength)
     const naisargikaBala = NAISARGIKA_BALA[p.ta] || 20;
 
-    // 6. திருஷ்டி பலம் (Aspectual Strength — simplified)
-    const drikBala = 25;
+    // 6. திருஷ்டி பலம் (Aspectual Strength) — real aspects received, benefic vs malefic
+    const aspectsReceived = drishti.filter(a => a.to === p.ta);
+    const beneficAspects = aspectsReceived.filter(a => NATURAL_BENEFICS.includes(a.from)).length;
+    const maleficAspects = aspectsReceived.filter(a => NATURAL_MALEFICS.includes(a.from)).length;
+    const drikBala = Math.max(0, Math.min(50, 25 + beneficAspects*8 - maleficAspects*8));
 
     const total = sthanaBala + digBala + kalaBala + cheshtaBala + naisargikaBala + drikBala;
     const required = p.ta === "சூரியன்" ? 390 : p.ta === "சந்திரன்" ? 360 : p.ta === "செவ்வாய்" ? 300 :
@@ -2794,7 +2830,7 @@ export default function AstrologyApp() {
       setD60Data(calcD60Shashtiamsa(result.placements));
       setD4Data(calcD4Chaturthamsa(result.placements));
       setD7Data(calcD7Saptamsa(result.placements));
-      setKalaSarpa(detectKalaSarpa(result.placements));
+      setKalaSarpa(detectKalaSarpa(result.placements, result.lagna));
       setChevvaiDosham(detectChevvaiDosham(result.placements, result.lagna));
       const lagnaP = result.placements.find(p => p.ta === "லக்னம்") || { degExact: 0, rashiIdx: result.lagna };
       const lagnaFullDeg = result.lagna * 30 + (lagnaP.degExact || 0);
@@ -2844,7 +2880,7 @@ export default function AstrologyApp() {
       setD60Data(calcD60Shashtiamsa(h.placements));
       setD4Data(calcD4Chaturthamsa(h.placements));
       setD7Data(calcD7Saptamsa(h.placements));
-      setKalaSarpa(detectKalaSarpa(h.placements));
+      setKalaSarpa(detectKalaSarpa(h.placements, h.lagna));
       setChevvaiDosham(detectChevvaiDosham(h.placements, h.lagna));
       const lagnaP2 = h.placements.find(p => p.ta === "லக்னம்") || { degExact: 0, rashiIdx: h.lagna };
       const lagnaFullDeg2 = h.lagna * 30 + (lagnaP2.degExact || 0);
