@@ -1304,6 +1304,14 @@ function detectClassicalYogas(placements, lagnaRashiIdx) {
     if (!cancelled && KENDRA_HOUSES.includes(debP.house)) {
       cancelled = true; reason = `${debP.ta} நீசமாக இருந்தாலும் கேந்திரத்தில்`;
     }
+    // Rule 5: Debilitated planet is aspected by or conjoined with the lord of its debilitation sign
+    if (!cancelled && debLordP) {
+      const conj = debLordP.rashiIdx === debP.rashiIdx;
+      const asp = aspectsFrom(debLordP, debP);
+      if (conj || asp) {
+        cancelled = true; reason = `${lordOfDebSign} (நீச ராசி நாதன்) ${conj ? "சேர்க்கை" : "பார்வை"} மூலம் நீசபங்கம்`;
+      }
+    }
 
     if (cancelled) {
       yogas.push({
@@ -1636,6 +1644,103 @@ function calcD12Dwadasamsa(placements) {
     const d12Rashi = (p.rashiIdx + part) % 12;
     return { ...p, d12Rashi, d12RashiName: RASHIS[d12Rashi] };
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// D30 திரிம்சாம்சம் (TRIMSAMSA) — BPHS Ch.6: misfortune/disease analysis
+// Odd signs: Mars(0-5°), Saturn(5-10°), Jupiter(10-18°), Mercury(18-25°), Venus(25-30°)
+// Even signs: Venus(0-5°), Mercury(5-12°), Jupiter(12-20°), Saturn(20-25°), Mars(25-30°)
+// The resulting rashi = the Moolatrikona sign of the ruling planet
+// ═══════════════════════════════════════════════════════════════════
+const D30_ODD_RULERS  = [[0,5,"செவ்வாய்"],[5,10,"சனி"],[10,18,"குரு"],[18,25,"புதன்"],[25,30,"சுக்கிரன்"]];
+const D30_EVEN_RULERS = [[0,5,"சுக்கிரன்"],[5,12,"புதன்"],[12,20,"குரு"],[20,25,"சனி"],[25,30,"செவ்வாய்"]];
+function calcD30Trimsamsa(placements) {
+  return placements.map(p => {
+    const isOdd = p.rashiIdx % 2 === 0; // 0=Aries(odd)
+    const rules = isOdd ? D30_ODD_RULERS : D30_EVEN_RULERS;
+    const ruler = rules.find(([from, to]) => p.degExact >= from && p.degExact < to);
+    const d30Lord = ruler ? ruler[2] : "செவ்வாய்";
+    // D30 rashi = Moolatrikona sign of the ruling planet
+    const d30Rashi = MOOLA_TRIKONA[d30Lord] ? MOOLA_TRIKONA[d30Lord].rashi : OWN_RASHI[d30Lord]?.[0] ?? 0;
+    return { ...p, d30Rashi, d30RashiName: RASHIS[d30Rashi], d30Lord };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// சப்தவர்கஜ பலம் (SAPTAVARGAJA BALA) — BPHS Ch.27.5-7
+// Planet's dignity across 7 vargas: D1,D2,D3,D7,D9,D12,D30
+// Each varga gives virupas based on dignity in that chart:
+// Moolatrikona=45, Own=30, Great Friend=22.5, Friend=15,
+// Neutral=7.5, Enemy=3.75, Great Enemy=1.875
+// ═══════════════════════════════════════════════════════════════════
+function calcSaptavargajaBala(p, lagnaIdx, placements) {
+  // Compute rashi in each of the 7 vargas
+  const d1Rashi = p.rashiIdx;
+  const isOddD2 = p.rashiIdx % 2 === 0;
+  const d2Rashi = (isOddD2 ? (p.degExact < 15 ? 4 : 3) : (p.degExact < 15 ? 3 : 4)); // Leo or Cancer
+  const d3Rashi = (p.rashiIdx + Math.min(2, Math.floor(p.degExact / 10)) * 4) % 12;
+  const d7Part = Math.min(6, Math.floor(p.degExact / (30/7)));
+  const d7Start = (p.rashiIdx % 2 === 0) ? p.rashiIdx : (p.rashiIdx + 6) % 12;
+  const d7Rashi = (d7Start + d7Part) % 12;
+  const d9Part = Math.floor(p.degExact / (30/9));
+  const d9Rashi = (p.rashiIdx * 9 + d9Part) % 12;
+  const d12Rashi = (p.rashiIdx + Math.min(11, Math.floor(p.degExact / 2.5))) % 12;
+  // D30
+  const isOddD30 = p.rashiIdx % 2 === 0;
+  const d30Rules = isOddD30 ? D30_ODD_RULERS : D30_EVEN_RULERS;
+  const d30Ruler = d30Rules.find(([from, to]) => p.degExact >= from && p.degExact < to);
+  const d30Lord = d30Ruler ? d30Ruler[2] : "செவ்வாய்";
+  const d30Rashi = MOOLA_TRIKONA[d30Lord] ? MOOLA_TRIKONA[d30Lord].rashi : OWN_RASHI[d30Lord]?.[0] ?? 0;
+
+  const vargas = [d1Rashi, d2Rashi, d3Rashi, d7Rashi, d9Rashi, d12Rashi, d30Rashi];
+
+  // Tatkalika Maitri (temporal friendship): planets within 2,3,4,10,11,12 houses
+  // from each other in D1 are temporal friends; rest are temporal enemies
+  const TEMP_FRIEND_HOUSES = [2,3,4,10,11,12];
+  function getTatkalikaMaitri(planetName, otherName) {
+    const pp = placements.find(x => x.ta === planetName);
+    const op = placements.find(x => x.ta === otherName);
+    if (!pp || !op) return "neutral";
+    const hDiff = ((op.rashiIdx - pp.rashiIdx + 12) % 12) + 1;
+    return TEMP_FRIEND_HOUSES.includes(hDiff) ? "friend" : "enemy";
+  }
+
+  // Pancha-dha Maitri (5-fold combined): Naisargika + Tatkalika
+  function getCombinedRelation(planetName, lordName) {
+    if (planetName === lordName) return "own"; // own sign
+    const naisargika = GRAHA_FRIENDSHIP[planetName];
+    if (!naisargika) return "neutral";
+    const isFriendN = naisargika.friends.includes(lordName);
+    const isEnemyN = naisargika.enemies.includes(lordName);
+    const tatkalika = getTatkalikaMaitri(planetName, lordName);
+    const isFriendT = tatkalika === "friend";
+
+    if (isFriendN && isFriendT) return "greatFriend";
+    if (isFriendN && !isFriendT) return "friend";
+    if (!isFriendN && !isEnemyN && isFriendT) return "friend"; // neutral+temporal friend = friend
+    if (!isFriendN && !isEnemyN && !isFriendT) return "neutral"; // neutral+temporal enemy = neutral (some texts say enemy)
+    if (isEnemyN && isFriendT) return "neutral"; // enemy+temporal friend = neutral
+    if (isEnemyN && !isFriendT) return "greatEnemy";
+    return "neutral";
+  }
+
+  // Score each varga
+  const VARGA_SCORES = { exalt: 20, moolaTrikona: 45, own: 30, greatFriend: 22.5, friend: 15, neutral: 7.5, enemy: 3.75, greatEnemy: 1.875 };
+
+  let totalSaptavargaja = 0;
+  vargas.forEach(vRashi => {
+    // Check dignity in this varga
+    if (vRashi === EXALT_RASHI[p.ta]) { totalSaptavargaja += VARGA_SCORES.exalt; }
+    else if (MOOLA_TRIKONA[p.ta] && vRashi === MOOLA_TRIKONA[p.ta].rashi) { totalSaptavargaja += VARGA_SCORES.moolaTrikona; }
+    else if (OWN_RASHI[p.ta]?.includes(vRashi)) { totalSaptavargaja += VARGA_SCORES.own; }
+    else {
+      const lord = RASHI_LORD_NAME[vRashi];
+      const rel = getCombinedRelation(p.ta, lord);
+      totalSaptavargaja += VARGA_SCORES[rel] || VARGA_SCORES.neutral;
+    }
+  });
+
+  return Math.round(totalSaptavargaja * 100) / 100;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2130,17 +2235,13 @@ function calcShadbala(placements, lagnaIdx, dobISO, tob, lat, lon) {
     else if (p.ta === "புதன்" && drekkana === 2) drekkanaBala = 15;
     else if (p.ta === "சனி" && drekkana === 2) drekkanaBala = 15; // Saturn also 3rd drekkana
 
-    // 1e. Dignity-based score (incorporates Moolatrikona)
-    let dignityScore = 0;
-    if (p.rashiIdx === EXALT_RASHI[p.ta]) dignityScore = 20;
-    else if (isMoolaTrikona(p.ta, p.rashiIdx, p.degExact)) dignityScore = 18;
-    else if (OWN_RASHI[p.ta].includes(p.rashiIdx)) dignityScore = 15;
-    else if (GRAHA_FRIENDSHIP[p.ta]?.friends.includes(RASHI_LORD_NAME[p.rashiIdx])) dignityScore = 10;
-    else if (p.rashiIdx === DEBIL_RASHI[p.ta]) dignityScore = 2;
-    else if (GRAHA_FRIENDSHIP[p.ta]?.enemies.includes(RASHI_LORD_NAME[p.rashiIdx])) dignityScore = 5;
-    else dignityScore = 7; // neutral
+    // 1e. சப்தவர்கஜ பலம் (Saptavargaja Bala) — BPHS Ch.27.5-7: planet's dignity across
+    //     7 divisional charts (D1,D2,D3,D7,D9,D12,D30) with Pancha-dha Maitri (5-fold
+    //     friendship = Naisargika + Tatkalika combined). This is the real classical 2nd
+    //     sub-part of Sthana Bala — NOT a simplified dignity score.
+    const saptavargajaBala = calcSaptavargajaBala(p, lagnaIdx, placements);
 
-    const sthanaBala = Math.round(uchchaBala + ojhayugmaBala + kendradiBala + drekkanaBala + dignityScore);
+    const sthanaBala = Math.round(uchchaBala + saptavargajaBala + ojhayugmaBala + kendradiBala + drekkanaBala);
 
     // 2. திக் பலம் (Directional Strength)
     const digHouse = DIG_BALA_HOUSES[p.ta] || 1;
@@ -2216,7 +2317,7 @@ function calcShadbala(placements, lagnaIdx, dobISO, tob, lat, lon) {
       ta: p.ta, rashi: p.rashi,
       sthanaBala, digBala, kalaBala, cheshtaBala, naisargikaBala, drikBala,
       // Sthana Bala sub-parts (Item #20)
-      uchchaBala: Math.round(uchchaBala * 10) / 10, ojhayugmaBala, kendradiBala, drekkanaBala, dignityScore,
+      uchchaBala: Math.round(uchchaBala * 10) / 10, saptavargajaBala, ojhayugmaBala, kendradiBala, drekkanaBala,
       // Ishta/Kashta Phala (Item #21)
       ishtaPhala, kashtaPhala,
       total, required, strong,
