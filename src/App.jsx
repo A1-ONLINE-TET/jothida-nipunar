@@ -392,6 +392,18 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707) {
   const lagnaNakIdx = Math.floor(lagnaFullLong / (360/27)) % 27;
   const lagnaPada = Math.floor((lagnaFullLong % (360/27)) / (360/108)) + 1;
 
+  // ── Special Lagnas (BPHS Ch.33) ──
+  const birthMin = h * 60 + m;
+  const { sunrise: sr } = calcSunriseSunset(new Date(yr, mo-1, dy), lat, lon, 5.5);
+  const srMin = sr.decimal * 60;
+  const horaLagna = calcHoraLagna(sunLong, birthMin, srMin);
+  const ghatiLagna = calcGhatiLagna(sunLong, birthMin, srMin);
+  const arudhaLagna = calcArudhaLagna(lagna, placements);
+  const upapadaLagna = calcUpapadaLagna(lagna, placements);
+
+  // ── Chara Karakas (Jaimini) ──
+  const charaKarakas = calcCharaKarakas(placements);
+
   return {
     lagna, lagnaName: RASHIS[lagna], lagnaEn: RASHI_EN[lagna], lagnaDeg,
     lagnaDMS: toDMS(lagnaFullLong), lagnaFullLong: Math.round(lagnaFullLong*100)/100,
@@ -403,6 +415,9 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707) {
     yogam: YOGAMS[yogaIdx % 27],
     karanam: KARANAMS[karanaIdx],
     birthTime: tob || "06:00",
+    // Special Lagnas (TIER 2)
+    horaLagna, ghatiLagna, arudhaLagna, upapadaLagna,
+    charaKarakas,
     apiSource: "Local Engine (Jean Meeus Algorithms)"
   };
 }
@@ -571,6 +586,221 @@ function calculateDasha(moonLongitude, birthDate) {
     currentDate = endDt;
   }
   return { dashas, birthNakshatra: NAKSHATRAS[nakIdx], birthLord: lord };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TIER 2: SPECIAL LAGNAS — BPHS Ch.33
+// ═══════════════════════════════════════════════════════════════════
+
+// #24 ஹோரா லக்னம் (HORA LAGNA) — BPHS 33.1-2: for wealth analysis
+// Formula: ghatis from sunrise × 2.5, added to Sun's longitude at birth
+function calcHoraLagna(sunLong, birthMinutes, sunriseMin) {
+  const ghatis = (birthMinutes - sunriseMin) / 24; // 1 ghati = 24 minutes
+  const horaLong = (sunLong + ghatis * 2.5) % 360;
+  const rashi = Math.floor(((horaLong % 360) + 360) % 360 / 30);
+  return { longitude: horaLong, rashi, rashiName: RASHIS[rashi] };
+}
+
+// #25 காடி லக்னம் (GHATI LAGNA) — BPHS 33.3-4: for authority/power
+// Formula: ghatis from sunrise × 5, added to Sun's longitude at birth
+function calcGhatiLagna(sunLong, birthMinutes, sunriseMin) {
+  const ghatis = (birthMinutes - sunriseMin) / 24;
+  const ghatiLong = (sunLong + ghatis * 5) % 360;
+  const rashi = Math.floor(((ghatiLong % 360) + 360) % 360 / 30);
+  return { longitude: ghatiLong, rashi, rashiName: RASHIS[rashi] };
+}
+
+// #26 ஆருட லக்னம் (ARUDHA LAGNA / PADA LAGNA) — BPHS 29.1-3
+// Count from Lagna lord to Lagna lord's position, then count same from that position
+function calcArudhaLagna(lagnaRashiIdx, placements) {
+  const lagnaLord = RASHI_LORD_NAME[lagnaRashiIdx];
+  const lordP = placements.find(p => p.ta === lagnaLord);
+  if (!lordP) return null;
+  const lordHouse = ((lordP.rashiIdx - lagnaRashiIdx + 12) % 12) + 1;
+  let arudhaHouse = (lordHouse - 1) * 2; // count same distance from lord's position
+  let arudhaRashi = (lagnaRashiIdx + arudhaHouse) % 12;
+  // Exception: if Arudha falls in Lagna or 7th from Lagna, use 10th or 4th instead (BPHS 29.4)
+  if (arudhaRashi === lagnaRashiIdx) arudhaRashi = (lagnaRashiIdx + 9) % 12; // 10th house
+  else if (arudhaRashi === (lagnaRashiIdx + 6) % 12) arudhaRashi = (lagnaRashiIdx + 3) % 12; // 4th house
+  return { rashi: arudhaRashi, rashiName: RASHIS[arudhaRashi] };
+}
+
+// #27 உபபத லக்னம் (UPAPADA LAGNA) — BPHS 29: Arudha of 12th house, for spouse
+function calcUpapadaLagna(lagnaRashiIdx, placements) {
+  const h12Rashi = (lagnaRashiIdx + 11) % 12;
+  const h12Lord = RASHI_LORD_NAME[h12Rashi];
+  const lordP = placements.find(p => p.ta === h12Lord);
+  if (!lordP) return null;
+  const lordFromH12 = ((lordP.rashiIdx - h12Rashi + 12) % 12) + 1;
+  let upapadaRashi = (h12Rashi + (lordFromH12 - 1) * 2) % 12;
+  // Same exception: if falls in 12th house or 6th from 12th, adjust
+  if (upapadaRashi === h12Rashi) upapadaRashi = (h12Rashi + 9) % 12;
+  else if (upapadaRashi === (h12Rashi + 6) % 12) upapadaRashi = (h12Rashi + 3) % 12;
+  return { rashi: upapadaRashi, rashiName: RASHIS[upapadaRashi] };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// #28 சர காரக (CHARA KARAKA) — Jaimini Sutras 1.1.10-21
+// 7 (or 8) planets sorted by degree in sign (highest = Atmakaraka)
+// ═══════════════════════════════════════════════════════════════════
+const KARAKA_NAMES = [
+  { ta:"ஆத்மகாரகன்", en:"Atmakaraka", meaning:"ஆன்மாவின் குறிப்பான் — வாழ்க்கையின் நோக்கம்" },
+  { ta:"அமாத்யகாரகன்", en:"Amatyakaraka", meaning:"ஆலோசகன் — தொழில், வழிகாட்டி" },
+  { ta:"பாதிரிகாரகன்", en:"Bhratrikaraka", meaning:"சகோதரன் — உடன்பிறப்புகள்" },
+  { ta:"மாத்ருகாரகன்", en:"Matrikaraka", meaning:"தாய் — தாய் வழி உறவுகள்" },
+  { ta:"புத்ரகாரகன்", en:"Putrakaraka", meaning:"மகன்/மகள் — குழந்தைகள்" },
+  { ta:"ஞாதிகாரகன்", en:"Gnatikaraka", meaning:"உறவினர் — எதிரிகள், நோய்" },
+  { ta:"தாரகாரகன்", en:"Darakaraka", meaning:"துணைவர் — திருமண துணை" },
+];
+function calcCharaKarakas(placements) {
+  // Use 7 planets: Sun through Saturn (Rahu excluded in 7-karaka scheme per Parashara)
+  const eligible = placements
+    .filter(p => CLASSICAL_7.includes(p.ta))
+    .map(p => ({ ...p, karakaDeg: p.degExact })) // degree within sign determines ranking
+    .sort((a, b) => b.karakaDeg - a.karakaDeg); // highest degree first
+
+  return eligible.map((p, i) => ({
+    planet: p.ta, symbol: p.symbol, degree: Math.round(p.karakaDeg * 100) / 100,
+    rashi: p.rashi, ...KARAKA_NAMES[i]
+  }));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// #30 ASHTAKAVARGA TRANSIT STRENGTH — use already-computed BAV scores
+// to weight transit effects. SAV > 28 in a sign = favorable transit zone.
+// Individual planet BAV > 4 = that planet's transit through the sign is strong.
+// ═══════════════════════════════════════════════════════════════════
+function getAshtakavargaTransitScore(bavData, savData, planetName, transitRashiIdx) {
+  if (!bavData || !savData) return null;
+  const savScore = savData[transitRashiIdx] || 0;
+  const bavScore = bavData[planetName] ? bavData[planetName][transitRashiIdx] || 0 : 0;
+  return {
+    sav: savScore, savGood: savScore >= 28,
+    bav: bavScore, bavGood: bavScore >= 4,
+    interpretation: savScore >= 28 && bavScore >= 4 ? "மிகச் சிறந்த transit" :
+      savScore >= 28 ? "பொதுவாக நல்ல transit" :
+      bavScore >= 4 ? "இந்த கிரகத்துக்கு நல்லது" : "பலவீனமான transit"
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// #31 DOUBLE TRANSIT — Jupiter + Saturn simultaneous favorable position
+// Professional astrologers' #1 event-trigger prediction tool.
+// When BOTH Jupiter AND Saturn aspect/occupy a house favorably from
+// Moon or Lagna, major life events related to that house manifest.
+// ═══════════════════════════════════════════════════════════════════
+function calcDoubleTransit(birthMoonRashi, lagnaRashiIdx, jupiterRashi, saturnRashi) {
+  // Houses favorably influenced by Jupiter (where it sits + its aspects: 5th, 7th, 9th)
+  const jupiterHouses = new Set();
+  [0, 4, 6, 8].forEach(offset => { // Jupiter's position + 5th,7th,9th aspects
+    jupiterHouses.add((jupiterRashi + offset) % 12);
+  });
+  // Houses favorably influenced by Saturn (where it sits + its aspects: 3rd, 7th, 10th)
+  const saturnHouses = new Set();
+  [0, 2, 6, 9].forEach(offset => {
+    saturnHouses.add((saturnRashi + offset) % 12);
+  });
+
+  // Find houses where BOTH influence simultaneously
+  const HOUSE_MEANINGS = {
+    1:"உடல்/ஆளுமை", 2:"குடும்பம்/செல்வம்", 3:"தைரியம்/சகோதரர்",
+    4:"வீடு/தாய்/சுகம்", 5:"குழந்தை/கல்வி/புண்ணியம்", 6:"எதிரி/நோய்/கடன்",
+    7:"திருமணம்/கூட்டாளி", 8:"ஆயுள்/மாற்றம்", 9:"பாக்கியம்/தர்மம்/பயணம்",
+    10:"தொழில்/பதவி", 11:"லாபம்/வருமானம்", 12:"செலவு/மோக்ஷம்"
+  };
+
+  const doubleTransitHouses = [];
+  for (let i = 0; i < 12; i++) {
+    if (jupiterHouses.has(i) && saturnHouses.has(i)) {
+      const hFromMoon = ((i - birthMoonRashi + 12) % 12) + 1;
+      const hFromLagna = ((i - lagnaRashiIdx + 12) % 12) + 1;
+      doubleTransitHouses.push({
+        rashi: RASHIS[i], rashiIdx: i,
+        houseFromMoon: hFromMoon, houseFromLagna: hFromLagna,
+        meaning: HOUSE_MEANINGS[hFromLagna] || ""
+      });
+    }
+  }
+  return doubleTransitHouses;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// #33 தியாஜ்ய காலம் (TYAJYA KALAM) — Classical inauspicious period
+// within each nakshatra day. BPHS/Muhurtha Chintamani: specific ghati
+// ranges to avoid for each of the 27 nakshatras.
+// ═══════════════════════════════════════════════════════════════════
+// [startGhati, endGhati] from the start of the nakshatra (1 ghati = 24 minutes)
+const TYAJYA_GHATIS = [
+  [50,54],[20,24],[32,36],[40,44],[14,18],[22,26],[30,34],[20,24],[32,36], // Ashwini-Ashlesha
+  [30,34],[20,24],[18,22],[22,26],[14,18],[10,14],[14,18],[10,14],[22,26], // Magha-Jyeshta
+  [20,24],[24,28],[20,24],[10,14],[10,14],[18,22],[16,20],[12,16],[24,28], // Moola-Revati
+];
+function calcTyajyaKalam(nakIdx, nakStartTime, nakDurationMin) {
+  if (nakIdx < 0 || nakIdx >= 27) return null;
+  const [startG, endG] = TYAJYA_GHATIS[nakIdx];
+  const startMin = nakStartTime + (startG / 60) * nakDurationMin;
+  const endMin = nakStartTime + (endG / 60) * nakDurationMin;
+  const fmt = (m) => { let h=Math.floor(m/60)%24, mn=Math.round(m%60); if(mn>=60){h=(h+1)%24;mn=0;} return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`; };
+  return { start: fmt(startMin), end: fmt(endMin), nakshatra: NAKSHATRAS[nakIdx] };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// #34 பஞ்சகம் (PANCHAKA) — 5-fold inauspicious check
+// Nakshatras Dhanishta(22) through Revati(26) = Panchaka nakshatras
+// Classical rule: these 5 nakshatras are considered inauspicious for
+// specific activities (construction, south-facing travel, etc.)
+// ═══════════════════════════════════════════════════════════════════
+const PANCHAKA_NAKSHATRAS = [22,23,24,25,26]; // Avittam, Sathayam, Poorattathi, Uttarattathi, Revathi
+const PANCHAKA_TYPES = [
+  { name:"மிருத்யு பஞ்சகம்", avoid:"ஆபத்து — முக்கிய காரியங்கள் தவிர்க்கவும்" },
+  { name:"அக்னி பஞ்சகம்", avoid:"தீ விபத்து — புதிய கட்டிடம் தவிர்க்கவும்" },
+  { name:"ராஜ பஞ்சகம்", avoid:"அரசாங்க தொடர்பான வேலை தவிர்க்கவும்" },
+  { name:"சோர பஞ்சகம்", avoid:"திருட்டு ஆபத்து — பயணம் தவிர்க்கவும்" },
+  { name:"ரோக பஞ்சகம்", avoid:"நோய் ஆபத்து — ஆரோக்கியம் கவனிக்கவும்" },
+];
+function checkPanchaka(todayNakIdx, todayWeekday) {
+  if (!PANCHAKA_NAKSHATRAS.includes(todayNakIdx)) return null;
+  // Panchaka type = (nakshatra_number + weekday + tithi_number + lagna_number + birth_star) mod 5
+  // Simplified: just nakshatra + weekday mod 5 (most common usage)
+  const typeIdx = (todayNakIdx + todayWeekday) % 5;
+  return { active: true, ...PANCHAKA_TYPES[typeIdx], nakshatra: NAKSHATRAS[todayNakIdx] };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// #36 பாப சாம்யம் (PAPA SAMYAM) — Malefic balance in marriage matching
+// Count malefic influences on houses 1,2,4,7,8,12 from Lagna, Moon, Venus
+// in BOTH charts. If roughly equal, doshas cancel out.
+// Classical rule per Parashari marriage matching texts.
+// ═══════════════════════════════════════════════════════════════════
+const MALEFICS = ["சூரியன்","செவ்வாய்","சனி","ராகு","கேது"];
+function calcPapaSamyam(placements1, lagna1, placements2, lagna2) {
+  const papam = (placements, lagnaIdx) => {
+    const moon = placements.find(p => p.ta === "சந்திரன்");
+    const venus = placements.find(p => p.ta === "சுக்கிரன்");
+    const checkHouses = [1,2,4,7,8,12];
+    let count = 0;
+    const refs = [lagnaIdx];
+    if (moon) refs.push(moon.rashiIdx);
+    if (venus) refs.push(venus.rashiIdx);
+    refs.forEach(refRashi => {
+      checkHouses.forEach(h => {
+        const targetRashi = (refRashi + h - 1) % 12;
+        const maleficsHere = placements.filter(p => MALEFICS.includes(p.ta) && p.rashiIdx === targetRashi);
+        count += maleficsHere.length;
+      });
+    });
+    return count;
+  };
+  const bride = papam(placements1, lagna1);
+  const groom = papam(placements2, lagna2);
+  const diff = Math.abs(bride - groom);
+  const balanced = diff <= 6; // within 6 points = roughly balanced
+  return {
+    bridePapam: bride, groomPapam: groom, diff, balanced,
+    verdict: balanced ? "பாப சாம்யம் உண்டு — தோஷ பலன்கள் சமநிலை" :
+      bride > groom ? "பெண் ஜாதகத்தில் பாபம் அதிகம் — பரிகாரம் தேவை" :
+      "ஆண் ஜாதகத்தில் பாபம் அதிகம் — பரிகாரம் தேவை"
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════
