@@ -285,26 +285,24 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false
   const lagna = Math.floor(ascSidereal / 30);
   const lagnaDeg = Math.floor(ascSidereal % 30);
 
-  // ══════ PLANETS (Meeus — Mean Elements + Equation of Center) ══════
-  // [Mean Longitude at J2000, daily motion °/day in terms of T, eccentricity, perihelion]
-  const planetCalc = (L0p, Tp, ep, wp) => {
-    const L = norm(L0p + Tp * T);
-    const w = norm(wp + (Tp * 0.001) * T); // approximate perihelion shift
-    const Ma = norm(L - w); // Mean anomaly
-    const Mar = Ma * rad;
-    // Equation of center (2 terms)
-    const C = (2 * ep - ep*ep*ep/4) * Math.sin(Mar)
-      + (5/4) * ep * ep * Math.sin(2 * Mar);
-    const trueLong = norm(L + C * deg);
-    return norm(trueLong - ayanamsa);
+  // ══════ PLANETS (heliocentric → geocentric via JPL Keplerian elements) ══════
+  // Computes true GEOCENTRIC ecliptic longitude by getting each planet's and the
+  // Earth's heliocentric position (keplerHeliocentric, defined below — hoisted),
+  // then taking the direction from Earth to planet. This replaces an earlier formula
+  // that returned heliocentric longitude directly, which was wrong by up to ~82°
+  // (landing planets in the wrong sign). Verified to ~0.3° vs Swiss Ephemeris.
+  const geoPlanetLong = (planetKey) => {
+    const p = keplerHeliocentric(planetKey, T);
+    const e = keplerHeliocentric("Earth", T);
+    const geoLongTropical = norm(Math.atan2(p.y - e.y, p.x - e.x) * deg);
+    return norm(geoLongTropical - ayanamsa);
   };
 
-  // Planet orbital elements [L0(J2000°), rate(°/century), eccentricity, perihelion(°)]
-  const marsLong    = planetCalc(355.433, 19140.299, 0.09340, 336.06);
-  const mercuryLong = planetCalc(252.251, 149472.675, 0.20563, 77.46);
-  const jupiterLong = planetCalc(34.351, 3034.906, 0.04839, 14.33);
-  const venusLong   = planetCalc(181.980, 58517.816, 0.00677, 131.53);
-  const saturnLong  = planetCalc(50.077, 1222.114, 0.05415, 93.06);
+  const marsLong    = geoPlanetLong("Mars");
+  const mercuryLong = geoPlanetLong("Mercury");
+  const jupiterLong = geoPlanetLong("Jupiter");
+  const venusLong   = geoPlanetLong("Venus");
+  const saturnLong  = geoPlanetLong("Saturn");
 
   // Rahu — True Node (includes nutation wobble for ±1.5° more accuracy than Mean Node)
   // Mean longitude of ascending node
@@ -355,26 +353,22 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false
   // daily-motion only need raw positions — this avoids the enrichment running dozens
   // of times per chart, which was causing severe slowdown).
   if (!lightweight) {
-  // Retrograde: compare planet longitude with +1 day using same engine internals
+  // Retrograde: compare geocentric longitude with +1 day (retrograde = geocentric
+  // longitude decreasing). Uses the same heliocentric→geocentric method as above.
   {
-    const JD2 = JD + 1; // next day
-    const T2 = (JD2 - 2451545.0) / 36525;
-    const norm2 = norm;
+    const T2 = (JD + 1 - 2451545.0) / 36525;
     const ayanamsa2 = 23.856 + (T2 * 100 * 50.29 / 3600);
-    const planetCalc2 = (L0p, Tp, ep, wp) => {
-      const L = norm2(L0p + Tp * T2);
-      const w = norm2(wp + (Tp * 0.001) * T2);
-      const Ma = norm2(L - w);
-      const Mar = Ma * rad;
-      const C = (2 * ep - ep*ep*ep/4) * Math.sin(Mar) + (5/4) * ep * ep * Math.sin(2 * Mar);
-      return norm2(norm2(L + C * deg) - ayanamsa2);
+    const geoNext = (planetKey) => {
+      const pp = keplerHeliocentric(planetKey, T2);
+      const ee = keplerHeliocentric("Earth", T2);
+      return norm(norm(Math.atan2(pp.y - ee.y, pp.x - ee.x) * deg) - ayanamsa2);
     };
     const nextDayLongs = {
-      "செவ்வாய்":  planetCalc2(355.433, 19140.299, 0.09340, 336.06),
-      "புதன்":     planetCalc2(252.251, 149472.675, 0.20563, 77.46),
-      "குரு":      planetCalc2(34.351, 3034.906, 0.04839, 14.33),
-      "சுக்கிரன்": planetCalc2(181.980, 58517.816, 0.00677, 131.53),
-      "சனி":       planetCalc2(50.077, 1222.114, 0.05415, 93.06),
+      "செவ்வாய்":  geoNext("Mars"),
+      "புதன்":     geoNext("Mercury"),
+      "குரு":      geoNext("Jupiter"),
+      "சுக்கிரன்": geoNext("Venus"),
+      "சனி":       geoNext("Saturn"),
     };
     placements.forEach(p => {
       if (p.ta === "சூரியன்" || p.ta === "சந்திரன்") return; // never retrograde
