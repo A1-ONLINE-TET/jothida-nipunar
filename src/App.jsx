@@ -4040,7 +4040,12 @@ export default function AstrologyApp() {
       const [y, m, d] = dob.split('-').map(Number);
       const geo = geocodeCity(city);
       const url = `${backendUrl}/api/horoscope?year=${y}&month=${m}&day=${d}&hour=${hour}&minute=${minute}&lat=${geo.lat}&lon=${geo.lon}&tz=5.5`;
-      const res = await fetch(url);
+      // Render free tier cold start can take 30-60s — cap at 10s so the user doesn't
+      // stare at the loading screen forever. Falls back to the local engine.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (!res.ok) return null;
       const data = await res.json();
       if (!data || !data.success) return null;
