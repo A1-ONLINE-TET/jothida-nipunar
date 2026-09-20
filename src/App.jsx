@@ -136,6 +136,38 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
+// Parses a /api/horoscope backend response into our internal shape. Shared by
+// fetchFromBackend (birth chart) and fetchTransitFromBackend (today/any-date
+// transit positions) so the field-mapping lives in exactly one place — this
+// is the same logic that was previously duplicated with mismatched field
+// names in one of the two call sites, silently breaking the backend
+// integration. Field names here are verified against a real live API call:
+// data.lagna (not "ascendant"), pp.ta (not "name_ta"), ap.fullLong (not
+// "longitude"), root-level data.moon_rashi_ta/data.nakshatra_ta (no
+// "summary" wrapper object).
+function parseBackendResponse(data) {
+  const asc = data.lagna;
+  const lagna = asc.rashi;
+  const placements = PLANETS.map((p) => {
+    const ap = data.planets.find(pp => pp.ta === p.ta);
+    if (!ap) return { ...p, rashi:RASHIS[0], rashiEn:RASHI_EN[0], degree:0, house:1, dms:"0:00:00", fullLong:0, nakshatraTa:"", pada:1, rashiIdx:0 };
+    return {
+      ...p, rashi:RASHIS[ap.rashi], rashiEn:RASHI_EN[ap.rashi], rashiIdx:ap.rashi,
+      degree:Math.floor(ap.degree), degExact:ap.degree, dms:ap.dms, fullLong:ap.fullLong,
+      house:ap.house, nakshatraTa:ap.nakshatra_ta, nakIdx:NAKSHATRAS.indexOf(ap.nakshatra_ta), pada:ap.nakshatra_pada
+    };
+  });
+  return {
+    lagna, lagnaName:RASHIS[lagna], lagnaEn:RASHI_EN[lagna],
+    lagnaDeg:Math.floor(asc.degree), lagnaDMS:asc.dms, lagnaFullLong:asc.fullLong,
+    lagnaNakshatra:asc.nakshatra_ta, lagnaPada: asc.pada,
+    placements,
+    nakshatra:data.nakshatra_ta, nakshatraPada:data.nakshatra_pada,
+    moonRashi:data.moon_rashi_ta, sunSign:data.sun_rashi_ta,
+    tithi:data.tithi||"", paksham:data.paksham||"", yogam:data.yogam||"", karanam:data.karanam||""
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // VEDIC HOROSCOPE ENGINE — Jean Meeus Astronomical Algorithms
 // Sun: ~0.01° accuracy | Moon: ~0.5° (6 perturbation terms)
@@ -2630,37 +2662,54 @@ export default function AstrologyApp() {
       const data = await res.json();
       if (!data || !data.success) return null;
 
-      // NOTE: field names below match the LIVE API response schema exactly (verified against
-      // a real /api/horoscope call). Earlier this read data.ascendant/data.summary/pp.name_ta/
-      // .longitude, none of which exist in the actual response (real fields: data.lagna,
-      // root-level tithi/nakshatra_ta/moon_rashi_ta/etc, pp.ta, .fullLong) — so this always
-      // threw inside the try block and silently fell back to the local Jean Meeus engine,
-      // meaning the live Swiss Ephemeris backend was never actually being used.
-      const asc = data.lagna;
-      const lagna = asc.rashi;
-      const placements = PLANETS.map((p, i) => {
-        const ap = data.planets.find(pp => pp.ta === p.ta);
-        if (!ap) return { ...p, rashi:RASHIS[0], rashiEn:RASHI_EN[0], degree:0, house:1, dms:"0:00:00", fullLong:0, nakshatraTa:"", pada:1, rashiIdx:0 };
-        return {
-          ...p, rashi:RASHIS[ap.rashi], rashiEn:RASHI_EN[ap.rashi], rashiIdx:ap.rashi,
-          degree:Math.floor(ap.degree), degExact:ap.degree, dms:ap.dms, fullLong:ap.fullLong,
-          house:ap.house, nakshatraTa:ap.nakshatra_ta, nakIdx:NAKSHATRAS.indexOf(ap.nakshatra_ta), pada:ap.nakshatra_pada
-        };
-      });
-
       return {
-        lagna, lagnaName:RASHIS[lagna], lagnaEn:RASHI_EN[lagna],
-        lagnaDeg:Math.floor(asc.degree), lagnaDMS:asc.dms, lagnaFullLong:asc.fullLong,
-        lagnaNakshatra:asc.nakshatra_ta, lagnaPada: asc.pada,
-        placements,
-        nakshatra:data.nakshatra_ta, nakshatraPada:data.nakshatra_pada,
-        moonRashi:data.moon_rashi_ta, sunSign:data.sun_rashi_ta,
-        tithi:data.tithi||"", paksham:data.paksham||"", yogam:data.yogam||"", karanam:data.karanam||"",
+        ...parseBackendResponse(data),
         birthTime:`${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`,
         apiSource:"Swiss Ephemeris (NASA JPL DE431)"
       };
     } catch (e) {
       console.log("Backend error, using local:", e);
+      return null;
+    }
+  };
+
+  // Fetches TODAY's (or any target date's) planetary transit positions from the live
+  // backend, for the Daily Prediction screen. Uses the exact same /api/horoscope
+  // endpoint and parseBackendResponse() as the birth-chart fetch above — this endpoint
+  // doesn't distinguish "natal" vs "transit", it just computes positions for whatever
+  // date/time/location it's given, so today's date works exactly like a birth date does.
+  // Falls back to null on any failure (network, cold-start timeout, bad response) so the
+  // caller can drop back to the instant local Jean Meeus engine rather than block the UI.
+  const fetchTransitFromBackend = async (dateObj, lat, lon) => {
+    try {
+      const year = dateObj.getFullYear(), month = dateObj.getMonth()+1, day = dateObj.getDate();
+      const hour = dateObj.getHours(), minute = dateObj.getMinutes();
+      const url = `${backendUrl}/api/horoscope?year=${year}&month=${month}&day=${day}&hour=${hour}&minute=${minute}&lat=${lat}&lon=${lon}&tz=5.5`;
+      // Render's free tier sleeps after inactivity and can take 30-60s to wake up —
+      // that's too long for what should feel like an instant "today's panchangam"
+      // screen, so cap the wait at 8s and fall back to the local engine past that.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data || !data.success) return null;
+
+      const dayNames = ["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"];
+      const realNow = new Date();
+      const isOtherDate = dateObj.toDateString() !== realNow.toDateString();
+      return {
+        ...parseBackendResponse(data),
+        dateStr: dateObj.toLocaleDateString("ta-IN",{year:"numeric",month:"long",day:"numeric"}),
+        dayName: dayNames[dateObj.getDay()],
+        dateObj, isOtherDate,
+        isFuture: isOtherDate && dateObj > realNow,
+        isPast: isOtherDate && dateObj < realNow,
+        apiSource: "Swiss Ephemeris (NASA JPL DE431)"
+      };
+    } catch (e) {
+      console.log("Backend transit fetch error, using local:", e);
       return null;
     }
   };
@@ -2829,10 +2878,24 @@ Predict: பொது பலன், தொழில், திருமணம்
   };
 
   // ── DAILY PREDICTION (தினப்பலன்) ── targetDate: null = "இப்போது" (live now), or a Date object for a future/past date
-  const openDailyScreen = (targetDate = null) => {
+  const openDailyScreen = async (targetDate = null) => {
     if (!horoscope) return;
     const geo = resolveBirthGeo(formData);
-    const today = getTodayTranist(geo.lat, geo.lon, targetDate);
+    const refDate = targetDate || new Date();
+
+    // Show the same loading screen used for birth-chart generation while we try the
+    // live backend — Render's free tier can take a few seconds (or up to ~8s on a
+    // cold start) to respond, so this avoids an ambiguous "did my click register?" pause.
+    goTo(SCREEN.LOADING);
+
+    // Try the live Swiss Ephemeris backend first (same accuracy source and same
+    // /api/horoscope endpoint as the main birth chart), fall back to the instant local
+    // Jean Meeus engine on any failure — network error, cold-start timeout, bad response.
+    let today = await fetchTransitFromBackend(refDate, geo.lat, geo.lon);
+    if (!today) {
+      today = getTodayTranist(geo.lat, geo.lon, targetDate);
+    }
+
     const birthMoonRashi = RASHIS.indexOf(horoscope.moonRashi);
     const gochara = calculateGochara(birthMoonRashi, today.placements);
     const remedy = getPersonalizedRemedy(birthMoonRashi, today.dateObj.getDay(), gochara.isChandrashtama, today.tithi);
@@ -2850,14 +2913,14 @@ Predict: பொது பலன், தொழில், திருமணம்
     const taraBala = (birthNakIdx>=0 && todayNakIdx>=0) ? calcTaraBala(birthNakIdx, todayNakIdx) : null;
 
     // Running Dasha (Mahadasha) + Antardasha (Bhukti) + Pratyantardasha + Sookshma Dasha
-    // as of the SELECTED date — key classical factor. Uses `refDate` (the target date if
-    // one was picked, else the live current moment) so that browsing to a future date
-    // correctly shows the dasha that will actually be running then, not today's dasha.
+    // as of the SELECTED date — key classical factor. Uses `refDate` (computed once at the
+    // top of this function — the target date if one was picked, else the moment the screen
+    // was opened) so that browsing to a future date correctly shows the dasha that will
+    // actually be running then, not today's dasha.
     // IMPORTANT: never rely on dashaData.dashas[i].isCurrent — that's a snapshot frozen at
     // the moment the horoscope was first generated and never updates again.
     let currentDasha = null;
     if (dashaData) {
-      const refDate = targetDate || new Date();
       const mahadasha = dashaData.dashas.find(d => refDate >= d.startDate && refDate < d.endDate);
       if (mahadasha) {
         const bhukti = mahadasha.antardashas.find(ad => refDate >= ad.startDate && refDate < ad.endDate) || mahadasha.antardashas[0];
