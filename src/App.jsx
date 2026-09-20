@@ -427,10 +427,33 @@ function calculateDasha(moonLongitude, birthDate) {
         const padEndMs = padDate.getTime() + padYrs * 365.25 * 24 * 3600000;
         const padEnd = new Date(padEndMs);
         const padDays = Math.round(padYrs * 365.25);
+
+        // Sookshma Dasha (சூட்சும தசை — sub-sub-sub periods within this Pratyantardasha,
+        // the 4th level of Vimshottari Dasha). Same proportional formula as every other
+        // level: this period's share = (parent duration × this lord's years) / 120.
+        const sookshmaDashas = [];
+        let sdDate = new Date(padStart);
+        for (let l = 0; l < 9; l++) {
+          const sdIdx = (padIdx + l) % 9;
+          const sd = DASHA_LORDS[sdIdx];
+          const sdYrs = (padYrs * sd.years) / 120;
+          const sdStart = new Date(sdDate);
+          const sdEndMs = sdDate.getTime() + sdYrs * 365.25 * 24 * 3600000;
+          const sdEnd = new Date(sdEndMs);
+          const sdDays = Math.round(sdYrs * 365.25);
+          sookshmaDashas.push({
+            ...sd, startDate: sdStart, endDate: sdEnd,
+            duration: sdDays >= 365 ? (sdYrs.toFixed(1) + " வருடம்") : (sdDays + " நாட்கள்"),
+            isCurrent: now >= sdStart && now < sdEnd
+          });
+          sdDate = sdEnd;
+        }
+
         pratyantardashas.push({
           ...pad, startDate: padStart, endDate: padEnd,
           duration: padDays >= 365 ? (padYrs.toFixed(1) + " வருடம்") : (padDays + " நாட்கள்"),
-          isCurrent: now >= padStart && now < padEnd
+          isCurrent: now >= padStart && now < padEnd,
+          sookshmaDashas
         });
         padDate = padEnd;
       }
@@ -2771,9 +2794,11 @@ export default function AstrologyApp() {
     if (!md) return "";
     const ad = md.antardashas?.find(a => now >= a.startDate && now < a.endDate);
     const pad = ad?.pratyantardashas?.find(p => now >= p.startDate && now < p.endDate);
+    const sd = pad?.sookshmaDashas?.find(s => now >= s.startDate && now < s.endDate);
     let info = `நடப்பு மகா தசை: ${md.name} (${md.startDate.toLocaleDateString("ta-IN")} — ${md.endDate.toLocaleDateString("ta-IN")})`;
     if (ad) info += `\nநடப்பு புக்தி (அந்தர் தசை): ${md.name}-${ad.name} (${ad.duration})`;
     if (pad) info += `\nநடப்பு பிரத்யந்தர் தசை: ${md.name}-${ad.name}-${pad.name} (${pad.duration})`;
+    if (sd) info += `\nநடப்பு சூட்சும தசை: ${md.name}-${ad.name}-${pad.name}-${sd.name} (${sd.duration})`;
     return info;
   };
 
@@ -2819,20 +2844,24 @@ Predict: பொது பலன், தொழில், திருமணம்
     const todayNakIdx = NAKSHATRAS.indexOf(today.nakshatra);
     const taraBala = (birthNakIdx>=0 && todayNakIdx>=0) ? calcTaraBala(birthNakIdx, todayNakIdx) : null;
 
-    // Running Dasha (Mahadasha) + Antardasha (Bhukti) as of the SELECTED date — key classical factor.
-    // Uses `refDate` (the target date if one was picked, else the live current moment) so that browsing
-    // to a future date correctly shows the dasha that will actually be running then, not today's dasha.
-    // IMPORTANT: never rely on dashaData.dashas[i].isCurrent — that's a snapshot frozen at the moment
-    // the horoscope was first generated and never updates again.
+    // Running Dasha (Mahadasha) + Antardasha (Bhukti) + Pratyantardasha + Sookshma Dasha
+    // as of the SELECTED date — key classical factor. Uses `refDate` (the target date if
+    // one was picked, else the live current moment) so that browsing to a future date
+    // correctly shows the dasha that will actually be running then, not today's dasha.
+    // IMPORTANT: never rely on dashaData.dashas[i].isCurrent — that's a snapshot frozen at
+    // the moment the horoscope was first generated and never updates again.
     let currentDasha = null;
     if (dashaData) {
       const refDate = targetDate || new Date();
       const mahadasha = dashaData.dashas.find(d => refDate >= d.startDate && refDate < d.endDate);
       if (mahadasha) {
         const bhukti = mahadasha.antardashas.find(ad => refDate >= ad.startDate && refDate < ad.endDate) || mahadasha.antardashas[0];
+        const pratyantar = bhukti?.pratyantardashas?.find(p => refDate >= p.startDate && refDate < p.endDate);
+        const sookshma = pratyantar?.sookshmaDashas?.find(s => refDate >= s.startDate && refDate < s.endDate);
         const msLeftInBhukti = bhukti ? bhukti.endDate.getTime() - refDate.getTime() : 0;
         const daysLeftInBhukti = Math.max(0, Math.round(msLeftInBhukti / (24*3600000)));
-        currentDasha = { mahadasha, bhukti, daysLeftInBhukti };
+        const daysLeftInSookshma = sookshma ? Math.max(0, Math.round((sookshma.endDate.getTime() - refDate.getTime()) / (24*3600000))) : 0;
+        currentDasha = { mahadasha, bhukti, pratyantar, sookshma, daysLeftInBhukti, daysLeftInSookshma };
       }
     }
 
@@ -2851,7 +2880,7 @@ Predict: பொது பலன், தொழில், திருமணம்
       ).join(", ");
       const timeframe = today.isFuture ? `on the future date ${today.dateStr}` : today.isPast ? `on the past date ${today.dateStr}` : "today";
       const dashaLine = currentDasha
-        ? `The period (Dasha-Bhukti) that will be running ${timeframe}: ${currentDasha.mahadasha.name} Mahadasha (main period) → ${currentDasha.bhukti?.name || currentDasha.mahadasha.name} Bhukti (sub-period)${currentDasha.pratyantardasha ? ` → ${currentDasha.pratyantardasha.name} Pratyantardasha (sub-sub-period)` : ""}, ${currentDasha.daysLeftInBhukti} days left in this Bhukti as of that date. This is the person's most important long-term astrological influence for that date — consider what themes this planet governs.`
+        ? `The full dasha chain running ${timeframe}: ${currentDasha.mahadasha.name} Mahadasha (main period) → ${currentDasha.bhukti?.name || currentDasha.mahadasha.name} Bhukti (sub-period)${currentDasha.pratyantar ? ` → ${currentDasha.pratyantar.name} Pratyantardasha (sub-sub-period)` : ""}${currentDasha.sookshma ? ` → ${currentDasha.sookshma.name} Sookshma Dasha (finest-grained period, ${currentDasha.daysLeftInSookshma} days left)` : ""}. This is the person's most important long-term astrological influence for that date — the Mahadasha and Bhukti set the broad theme, while the Pratyantardasha and Sookshma Dasha fine-tune what's emphasized right now. Consider what all these planets govern together.`
         : "Dasha data not available.";
       const prompt = `You are a Tamil Vedic astrologer giving a ${today.isOtherDate ? "specific-date" : "daily"} horoscope reading. Respond ONLY in Tamil.
 Person: ${formData.name}
@@ -4305,16 +4334,34 @@ ${aiPart}
                           <span style={{fontSize:8,color:"#777777"}}>{ad.startDate.toLocaleDateString("ta-IN",{month:"short",year:"2-digit"})}</span>
                           <span style={{fontSize:8,color:"#888888",transition:"transform 0.2s",transform:expandedDasha===`${i}-${j}`?"rotate(180deg)":"rotate(0)"}}>▾</span>
                         </div>
-                        {expandedDasha===`${i}-${j}`&&ad.pratyantardashas&&(
+                        {(expandedDasha===`${i}-${j}`||String(expandedDasha).startsWith(`${i}-${j}-`))&&ad.pratyantardashas&&(
                           <div style={{marginLeft:18,borderLeft:"1px solid #b8860b40",paddingLeft:8,marginBottom:4}}>
                             <div style={{fontSize:8,color:"#666666",fontWeight:600,marginBottom:2,marginTop:2}}>பிரத்யந்தரம் (Pratyantardasha)</div>
                             {ad.pratyantardashas.map((pad,k)=>(
-                              <div key={k} style={{display:"flex",alignItems:"center",gap:4,padding:"2px 0",
-                                background:pad.isCurrent?"#e8f5e9":"transparent",borderRadius:3}}>
-                                <span style={{fontSize:9,flex:1,color:pad.isCurrent?"#0d7a30":"#555555"}}>{pad.name}
-                                  {pad.isCurrent&&<span style={{fontSize:6,background:"#d4edda",color:"#0d7a30",padding:"0 3px",borderRadius:3,marginLeft:3,fontWeight:700}}>நடப்பு</span>}
-                                </span>
-                                <span style={{fontSize:7,color:"#888888"}}>{pad.duration}</span>
+                              <div key={k}>
+                                <div style={{display:"flex",alignItems:"center",gap:4,padding:"2px 0",cursor:"pointer",
+                                  background:pad.isCurrent?"#e8f5e9":"transparent",borderRadius:3}}
+                                  onClick={(e)=>{e.stopPropagation();setExpandedDasha(expandedDasha===`${i}-${j}-${k}`?`${i}-${j}`:`${i}-${j}-${k}`)}}>
+                                  <span style={{fontSize:9,flex:1,color:pad.isCurrent?"#0d7a30":"#555555"}}>{pad.name}
+                                    {pad.isCurrent&&<span style={{fontSize:6,background:"#d4edda",color:"#0d7a30",padding:"0 3px",borderRadius:3,marginLeft:3,fontWeight:700}}>நடப்பு</span>}
+                                  </span>
+                                  <span style={{fontSize:7,color:"#888888"}}>{pad.duration}</span>
+                                  <span style={{fontSize:7,color:"#999999",transition:"transform 0.2s",transform:expandedDasha===`${i}-${j}-${k}`?"rotate(180deg)":"rotate(0)"}}>▾</span>
+                                </div>
+                                {expandedDasha===`${i}-${j}-${k}`&&pad.sookshmaDashas&&(
+                                  <div style={{marginLeft:14,borderLeft:"1px solid #0d7a3040",paddingLeft:6,marginBottom:3}}>
+                                    <div style={{fontSize:7,color:"#777777",fontWeight:600,marginBottom:2,marginTop:2}}>சூட்சுமம் (Sookshma Dasha)</div>
+                                    {pad.sookshmaDashas.map((sd,l)=>(
+                                      <div key={l} style={{display:"flex",alignItems:"center",gap:4,padding:"1px 0",
+                                        background:sd.isCurrent?"#e0f0ff":"transparent",borderRadius:3}}>
+                                        <span style={{fontSize:8,flex:1,color:sd.isCurrent?"#1565c0":"#666666"}}>{sd.name}
+                                          {sd.isCurrent&&<span style={{fontSize:5,background:"#cfe4fa",color:"#1565c0",padding:"0 3px",borderRadius:3,marginLeft:3,fontWeight:700}}>நடப்பு</span>}
+                                        </span>
+                                        <span style={{fontSize:6,color:"#999999"}}>{sd.duration}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -4544,12 +4591,12 @@ ${aiPart}
             </div>
           </div>
 
-          {/* ═══ Current Dasha-Bhukti — most important long-term personalization factor ═══ */}
+          {/* ═══ Current Dasha chain — most important long-term personalization factor ═══ */}
           {currentDasha && (
             <div style={{...card,marginBottom:12,padding:"12px 14px",
               background:"linear-gradient(135deg,#d4a85312,#b8860b15)",border:"1px solid #d4a85325"}}>
               <div style={{fontSize:10,fontWeight:700,color:"#b8860b",marginBottom:8,letterSpacing:0.5}}>
-                ⏳ {today.isOtherDate?"அன்றைய தசை-புக்தி":"தற்போதைய தசை-புக்தி"}
+                ⏳ {today.isOtherDate?"அன்றைய தசை சங்கிலி":"தற்போதைய தசை சங்கிலி"}
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <div style={{background:"#f8f4ea",borderRadius:8,padding:"8px 10px"}}>
@@ -4559,13 +4606,29 @@ ${aiPart}
                   </div>
                 </div>
                 <div style={{background:"#f8f4ea",borderRadius:8,padding:"8px 10px"}}>
-                  <div style={{fontSize:8,color:"#666666",marginBottom:2}}>புக்தி (சூட்சுமை)</div>
+                  <div style={{fontSize:8,color:"#666666",marginBottom:2}}>புக்தி (அந்தர் தசை)</div>
                   <div style={{fontSize:14,fontWeight:800,color:"#b8860b"}}>
                     {currentDasha.bhukti?.name || currentDasha.mahadasha.name}
                   </div>
                 </div>
+                <div style={{background:"#f8f4ea",borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{fontSize:8,color:"#666666",marginBottom:2}}>பிரத்யந்தர தசை</div>
+                  <div style={{fontSize:14,fontWeight:800,color:"#7b1c1c"}}>
+                    {currentDasha.pratyantar?.name || "—"}
+                  </div>
+                </div>
+                <div style={{background:"#f8f4ea",borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{fontSize:8,color:"#666666",marginBottom:2}}>சூட்சும தசை</div>
+                  <div style={{fontSize:14,fontWeight:800,color:"#b8860b"}}>
+                    {currentDasha.sookshma?.name || "—"}
+                  </div>
+                </div>
               </div>
-              {currentDasha.daysLeftInBhukti > 0 && (
+              {currentDasha.daysLeftInSookshma > 0 ? (
+                <div style={{fontSize:9,color:"#666666",marginTop:6,textAlign:"center"}}>
+                  இந்த சூட்சும தசை இன்னும் {currentDasha.daysLeftInSookshma} நாட்கள் நீடிக்கும்
+                </div>
+              ) : currentDasha.daysLeftInBhukti > 0 && (
                 <div style={{fontSize:9,color:"#666666",marginTop:6,textAlign:"center"}}>
                   இந்த புக்தி இன்னும் {currentDasha.daysLeftInBhukti} நாட்கள் நீடிக்கும்
                 </div>
