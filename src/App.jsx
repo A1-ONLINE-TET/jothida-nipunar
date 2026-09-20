@@ -2534,6 +2534,7 @@ export default function AstrologyApp() {
   const [poruthBride, setPoruthBride] = useState({ name:"", dob:"", tob:"", ampm:"AM" });
   const [poruthGroom, setPoruthGroom] = useState({ name:"", dob:"", tob:"", ampm:"AM" });
   const [poruthResult, setPoruthResult] = useState(null);
+  const [poruthLoading, setPoruthLoading] = useState(false);
   // Daily prediction
   const [dailyData, setDailyData] = useState(null);
   const [dailyPrediction, setDailyPrediction] = useState("");
@@ -2542,12 +2543,48 @@ export default function AstrologyApp() {
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calSelected, setCalSelected] = useState(new Date().getDate());
+  // Backend-accuracy data for the Panchangam Calendar, keyed by day-of-month. Populated
+  // in the background (see useEffect below) after the local-computed grid already
+  // rendered, so opening the calendar is never blocked waiting on the network.
+  const [calBackendData, setCalBackendData] = useState({});
+  const [calFetching, setCalFetching] = useState(false);
   // Live clock for Horai (planetary hour) — updates every 30s
   const [liveClock, setLiveClock] = useState(new Date());
   useEffect(() => {
     const timer = setInterval(() => setLiveClock(new Date()), 30000);
     return () => clearInterval(timer);
   }, []);
+
+  // Background-fetch backend (Swiss Ephemeris) accuracy data for every day of the
+  // visible Panchangam Calendar month. The calendar grid renders immediately from the
+  // instant local engine (see the CALENDAR screen render below); this effect then
+  // fetches each day from the live backend in parallel and, as results arrive, replaces
+  // the local approximation with the accurate value per day. Any day whose request
+  // fails or times out (fetchTransitFromBackend has its own 8s cap) simply keeps
+  // showing its local value — this is a pure enhancement, never a blocker.
+  useEffect(() => {
+    if (screen !== SCREEN.CALENDAR) return;
+    let cancelled = false;
+    setCalBackendData({});
+    (async () => {
+      setCalFetching(true);
+      const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+      const results = await Promise.allSettled(
+        Array.from({length: daysInMonth}, (_, i) => i+1).map(d =>
+          fetchTransitFromBackend(new Date(calYear, calMonth, d, 6, 0), 13.0827, 80.2707)
+            .then(result => ({ d, result }))
+        )
+      );
+      if (cancelled) return;
+      const newData = {};
+      results.forEach(r => {
+        if (r.status === "fulfilled" && r.value.result) newData[r.value.d] = r.value.result;
+      });
+      setCalBackendData(newData);
+      setCalFetching(false);
+    })();
+    return () => { cancelled = true; };
+  }, [screen, calMonth, calYear]);
 
   const goTo = useCallback((s) => {
     setFadeIn(false);
@@ -2764,15 +2801,21 @@ export default function AstrologyApp() {
       setBhavaChart(calcBhavaChart(result.placements, lagnaFullDeg));
       setNavamsaStrength(calcNavamsaStrength(result.placements));
       setShadBala(calcShadbala(result.placements, result.lagna));
-      // Transit: generate today's planetary positions for Gochara overlay
-      // Fixed: new Date().toISOString() is UTC-based and incorrectly shows YESTERDAY's
-      // date for IST users between 12:00–5:29 AM (UTC lags IST by 5:30 hours). Use local
-      // date components instead so the transit date always matches the viewer's actual day.
+      // Transit: generate today's planetary positions for Gochara overlay.
+      // Try the live backend first (same accuracy source as the birth chart above),
+      // fall back to the local engine on any failure — matches the same
+      // backend-first/local-fallback pattern used for the birth chart and Daily Prediction.
       const _now1 = new Date();
-      const todayISO = `${_now1.getFullYear()}-${String(_now1.getMonth()+1).padStart(2,'0')}-${String(_now1.getDate()).padStart(2,'0')}`;
-      const nowH = _now1.getHours(), nowM = _now1.getMinutes();
       const geoT = resolveBirthGeo(formData);
-      const transitH = generateHoroscope(todayISO, `${nowH}:${nowM}`, geoT.lat, geoT.lon);
+      let transitH = await fetchTransitFromBackend(_now1, geoT.lat, geoT.lon);
+      if (!transitH) {
+        // Fixed: new Date().toISOString() is UTC-based and incorrectly shows YESTERDAY's
+        // date for IST users between 12:00–5:29 AM (UTC lags IST by 5:30 hours). Use local
+        // date components instead so the transit date always matches the viewer's actual day.
+        const todayISO = `${_now1.getFullYear()}-${String(_now1.getMonth()+1).padStart(2,'0')}-${String(_now1.getDate()).padStart(2,'0')}`;
+        const nowH = _now1.getHours(), nowM = _now1.getMinutes();
+        transitH = generateHoroscope(todayISO, `${nowH}:${nowM}`, geoT.lat, geoT.lon);
+      }
       const birthMoon = result.placements.find(p => p.ta === "சந்திரன்");
       setTransitOverlay(calcTransitOverlay(result.placements, transitH.placements, birthMoon?.rashiIdx || 0));
       setInauspiciousTimes(calcInauspiciousTimes(new Date(), geoT.lat));
@@ -4470,15 +4513,36 @@ ${aiPart}
 
   // ═══════ PORUTHAM (Marriage Matching) ═══════
   if(screen===SCREEN.PORUTHAM) {
-    const handlePorutham = () => {
+    const handlePorutham = async () => {
       if(!isValidDDMMYYYY(poruthBride.dob) || !isValidDDMMYYYY(poruthGroom.dob)) return;
-      const h1 = generateHoroscope(parseDDMMYYYY(poruthBride.dob), poruthBride.tob || "06:00");
-      const h2 = generateHoroscope(parseDDMMYYYY(poruthGroom.dob), poruthGroom.tob || "06:00");
+      setPoruthLoading(true);
+
+      const parseTob = (tob) => {
+        if (!tob) return { hour: 6, minute: 0 };
+        const [h, m] = tob.split(':').map(Number);
+        return { hour: h || 6, minute: m || 0 };
+      };
+      const brideTob = parseTob(poruthBride.tob);
+      const groomTob = parseTob(poruthGroom.tob);
+
+      // Try the live Swiss Ephemeris backend for both charts (same accuracy source as
+      // the main horoscope), in parallel since they're independent — fall back to the
+      // local engine for whichever one fails, rather than only ever using local as before.
+      // Porutham has no birth-place field, so "" city falls through to the same Chennai
+      // default geocodeCity() and generateHoroscope() already both use.
+      const [brideResult, groomResult] = await Promise.all([
+        fetchFromBackend(parseDDMMYYYY(poruthBride.dob), brideTob.hour, brideTob.minute, ""),
+        fetchFromBackend(parseDDMMYYYY(poruthGroom.dob), groomTob.hour, groomTob.minute, "")
+      ]);
+      const h1 = brideResult || generateHoroscope(parseDDMMYYYY(poruthBride.dob), poruthBride.tob || "06:00");
+      const h2 = groomResult || generateHoroscope(parseDDMMYYYY(poruthGroom.dob), poruthGroom.tob || "06:00");
+
       const nak1 = NAKSHATRAS.indexOf(h1.nakshatra);
       const nak2 = NAKSHATRAS.indexOf(h2.nakshatra);
       const rashi1 = RASHIS.indexOf(h1.moonRashi);
       const rashi2 = RASHIS.indexOf(h2.moonRashi);
       setPoruthResult({ ...calculate10Porutham(nak1>=0?nak1:0, nak2>=0?nak2:0, rashi1>=0?rashi1:0, rashi2>=0?rashi2:0), bride:h1, groom:h2, brideName:poruthBride.name, groomName:poruthGroom.name });
+      setPoruthLoading(false);
     };
 
     return(
@@ -4516,10 +4580,10 @@ ${aiPart}
             </div>
           </div>
 
-          <button style={{...btnGold,opacity:(!isValidDDMMYYYY(poruthBride.dob)||!isValidDDMMYYYY(poruthGroom.dob))?0.4:1,
-            pointerEvents:(!isValidDDMMYYYY(poruthBride.dob)||!isValidDDMMYYYY(poruthGroom.dob))?"none":"auto",
+          <button style={{...btnGold,opacity:(!isValidDDMMYYYY(poruthBride.dob)||!isValidDDMMYYYY(poruthGroom.dob)||poruthLoading)?0.4:1,
+            pointerEvents:(!isValidDDMMYYYY(poruthBride.dob)||!isValidDDMMYYYY(poruthGroom.dob)||poruthLoading)?"none":"auto",
             background:"linear-gradient(135deg,#ff6b8a,#ff8fab,#ff6b8a)"}} onClick={handlePorutham}>
-            💍 பொருத்தம் பார் →
+            {poruthLoading ? "கணக்கிடுகிறது..." : "💍 பொருத்தம் பார் →"}
           </button>
 
           {poruthResult&&(
@@ -4973,12 +5037,15 @@ ${aiPart}
     const TAMIL_MONTHS = ["தை","மாசி","பங்குனி","சித்திரை","வைகாசி","ஆனி","ஆடி","ஆவணி","புரட்டாசி","ஐப்பசி","கார்த்திகை","மார்கழி"];
     const tamilMonthIdx = (calMonth + 9) % 12; // Approximate mapping
 
-    // Generate all day data for the month
+    // Generate all day data for the month — prefer the backend (Swiss Ephemeris) result
+    // for a day once the background fetch above has resolved it; every day still has an
+    // instant local value to fall back to, so the grid never waits on the network.
     const calData = [];
     for(let d=1; d<=daysInMonth; d++){
       const dt = new Date(calYear, calMonth, d);
       const iso = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const h = generateHoroscope(iso, "06:00", 13.0827, 80.2707);
+      const backendDay = calBackendData[d];
+      const h = backendDay || generateHoroscope(iso, "06:00", 13.0827, 80.2707);
       const muh = calcMuhurtham(dt, 13.0827, 80.2707, 5.5);
 
       // Paksham calculation
@@ -5001,7 +5068,8 @@ ${aiPart}
         paksham, moonRashi: h.moonRashi,
         sunrise: muh.sunrise, sunset: muh.sunset,
         rahuKalam: muh.rahuKalam, yamagandam: muh.yamagandam, kuligai: muh.kuligai, abhijit: muh.abhijit,
-        dayType, isPournami, isAmavasai, isEkadashi, isPradosham, isChaturthi
+        dayType, isPournami, isAmavasai, isEkadashi, isPradosham, isChaturthi,
+        isFromBackend: !!backendDay
       });
     }
 
@@ -5018,6 +5086,11 @@ ${aiPart}
           <div style={{textAlign:"center",marginBottom:14}}>
             <div style={{fontSize:11,color:"#666666",letterSpacing:3,marginBottom:2}}>✦ பஞ்சாங்கம் ✦</div>
             <div style={{fontSize:11,color:"#4ade80",marginTop:4}}>{TAMIL_MONTHS[tamilMonthIdx]} மாதம்</div>
+            {calFetching && (
+              <div style={{fontSize:9,color:"#b8860b80",marginTop:4}}>
+                ⟳ துல்லியமான தரவை பின்னணியில் பெறுகிறது...
+              </div>
+            )}
           </div>
 
           {/* Month Navigator */}
@@ -5101,6 +5174,9 @@ ${aiPart}
                   <div style={{textAlign:"right"}}>
                     <div style={{fontSize:12,color:"#b8860b"}}>{MONTH_NAMES_TA[calMonth]} {calYear}</div>
                     <div style={{fontSize:10,color:"#666666"}}>{TAMIL_MONTHS[tamilMonthIdx]}</div>
+                    <div style={{fontSize:8,color:sel.isFromBackend?"#4ade80":"#66666680",marginTop:2}}>
+                      {sel.isFromBackend ? "✓ Swiss Ephemeris" : "≈ local estimate"}
+                    </div>
                   </div>
                 </div>
                 {(sel.isPournami||sel.isAmavasai||sel.isEkadashi||sel.isPradosham||sel.isChaturthi) && (
