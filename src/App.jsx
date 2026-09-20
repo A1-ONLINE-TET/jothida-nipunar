@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { MURUGAN_IMG } from "./murugan-b64.js";
 import { PLANET_IN_HOUSE, HOUSE_THEMES, LIFE_AREAS } from "./bhava-phalam.js";
+import { analyzeKeyLifeAreas } from "./deep-analysis.js";
 
 const NAKSHATRAS = [
   "அசுவினி","பரணி","கார்த்திகை","ரோகிணி","மிருகசீரிடம்",
@@ -4018,6 +4019,7 @@ export default function AstrologyApp() {
   const [planetTransitAnalysis, setPlanetTransitAnalysis] = useState(null);
   const [remediesData, setRemediesData] = useState(null);
   const [bhavaPhalam, setBhavaPhalam] = useState(null);
+  const [keyAreas, setKeyAreas] = useState(null);
   const [expandedDasha, setExpandedDasha] = useState(null);
   // Porutham
   const [poruthBride, setPoruthBride] = useState({ name:"", dob:"", tob:"", ampm:"AM" });
@@ -4334,6 +4336,9 @@ export default function AstrologyApp() {
       const cdResult = detectChevvaiDosham(result.placements, result.lagna);
       const cyResult = detectClassicalYogas(result.placements, result.lagna);
       setBhavaPhalam(calcBhavaPhalam(result, gbResult, cdResult, dashaResult, cyResult));
+      // Deep 3-area analysis (marriage, health, career) — links all factors
+      const nsResult = calcNavamsaStrength(result.placements);
+      setKeyAreas(analyzeKeyLifeAreas(result, gbResult, cdResult, nsResult, dashaResult));
     } else {
       setApiSource("local");
       const geo = resolveBirthGeo(formData);
@@ -4392,6 +4397,9 @@ export default function AstrologyApp() {
       const cdResult2 = detectChevvaiDosham(h.placements, h.lagna);
       const cyResult2 = detectClassicalYogas(h.placements, h.lagna);
       setBhavaPhalam(calcBhavaPhalam(h, gbResult2, cdResult2, dashaResult2, cyResult2));
+      // Deep 3-area analysis
+      const nsResult2 = calcNavamsaStrength(h.placements);
+      setKeyAreas(analyzeKeyLifeAreas(h, gbResult2, cdResult2, nsResult2, dashaResult2));
     }
     goTo(SCREEN.RESULT);
   };
@@ -5228,6 +5236,45 @@ ${aiPart}
               <option value="remedies">💎 பரிகாரம் (கோயில், மந்திரம், ரத்தினம்)</option>
             </select>
           </div>
+
+          {/* ═══ 3.3 முக்கிய 3 வாழ்க்கை பகுப்பாய்வு (KEY LIFE AREAS) ═══ */}
+          {keyAreas && (
+            <div style={{...card,marginBottom:10,padding:"14px 16px"}}>
+              <div style={{fontSize:15,fontWeight:700,color:"#7b1c1c",marginBottom:2,textAlign:"center"}}>🔮 முக்கிய வாழ்க்கை பகுப்பாய்வு</div>
+              <div style={{fontSize:9,color:"#8b6914",textAlign:"center",marginBottom:12}}>திருமணம் • ஆரோக்கியம் • தொழில் — பல classical factors இணைத்து</div>
+
+              {[keyAreas.marriage, keyAreas.health, keyAreas.career].map((a, ai) => (
+                <div key={ai} style={{marginBottom:14,border:`1px solid ${a.verdictColor}30`,borderRadius:10,overflow:"hidden"}}>
+                  {/* Header with verdict */}
+                  <div style={{background:`${a.verdictColor}12`,padding:"10px 12px",borderBottom:`1px solid ${a.verdictColor}20`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span style={{fontSize:14,fontWeight:700,color:"#7b1c1c"}}>{a.icon} {a.area}</span>
+                      <span style={{fontSize:12,fontWeight:700,color:a.verdictColor}}>{a.verdict}</span>
+                    </div>
+                    <div style={{fontSize:11,color:"#444",marginTop:4,lineHeight:1.5}}>{a.summary}</div>
+                  </div>
+                  {/* Factors */}
+                  <div style={{padding:"8px 12px"}}>
+                    {a.factors.map((f, fi) => (
+                      <div key={fi} style={{fontSize:10,color:"#555",marginBottom:4,lineHeight:1.5,display:"flex",gap:6}}>
+                        <span style={{color:f.weight>0?"#0d7a30":f.weight<0?"#cc1a1a":"#999",fontWeight:700,flexShrink:0}}>
+                          {f.weight>0?"▲":f.weight<0?"▼":"•"}
+                        </span>
+                        <span>{f.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              <div style={{fontSize:8,color:"#aaa",textAlign:"center",marginTop:6,fontStyle:"italic"}}>
+                ▲ சாதகம் • ▼ கவனம் • BPHS/சாராவளி/பலதீபிகா classical விதிகள் இணைத்து — கிரக நிலை, அதிபதி, காரகன், பார்வை, நவாம்சம்
+              </div>
+              <div style={{fontSize:8,color:"#b8860b",textAlign:"center",marginTop:4}}>
+                * இது classical ஜோதிட பகுப்பாய்வு — ஒருவரின் முயற்சி, முடிவுகள், சூழல் இதை மாற்றலாம்
+              </div>
+            </div>
+          )}
 
           {/* ═══ 3.4 பாவ பலன் (LIFE-AREA READINGS) ═══ */}
           {bhavaPhalam && (
