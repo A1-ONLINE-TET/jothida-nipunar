@@ -392,11 +392,30 @@ export function analyzeCareer(horoscope, grahaBala, dashaData) {
 // ═══════════════════════════════════════════════════════════════════
 // Master function — runs all 3 key analyses
 // ═══════════════════════════════════════════════════════════════════
+// When an area has BOTH supportive (▲) and challenging (▼) factors, a lay reader can
+// see the mixed lines as a contradiction ("it says challenges but also good spouse").
+// This appends one reconciliation line to the summary explaining the net balance, so the
+// positives and the verdict are understood as a weighed whole rather than a contradiction.
+function addBalanceNote(area) {
+  if (!area || !area.factors) return area;
+  const pos = area.factors.filter(f => f.weight > 0).length;
+  const neg = area.factors.filter(f => f.weight < 0).length;
+  if (pos > 0 && neg > 0) {
+    const lean = area.score < 0
+      ? "பாதக காரணிகள் சற்று மிகுதி என்பதால் மொத்த மதிப்பீடு கவனம் நோக்கி உள்ளது"
+      : area.score > 0
+      ? "சாதக காரணிகள் மேலோங்குவதால் மொத்த மதிப்பீடு சாதகமாக உள்ளது"
+      : "இரு தரப்பும் சமமாக உள்ளன";
+    area.summary += ` (குறிப்பு: இதில் சாதக (▲) மற்றும் பாதக (▼) — இரண்டு வகை காரணிகளும் உள்ளன; ${lean}. இது முரண் அல்ல — எல்லா காரணிகளையும் நிறுத்திக் கணக்கிட்ட மொத்த சமநிலையே இந்த முடிவு. கீழே தனி classical குறிப்புகள் ஒவ்வொரு காரணியையும் தனித்தனியே விவரிக்கின்றன.)`;
+  }
+  return area;
+}
+
 export function analyzeKeyLifeAreas(horoscope, grahaBala, chevvaiDosham, navamsaStrength, dashaData) {
   if (!horoscope || !horoscope.placements) return null;
   return {
-    marriage: analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStrength),
-    health: analyzeHealth(horoscope, grahaBala),
-    career: analyzeCareer(horoscope, grahaBala, dashaData),
+    marriage: addBalanceNote(analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStrength)),
+    health: addBalanceNote(analyzeHealth(horoscope, grahaBala)),
+    career: addBalanceNote(analyzeCareer(horoscope, grahaBala, dashaData)),
   };
 }
