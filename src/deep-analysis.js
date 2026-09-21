@@ -424,3 +424,63 @@ export function analyzeKeyLifeAreas(horoscope, grahaBala, chevvaiDosham, navamsa
     career: addBalanceNote(analyzeCareer(horoscope, grahaBala, dashaData)),
   };
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// PAST-EVENT INDICATIONS (siblings / children / disease tendency)
+// These build trust by matching known life facts, but count & gender rules are
+// classically UNRELIABLE — so this gives an honest LEANING, never a fake exact
+// number. Everything is labelled "குறியீடு" (indication).
+// ═══════════════════════════════════════════════════════════════════
+const _RL = ["செவ்வாய்","சுக்கிரன்","புதன்","சந்திரன்","சூரியன்","புதன்","சுக்கிரன்","செவ்வாய்","குரு","சனி","சனி","குரு"];
+const MASC_PLANETS = ["சூரியன்", "செவ்வாய்", "குரு"];   // masculine
+const FEM_PLANETS = ["சந்திரன்", "சுக்கிரன்"];          // feminine (Mercury/Saturn = neutral)
+
+// Disease tendency by afflicted significator — classical karaka→body mapping.
+const DISEASE_SIGNIFICATOR = {
+  "சுக்கிரன்": "நீரிழிவு (சர்க்கரை), சிறுநீரகம், இனப்பெருக்க உறுப்பு",
+  "குரு":      "நீரிழிவு (சர்க்கரை), கல்லீரல், உடல் பருமன், கொழுப்பு",
+  "செவ்வாய்":  "ரத்தக் கோளாறு, காயம்/அறுவை, அழற்சி, ரத்த அழுத்தம்",
+  "சனி":       "மூட்டு/எலும்பு, நாள்பட்ட நோய், நரம்புத் தளர்ச்சி, வாதம்",
+  "சந்திரன்":  "மனநலம்/மன அழுத்தம், சளி/நீர்க்கோவை, ரத்தசோகை",
+  "சூரியன்":   "இதயம், கண், எலும்பு, ஜீரண வெப்பம்",
+  "புதன்":     "நரம்பு மண்டலம், தோல், பேச்சு/மூச்சு",
+};
+
+function analyzeFamilyHealthIndications(horoscope, grahaBala) {
+  if (!horoscope || !horoscope.placements) return null;
+  const lagnaIdx = horoscope.lagna, placements = horoscope.placements;
+  const find = (n) => placements.find(p => p.ta === n);
+  const houseRashi = (h) => (lagnaIdx + h - 1) % 12;
+  const occupants = (rIdx) => placements.filter(p => p.ta !== "லக்னம்" && p.rashiIdx === rIdx);
+  const strengthOf = (n) => grahaBala?.find(g => g.ta === n);
+  const isAfflicted = (n) => { const g = strengthOf(n); const p = find(n); if (!p) return false; const house = ((p.rashiIdx - lagnaIdx + 12) % 12) + 1; return (g && g.score < 4) || (g && (g.status === "நீசம்" || g.status === "பகை")) || DUSTHANA.includes(house) || p.isCombust; };
+
+  // ── Siblings (3rd house = co-borns; lord + occupants set the gender leaning) ──
+  const h3 = houseRashi(3), h3Lord = _RL[h3], occ3 = occupants(h3);
+  const sibSources = [h3Lord, ...occ3.map(p => p.ta)];
+  const sibFem = sibSources.filter(n => FEM_PLANETS.includes(n)).length;
+  const sibMasc = sibSources.filter(n => MASC_PLANETS.includes(n)).length;
+  const siblings = {
+    lean: sibFem > sibMasc ? "சகோதரி (பெண்) சாத்தியம் அதிகம்" : sibMasc > sibFem ? "சகோதரர் (ஆண்) சாத்தியம் அதிகம்" : "ஆண்/பெண் கலப்பு அல்லது தெளிவில்லை",
+    detail: `3ஆம் வீட்டு அதிபதி ${h3Lord} (${FEM_PLANETS.includes(h3Lord) ? "பெண் கிரகம்" : MASC_PLANETS.includes(h3Lord) ? "ஆண் கிரகம்" : "நடுநிலை"})${occ3.length ? `, 3ல் ${occ3.map(p => p.ta).join(", ")}` : ", 3ல் கிரகம் இல்லை"}`,
+  };
+
+  // ── Children (5th house; malefics restrict; gender NOT asserted — unreliable) ──
+  const h5 = houseRashi(5), h5Lord = _RL[h5], occ5 = occupants(h5);
+  const malefics5 = occ5.filter(p => NATURAL_MALEFICS.includes(p.ta));
+  const jup = find("குரு");
+  const children = {
+    restriction: malefics5.length > 0 || isAfflicted(h5Lord) || (jup && isAfflicted("குரு")),
+    detail: `5ஆம் வீட்டு அதிபதி ${h5Lord}${occ5.length ? `, 5ல் ${occ5.map(p => p.ta).join(", ")}` : ", 5ல் கிரகம் இல்லை"}${malefics5.length ? ` — பாப கிரகம் (${malefics5.map(p => p.ta).join(", ")}) சந்ததியில் தடை/குறைவைக் குறிக்கலாம்` : ""}`,
+    note: "எண்ணிக்கை/பாலினம் (ஆண்/பெண்) செம்மையாக கணிக்க இயலாது — இது வெறும் குறியீடு.",
+  };
+
+  // ── Disease tendency (afflicted significators → body areas) ──
+  const tendencies = [];
+  ["சுக்கிரன்", "குரு", "செவ்வாய்", "சனி", "சந்திரன்", "சூரியன்", "புதன்"].forEach(n => {
+    if (isAfflicted(n) && DISEASE_SIGNIFICATOR[n]) tendencies.push({ planet: n, area: DISEASE_SIGNIFICATOR[n] });
+  });
+
+  return { siblings, children, healthTendencies: tendencies };
+}
+export { analyzeFamilyHealthIndications };

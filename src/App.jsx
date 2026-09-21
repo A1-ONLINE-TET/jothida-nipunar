@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { MURUGAN_IMG } from "./murugan-b64.js";
 import { PLANET_IN_HOUSE, HOUSE_THEMES, LIFE_AREAS } from "./bhava-phalam.js";
-import { analyzeKeyLifeAreas } from "./deep-analysis.js";
+import { analyzeKeyLifeAreas, analyzeFamilyHealthIndications } from "./deep-analysis.js";
 
 const NAKSHATRAS = [
   "அசுவினி","பரணி","கார்த்திகை","ரோகிணி","மிருகசீரிடம்",
@@ -4294,6 +4294,7 @@ export default function AstrologyApp() {
   const [jaiminiData, setJaiminiData] = useState(null);
   const [charaDashaData, setCharaDashaData] = useState(null);
   const [varshaphalaData, setVarshaphalaData] = useState(null);
+  const [familyHealthData, setFamilyHealthData] = useState(null);
   const [prashnaData, setPrashnaData] = useState(null);
   const [vimshopakaData, setVimshopakaData] = useState(null);
   const [kalaSarpa, setKalaSarpa] = useState(null);
@@ -4651,6 +4652,7 @@ export default function AstrologyApp() {
       // Deep 3-area analysis (marriage, health, career) — links all factors
       const nsResult = calcNavamsaStrength(result.placements);
       setKeyAreas(analyzeKeyLifeAreas(result, gbResult, cdResult, nsResult, dashaResult));
+      setFamilyHealthData(analyzeFamilyHealthIndications(result, gbResult));
     } else {
       setApiSource("local");
       const geo = resolveBirthGeo(formData);
@@ -4722,6 +4724,7 @@ export default function AstrologyApp() {
       // Deep 3-area analysis
       const nsResult2 = calcNavamsaStrength(h.placements);
       setKeyAreas(analyzeKeyLifeAreas(h, gbResult2, cdResult2, nsResult2, dashaResult2));
+      setFamilyHealthData(analyzeFamilyHealthIndications(h, gbResult2));
     }
     goTo(SCREEN.RESULT);
   };
@@ -5608,6 +5611,44 @@ ${aiPart}
           {/* Deep 3-area analysis is now integrated INTO each life-area block below
               (marriage/health/career), so there is a single unified reading per area
               instead of a separate top verdict that could contradict the detail. */}
+
+          {/* ═══ குடும்பம் & ஆரோக்கிய குறியீடுகள் (siblings/children/disease tendency) ═══ */}
+          {familyHealthData && (
+            <div style={{...card,marginBottom:10,padding:"14px 16px"}}>
+              <div style={{fontSize:14,fontWeight:700,color:"#7b1c1c",marginBottom:2,textAlign:"center"}}>👨‍👩‍👧 குடும்பம் & உடல்நல குறியீடுகள்</div>
+              <div style={{fontSize:9,color:"#8b6914",textAlign:"center",marginBottom:12}}>சகோதரர்கள் • குழந்தைகள் • நோய் நாட்டம் — classical குறியீடு (சரியான எண்/பாலினம் அல்ல)</div>
+
+              {/* Siblings */}
+              <div style={{marginBottom:10,borderLeft:"3px solid #f0c75e",paddingLeft:10}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#7b1c1c",marginBottom:3}}>👫 சகோதரர்கள் (3ஆம் வீடு)</div>
+                <div style={{fontSize:11,color:"#0d7a30",fontWeight:600}}>{familyHealthData.siblings.lean}</div>
+                <div style={{fontSize:10,color:"#666",marginTop:2}}>{familyHealthData.siblings.detail}</div>
+              </div>
+
+              {/* Children */}
+              <div style={{marginBottom:10,borderLeft:"3px solid #f0c75e",paddingLeft:10}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#7b1c1c",marginBottom:3}}>👶 குழந்தைகள் (5ஆம் வீடு)</div>
+                <div style={{fontSize:11,fontWeight:600,color:familyHealthData.children.restriction?"#cc1a1a":"#0d7a30"}}>
+                  {familyHealthData.children.restriction ? "⚠ சந்ததியில் தடை/குறைவு சாத்தியம் — கவனம்" : "சந்ததி விஷயத்தில் பெரிய தடை இல்லை"}
+                </div>
+                <div style={{fontSize:10,color:"#666",marginTop:2}}>{familyHealthData.children.detail}</div>
+                <div style={{fontSize:9,color:"#a8710a",marginTop:2,fontStyle:"italic"}}>{familyHealthData.children.note}</div>
+              </div>
+
+              {/* Disease tendencies */}
+              <div style={{borderLeft:"3px solid #f0c75e",paddingLeft:10}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#7b1c1c",marginBottom:3}}>🩺 நோய் நாட்டம் (பலவீன காரகர்)</div>
+                {familyHealthData.healthTendencies.length>0 ? (
+                  familyHealthData.healthTendencies.map((h,i)=>(
+                    <div key={i} style={{fontSize:10,color:"#555",marginBottom:3,lineHeight:1.5}}>
+                      <b style={{color:"#cc1a1a"}}>{h.planet}</b> பலவீனம்/பாதிப்பு → <span style={{color:"#333"}}>{h.area}</span>
+                    </div>
+                  ))
+                ) : <div style={{fontSize:10,color:"#0d7a30"}}>முக்கிய காரகர்கள் பலமாக உள்ளனர் — குறிப்பிட்ட நோய் நாட்டம் இல்லை</div>}
+                <div style={{fontSize:9,color:"#a8710a",marginTop:3,fontStyle:"italic"}}>* இது நாட்டம் மட்டுமே — மருத்துவ பரிசோதனையை மாற்றாது. பலவீன கிரகம் = அதன் காரக உறுப்பில் கவனம்.</div>
+              </div>
+            </div>
+          )}
 
           {/* ═══ 3.4 பாவ பலன் (LIFE-AREA READINGS) ═══ */}
           {bhavaPhalam && (
