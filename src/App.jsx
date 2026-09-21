@@ -3154,6 +3154,153 @@ function calcBirthTimeSensitivity(horoscope) {
   return warnings.length ? warnings : null;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// நிபந்தனை சுபத்துவம் (CONDITIONAL BENEFICS) — classical refinement:
+//   சந்திரன்: வளர்பிறை (சுக்ல பக்ஷம்) → சுபன்; தேய்பிறை → பாப சாயல்
+//   புதன்: பாப கிரக சேர்க்கையில் (செவ்வாய்/சனி/ராகு/கேது/தேய்சந்திரன்)
+//          பாபனாக மாறுவான்; தனித்திருந்தால் சுபன்.
+// ═══════════════════════════════════════════════════════════════════
+function calcConditionalBenefics(placements) {
+  const sun = placements.find(p => p.ta === "சூரியன்");
+  const moon = placements.find(p => p.ta === "சந்திரன்");
+  const notes = [];
+  let moonBenefic = true;
+  if (sun && moon && sun.fullLong != null && moon.fullLong != null) {
+    const elong = ((moon.fullLong - sun.fullLong) + 360) % 360;
+    moonBenefic = elong < 180; // சுக்ல பக்ஷம் (வளர்பிறை)
+    notes.push(moonBenefic
+      ? "சந்திரன் வளர்பிறையில் (சுக்ல பக்ஷம்) — சுப கிரகமாகச் செயல்படுவார்"
+      : "சந்திரன் தேய்பிறையில் (கிருஷ்ண பக்ஷம்) — சுபத்துவம் குறைவு, பாப சாயல்");
+  }
+  const mercury = placements.find(p => p.ta === "புதன்");
+  let mercuryBenefic = true;
+  if (mercury) {
+    const badCompany = placements.filter(p =>
+      p.rashiIdx === mercury.rashiIdx && p.ta !== "புதன்" &&
+      (["செவ்வாய்","சனி","ராகு","கேது"].includes(p.ta) || (p.ta === "சந்திரன்" && !moonBenefic)));
+    if (badCompany.length > 0) {
+      mercuryBenefic = false;
+      notes.push(`புதன் பாப சேர்க்கையில் (${badCompany.map(p=>p.ta).join(", ")}) — பாப சாயலில் செயல்படுவார்`);
+    } else notes.push("புதன் பாப சேர்க்கை இன்றி — சுப கிரகமாகச் செயல்படுவார்");
+  }
+  return { moonBenefic, mercuryBenefic, notes };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// கிரக சூழல் எஞ்சின் (PLANET CONTEXT ENGINE) — ஒரு கிரகத்தின் நிலைப் பலன்
+// மற்ற கிரகங்களால் எப்படி மாறுகிறது என்பதன் முழுச் சங்கிலி:
+//   1. ராசிநாதன் (dispositor) நிலை — "கிரகன் தன் ராசிநாதன் நிலைப்படி பலன் தருவான்"
+//   2. நட்சத்திராதிபதி நிலை — அமர்ந்த நட்சத்திரத்தின் அதிபதி வழி பலன் (classical/KP)
+//   3. சேர்க்கை — கூட அமர்ந்த கிரகங்களின் லக்னவாரி இயல்பு
+//   4. பார்வை — இக்கிரகத்தை நேரடியாகப் பார்க்கும் கிரகங்கள்
+// அனைத்தும் ஏற்கனவே கணித்தவற்றில் இருந்தே (signDignity, functionalNature,
+// calcGrahaDrishti, getNakshatraLord) — புதிய duplicate கணிதம் இல்லை.
+// ═══════════════════════════════════════════════════════════════════
+function calcPlanetContext(placements, lagnaIdx, functionalNat) {
+  const drishti = calcGrahaDrishti(placements);
+  const cond = calcConditionalBenefics(placements);
+  const houseOf = (p) => ((p.rashiIdx - lagnaIdx + 12) % 12) + 1;
+  const houseQuality = (h) => [1,4,5,7,9,10].includes(h) ? 1 : [6,8,12].includes(h) ? -1 : 0;
+  const natureOf = (ta) => functionalNat?.[ta]?.nature || "சமம்";
+  const natureScore = (ta) => {
+    const n = natureOf(ta);
+    if (n === "யோககாரகன்") return 2;
+    if (n === "சுபன்") return 1;
+    if (n === "பாபன்") return -1;
+    if (ta === "ராகு" || ta === "கேது") return -1;
+    return 0;
+  };
+
+  return placements.map(p => {
+    const chain = [];
+    let net = 0;
+    const pHouse = houseOf(p);
+
+    // ── 1. ராசிநாதன் (Dispositor) ──
+    const dispName = RASHI_LORD_NAME[p.rashiIdx];
+    if (dispName !== p.ta) {
+      const disp = placements.find(x => x.ta === dispName);
+      if (disp) {
+        const dDig = signDignity(disp);
+        const dHouse = houseOf(disp);
+        let s = 0;
+        if (dDig === "உச்சம்" || dDig === "சொந்தம்") s += 1;
+        else if (dDig === "நீசம்" || dDig === "பகை") s -= 1;
+        s += houseQuality(dHouse);
+        net += s;
+        chain.push({
+          k: "ராசிநாதன்", score: s,
+          text: `${dispName} (${dDig}, ${dHouse}ஆம் வீட்டில்)${disp.isCombust ? ", அஸ்தங்கம்" : ""} — ${s > 0 ? "ராசிநாதன் பலமாக இருப்பதால் இக்கிரகத்தின் பலன் மேம்படும்" : s < 0 ? "ராசிநாதன் பலவீனம்/துஸ்தானம் — இக்கிரகத்தின் பலன் தடைபடும்" : "ராசிநாதன் நடுநிலை"}`
+        });
+      }
+    } else {
+      chain.push({ k: "ராசிநாதன்", score: 1, text: "சொந்த வீட்டில் — தன் பலனைத் தானே முழுமையாகத் தரும்" });
+      net += 1;
+    }
+
+    // ── 2. நட்சத்திராதிபதி (Star Lord) ──
+    if (p.nakIdx >= 0) {
+      const slName = getNakshatraLord(p.nakIdx).name;
+      if (slName && slName !== "—") {
+        if (slName === p.ta) {
+          chain.push({ k: "நட்சத்திராதிபதி", score: 1, text: `சொந்த நட்சத்திரத்தில் (${p.nakshatraTa}) — தன் காரகப் பலனை உறுதியாகத் தரும்` });
+          net += 1;
+        } else {
+          const sl = placements.find(x => x.ta === slName);
+          if (sl) {
+            const slDig = signDignity(sl);
+            const slHouse = houseOf(sl);
+            const slOwns = housesOwnedBy(slName, lagnaIdx);
+            let s = 0;
+            if (slDig === "உச்சம்" || slDig === "சொந்தம்") s += 1;
+            else if (slDig === "நீசம்" || slDig === "பகை") s -= 1;
+            s += houseQuality(slHouse);
+            net += s;
+            chain.push({
+              k: "நட்சத்திராதிபதி", score: s,
+              text: `${p.nakshatraTa} அதிபதி ${slName} (${slDig}, ${slHouse}ஆம் வீட்டில்${slOwns.length ? `, ${slOwns.join(",")} ஆட்சி` : ""}) — இக்கிரகம் ${slName} வழிப் பலனையும் தரும்: ${s > 0 ? "நட்சத்திராதிபதி பலம் → பலன் உயரும்" : s < 0 ? "நட்சத்திராதிபதி பலவீனம் → பலன் மங்கும்" : "நடுநிலை"}`
+            });
+          }
+        }
+      }
+    }
+
+    // ── 3. சேர்க்கை (Conjunctions) ──
+    const conj = placements.filter(x => x.ta !== p.ta && x.rashiIdx === p.rashiIdx);
+    conj.forEach(c => {
+      let s = natureScore(c.ta);
+      // நிபந்தனை சுபத்துவம் — தேய்பிறை சந்திரன் / பாப-சேர்க்கை புதன்
+      if (c.ta === "சந்திரன்" && !cond.moonBenefic && s > 0) s = 0;
+      if (c.ta === "புதன்" && !cond.mercuryBenefic && s > 0) s = 0;
+      net += s;
+      chain.push({
+        k: "சேர்க்கை", score: s,
+        text: `${c.ta} உடன் சேர்க்கை (${natureOf(c.ta)}) — ${s > 0 ? "சுப சேர்க்கை: இக்கிரக காரகங்கள் மேம்படும்" : s < 0 ? "பாப சேர்க்கை: காரகங்களில் தடை/கலப்பு" : "கலப்பு விளைவு"}`
+      });
+    });
+
+    // ── 4. பார்வை (Aspects received) ──
+    drishti.filter(a => a.to === p.ta).forEach(a => {
+      let s = natureScore(a.from);
+      if (a.from === "சந்திரன்" && !cond.moonBenefic && s > 0) s = 0;
+      if (a.from === "புதன்" && !cond.mercuryBenefic && s > 0) s = 0;
+      net += s;
+      chain.push({
+        k: "பார்வை", score: s,
+        text: `${a.from} பார்வை (${natureOf(a.from)}${a.isSpecial ? ", சிறப்புப் பார்வை" : ""}) — ${s > 0 ? "சுப பார்வை: பாதுகாப்பு/மேம்பாடு" : s < 0 ? "பாப பார்வை: தாமதம்/அழுத்தம்" : "நடுநிலை"}`
+      });
+    });
+
+    // ── நிலை குறிப்புகள் ──
+    if (p.isCombust) { net -= 1; chain.push({ k: "நிலை", score: -1, text: "அஸ்தங்கம் — சூரிய அருகாமையால் பலன் வெளிப்பட தடை" }); }
+    if (p.isRetrograde && p.ta !== "ராகு" && p.ta !== "கேது") chain.push({ k: "நிலை", score: 0, text: "வக்ரம் — பலன் தீவிரமாக/மாறுபட்ட வழியில் வெளிப்படும்" });
+
+    const verdict = net >= 2 ? "பலன் மேம்படும் சூழல்" : net <= -2 ? "பலன் சவால்களுடன்" : "கலப்பு சூழல்";
+    return { ta: p.ta, symbol: p.symbol, rashi: p.rashi, house: pHouse,
+      nakshatraTa: p.nakshatraTa, pada: p.pada, chain, net, verdict, condNotes: cond.notes };
+  });
+}
+
 // Mean daily motion in degrees/day — classical reference speed for the 5 star planets,
 // used by Cheshta Bala below (Sun/Moon use their own BPHS-specified substitutions instead).
 const MEAN_DAILY_MOTION = { "செவ்வாய்":0.524, "புதன்":1.383, "குரு":0.083, "சுக்கிரன்":1.2, "சனி":0.034 };
@@ -4813,6 +4960,7 @@ export default function AstrologyApp() {
   const [bhavaBalaData, setBhavaBalaData] = useState(null);
   const [gulikaData, setGulikaData] = useState(null);
   const [btSensitivity, setBtSensitivity] = useState(null);
+  const [planetContext, setPlanetContext] = useState(null);
   const [inauspiciousTimes, setInauspiciousTimes] = useState(null);
   const [muhurthaData, setMuhurthaData] = useState(null);
   const [planetTransitAnalysis, setPlanetTransitAnalysis] = useState(null);
@@ -5174,7 +5322,9 @@ export default function AstrologyApp() {
       setFamilyHealthData(analyzeFamilyHealthIndications(result, gbResult));
       // ── புதிய அடுக்கு: லக்னவாரி சுப/பாபம், மாரக/பாதக, அவஸ்தை, பாவ பலம்,
       //    குளிகன், பிறப்பு நேர நுண்ணுணர்வு — அனைத்தும் மேலே கணித்தவற்றிலிருந்தே ──
-      setFunctionalNature(calcFunctionalNature(result.lagna));
+      const _fn1 = calcFunctionalNature(result.lagna);
+      setFunctionalNature(_fn1);
+      setPlanetContext(calcPlanetContext(result.placements, result.lagna, _fn1));
       setMarakaBadhaka(calcMarakaBadhaka(result.lagna, result.placements));
       setAvasthasData(calcAvasthas(result.placements));
       setBhavaBalaData(calcBhavaBala(result.placements, result.lagna, _sb1));
@@ -5253,7 +5403,9 @@ export default function AstrologyApp() {
       const nsResult2 = calcNavamsaStrength(h.placements);
       setKeyAreas(analyzeKeyLifeAreas(h, gbResult2, cdResult2, nsResult2, dashaResult2));
       setFamilyHealthData(analyzeFamilyHealthIndications(h, gbResult2));
-      setFunctionalNature(calcFunctionalNature(h.lagna));
+      const _fn2 = calcFunctionalNature(h.lagna);
+      setFunctionalNature(_fn2);
+      setPlanetContext(calcPlanetContext(h.placements, h.lagna, _fn2));
       setMarakaBadhaka(calcMarakaBadhaka(h.lagna, h.placements));
       setAvasthasData(calcAvasthas(h.placements));
       setBhavaBalaData(calcBhavaBala(h.placements, h.lagna, _sb2));
@@ -6151,6 +6303,7 @@ ${aiPart}
               <option value="ashtakavarga">🔢 சர்வாஷ்டகவர்க்கம்</option>
               <option value="drishti">👁 கிரக திருஷ்டி (Aspects)</option>
               <option value="funcnature">⚖ லக்னவாரி சுப-பாபர் / மாரக-பாதகர்</option>
+              <option value="planetcontext">🔗 கிரக சூழல் (ராசிநாதன்-நட்சத்திராதிபதி-சேர்க்கை-பார்வை)</option>
               <option value="avasthas">🌗 கிரக அவஸ்தைகள் (Avasthas)</option>
               <option value="bhavabala">🏠 பாவ பலம் (Bhava Bala)</option>
               <option value="d10">💼 தசாம்சம் D10 (தொழில்)</option>
@@ -6269,6 +6422,21 @@ ${aiPart}
                             <span style={{fontWeight:700,color:"#7b1c1c"}}>{occ.symbol} {occ.planet}</span>
                             {occ.condition && <span style={{fontSize:9,color:/நீசம்|பகை|அஸ்தங்கம்/.test(occ.condition)?"#cc1a1a":/உச்சம்|சொந்த|ஆட்சி|மூலத்திரிகோண/.test(occ.condition)?"#0d7a30":"#8b6914",marginLeft:4}}>({occ.condition})</span>}
                             <br/>{occ.effect}
+                            {/* கிரக சூழல் சங்கிலி — இப்பலனை மற்ற கிரகங்கள் எப்படி மாற்றுகின்றன */}
+                            {(() => {
+                              const pc = planetContext?.find(x => x.ta === occ.planet);
+                              if (!pc) return null;
+                              const disp = pc.chain.find(c => c.k === "ராசிநாதன்");
+                              const star = pc.chain.find(c => c.k === "நட்சத்திராதிபதி");
+                              return (
+                                <div style={{fontSize:9,marginTop:2,lineHeight:1.5,
+                                  color:pc.net>=2?"#2e7d32":pc.net<=-2?"#a03a00":"#6b5a48"}}>
+                                  🔗 {disp && <span>ராசிநாதன்: {disp.text.split(" — ")[0]}</span>}
+                                  {star && <span> • நட்: {star.text.split(" அதிபதி ")[1]?.split(" — ")[0] || ""}</span>}
+                                  {" → "}<b>{pc.verdict}</b>
+                                </div>
+                              );
+                            })()}
                           </div>
                         ))
                       ) : (
@@ -6339,6 +6507,20 @@ ${aiPart}
                       {marakaBadhaka?.badhakaLord === bhavaPhalam.dashaContext.mahaLord && <b style={{color:"#a03a00"}}> • பாதகாதிபதி — தடைகள் கவனம்</b>}
                     </div>
                   )}
+                  {/* BPHS தசாபல விதி — தசாநாதன் தன் ராசிநாதன், நட்சத்திராதிபதி,
+                      சேர்க்கை-பார்வை கிரகங்களின் வழியாகவும் பலன் தருவான் */}
+                  {(() => {
+                    const pc = planetContext?.find(x => x.ta === bhavaPhalam.dashaContext.mahaLord);
+                    if (!pc) return null;
+                    return (
+                      <div style={{fontSize:9.5,marginTop:4,padding:"5px 8px",borderRadius:6,background:"#faf6e8",border:"1px solid #e6dcc9",lineHeight:1.7,color:"#4a3a20"}}>
+                        <b style={{color:"#7b1c1c"}}>🔗 தசாநாதன் பலன் தரும் வழி ({pc.verdict}):</b>
+                        {pc.chain.slice(0, 4).map((c, ci) => (
+                          <div key={ci} style={{color:c.score>0?"#2e7d32":c.score<0?"#a03a00":"#555"}}>• {c.k}: {c.text}</div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                   {/* தசா சந்தி எச்சரிக்கை */}
                   {dashaData && (() => {
                     const sandhi = calcDashaSandhi(dashaData, new Date());
@@ -7125,6 +7307,44 @@ ${aiPart}
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ═══ கிரக சூழல் — inter-planet influence chain ═══ */}
+          {advancedView==="planetcontext" && planetContext && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:8,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                🔗 கிரக சூழல் — ஒரு கிரகத்தின் பலனை மற்ற கிரகங்கள் எப்படி மாற்றுகின்றன
+              </div>
+              {planetContext[0]?.condNotes?.length > 0 && (
+                <div style={{fontSize:9.5,color:"#6b5a13",background:"#faf6e8",border:"1px solid #e6dcc9",borderRadius:6,padding:"6px 8px",marginBottom:8,lineHeight:1.6}}>
+                  {planetContext[0].condNotes.map((n,i)=><div key={i}>• {n}</div>)}
+                </div>
+              )}
+              {planetContext.map((pc,i)=>(
+                <div key={i} style={{marginBottom:8,padding:"8px 10px",borderRadius:8,
+                  background:pc.net>=2?"#f1f8e9":pc.net<=-2?"#fdf0f0":"#faf9f5",
+                  border:`1px solid ${pc.net>=2?"#c5e1a5":pc.net<=-2?"#f0c8c8":"#e6dcc9"}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                    <span style={{fontSize:11.5,fontWeight:700}}>
+                      {pc.symbol} {pc.ta} — {pc.rashi}, {pc.house}ஆம் வீடு
+                      {pc.nakshatraTa && <span style={{fontSize:9,color:"#8b6914",fontWeight:400}}> ({pc.nakshatraTa}{pc.pada?`-${pc.pada}`:""})</span>}
+                    </span>
+                    <span style={{fontSize:10,fontWeight:800,
+                      color:pc.net>=2?"#1b5e20":pc.net<=-2?"#cc1a1a":"#8b6914"}}>{pc.verdict}</span>
+                  </div>
+                  {pc.chain.map((c,ci)=>(
+                    <div key={ci} style={{fontSize:9.5,lineHeight:1.6,
+                      color:c.score>0?"#2e7d32":c.score<0?"#a03a00":"#555"}}>
+                      <b style={{color:"#7b1c1c"}}>{c.k}:</b> {c.text}
+                    </div>
+                  ))}
+                </div>
+              ))}
+              <div style={{fontSize:9,color:"#777",marginTop:6,lineHeight:1.5}}>
+                விதி: கிரகன் தன் ராசிநாதன் & நட்சத்திராதிபதியின் நிலைப்படியும், சேர்க்கை-பார்வைப்படியும் பலன் தருவான் (BPHS/KP அடிப்படை).
+                சுப/பாப இயல்பு லக்னவாரி (functional) — இயற்கை அல்ல.
+              </div>
             </div>
           )}
 
