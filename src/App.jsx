@@ -156,7 +156,10 @@ function parseBackendResponse(data) {
     return {
       ...p, rashi:RASHIS[ap.rashi], rashiEn:RASHI_EN[ap.rashi], rashiIdx:ap.rashi,
       degree:Math.floor(ap.degree), degExact:ap.degree, dms:ap.dms, fullLong:ap.fullLong,
-      house:ap.house, nakshatraTa:ap.nakshatra_ta, nakIdx:NAKSHATRAS.indexOf(ap.nakshatra_ta), pada:ap.nakshatra_pada,
+      house:ap.house, nakshatraTa:ap.nakshatra_ta, nakIdx:NAKSHATRAS.indexOf(ap.nakshatra_ta),
+      // Backend omits per-planet nakshatra_pada — derive it from the sidereal
+      // longitude (each pada = 3°20' = 360/108) so chart labels always have it.
+      pada: ap.nakshatra_pada ?? (ap.fullLong != null ? Math.floor((ap.fullLong % (360/27)) / (360/108)) + 1 : undefined),
       isRetrograde: ap.speed !== undefined ? ap.speed < 0 : false, // backend may provide speed
       isCombust:false, isMoolaTri:false // enriched below
     };
@@ -2328,6 +2331,35 @@ const DRISHTI_RULES = {
 };
 const CLASSICAL_7 = ["சூரியன்","சந்திரன்","செவ்வாய்","புதன்","குரு","சுக்கிரன்","சனி"];
 
+// பார்வை பலன் — classical tone of each planet's full drishti falling ON a house
+// (BPHS: benefic drishti protects/expands the bhava, malefic drishti afflicts it)
+const DRISHTI_EFFECT = {
+  "சூரியன்":  { tone:"mixed",   text:"அதிகாரம், வெளிப்படைத்தன்மை தரும் — ஆனால் சற்று வறட்சி; அரசு/தந்தை தொடர்பு" },
+  "சந்திரன்": { tone:"benefic", text:"மனவளம், கவனிப்பு, மக்கள் ஆதரவு சேர்க்கும்" },
+  "செவ்வாய்": { tone:"malefic", text:"ஆற்றலும் விரைவும் தரும், ஆனால் மோதல்/அவசரம் சேரும் — கவனம் தேவை" },
+  "புதன்":    { tone:"benefic", text:"புத்திக்கூர்மை, பேச்சு/தொடர்பு மேம்பாடு சேர்க்கும்" },
+  "குரு":     { tone:"benefic", text:"பாதுகாப்பு, விரிவாக்கம், தெய்வ அருள் — இவ்வீட்டு பலன்களை உயர்த்தும்" },
+  "சுக்கிரன்": { tone:"benefic", text:"சுகம், இனிமை, கலை நயம் சேர்க்கும்" },
+  "சனி":      { tone:"malefic", text:"தாமதம், கட்டுப்பாடு, பொறுப்பு — பலன்கள் உழைப்பிற்குப் பின் தாமதமாகக் கிடைக்கும்" }
+};
+
+// எந்தக் கிரகங்கள் ஒரு வீட்டை (whole-sign) பார்க்கின்றன — occupants excluded.
+// Classical Parashari drishti: 7 planets only (nodes have no drishti in BPHS).
+function aspectorsOnHouse(placements, lagnaIdx, houseRashiIdx) {
+  return placements.filter(p => {
+    if (!CLASSICAL_7.includes(p.ta)) return false;
+    if (p.rashiIdx === houseRashiIdx) return false;
+    const rules = DRISHTI_RULES[p.ta] || DRISHTI_RULES.default;
+    const offset = ((houseRashiIdx - p.rashiIdx + 12) % 12) + 1;
+    return rules.includes(offset);
+  }).map(p => ({
+    planet: p.ta, symbol: p.symbol,
+    fromHouse: ((p.rashiIdx - lagnaIdx + 12) % 12) + 1,
+    tone: DRISHTI_EFFECT[p.ta]?.tone || "mixed",
+    text: DRISHTI_EFFECT[p.ta]?.text || ""
+  }));
+}
+
 function calcGrahaDrishti(placements) {
   const aspects = [];
   const classicalPlanets = placements.filter(p => CLASSICAL_7.includes(p.ta));
@@ -3548,11 +3580,18 @@ function calcBhavaPhalam(horoscope, grahaBala, chevvaiDosham, dashaData, classic
         else lordVerdict = "அதிபதி நடுத்தர நிலையில்";
       }
 
+      // கிரக பார்வை இந்த வீட்டின் மீது — சனி/செவ்வாய்/குரு special aspects உட்பட.
+      // Aspecting planet's own condition (உச்சம்/நீசம்...) shown so a debilitated
+      // Jupiter's "protection" isn't overstated.
+      const aspectors = aspectorsOnHouse(placements, lagnaIdx, houseRashiIdx)
+        .map(a => ({ ...a, condition: (() => { const ap = find(a.planet); return ap ? planetCondition(ap) : ""; })() }));
+
       return {
         houseNum,
         houseTheme: theme,
         houseRashi: RASHIS[houseRashiIdx],
         occupants: occupantEffects,
+        aspectors,
         lordInfo,
         lordVerdict,
         isEmpty: occupants.length === 0
@@ -3834,6 +3873,22 @@ function MantraChakra({ speed = 90, size = 500, opacity = 0.25 }) {
 // Short names for chart cells (2-3 chars max like reference)
 const P_SHORT = {"சூரியன்":"சூ","சந்திரன்":"சந்","செவ்வாய்":"செவ்","புதன்":"புத","குரு":"கு","சுக்கிரன்":"சுக்","சனி":"சனி","ராகு":"ராகு","கேது":"கேது"};
 
+// Nakshatra abbreviations — index-aligned with NAKSHATRAS (all 27 distinct)
+const NAK_SHORT = [
+  "அசு","பர","கார்","ரோ","மிரு",
+  "திரு","புன","பூச","ஆயி","மக",
+  "பூர","உத்","அஸ்","சித்","சுவா",
+  "விசா","அனு","கேட்","மூல","பூரா",
+  "உத்தி","ஓண","அவி","சத",
+  "பூரட்","உத்ரட்","ரேவ"
+];
+// "கார்-3" style label for a planet's nakshatra + pada (empty if unknown)
+function nakPadaLabel(p) {
+  const i = (p.nakIdx >= 0 && p.nakIdx < 27) ? p.nakIdx : NAKSHATRAS.indexOf(p.nakshatraTa);
+  if (i < 0 || !p.nakshatraTa) return "";
+  return `${NAK_SHORT[i]}${p.pada ? "-" + p.pada : ""}`;
+}
+
 // Generate chart SVG as raw string (for PDF)
 function chartSVGString(planetList, lagnaIdx, chartTitle, isNavamsa=false) {
   const cW=80,cH=68,W=cW*4,H=cH*4;
@@ -3849,12 +3904,15 @@ function chartSVGString(planetList, lagnaIdx, chartTitle, isNavamsa=false) {
   siPos.forEach(({r:rashi,row,col})=>{
     const x=col*cW,y=row*cH,isL=rashi===lagnaIdx;
     const planets=rp[rashi]||[];
-    // Center-aligned planet names
-    const totalH=planets.length*14;
+    // Center-aligned planet names; shrink rows on stellium
+    const rowH=planets.length>4?Math.max(10,(cH-6)/planets.length):14;
+    const totalH=planets.length*rowH;
     const startY=y+(cH-totalH)/2;
     planets.forEach((p,pi)=>{
       const shortN=P_SHORT[p.ta]||p.ta.slice(0,3);
-      cells+=`<text x="${x+cW/2}" y="${startY+pi*14+10}" text-anchor="middle" fill="#000" font-size="10" font-weight="600" font-family="'Noto Sans Tamil',sans-serif">${shortN}</text>`;
+      const nak=!isNavamsa?nakPadaLabel(p):"";
+      const nakT=nak?`<tspan dx="2" font-size="6.5" font-weight="400" fill="#555">${nak}</tspan>`:"";
+      cells+=`<text x="${x+cW/2}" y="${startY+pi*rowH+10}" text-anchor="middle" fill="#000" font-size="10" font-weight="600" font-family="'Noto Sans Tamil',sans-serif">${shortN}${nakT}</text>`;
     });
     if(isL) cells+=`<text x="${x+cW/2}" y="${y+cH-4}" text-anchor="middle" fill="#cc0000" font-size="10" font-weight="900" font-family="sans-serif">லக்</text>`;
   });
@@ -3911,27 +3969,38 @@ function TraditionalChart({ horoscope, navamsaData, title="ராசி", showNa
           const isL = rashi === lagnaIdx;
           const planets = rashiPlanets[rashi] || [];
           // Center-align: calculate vertical start position
-          const totalH = planets.length * 14;
+          // Shrink row height when a stellium would overflow the box
+          const rowH = planets.length > 4 ? Math.max(10, (cH - 6) / planets.length) : 14;
+          const totalH = planets.length * rowH;
           const startY = y + (cH - totalH) / 2;
           return (
             <g key={rashi}>
               {planets.map((p,pi)=>{
                 const shortN = P_SHORT[p.ta] || p.ta.slice(0,3);
+                // Nakshatra-pada beside planet (rasi chart only —
+                // nakshatra belongs to the natal longitude, not navamsa)
+                const nak = !isNavamsa ? nakPadaLabel(p) : "";
                 return(
                   <text key={pi}
                     x={x + cW/2}
-                    y={startY + pi*14 + 10}
+                    y={startY + pi*rowH + 10}
                     textAnchor="middle"
                     fill="#000" fontSize="10" fontWeight="600"
                     fontFamily="'Noto Sans Tamil',sans-serif">
                     {shortN}
+                    {nak && <tspan dx="2" fontSize="6.5" fontWeight="400" fill="#555">{nak}</tspan>}
                   </text>
                 );
               })}
               {isL && (
                 <text x={x+cW/2} y={y+cH-4} textAnchor="middle"
                   fill="#cc0000" fontSize="10" fontWeight="900"
-                  fontFamily="'Noto Sans Tamil',sans-serif">லக்</text>
+                  fontFamily="'Noto Sans Tamil',sans-serif">லக்
+                  {!isNavamsa && horoscope.lagnaNakshatra && (
+                    <tspan dx="2" fontSize="6.5" fontWeight="400" fill="#a33">
+                      {nakPadaLabel({ nakIdx: NAKSHATRAS.indexOf(horoscope.lagnaNakshatra), nakshatraTa: horoscope.lagnaNakshatra, pada: horoscope.lagnaPada })}
+                    </tspan>
+                  )}</text>
               )}
             </g>
           );
@@ -5823,6 +5892,21 @@ ${aiPart}
                       ) : (
                         <div style={{fontSize:10,color:"#999",marginBottom:4,fontStyle:"italic"}}>
                           இந்த வீட்டில் கிரகம் இல்லை — வீட்டு அதிபதி நிலை பார்க்கவும்
+                        </div>
+                      )}
+
+                      {/* Graha drishti falling ON this house — Saturn/Mars/Jupiter
+                          special aspects included; modifies the house's palan */}
+                      {hr.aspectors && hr.aspectors.length > 0 && (
+                        <div style={{marginTop:2,marginBottom:4}}>
+                          {hr.aspectors.map((asp, api) => (
+                            <div key={api} style={{fontSize:10,lineHeight:1.5,
+                              color:asp.tone==="benefic"?"#0d7a30":asp.tone==="malefic"?"#a03a00":"#6b5a13"}}>
+                              👁 <b>{asp.symbol} {asp.planet}</b> ({asp.fromHouse}ஆம் வீட்டிலிருந்து பார்வை)
+                              {asp.condition && <span style={{fontSize:9,color:"#8b6914"}}> [{asp.condition}]</span>}
+                              {" — "}{asp.text}
+                            </div>
+                          ))}
                         </div>
                       )}
 
