@@ -378,11 +378,16 @@ export function analyzeCareer(horoscope, grahaBala, dashaData) {
   }
 
   // Suitable-profession suggestion — classical karaka fields of the planets shaping
-  // the 10th house (occupants if any, else the 10th lord). Prepended so the reader
-  // sees WHICH fields fit, e.g. teaching/advisory for Jupiter, writing/business for Mercury.
-  const fieldSources = occupants10.length > 0 ? occupants10.map(p => p.ta) : [h10LordName];
-  const suggestedFields = fieldSources.map(n => CAREER_FIELDS[n]).filter(Boolean).join(" / ");
-  if (suggestedFields) summary = `🎯 பொருத்தமான துறை: ${suggestedFields}.\n${summary}`;
+  // the 10th house. IMPORTANT: use BOTH the 10th LORD *and* any occupants (lord first),
+  // not occupants alone — otherwise a chart like Jupiter-ruled 10th with Venus sitting in
+  // it would only show Venus's arts fields and miss the 10th lord's teaching/advisory
+  // (e.g. a Jupiter-10th-lord person who is a teacher). Planets that aspect the 10th are
+  // added too, since they also shape the profession. This is an INDICATION, not a fixed
+  // prediction — a chart can lean one way while life takes another.
+  const aspectors10 = placements.filter(p => p.ta !== h10LordName && !occupants10.includes(p) && planetAspectsHouse(p, lagnaIdx, 10)).map(p => p.ta);
+  const fieldSources = [...new Set([h10LordName, ...occupants10.map(p => p.ta), ...aspectors10])];
+  const suggestedFields = [...new Set(fieldSources.map(n => CAREER_FIELDS[n]).filter(Boolean).join(" / ").split(" / "))].join(" / ");
+  if (suggestedFields) summary = `🎯 பொருத்தமான துறை (குறியீடு): ${suggestedFields}.\n${summary}`;
 
   return { area: "தொழில்", icon: "💼", score, verdict, verdictColor, summary, factors,
            suggestedFields,
