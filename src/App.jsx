@@ -790,8 +790,40 @@ function calcGhatiLagna(sunLong, birthMinutes, sunriseMin) {
   return { longitude: Math.round(ghatiLong * 100) / 100, rashi, rashiName: RASHIS[rashi] };
 }
 
+// 12 ஆரூட பதங்கள் (ALL 12 ARUDHA PADAS) — BPHS 29.1-5
+// For each house H: find H's lord, count the lord's distance from H, then project
+// that same distance again from the lord's position. Exceptions (29.4): if the pada
+// lands on H itself → take the 10th from H; if on the 7th from H → take the 4th.
+// A1 (Arudha Lagna) and A12 (Upapada) are the most used; all 12 are provided.
+const ARUDHA_PADA_NAMES = [
+  "A1 (லக்ன பதம்)","A2 (தன பதம்)","A3 (விக்ரம பதம்)","A4 (சுக பதம்)",
+  "A5 (மந்திர பதம்)","A6 (ரோக பதம்)","A7 (தார பதம்)","A8 (மிருத்யு பதம்)",
+  "A9 (பிதுர் பதம்)","A10 (கர்ம பதம்)","A11 (லாப பதம்)","A12 (உபபத பதம்)"
+];
+function calcAllArudhaPadas(lagnaRashiIdx, placements) {
+  const padas = [];
+  for (let h = 0; h < 12; h++) {
+    const houseRashi = (lagnaRashiIdx + h) % 12;
+    const lordName = RASHI_LORD_NAME[houseRashi];
+    const lordP = placements.find(p => p.ta === lordName);
+    if (!lordP) { padas.push(null); continue; }
+    const lordDist = ((lordP.rashiIdx - houseRashi + 12) % 12); // 0-11 distance
+    let padaRashi = (lordP.rashiIdx + lordDist) % 12;           // project same distance again
+    // Exceptions (BPHS 29.4)
+    if (padaRashi === houseRashi) padaRashi = (houseRashi + 9) % 12;         // 10th from the house
+    else if (padaRashi === (houseRashi + 6) % 12) padaRashi = (houseRashi + 3) % 12; // 4th from the house
+    padas.push({
+      pada: ARUDHA_PADA_NAMES[h],
+      houseNum: h + 1,
+      rashi: padaRashi,
+      rashiName: RASHIS[padaRashi],
+      lord: lordName
+    });
+  }
+  return padas;
+}
+
 // #26 ஆருட லக்னம் (ARUDHA LAGNA / PADA LAGNA) — BPHS 29.1-3
-// Count from Lagna lord to Lagna lord's position, then count same from that position
 function calcArudhaLagna(lagnaRashiIdx, placements) {
   const lagnaLord = RASHI_LORD_NAME[lagnaRashiIdx];
   const lordP = placements.find(p => p.ta === lagnaLord);
@@ -4347,6 +4379,7 @@ export default function AstrologyApp() {
   const [d40Data, setD40Data] = useState(null);
   const [d45Data, setD45Data] = useState(null);
   const [jaiminiData, setJaiminiData] = useState(null);
+  const [arudhaPadasData, setArudhaPadasData] = useState(null);
   const [charaDashaData, setCharaDashaData] = useState(null);
   const [varshaphalaData, setVarshaphalaData] = useState(null);
   const [familyHealthData, setFamilyHealthData] = useState(null);
@@ -4667,7 +4700,7 @@ export default function AstrologyApp() {
       setD27Data(calcD27Bhamsa(result.placements));
       setD40Data(calcD40Khavedamsa(result.placements));
       setD45Data(calcD45Akshavedamsa(result.placements));
-      setJaiminiData(calcJaiminiAnalysis(result));
+      setJaiminiData(calcJaiminiAnalysis(result)); setArudhaPadasData(calcAllArudhaPadas(result.lagna, result.placements));
       { const [cY,cM,cD]=dobISO.split('-').map(Number); setCharaDashaData(calcCharaDasha(result.lagna, result.placements, new Date(cY,cM-1,cD))); }
       { const nowY=new Date().getFullYear(); let vp=calcVarshaphala(result,dobISO,geoT.lat,geoT.lon,nowY); if(vp && vp.praveshDate>new Date()) vp=calcVarshaphala(result,dobISO,geoT.lat,geoT.lon,nowY-1); setVarshaphalaData(vp); }
       setVimshopakaData(result.placements.filter(p=>CLASSICAL_7.includes(p.ta)).map(p=>({ta:p.ta,symbol:p.symbol,...calcVimshopakaBala(p,result.lagna,result.placements)})));
@@ -4748,7 +4781,7 @@ export default function AstrologyApp() {
       setD27Data(calcD27Bhamsa(h.placements));
       setD40Data(calcD40Khavedamsa(h.placements));
       setD45Data(calcD45Akshavedamsa(h.placements));
-      setJaiminiData(calcJaiminiAnalysis(h));
+      setJaiminiData(calcJaiminiAnalysis(h)); setArudhaPadasData(calcAllArudhaPadas(h.lagna, h.placements));
       { const [cY,cM,cD]=dobISO.split('-').map(Number); setCharaDashaData(calcCharaDasha(h.lagna, h.placements, new Date(cY,cM-1,cD))); }
       { const nowY=new Date().getFullYear(); let vp=calcVarshaphala(h,dobISO,geo.lat,geo.lon,nowY); if(vp && vp.praveshDate>new Date()) vp=calcVarshaphala(h,dobISO,geo.lat,geo.lon,nowY-1); setVarshaphalaData(vp); }
       setVimshopakaData(h.placements.filter(p=>CLASSICAL_7.includes(p.ta)).map(p=>({ta:p.ta,symbol:p.symbol,...calcVimshopakaBala(p,h.lagna,h.placements)})));
@@ -6175,6 +6208,22 @@ ${aiPart}
                 <div style={{fontSize:10,color:"#555",lineHeight:1.6,marginBottom:4}}>
                   <b style={{color:"#a8710a"}}>அருட லக்னம் (AL):</b> {jaiminiData.arudhaName}
                   {jaiminiData.arudhaAspectedBy.length>0 && <span> — பார்க்கும் கிரகங்கள்: <b style={{color:"#7b1c1c"}}>{jaiminiData.arudhaAspectedBy.map(a=>a.ta).join(", ")}</b></span>}
+                </div>
+              )}
+
+              {/* All 12 Arudha Padas */}
+              {arudhaPadasData && (
+                <div style={{marginTop:10,paddingTop:10,borderTop:"1px dashed #e6dcc9"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#a8710a",marginBottom:6}}>12 ஆரூட பதங்கள் (Arudha Padas)</div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:4}}>
+                    {arudhaPadasData.filter(Boolean).map((p,i)=>(
+                      <div key={i} style={{fontSize:9,padding:"4px 7px",borderRadius:5,background:p.houseNum===1?"#fff3d6":"#f5efe3",border:"1px solid #e6dcc9",color:"#5f1414",display:"flex",justifyContent:"space-between"}}>
+                        <span style={{fontWeight:600}}>{p.pada}</span>
+                        <b style={{color:"#7b1c1c"}}>{p.rashiName}</b>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{fontSize:8,color:"#aaa",marginTop:4,fontStyle:"italic"}}>A1=லக்ன பதம் (பொது தோற்றம்/புகழ்), A12=உபபத பதம் (துணை) — BPHS 29</div>
                 </div>
               )}
 
