@@ -844,6 +844,50 @@ function calcJaiminiAnalysis(horoscope) {
   };
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// JAIMINI சர தசா (CHARA DASHA) — KN Rao method (transparently labelled)
+// Rules (documented, one of several valid Jaimini rashi-dasha systems):
+//  • Start from the Lagna sign.
+//  • Sequence direction: LAGNA odd (Ar,Ge,Le,Li,Sa,Aq) → forward (zodiacal);
+//    even → backward.
+//  • Each sign's DURATION: count from the sign to the sign its lord occupies —
+//    forward if THAT sign is odd, backward if even — then subtract 1.
+//    If the lord is in the sign's own sign, the period is 12 years.
+//  • Dignity: lord exalted → +1 year, debilitated → −1 (clamped to 1..12).
+//  • Co-lord signs use their traditional lord (Scorpio→Mars, Aquarius→Saturn),
+//    matching RASHI_LORD_NAME.
+// The UI shows this method explicitly so an astrologer can validate the convention.
+// ═══════════════════════════════════════════════════════════════════
+function calcCharaDasha(lagnaRashiIdx, placements, birthDateObj) {
+  const isOdd = (idx) => idx % 2 === 0;               // Aries(0)=1st=odd
+  const lordSign = (name) => { const p = placements.find(x => x.ta === name); return p ? p.rashiIdx : null; };
+  function signYears(signIdx) {
+    const lord = RASHI_LORD_NAME[signIdx];
+    const lp = lordSign(lord);
+    if (lp == null) return 1;
+    const count = isOdd(signIdx) ? (((lp - signIdx + 12) % 12) + 1) : (((signIdx - lp + 12) % 12) + 1);
+    let years = count - 1;
+    if (years === 0) years = 12;                       // lord in own sign
+    if (lp === EXALT_RASHI[lord]) years += 1;
+    if (lp === DEBIL_RASHI[lord]) years -= 1;
+    return Math.max(1, Math.min(12, years));
+  }
+  const forward = isOdd(lagnaRashiIdx);
+  const seq = [];
+  for (let i = 0; i < 12; i++) seq.push(forward ? (lagnaRashiIdx + i) % 12 : (lagnaRashiIdx - i + 12) % 12);
+  let cursor = birthDateObj ? new Date(birthDateObj) : new Date();
+  const dashas = seq.map(s => {
+    const years = signYears(s);
+    const start = new Date(cursor);
+    const end = new Date(cursor); end.setDate(end.getDate() + Math.round(years * 365.25));
+    cursor = end;
+    return { rashi: s, rashiName: RASHIS[s], years, startDate: start, endDate: end };
+  });
+  const now = new Date();
+  const current = dashas.find(d => now >= d.startDate && now < d.endDate);
+  return { dashas, direction: forward ? "நேர் (zodiacal)" : "மாறு (reverse)", currentRashi: current ? current.rashiName : null };
+}
+
 // #27 உபபத லக்னம் (UPAPADA LAGNA) — BPHS 29: Arudha of 12th house, for spouse
 function calcUpapadaLagna(lagnaRashiIdx, placements) {
   const h12Rashi = (lagnaRashiIdx + 11) % 12;
@@ -4151,6 +4195,7 @@ export default function AstrologyApp() {
   const [d40Data, setD40Data] = useState(null);
   const [d45Data, setD45Data] = useState(null);
   const [jaiminiData, setJaiminiData] = useState(null);
+  const [charaDashaData, setCharaDashaData] = useState(null);
   const [vimshopakaData, setVimshopakaData] = useState(null);
   const [kalaSarpa, setKalaSarpa] = useState(null);
   const [chevvaiDosham, setChevvaiDosham] = useState(null);
@@ -4460,6 +4505,7 @@ export default function AstrologyApp() {
       setD40Data(calcD40Khavedamsa(result.placements));
       setD45Data(calcD45Akshavedamsa(result.placements));
       setJaiminiData(calcJaiminiAnalysis(result));
+      { const [cY,cM,cD]=dobISO.split('-').map(Number); setCharaDashaData(calcCharaDasha(result.lagna, result.placements, new Date(cY,cM-1,cD))); }
       setVimshopakaData(result.placements.filter(p=>CLASSICAL_7.includes(p.ta)).map(p=>({ta:p.ta,symbol:p.symbol,...calcVimshopakaBala(p,result.lagna,result.placements)})));
       setKalaSarpa(detectKalaSarpa(result.placements, result.lagna));
       setChevvaiDosham(detectChevvaiDosham(result.placements, result.lagna));
@@ -4530,6 +4576,7 @@ export default function AstrologyApp() {
       setD40Data(calcD40Khavedamsa(h.placements));
       setD45Data(calcD45Akshavedamsa(h.placements));
       setJaiminiData(calcJaiminiAnalysis(h));
+      { const [cY,cM,cD]=dobISO.split('-').map(Number); setCharaDashaData(calcCharaDasha(h.lagna, h.placements, new Date(cY,cM-1,cD))); }
       setVimshopakaData(h.placements.filter(p=>CLASSICAL_7.includes(p.ta)).map(p=>({ta:p.ta,symbol:p.symbol,...calcVimshopakaBala(p,h.lagna,h.placements)})));
       setKalaSarpa(detectKalaSarpa(h.placements, h.lagna));
       setChevvaiDosham(detectChevvaiDosham(h.placements, h.lagna));
@@ -5907,8 +5954,41 @@ ${aiPart}
                 </div>
               )}
 
+              {/* Chara Dasha (KN Rao) */}
+              {charaDashaData && (
+                <div style={{marginTop:12,paddingTop:10,borderTop:"1px dashed #e6dcc9"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#a8710a",marginBottom:5}}>சர தசா (Chara Dasha) — திசை: {charaDashaData.direction}</div>
+                  <div style={{overflowX:"auto"}}>
+                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
+                      <thead><tr style={{borderBottom:"1.5px solid #d4a85340"}}>
+                        <th style={{padding:"4px 3px",color:"#b8860b",fontWeight:700,textAlign:"left"}}>ராசி தசை</th>
+                        <th style={{padding:"4px 3px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>ஆண்டு</th>
+                        <th style={{padding:"4px 3px",color:"#b8860b",fontWeight:700,textAlign:"left"}}>தொடக்கம்</th>
+                        <th style={{padding:"4px 3px",color:"#b8860b",fontWeight:700,textAlign:"left"}}>முடிவு</th>
+                      </tr></thead>
+                      <tbody>
+                        {charaDashaData.dashas.map((d,i)=>{
+                          const isCur=charaDashaData.currentRashi===d.rashiName && new Date()>=d.startDate && new Date()<d.endDate;
+                          return (
+                            <tr key={i} style={{borderBottom:"1px solid #eee",background:isCur?"#e8f5e9":i%2?"#fafafa":"transparent",fontWeight:isCur?700:400}}>
+                              <td style={{padding:"5px 3px",color:"#7b1c1c",fontWeight:600}}>{d.rashiName}{isCur&&<span style={{color:"#1a8d1a",fontSize:8}}> (நடப்பு)</span>}</td>
+                              <td style={{padding:"5px 3px",textAlign:"center",color:"#333"}}>{d.years}</td>
+                              <td style={{padding:"5px 3px",color:"#555"}}>{d.startDate.toLocaleDateString("ta-IN")}</td>
+                              <td style={{padding:"5px 3px",color:"#555"}}>{d.endDate.toLocaleDateString("ta-IN")}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{fontSize:8,color:"#777",marginTop:5,lineHeight:1.5}}>
+                    <b>முறை (KN Rao):</b> லக்னம் ஒற்றை→நேர், இரட்டை→மாறு. கால அளவு = ராசியிலிருந்து அதிபதி வரை எண்ணி −1 (சொந்த வீடு=12), உச்சம்+1/நீசம்−1 (1..12). ஸ்கார்பியோ→செவ்வாய், கும்பம்→சனி. * இது KN Rao முறை — Jaimini ராசி தசாக்களில் ஒன்று; பிற முறைகளும் (Narayana/Sthira) உண்டு.
+                  </div>
+                </div>
+              )}
+
               <div style={{fontSize:9,color:"#777",marginTop:6,lineHeight:1.5}}>
-                ராசி திருஷ்டி: சர→ஸ்திர (அடுத்தது தவிர), ஸ்திர→சர (அடுத்தது தவிர), உभय→உभய. அர்கலா: 2/4/11ஆம் வீட்டு கிரகம் தலையீடு, விரோதம் 12/10/3ல் இருந்து — ஜைமினி முறை.
+                ராசி திருஷ்டி: சர→ஸ்திர (அடுத்தது தவிர), ஸ்திர→சர (அடுத்தது தவிர), உभய→உभய. அர்கலா: 2/4/11ஆம் வீட்டு கிரகம் தலையீடு, விரோதம் 12/10/3ல் இருந்து — ஜைமினி முறை.
               </div>
             </div>
           )}
