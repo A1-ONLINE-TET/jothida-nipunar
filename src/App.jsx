@@ -2850,6 +2850,310 @@ const NAISARGIKA_BALA = {
 // the Moon's condition (conjunction, waxing/waning) rather than a fixed classification.
 const NATURAL_BENEFICS = ["குரு","சுக்கிரன்","புதன்","சந்திரன்"];
 const NATURAL_MALEFICS = ["சூரியன்","செவ்வாய்","சனி"];
+
+// ═══════════════════════════════════════════════════════════════════
+// லக்னவாரி சுப/பாப நிர்ணயம் (FUNCTIONAL BENEFIC/MALEFIC) — BPHS Ch.34
+// Derived from ACTUAL house lordships (not a canned per-lagna table):
+//   திரிகோண (5,9) + லக்ன அதிபதி → சுபன் | 3,6,11 அதிபதி → பாபன்
+//   கேந்திராதிபத்ய தோஷம்: இயற்கை சுபன் கேந்திரம் ஆண்டால் நன்மை இழப்பு,
+//   இயற்கை பாபன் கேந்திரம் ஆண்டால் தீமை இழப்பு
+//   8ஆம் அதிபத்யம் தோஷம் (சூரிய/சந்திரனுக்கும், லக்னாதிபதிக்கும் விலக்கு)
+//   யோககாரகன் = ஒரே கிரகம் கேந்திரமும் திரிகோணமும் ஆள்வது
+// ═══════════════════════════════════════════════════════════════════
+function housesOwnedBy(planetTa, lagnaIdx) {
+  const houses = [];
+  for (let h = 1; h <= 12; h++) {
+    if (RASHI_LORD_NAME[(lagnaIdx + h - 1) % 12] === planetTa) houses.push(h);
+  }
+  return houses;
+}
+function calcFunctionalNature(lagnaIdx) {
+  const result = {};
+  CLASSICAL_7.forEach(ta => {
+    const owns = housesOwnedBy(ta, lagnaIdx);
+    const reasons = [];
+    let score = 0;
+    const isNatBenefic = NATURAL_BENEFICS.includes(ta);
+    const ownsKendra = owns.some(h => [4,7,10].includes(h));
+    const ownsTrikona59 = owns.some(h => [5,9].includes(h));
+    owns.forEach(h => {
+      if (h === 1) { score += 2; reasons.push("லக்னாதிபதி"); }
+      else if ([5,9].includes(h)) { score += 2; reasons.push(`${h}ஆம் (திரிகோண) அதிபதி`); }
+      else if ([3,6,11].includes(h)) { score -= 2; reasons.push(`${h}ஆம் அதிபதி — பாபத்துவம்`); }
+      else if (h === 8) {
+        if (ta !== "சூரியன்" && ta !== "சந்திரன்" && !owns.includes(1)) { score -= 2; reasons.push("8ஆம் அதிபத்ய தோஷம்"); }
+        else reasons.push("8ஆம் அதிபதி (விலக்கு விதி — தோஷம் இல்லை)");
+      }
+      else if ([4,7,10].includes(h)) {
+        if (isNatBenefic) { score -= 1; reasons.push(`${h}ஆம் (கேந்திர) அதிபதி — கேந்திராதிபத்ய தோஷம்`); }
+        else reasons.push(`${h}ஆம் (கேந்திர) அதிபதி — பாபத்துவம் நீங்கியது`);
+      }
+      else reasons.push(`${h}ஆம் அதிபதி (சமம்)`);
+    });
+    let nature, natureEn;
+    if (ownsKendra && ownsTrikona59) { nature = "யோககாரகன்"; natureEn = "Yogakaraka"; }
+    else if (score >= 2) { nature = "சுபன்"; natureEn = "Functional Benefic"; }
+    else if (score <= -2) { nature = "பாபன்"; natureEn = "Functional Malefic"; }
+    else { nature = "சமம்"; natureEn = "Neutral"; }
+    result[ta] = { nature, natureEn, score, owns, reasons };
+  });
+  // ராகு/கேது — BPHS: அவை அமர்ந்த வீட்டு அதிபதி / சேர்ந்த கிரகம் போல் பலன்
+  result["ராகு"] = { nature: "சார்பு", natureEn: "Depends on dispositor", score: 0, owns: [], reasons: ["அமர்ந்த ராசி அதிபதி & சேர்க்கை படி பலன்"] };
+  result["கேது"] = { nature: "சார்பு", natureEn: "Depends on dispositor", score: 0, owns: [], reasons: ["அமர்ந்த ராசி அதிபதி & சேர்க்கை படி பலன்"] };
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// மாரகர் & பாதகாதிபதி (MARAKA & BADHAKA) — classical derivation
+//   மாரக ஸ்தானம்: 2, 7 — அவற்றின் அதிபதிகள் + அங்குள்ள கிரகங்கள் +
+//   மாரகாதிபதியுடன் சேர்ந்தவை. பாதகம்: சர லக்னம்→11, ஸ்திரம்→9, உபயம்→7
+// ═══════════════════════════════════════════════════════════════════
+function calcMarakaBadhaka(lagnaIdx, placements) {
+  const houseRashi = (h) => (lagnaIdx + h - 1) % 12;
+  const lordOf = (h) => RASHI_LORD_NAME[houseRashi(h)];
+  const planetHouse = (p) => ((p.rashiIdx - lagnaIdx + 12) % 12) + 1;
+
+  const marakaLords = [...new Set([lordOf(2), lordOf(7)])];
+  const occupants27 = placements.filter(p => [2,7].includes(planetHouse(p))).map(p => p.ta);
+  // மாரகாதிபதியுடன் ஒரே ராசியில் சேர்ந்தவை
+  const associates = [];
+  marakaLords.forEach(ml => {
+    const mlP = placements.find(p => p.ta === ml);
+    if (!mlP) return;
+    placements.forEach(p => {
+      if (p.ta !== ml && p.rashiIdx === mlP.rashiIdx && !associates.includes(p.ta)) associates.push(p.ta);
+    });
+  });
+
+  // பாதக ஸ்தானம் — லக்ன இயல்பு வழி (சரம்/ஸ்திரம்/உபயம்)
+  const CHARA = [0,3,6,9], STHIRA = [1,4,7,10];
+  const badhakaHouse = CHARA.includes(lagnaIdx) ? 11 : STHIRA.includes(lagnaIdx) ? 9 : 7;
+  const badhakaLord = lordOf(badhakaHouse);
+  const blP = placements.find(p => p.ta === badhakaLord);
+  return {
+    marakaLords, occupants27, associates,
+    badhakaHouse, badhakaLord,
+    badhakaLordHouse: blP ? planetHouse(blP) : null,
+    lagnaType: CHARA.includes(lagnaIdx) ? "சர லக்னம்" : STHIRA.includes(lagnaIdx) ? "ஸ்திர லக்னம்" : "உபய லக்னம்"
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// கோசார வேதை (GOCHARA VEDHA) — Brihat Samhita standard table
+// கிரகம் சுப வீட்டில் இருந்தாலும், வேதை வீட்டில் வேறு கிரகம் இருந்தால்
+// அந்த சுபபலன் தடைபடும். விலக்கு: சூரியன்↔சனி, சந்திரன்↔புதன் —
+// தந்தை-மகன் ஜோடிகள் ஒருவருக்கொருவர் வேதை செய்யா.
+// ═══════════════════════════════════════════════════════════════════
+const GOCHARA_VEDHA = {
+  "சூரியன்":  {3:9, 6:12, 10:4, 11:5},
+  "சந்திரன்": {1:5, 3:9, 6:12, 7:2, 10:4, 11:8},
+  "செவ்வாய்": {3:12, 6:9, 11:5},
+  "புதன்":    {2:5, 4:3, 6:9, 8:1, 10:8, 11:12},
+  "குரு":     {2:12, 5:4, 7:3, 9:10, 11:8},
+  "சுக்கிரன்": {1:8, 2:7, 3:1, 4:10, 5:9, 8:5, 9:11, 11:6, 12:3},
+  "சனி":      {3:12, 6:9, 11:5}
+};
+const VEDHA_EXEMPT_PAIRS = [["சூரியன்","சனி"],["சந்திரன்","புதன்"]];
+function isVedhaExempt(a, b) {
+  return VEDHA_EXEMPT_PAIRS.some(([x,y]) => (a===x&&b===y)||(a===y&&b===x));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// கிரக அவஸ்தைகள் (AVASTHAS) — BPHS Ch.45
+//   பாலாதி 5 (வயது நிலை — பாகை வழி), தீப்தாதி (கௌரவ நிலை),
+//   ஜாக்ரதாதி 3 (விழிப்பு நிலை) — அனைத்தும் உள்ள placements-இல் இருந்தே
+// ═══════════════════════════════════════════════════════════════════
+function signDignity(p) {
+  if (EXALT_RASHI[p.ta] === p.rashiIdx) return "உச்சம்";
+  if (EXALT_RASHI[p.ta] !== undefined && (EXALT_RASHI[p.ta] + 6) % 12 === p.rashiIdx) return "நீசம்";
+  if (RASHI_LORD_NAME[p.rashiIdx] === p.ta) return "சொந்தம்";
+  const lord = RASHI_LORD_NAME[p.rashiIdx];
+  const fr = GRAHA_FRIENDSHIP[p.ta];
+  if (fr) {
+    if (fr.friends.includes(lord)) return "நட்பு";
+    if (fr.enemies.includes(lord)) return "பகை";
+  }
+  return "சமம்";
+}
+const BALADI_SEQ = [
+  {name:"பால அவஸ்தை",   pct:25,  desc:"குழந்தை நிலை — பலன் மெல்ல, தாமதமாக வெளிப்படும்"},
+  {name:"குமார அவஸ்தை", pct:50,  desc:"இளமை நிலை — பாதி பலன்"},
+  {name:"யுவ அவஸ்தை",   pct:100, desc:"வாலிப நிலை — முழு பலன் தரும்"},
+  {name:"விருத்த அவஸ்தை",pct:40,  desc:"முதுமை நிலை — பலன் குறைவு"},
+  {name:"மிருத அவஸ்தை",  pct:10,  desc:"இறுதி நிலை — பலன் மிக அற்பம்"}
+];
+function calcAvasthas(placements) {
+  return placements.filter(p => CLASSICAL_7.includes(p.ta)).map(p => {
+    // 1. பாலாதி — பாகை வழி (ஒற்றை ராசி: நேர்; இரட்டை: தலைகீழ்) BPHS 45.3-4
+    let bi = Math.min(4, Math.floor((p.degExact ?? p.degree ?? 0) / 6));
+    if (p.rashiIdx % 2 === 1) bi = 4 - bi; // இரட்டை ராசி — தலைகீழ்
+    const baladi = BALADI_SEQ[bi];
+    // 2. தீப்தாதி — கௌரவ நிலை + அஸ்தங்கம் + யுத்தம்
+    const dig = signDignity(p);
+    let deeptadi, deeptadiDesc;
+    if (p.isCombust) { deeptadi = "விகல"; deeptadiDesc = "அஸ்தங்கம் — பலன் வெளிப்பட தடை"; }
+    else if (dig === "உச்சம்") { deeptadi = "தீப்த"; deeptadiDesc = "ஒளிர்நிலை — உயர்ந்த சுபபலன்"; }
+    else if (dig === "சொந்தம்") { deeptadi = "ஸ்வஸ்த"; deeptadiDesc = "தன்னிலை — நிறைவான பலன்"; }
+    else if (dig === "நட்பு") { deeptadi = "முதித"; deeptadiDesc = "மகிழ்நிலை — நல்ல பலன்"; }
+    else if (dig === "சமம்") { deeptadi = "சாந்த"; deeptadiDesc = "அமைதி நிலை — மிதமான பலன்"; }
+    else if (dig === "பகை") { deeptadi = "துக்கித"; deeptadiDesc = "துயர்நிலை — பலன் சிரமத்துடன்"; }
+    else { deeptadi = "கல"; deeptadiDesc = "நீசம் — பலன் மிகக் குறைவு / எதிர்விளைவு"; }
+    // 3. ஜாக்ரதாதி — விழிப்பு நிலை BPHS 45.5
+    let jagradadi, jagradadiDesc;
+    if (dig === "உச்சம்" || dig === "சொந்தம்") { jagradadi = "ஜாக்ரத் (விழிப்பு)"; jagradadiDesc = "முழு பலன்"; }
+    else if (dig === "நட்பு" || dig === "சமம்") { jagradadi = "ஸ்வப்ன (கனவு)"; jagradadiDesc = "பாதி பலன்"; }
+    else { jagradadi = "சுஷுப்தி (உறக்கம்)"; jagradadiDesc = "பலன் மிகக் குறைவு"; }
+    return { ta: p.ta, symbol: p.symbol, rashi: p.rashi, degree: Math.round((p.degExact ?? 0)*10)/10,
+      baladi, deeptadi, deeptadiDesc, jagradadi, jagradadiDesc, dignity: dig };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// பாவ பலம் (BHAVA BALA) — வீட்டின் பலம்:
+//   1. பாவாதிபதி பலம் (அதிபதியின் ஷட்பலம் — ஏற்கனவே கணித்ததில் இருந்து)
+//   2. பாவ திக்பலம் (ராசி இயல்பு: நர/ஜல/சதுஷ்பத/கீட × கேந்திர இலக்கு)
+//   3. பாவ திருஷ்டி பலம் (வீட்டின் மீதான சுப/பாப பார்வை — aspectorsOnHouse)
+// ═══════════════════════════════════════════════════════════════════
+const NARA_RASHIS = [2,5,6,10];   // மிதுனம், கன்னி, துலாம், கும்பம் → லக்னத்தில் பலம்
+const JALA_RASHIS = [3,9,11];     // கடகம், மகரம்(பாதி), மீனம் → 4ஆம் வீட்டில் பலம்
+const KEETA_RASHIS = [7];         // விருச்சிகம் → 7ஆம் வீட்டில் பலம்
+// மற்றவை (மேஷம், ரிஷபம், சிம்மம், தனுசு) சதுஷ்பதம் → 10ஆம் வீட்டில் பலம்
+function calcBhavaBala(placements, lagnaIdx, shadBalaArr) {
+  const sbOf = {};
+  (shadBalaArr || []).forEach(s => { sbOf[s.ta] = s; });
+  return [1,2,3,4,5,6,7,8,9,10,11,12].map(houseNum => {
+    const houseRashiIdx = (lagnaIdx + houseNum - 1) % 12;
+    const lordName = RASHI_LORD_NAME[houseRashiIdx];
+    const lordSB = sbOf[lordName];
+    // 1. அதிபதி பலம் — ஷட்பல மொத்தம் / தேவை விகிதம் → 0-60 அளவில்
+    const lordBala = lordSB ? Math.min(60, Math.round((lordSB.total / lordSB.required) * 45)) : 30;
+    // 2. திக்பலம் — ராசி இயல்புக்கு ஏற்ற கேந்திரத்தில் முழு 60, தூரத்திற்கு குறைவு
+    const ideal = NARA_RASHIS.includes(houseRashiIdx) ? 1 : JALA_RASHIS.includes(houseRashiIdx) ? 4 : KEETA_RASHIS.includes(houseRashiIdx) ? 7 : 10;
+    let dist = Math.abs(houseNum - ideal); if (dist > 6) dist = 12 - dist;
+    const digBala = 60 - dist * 10;
+    // 3. திருஷ்டி பலம் — வீட்டின் மீதான பார்வைகள் (30 அடிப்படை ± 8/பார்வை)
+    const asps = aspectorsOnHouse(placements, lagnaIdx, houseRashiIdx);
+    const ben = asps.filter(a => NATURAL_BENEFICS.includes(a.planet)).length;
+    const mal = asps.filter(a => NATURAL_MALEFICS.includes(a.planet)).length;
+    const drishtiBala = Math.max(0, Math.min(60, 30 + ben * 8 - mal * 8));
+    const total = lordBala + digBala + drishtiBala;
+    return {
+      houseNum, houseRashi: RASHIS[houseRashiIdx], lordName,
+      lordBala, digBala, drishtiBala, total,
+      verdict: total >= 110 ? "பலமுள்ளது" : total <= 70 ? "பலவீனம்" : "நடுத்தரம்"
+    };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// தசா சந்தி (DASHA SANDHI) — இரு தசைகள்/புக்திகள் மாறும் இடைக்காலம்.
+// மகா தசை மாற்றம் ±30 நாள், புக்தி மாற்றம் ±10 நாள் எச்சரிக்கை.
+// ═══════════════════════════════════════════════════════════════════
+function calcDashaSandhi(dashaData, now = new Date()) {
+  if (!dashaData || !dashaData.dashas) return null;
+  const md = dashaData.dashas.find(d => now >= d.startDate && now < d.endDate);
+  if (!md) return null;
+  const alerts = [];
+  const dayMs = 86400000;
+  const mdDaysLeft = Math.round((md.endDate - now) / dayMs);
+  const mdDaysIn = Math.round((now - md.startDate) / dayMs);
+  if (mdDaysLeft <= 30) alerts.push({ level:"high", text:`மகா தசை சந்தி: ${md.name} தசை ${mdDaysLeft} நாளில் முடிகிறது — முக்கிய முடிவுகளை தள்ளிவைப்பது நலம்` });
+  else if (mdDaysIn <= 30) alerts.push({ level:"med", text:`மகா தசை சந்தி: ${md.name} தசை தொடங்கி ${mdDaysIn} நாள்தான் — புதிய தசையின் பலன் நிலைபெற சில வாரங்கள் ஆகும்` });
+  const ad = md.antardashas?.find(a => now >= a.startDate && now < a.endDate);
+  if (ad) {
+    const adDaysLeft = Math.round((ad.endDate - now) / dayMs);
+    const adDaysIn = Math.round((now - ad.startDate) / dayMs);
+    if (adDaysLeft <= 10) alerts.push({ level:"med", text:`புக்தி சந்தி: ${ad.name} புக்தி ${adDaysLeft} நாளில் முடிகிறது` });
+    else if (adDaysIn <= 10) alerts.push({ level:"low", text:`புக்தி சந்தி: ${ad.name} புக்தி தொடங்கி ${adDaysIn} நாள்` });
+  }
+  return alerts.length ? alerts : null;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// குளிகன் / மாந்தி நிலை (GULIKA POSITION) — சனியின் காலப்பகுதி:
+// பகல்/இரவை 8 சம பாகமாகப் பிரித்து, வார அதிபதியில் தொடங்கி வரிசையாக —
+// சனிக்குரிய பாகத்தின் தொடக்க நேரத்தில் உதிக்கும் லக்னமே குளிகன்.
+// லக்ன கணிதம் — ஏற்கனவே உள்ள engine (generateHoroscope lightweight) வழியே.
+// ═══════════════════════════════════════════════════════════════════
+function calcGulikaPosition(dobISO, tob, lat, lon, ayanamsaKey = "lahiri") {
+  try {
+    const [y, m, d] = dobISO.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    const { sunrise, sunset } = calcSunriseSunset(dateObj, lat, lon, 5.5);
+    let [bh, bm] = (tob || "06:00").split(':').map(Number);
+    const birthDec = (bh || 6) + (bm || 0) / 60;
+    const WEEK = ["சூரியன்","சந்திரன்","செவ்வாய்","புதன்","குரு","சுக்கிரன்","சனி"];
+    let isDay = birthDec >= sunrise.decimal && birthDec < sunset.decimal;
+    let wd = dateObj.getDay();
+    // நள்ளிரவுக்குப் பின் பிறப்பு = முந்தைய வேத நாளின் இரவு
+    if (!isDay && birthDec < sunrise.decimal) wd = (wd + 6) % 7;
+    const startLordIdx = isDay ? wd : (wd + 4) % 7; // இரவு: பகல் அதிபதியின் 5ஆம் கிரகம்
+    let satSeg = -1;
+    for (let i = 0; i < 7; i++) { if (WEEK[(startLordIdx + i) % 7] === "சனி") { satSeg = i; break; } }
+    const dayLen = sunset.decimal - sunrise.decimal;
+    const nightLen = 24 - dayLen;
+    const segLen = (isDay ? dayLen : nightLen) / 8;
+    let segStart = isDay ? sunrise.decimal + satSeg * segLen : sunset.decimal + satSeg * segLen;
+    let gDob = dobISO;
+    if (segStart >= 24) {
+      segStart -= 24;
+      const nd = new Date(y, m - 1, d + 1);
+      gDob = `${nd.getFullYear()}-${String(nd.getMonth()+1).padStart(2,'0')}-${String(nd.getDate()).padStart(2,'0')}`;
+    }
+    const gh = Math.floor(segStart), gm = Math.round((segStart - gh) * 60);
+    const gulikaChart = generateHoroscope(gDob, `${gh}:${gm}`, lat, lon, true, ayanamsaKey);
+    const fullLong = gulikaChart.lagnaFullLong != null ? gulikaChart.lagnaFullLong : gulikaChart.lagna * 30;
+    const nakIdx = Math.floor(fullLong / (360/27)) % 27;
+    return {
+      rashiIdx: gulikaChart.lagna, rashi: RASHIS[gulikaChart.lagna],
+      fullLong, degInSign: Math.round((fullLong % 30) * 10) / 10,
+      nakshatra: NAKSHATRAS[nakIdx],
+      timeLabel: `${String(gh).padStart(2,'0')}:${String(gm).padStart(2,'0')}`,
+      isDay
+    };
+  } catch (e) { return null; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// பிறப்பு நேர நுண்ணுணர்வு (BIRTH-TIME SENSITIVITY) — லக்னம்/நட்சத்திரம்/
+// பாதம் எல்லைக்கு எத்தனை நிமிட நேர மாற்றத்தில் மாறும் என்று கணித்து எச்சரிக்கை.
+// லக்னம் ~1°/4நிமி; சந்திரன் ~13.18°/நாள்.
+// ═══════════════════════════════════════════════════════════════════
+function calcBirthTimeSensitivity(horoscope) {
+  if (!horoscope) return null;
+  const warnings = [];
+  const lagnaFull = horoscope.lagnaFullLong;
+  if (lagnaFull != null) {
+    const dIn = lagnaFull % 30;
+    const toEdge = Math.min(dIn, 30 - dIn);
+    const mins = Math.round(toEdge * 4);
+    if (mins <= 20) warnings.push({
+      level: mins <= 8 ? "high" : "med",
+      text: `லக்னம் ராசி எல்லைக்கு ${toEdge.toFixed(1)}° அருகில் — பிறப்பு நேரத்தில் ±${mins} நிமிட மாற்றம் லக்ன ராசியையே மாற்றும். நேரத் துல்லியம் உறுதி செய்யவும்.`
+    });
+  }
+  const moon = horoscope.placements?.find(p => p.ta === "சந்திரன்");
+  if (moon && moon.fullLong != null) {
+    const span = 360 / 27;
+    const inNak = moon.fullLong % span;
+    const toNakEdge = Math.min(inNak, span - inNak);
+    const nakMins = Math.round(toNakEdge / 13.18 * 24 * 60);
+    if (nakMins <= 60) warnings.push({
+      level: nakMins <= 20 ? "high" : "med",
+      text: `சந்திரன் நட்சத்திர எல்லைக்கு அருகில் — ±${nakMins} நிமிட நேர மாற்றத்தில் ஜென்ம நட்சத்திரமும் தசா இருப்பும் மாறும்.`
+    });
+    const padaSpan = span / 4;
+    const inPada = moon.fullLong % padaSpan;
+    const toPadaEdge = Math.min(inPada, padaSpan - inPada);
+    const padaMins = Math.round(toPadaEdge / 13.18 * 24 * 60);
+    if (padaMins <= 15 && nakMins > 60) warnings.push({
+      level: "low",
+      text: `சந்திரன் பாத எல்லைக்கு அருகில் — ±${padaMins} நிமிடத்தில் பாதம் மாறும் (நாமகரண எழுத்து மாறலாம்).`
+    });
+  }
+  return warnings.length ? warnings : null;
+}
+
 // Mean daily motion in degrees/day — classical reference speed for the 5 star planets,
 // used by Cheshta Bala below (Sun/Moon use their own BPHS-specified substitutions instead).
 const MEAN_DAILY_MOTION = { "செவ்வாய்":0.524, "புதன்":1.383, "குரு":0.083, "சுக்கிரன்":1.2, "சனி":0.034 };
@@ -3276,7 +3580,7 @@ function calcTransitOverlay(birthPlacements, transitPlacements, birthMoonRashiId
   // against it (9-தாரா cycle), refining the rashi-level palan below.
   const birthMoon = birthPlacements.find(bp => bp.ta === "சந்திரன்");
   const birthNakIdx = (birthMoon && birthMoon.nakIdx >= 0) ? birthMoon.nakIdx : -1;
-  return transitPlacements.map(tp => {
+  const rows = transitPlacements.map(tp => {
     const birthP = birthPlacements.find(bp => bp.ta === tp.ta);
     const houseFromMoon = ((tp.rashiIdx - birthMoonRashiIdx + 12) % 12) + 1;
     const sameAsBirth = birthP ? tp.rashiIdx === birthP.rashiIdx : false;
@@ -3295,6 +3599,21 @@ function calcTransitOverlay(birthPlacements, transitPlacements, birthMoonRashiId
       transitEffect: [1,3,6,10,11].includes(houseFromMoon) ? "சுபம்" : [2,5,9].includes(houseFromMoon) ? "நடுநிலை" : "அசுபம்"
     };
   });
+  // ── கோசார வேதை (2ஆம் சுற்று) — கிரகம் தன் சுப வீட்டில் இருந்தாலும்,
+  // அதன் வேதை வீட்டில் வேறு கிரகம் இருந்தால் சுபபலன் தடைபடும் ──
+  rows.forEach(row => {
+    row.vedha = null;
+    const table = GOCHARA_VEDHA[row.ta];
+    if (!table) return; // ராகு/கேதுவுக்கு classical வேதை இல்லை
+    const vedhaHouse = table[row.houseFromMoon];
+    if (!vedhaHouse) return; // சுப வீட்டில் இல்லை → வேதை பொருந்தாது
+    const obstructor = rows.find(o =>
+      o.ta !== row.ta && GOCHARA_VEDHA[o.ta] && // nodes வேதை செய்யா
+      o.houseFromMoon === vedhaHouse && !isVedhaExempt(row.ta, o.ta));
+    if (obstructor) row.vedha = { by: obstructor.ta, house: vedhaHouse };
+    else row.gocharaFav = true; // per-planet table-படி சுபம், வேதை இல்லை
+  });
+  return rows;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -3303,11 +3622,14 @@ function calcTransitOverlay(birthPlacements, transitPlacements, birthMoonRashiId
 const RAHU_KALAM_ORDER = [7,1,6,4,5,3,2]; // Sun=7, Mon=1, Tue=6...
 const YAMA_GANDAM_ORDER = [4,3,2,1,0,6,5];
 const GULIKAI_ORDER = [6,5,4,3,2,1,0];
-function calcInauspiciousTimes(date, lat=13.0827) {
+function calcInauspiciousTimes(date, lat=13.0827, lon=80.2707) {
   const d = date || new Date();
   const dayOfWeek = d.getDay(); // 0=Sun
   const dayIdx = dayOfWeek === 0 ? 0 : dayOfWeek;
-  const sunriseH = 6, sunriseM = 0, sunsetH = 18, sunsetM = 0;
+  // ROOT-FIX: real sunrise/sunset for the location (was hardcoded 6:00/18:00 —
+  // Rahu Kalam shifts with the actual day length, same engine as Muhurtham)
+  const sr = calcSunriseSunset(d, lat, lon, 5.5);
+  const sunriseH = sr.sunrise.h, sunriseM = sr.sunrise.m, sunsetH = sr.sunset.h, sunsetM = sr.sunset.m;
   const dayMinutes = (sunsetH * 60 + sunsetM) - (sunriseH * 60 + sunriseM);
   const slotMin = dayMinutes / 8;
   const getSlot = (order) => {
@@ -3329,8 +3651,8 @@ function calcInauspiciousTimes(date, lat=13.0827) {
     rahuKalam: getSlot(RAHU_KALAM_ORDER),
     yamaGandam: getSlot(YAMA_GANDAM_ORDER),
     gulikai: getSlot(GULIKAI_ORDER),
-    sunrise: "6:00 AM",
-    sunset: "6:00 PM"
+    sunrise: `${sunriseH>12?sunriseH-12:sunriseH}:${String(sunriseM).padStart(2,'0')} ${sunriseH>=12?"PM":"AM"}`,
+    sunset: `${sunsetH>12?sunsetH-12:sunsetH}:${String(sunsetM).padStart(2,'0')} ${sunsetH>=12?"PM":"AM"}`
   };
 }
 
@@ -3947,7 +4269,7 @@ function chartSVGString(planetList, lagnaIdx, chartTitle, isNavamsa=false) {
   </svg>`;
 }
 
-function TraditionalChart({ horoscope, navamsaData, title="ராசி", showNavamsa=true }) {
+function TraditionalChart({ horoscope, navamsaData, title="ராசி", showNavamsa=true, gulika=null }) {
   const { lagna, placements } = horoscope;
   const siPos = [
     {rashi:11,r:0,c:0},{rashi:0,r:0,c:1},{rashi:1,r:0,c:2},{rashi:2,r:0,c:3},
@@ -4020,6 +4342,12 @@ function TraditionalChart({ horoscope, navamsaData, title="ராசி", showNa
                       {nakPadaLabel({ nakIdx: NAKSHATRAS.indexOf(horoscope.lagnaNakshatra), nakshatraTa: horoscope.lagnaNakshatra, pada: horoscope.lagnaPada })}
                     </tspan>
                   )}</text>
+              )}
+              {/* குளிகன் — சனியின் காலப்பகுதி லக்னம் (ராசி chart மட்டும்) */}
+              {!isNavamsa && gulika != null && rashi === gulika && (
+                <text x={x+4} y={y+10} textAnchor="start"
+                  fill="#555" fontSize="7" fontWeight="700"
+                  fontFamily="'Noto Sans Tamil',sans-serif">குளி</text>
               )}
             </g>
           );
@@ -4479,6 +4807,12 @@ export default function AstrologyApp() {
   const [navamsaStrength, setNavamsaStrength] = useState(null);
   const [shadBala, setShadBala] = useState(null);
   const [transitOverlay, setTransitOverlay] = useState(null);
+  const [functionalNature, setFunctionalNature] = useState(null);
+  const [marakaBadhaka, setMarakaBadhaka] = useState(null);
+  const [avasthasData, setAvasthasData] = useState(null);
+  const [bhavaBalaData, setBhavaBalaData] = useState(null);
+  const [gulikaData, setGulikaData] = useState(null);
+  const [btSensitivity, setBtSensitivity] = useState(null);
   const [inauspiciousTimes, setInauspiciousTimes] = useState(null);
   const [muhurthaData, setMuhurthaData] = useState(null);
   const [planetTransitAnalysis, setPlanetTransitAnalysis] = useState(null);
@@ -4800,7 +5134,8 @@ export default function AstrologyApp() {
       const lagnaFullDeg = (result.lagnaFullLong != null) ? result.lagnaFullLong : (result.lagna * 30);
       setBhavaChart(calcBhavaChart(result.placements, lagnaFullDeg));
       setNavamsaStrength(calcNavamsaStrength(result.placements));
-      setShadBala(calcShadbala(result.placements, result.lagna, dobISO, finalTime, geoT.lat, geoT.lon));
+      const _sb1 = calcShadbala(result.placements, result.lagna, dobISO, finalTime, geoT.lat, geoT.lon);
+      setShadBala(_sb1);
       // Transit: generate today's planetary positions for Gochara overlay.
       // Try the live backend first (same accuracy source as the birth chart above),
       // fall back to the local engine on any failure — matches the same
@@ -4817,7 +5152,7 @@ export default function AstrologyApp() {
       }
       const birthMoon = result.placements.find(p => p.ta === "சந்திரன்");
       setTransitOverlay(calcTransitOverlay(result.placements, transitH.placements, birthMoon?.rashiIdx || 0));
-      setInauspiciousTimes(calcInauspiciousTimes(new Date(), geoT.lat));
+      setInauspiciousTimes(calcInauspiciousTimes(new Date(), geoT.lat, geoT.lon));
       const birthNakP = result.placements.find(p => p.ta === "சந்திரன்");
       // Guard: parseBackendResponse sets nakIdx via indexOf → -1 on any Tamil spelling
       // mismatch, and -1 || 0 stays -1 (‑1 is truthy). Clamp to a valid 0–26 index.
@@ -4837,6 +5172,14 @@ export default function AstrologyApp() {
       const nsResult = calcNavamsaStrength(result.placements);
       setKeyAreas(analyzeKeyLifeAreas(result, gbResult, cdResult, nsResult, dashaResult));
       setFamilyHealthData(analyzeFamilyHealthIndications(result, gbResult));
+      // ── புதிய அடுக்கு: லக்னவாரி சுப/பாபம், மாரக/பாதக, அவஸ்தை, பாவ பலம்,
+      //    குளிகன், பிறப்பு நேர நுண்ணுணர்வு — அனைத்தும் மேலே கணித்தவற்றிலிருந்தே ──
+      setFunctionalNature(calcFunctionalNature(result.lagna));
+      setMarakaBadhaka(calcMarakaBadhaka(result.lagna, result.placements));
+      setAvasthasData(calcAvasthas(result.placements));
+      setBhavaBalaData(calcBhavaBala(result.placements, result.lagna, _sb1));
+      setGulikaData(calcGulikaPosition(dobISO, finalTime, geoT.lat, geoT.lon, ayanamsaKey));
+      setBtSensitivity(calcBirthTimeSensitivity(result));
     } else if (ayanamsaKey === "lahiri") {
       // Backend-only policy: the user wants results ONLY from the Swiss Ephemeris
       // backend. If it did not respond (cold start / network), show an error and
@@ -4879,7 +5222,8 @@ export default function AstrologyApp() {
       const lagnaFullDeg2 = (h.lagnaFullLong != null) ? h.lagnaFullLong : (h.lagna * 30);
       setBhavaChart(calcBhavaChart(h.placements, lagnaFullDeg2));
       setNavamsaStrength(calcNavamsaStrength(h.placements));
-      setShadBala(calcShadbala(h.placements, h.lagna, dobISO, finalTime, geo.lat, geo.lon));
+      const _sb2 = calcShadbala(h.placements, h.lagna, dobISO, finalTime, geo.lat, geo.lon);
+      setShadBala(_sb2);
       // Transit: generate today's planetary positions for Gochara overlay
       // Fixed: same UTC/local timezone bug as above — use local date components.
       const _now2 = new Date();
@@ -4888,7 +5232,7 @@ export default function AstrologyApp() {
       const transitH2 = generateHoroscope(todayISO2, `${nowH2}:${nowM2}`, geo.lat, geo.lon);
       const birthMoon2 = h.placements.find(p => p.ta === "சந்திரன்");
       setTransitOverlay(calcTransitOverlay(h.placements, transitH2.placements, birthMoon2?.rashiIdx || 0));
-      setInauspiciousTimes(calcInauspiciousTimes(new Date(), geo.lat));
+      setInauspiciousTimes(calcInauspiciousTimes(new Date(), geo.lat, geo.lon));
       setMuhurthaData(calcMuhurtha(new Date(), (birthMoon2 && birthMoon2.nakIdx >= 0) ? birthMoon2.nakIdx : 0));
       setPlanetTransitAnalysis(calcPlanetTransitAnalysis(birthMoon2?.rashiIdx || 0, transitH2.placements, (birthMoon2 && birthMoon2.nakIdx >= 0) ? birthMoon2.nakIdx : -1));
       setRemediesData(getRemedies(h.placements, calcGrahaBala(h.placements)));
@@ -4909,6 +5253,12 @@ export default function AstrologyApp() {
       const nsResult2 = calcNavamsaStrength(h.placements);
       setKeyAreas(analyzeKeyLifeAreas(h, gbResult2, cdResult2, nsResult2, dashaResult2));
       setFamilyHealthData(analyzeFamilyHealthIndications(h, gbResult2));
+      setFunctionalNature(calcFunctionalNature(h.lagna));
+      setMarakaBadhaka(calcMarakaBadhaka(h.lagna, h.placements));
+      setAvasthasData(calcAvasthas(h.placements));
+      setBhavaBalaData(calcBhavaBala(h.placements, h.lagna, _sb2));
+      setGulikaData(calcGulikaPosition(dobISO, finalTime, geo.lat, geo.lon, ayanamsaKey));
+      setBtSensitivity(calcBirthTimeSensitivity(h));
     }
     goTo(SCREEN.RESULT);
   };
@@ -5638,6 +5988,7 @@ ${aiPart}
                   ["விண்மீன்",`${horoscope.nakshatra}, பாதம் ${horoscope.nakshatraPada||1}`],
                   ["நிலவு நாள்(திதி)",`${horoscope.tithi||""}, ${horoscope.paksham||""}`],
                   ["கரணம்",horoscope.karanam||"—"],["யோகம்",horoscope.yogam||"—"],
+                  ...(gulikaData ? [["குளிகன் (மாந்தி)",`${gulikaData.rashi} ${gulikaData.degInSign}° — ${gulikaData.nakshatra} (${gulikaData.timeLabel})`]] : []),
                 ].map(([l,v],i)=>(
                   <tr key={i} style={{borderBottom:"1px solid #e8e0e0"}}>
                     <td style={{padding:"4px 0",color:"#b8860b",width:"42%",fontWeight:600,fontSize:11}}>{l}</td>
@@ -5647,6 +5998,15 @@ ${aiPart}
                 ))}
               </tbody>
             </table>
+            {/* பிறப்பு நேர நுண்ணுணர்வு எச்சரிக்கை — லக்னம்/நட்சத்திரம் எல்லைக்கு அருகில் */}
+            {btSensitivity && btSensitivity.map((w, wi) => (
+              <div key={wi} style={{marginTop:8,padding:"7px 10px",borderRadius:6,fontSize:10.5,lineHeight:1.6,
+                background:w.level==="high"?"#fde8e8":"#fff8e1",
+                border:`1px solid ${w.level==="high"?"#f5c6c6":"#ffe082"}`,
+                color:w.level==="high"?"#cc1a1a":"#7a5200"}}>
+                ⚠ {w.text}
+              </div>
+            ))}
             {/* தமிழ் தேதி — optional toggle */}
             <div style={{marginTop:8,paddingTop:8,borderTop:"1px dashed #d4a85350"}}>
               <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:11}}>
@@ -5668,7 +6028,7 @@ ${aiPart}
             </div>
           </div>
           <div style={{...card,marginBottom:10,padding:8}}>
-            <TraditionalChart horoscope={horoscope} navamsaData={navamsaData} title="ராசி" showNavamsa={true}/>
+            <TraditionalChart horoscope={horoscope} navamsaData={navamsaData} title="ராசி" showNavamsa={true} gulika={gulikaData?.rashiIdx ?? null}/>
           </div>
 
           {/* ═══ 3. PLANETARY POSITIONS TABLE ═══ */}
@@ -5790,6 +6150,9 @@ ${aiPart}
               <option value="yogas">🕉 யோகங்கள் (Mahapurusha + Classical)</option>
               <option value="ashtakavarga">🔢 சர்வாஷ்டகவர்க்கம்</option>
               <option value="drishti">👁 கிரக திருஷ்டி (Aspects)</option>
+              <option value="funcnature">⚖ லக்னவாரி சுப-பாபர் / மாரக-பாதகர்</option>
+              <option value="avasthas">🌗 கிரக அவஸ்தைகள் (Avasthas)</option>
+              <option value="bhavabala">🏠 பாவ பலம் (Bhava Bala)</option>
               <option value="d10">💼 தசாம்சம் D10 (தொழில்)</option>
               <option value="divisional">🔀 பிரிவு சக்கரங்கள் (D2,D3,D4,D7,D12,D60)</option>
               <option value="shodashavarga">🕉 மேல் வர்க்கங்கள் (D16,D20,D24,D27,D40,D45)</option>
@@ -5966,6 +6329,27 @@ ${aiPart}
                       <span><br/>இந்த தசையில் {bhavaPhalam.dashaContext.rulesHouses.join(",")}ஆம் வீட்டு விஷயங்கள் முன்னணியில் இருக்கும்</span>
                     )}
                   </div>
+                  {/* தசாநாதன் — இந்த லக்னத்திற்கு யோககாரகனா / சுபனா / பாபனா / மாரகனா */}
+                  {functionalNature && functionalNature[bhavaPhalam.dashaContext.mahaLord] && (
+                    <div style={{fontSize:10.5,marginTop:5,padding:"5px 8px",borderRadius:6,
+                      background:functionalNature[bhavaPhalam.dashaContext.mahaLord].nature==="யோககாரகன்"||functionalNature[bhavaPhalam.dashaContext.mahaLord].nature==="சுபன்"?"#e8f5e9":functionalNature[bhavaPhalam.dashaContext.mahaLord].nature==="பாபன்"?"#fde8e8":"#f7f5ef",
+                      color:functionalNature[bhavaPhalam.dashaContext.mahaLord].nature==="யோககாரகன்"||functionalNature[bhavaPhalam.dashaContext.mahaLord].nature==="சுபன்"?"#1b5e20":functionalNature[bhavaPhalam.dashaContext.mahaLord].nature==="பாபன்"?"#cc1a1a":"#6b5a13"}}>
+                      ⚖ தசாநாதன் {bhavaPhalam.dashaContext.mahaLord} — உங்கள் லக்னத்திற்கு <b>{functionalNature[bhavaPhalam.dashaContext.mahaLord].nature}</b>
+                      {marakaBadhaka?.marakaLords.includes(bhavaPhalam.dashaContext.mahaLord) && <b style={{color:"#cc1a1a"}}> • மாரகாதிபதி — ஆரோக்கியத்தில் கவனம்</b>}
+                      {marakaBadhaka?.badhakaLord === bhavaPhalam.dashaContext.mahaLord && <b style={{color:"#a03a00"}}> • பாதகாதிபதி — தடைகள் கவனம்</b>}
+                    </div>
+                  )}
+                  {/* தசா சந்தி எச்சரிக்கை */}
+                  {dashaData && (() => {
+                    const sandhi = calcDashaSandhi(dashaData, new Date());
+                    return sandhi ? sandhi.map((sa, si) => (
+                      <div key={si} style={{fontSize:10,marginTop:4,padding:"5px 8px",borderRadius:6,
+                        background:sa.level==="high"?"#fde8e8":"#fff8e1",
+                        color:sa.level==="high"?"#cc1a1a":"#7a5200",fontWeight:600}}>
+                        ⏳ {sa.text}
+                      </div>
+                    )) : null;
+                  })()}
                 </div>
               )}
 
@@ -6701,6 +7085,121 @@ ${aiPart}
             </div>
           )}
 
+          {/* ═══ லக்னவாரி சுப-பாபர் / மாரக-பாதகர் ═══ */}
+          {advancedView==="funcnature" && functionalNature && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:8,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                ⚖ லக்னவாரி சுப-பாபர் (Functional Nature) — BPHS Ch.34
+              </div>
+              <div style={{fontSize:10,color:"#666",marginBottom:8}}>
+                {horoscope?.lagnaName} லக்னத்திற்கு — வீட்டு அதிபத்யத்தில் இருந்து நேரடியாகக் கணிக்கப்பட்டது.
+                ஒரே கிரகம் ஒரு லக்னத்திற்கு நன்மையும், மற்றொன்றுக்கு தீமையும் தரும் — இதுவே தனிநபர் பலனின் அடிப்படை.
+              </div>
+              {Object.entries(functionalNature).map(([ta, fn], i) => (
+                <div key={i} style={{padding:"7px 10px",marginBottom:5,borderRadius:6,
+                  background:fn.nature==="யோககாரகன்"?"#e8f5e9":fn.nature==="சுபன்"?"#f1f8e9":fn.nature==="பாபன்"?"#fde8e8":"#f7f5ef",
+                  border:`1px solid ${fn.nature==="யோககாரகன்"?"#a5d6a7":fn.nature==="சுபன்"?"#c5e1a5":fn.nature==="பாபன்"?"#f5c6c6":"#e6dcc9"}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:11.5,fontWeight:700,color:"#1a1a1a"}}>{ta}</span>
+                    <span style={{fontSize:10.5,fontWeight:800,
+                      color:fn.nature==="யோககாரகன்"?"#1b5e20":fn.nature==="சுபன்"?"#33691e":fn.nature==="பாபன்"?"#cc1a1a":"#8b6914"}}>
+                      {fn.nature==="யோககாரகன்"?"👑 யோககாரகன்":fn.nature}
+                    </span>
+                  </div>
+                  <div style={{fontSize:9.5,color:"#555",marginTop:2}}>{fn.reasons.join(" • ")}</div>
+                </div>
+              ))}
+              {marakaBadhaka && (
+                <div style={{marginTop:10,padding:"10px 12px",background:"#fff8e1",borderRadius:8,border:"1px solid #ffe082"}}>
+                  <div style={{fontSize:11.5,fontWeight:700,color:"#7b1c1c",marginBottom:4}}>☠ மாரகர் & பாதகாதிபதி</div>
+                  <div style={{fontSize:10.5,color:"#333",lineHeight:1.7}}>
+                    <b>மாரகாதிபதிகள் (2,7):</b> {marakaBadhaka.marakaLords.join(", ")}
+                    {marakaBadhaka.occupants27.length > 0 && <span> • மாரக ஸ்தானத்தில்: {marakaBadhaka.occupants27.join(", ")}</span>}
+                    {marakaBadhaka.associates.length > 0 && <span> • மாரக சேர்க்கை: {marakaBadhaka.associates.join(", ")}</span>}
+                    <br/>
+                    <b>பாதகாதிபதி:</b> {marakaBadhaka.badhakaLord} ({marakaBadhaka.lagnaType} → {marakaBadhaka.badhakaHouse}ஆம் வீடு பாதக ஸ்தானம்)
+                    {marakaBadhaka.badhakaLordHouse && <span> — தற்போது {marakaBadhaka.badhakaLordHouse}ஆம் வீட்டில்</span>}
+                  </div>
+                  <div style={{fontSize:9,color:"#8b6914",marginTop:4}}>
+                    மாரக/பாதக கிரகங்களின் தசா-புக்திகளில் ஆரோக்கியம், தடைகள் குறித்து கூடுதல் கவனம் தேவை — கீழே தசா பட்டியலுடன் ஒப்பிடவும்.
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ═══ கிரக அவஸ்தைகள் ═══ */}
+          {advancedView==="avasthas" && avasthasData && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:8,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                🌗 கிரக அவஸ்தைகள் (BPHS Ch.45) — பலன் தீவிர அளவு
+              </div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
+                  <thead>
+                    <tr style={{borderBottom:"1.5px solid #d4a85340"}}>
+                      <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"left"}}>கிரகம்</th>
+                      <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>பாலாதி (வயது)</th>
+                      <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>தீப்தாதி (கௌரவம்)</th>
+                      <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>ஜாக்ரதாதி (விழிப்பு)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {avasthasData.map((a,i)=>(
+                      <tr key={i} style={{borderBottom:"1px solid #eee",background:i%2?"#fafafa":"transparent"}}>
+                        <td style={{padding:"6px 4px",fontWeight:600}}>{a.symbol} {a.ta}<div style={{fontSize:8.5,color:"#888"}}>{a.rashi} {a.degree}°</div></td>
+                        <td style={{padding:"6px 4px",textAlign:"center"}}>
+                          <b style={{color:a.baladi.pct>=100?"#0d7a30":a.baladi.pct<=25?"#cc1a1a":"#7a5200"}}>{a.baladi.name}</b>
+                          <div style={{fontSize:8.5,color:"#666"}}>{a.baladi.desc} (~{a.baladi.pct}%)</div>
+                        </td>
+                        <td style={{padding:"6px 4px",textAlign:"center"}}>
+                          <b style={{color:["தீப்த","ஸ்வஸ்த","முதித"].includes(a.deeptadi)?"#0d7a30":["கல","விகல","துக்கித"].includes(a.deeptadi)?"#cc1a1a":"#7a5200"}}>{a.deeptadi}</b>
+                          <div style={{fontSize:8.5,color:"#666"}}>{a.deeptadiDesc}</div>
+                        </td>
+                        <td style={{padding:"6px 4px",textAlign:"center"}}>
+                          <b style={{color:a.jagradadi.includes("விழிப்பு")?"#0d7a30":a.jagradadi.includes("உறக்கம்")?"#cc1a1a":"#7a5200"}}>{a.jagradadi}</b>
+                          <div style={{fontSize:8.5,color:"#666"}}>{a.jagradadiDesc}</div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{fontSize:9,color:"#777",marginTop:8,lineHeight:1.5}}>
+                பாலாதி — ராசியில் பாகை வழி (ஒற்றை நேர்/இரட்டை தலைகீழ்) • தீப்தாதி — உச்ச/சொந்த/நட்பு/பகை/நீச/அஸ்தங்க நிலை •
+                ஜாக்ரதாதி — விழிப்பு நிலை. வீட்டு பலன் இந்த அவஸ்தை சதவீதத்தால் கூடும்/குறையும்.
+              </div>
+            </div>
+          )}
+
+          {/* ═══ பாவ பலம் ═══ */}
+          {advancedView==="bhavabala" && bhavaBalaData && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:8,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                🏠 பாவ பலம் (Bhava Bala) — எந்த வீடு பலமானது?
+              </div>
+              {bhavaBalaData.map((b,i)=>(
+                <div key={i} style={{marginBottom:6}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:10.5,marginBottom:2}}>
+                    <span style={{fontWeight:600}}>{b.houseNum}ஆம் வீடு ({b.houseRashi}) — அதிபதி {b.lordName}</span>
+                    <span style={{fontWeight:700,color:b.verdict==="பலமுள்ளது"?"#0d7a30":b.verdict==="பலவீனம்"?"#cc1a1a":"#7a5200"}}>{b.total} • {b.verdict}</span>
+                  </div>
+                  <div style={{height:7,background:"#eee",borderRadius:4,overflow:"hidden"}}>
+                    <div style={{width:`${Math.min(100,(b.total/180)*100)}%`,height:"100%",borderRadius:4,
+                      background:b.verdict==="பலமுள்ளது"?"linear-gradient(90deg,#66bb6a,#2e7d32)":b.verdict==="பலவீனம்"?"linear-gradient(90deg,#ef9a9a,#c62828)":"linear-gradient(90deg,#ffe082,#f9a825)"}}/>
+                  </div>
+                  <div style={{fontSize:8.5,color:"#888",marginTop:1}}>
+                    அதிபதி பலம் {b.lordBala} + திக்பலம் {b.digBala} + திருஷ்டி பலம் {b.drishtiBala}
+                  </div>
+                </div>
+              ))}
+              <div style={{fontSize:9,color:"#777",marginTop:8,lineHeight:1.5}}>
+                அதிபதி பலம் = வீட்டு அதிபதியின் ஷட்பல விகிதம் • திக்பலம் = ராசி இயல்பு (நர/ஜல/கீட/சதுஷ்பத) × கேந்திர இலக்கு •
+                திருஷ்டி பலம் = வீட்டின் மீதான சுப/பாப பார்வைகள். பலமுள்ள வீட்டின் காரகங்கள் வாழ்வில் சிறக்கும்.
+              </div>
+            </div>
+          )}
+
           {/* ═══ கோசாரம் (Transit Overlay) ═══ */}
           {advancedView==="transitoverlay" && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
@@ -6744,6 +7243,15 @@ ${aiPart}
                               color:p.transitEffect==="சுபம்"?"#0d7a30":p.transitEffect==="அசுபம்"?"#cc1a1a":"#7a5200",
                               fontWeight:700,fontSize:10}}>
                               {p.transitEffect||"நடுநிலை"}
+                              {p.vedha && (
+                                <div style={{fontSize:8.5,color:"#cc1a1a",fontWeight:600}}
+                                  title={`${p.vedha.house}ஆம் வீட்டில் ${p.vedha.by} இருப்பதால் இந்த சுப கோசாரம் தடைபடுகிறது`}>
+                                  ⛔ வேதை ({p.vedha.by})
+                                </div>
+                              )}
+                              {p.gocharaFav && !p.vedha && (
+                                <div style={{fontSize:8.5,color:"#0d7a30",fontWeight:600}}>✓ வேதை இல்லை</div>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -6751,7 +7259,7 @@ ${aiPart}
                     </table>
                   </div>
                   <div style={{fontSize:9,color:"#777777",marginTop:8,lineHeight:1.5}}>
-                    சந்திர ராசியிலிருந்து கோசாரக் கிரகங்களின் நிலை • சுப/அசுப பலன்கள் Vedha இல்லாமல் கணிக்கப்பட்டவை<br/>
+                    சந்திர ராசியிலிருந்து கோசாரக் கிரகங்களின் நிலை • வேதை (Brihat Samhita) சரிபார்க்கப்பட்டது — ⛔ = சுப கோசாரம் வேதையால் தடை; விலக்கு: சூரியன்↔சனி, சந்திரன்↔புதன்<br/>
                     தாரை = ஜென்ம நட்சத்திரத்திலிருந்து கோசாரக் கிரகத்தின் நட்சத்திரம் வரை 9-தாரா சுழற்சி — ராசிப் பலனை நட்சத்திர அளவில் நுட்பமாக்குகிறது.
                     பச்சை தாரை = அந்தக் கிரக காரகங்கள் சாதகம் • சிவப்பு தாரை = அக்காலத்தில் கவனம் தேவை
                   </div>
