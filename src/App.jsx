@@ -4544,10 +4544,11 @@ export default function AstrologyApp() {
       // (Porutham callers pass no override — Chennai default, as before).
       const geo = geoOverride || geocodeCity(city);
       const url = `${backendUrl}/api/horoscope?year=${y}&month=${m}&day=${d}&hour=${hour}&minute=${minute}&lat=${geo.lat}&lon=${geo.lon}&tz=5.5`;
-      // Render free tier cold start can take 30-60s — cap at 10s so the user doesn't
-      // stare at the loading screen forever. Falls back to the local engine.
+      // Backend-only policy: this is the ONLY source for Lahiri results, so give
+      // the Render cold start a real chance (25s) before declaring failure. The
+      // Splash-screen warm-up ping usually makes responses take ~1-2s anyway.
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
       const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
       if (!res.ok) return null;
@@ -4715,6 +4716,14 @@ export default function AstrologyApp() {
       const nsResult = calcNavamsaStrength(result.placements);
       setKeyAreas(analyzeKeyLifeAreas(result, gbResult, cdResult, nsResult, dashaResult));
       setFamilyHealthData(analyzeFamilyHealthIndications(result, gbResult));
+    } else if (ayanamsaKey === "lahiri") {
+      // Backend-only policy: the user wants results ONLY from the Swiss Ephemeris
+      // backend. If it did not respond (cold start / network), show an error and
+      // let them retry — never silently show local-engine results for Lahiri.
+      setApiSource("");
+      alert("⚠ Swiss Ephemeris server இப்போது பதிலளிக்கவில்லை.\n\nServer எழுந்து கொண்டிருக்கலாம் (30-60 வினாடிகள் ஆகும்).\n\nசில வினாடிகள் காத்திருந்து மீண்டும்『ஜாதகம் பார்க்க』அழுத்தவும்.");
+      goTo(SCREEN.INPUT);
+      return;
     } else {
       setApiSource("local");
       const geo = resolveBirthGeo(formData);
