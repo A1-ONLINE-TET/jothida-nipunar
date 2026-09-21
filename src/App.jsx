@@ -944,6 +944,47 @@ function calcVarshaphala(natalHoro, dobISO, lat, lon, targetYear) {
   };
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// பிரஸ்னம் (PRASHNA — Tatkalika / current-moment horary)
+// The universally-accepted horary form: cast a chart for the MOMENT the
+// question is asked (at the querent's place) and read it. Reuses the same
+// verified chart engine. A general favourability is derived from classical
+// Prashna pointers: benefics in kendra/trikona from the Prashna Lagna help,
+// malefics in the Lagna obstruct, and the Moon's house matters most.
+// (The KP 249-sub-lord system is intentionally NOT used — it is variant-heavy
+// and can't be verified to a single standard.)
+// ═══════════════════════════════════════════════════════════════════
+function calcPrashnaChart(lat, lon) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const now = new Date();
+  const iso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const tob = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const h = generateHoroscope(iso, tob, lat, lon, false);
+  const lagnaIdx = h.lagna;
+  const houseOf = (p) => ((p.rashiIdx - lagnaIdx + 12) % 12) + 1;
+  const KENDRA = [1, 4, 7, 10], TRIKONA = [1, 5, 9];
+  const BEN = ["குரு", "சுக்கிரன்", "புதன்", "சந்திரன்"], MAL = ["சூரியன்", "செவ்வாய்", "சனி", "ராகு", "கேது"];
+  let score = 0; const factors = [];
+  h.placements.forEach(p => {
+    const house = houseOf(p);
+    if (BEN.includes(p.ta) && (KENDRA.includes(house) || TRIKONA.includes(house))) { score++; factors.push({ good: true, text: `சுபன் ${p.ta} ${house}ஆம் வீட்டில் — சாதகம்` }); }
+    if (MAL.includes(p.ta) && house === 1) { score--; factors.push({ good: false, text: `பாபன் ${p.ta} லக்னத்தில் — தடை` }); }
+  });
+  const moon = h.placements.find(p => p.ta === "சந்திரன்");
+  const moonHouse = houseOf(moon);
+  if ([1, 4, 5, 7, 9, 10, 11].includes(moonHouse)) { score++; factors.push({ good: true, text: `சந்திரன் ${moonHouse}ஆம் வீட்டில் — நல்ல நிலை` }); }
+  else { score--; factors.push({ good: false, text: `சந்திரன் ${moonHouse}ஆம் வீட்டில் (துஸ்தானம்) — கவனம்` }); }
+  const lagnaNature = lagnaIdx % 3 === 0 ? "சரம் (விரைவு பலன்)" : lagnaIdx % 3 === 1 ? "ஸ்திரம் (நிலை/தாமத பலன்)" : "உभயம் (கலப்பு பலன்)";
+  const verdict = score >= 2 ? "சாதகம் (ஆம் நோக்கு)" : score <= -2 ? "பாதகம் (சிரமம்/தடை)" : "நடுத்தரம் (கவனம் தேவை)";
+  const verdictColor = score >= 2 ? "#0d7a30" : score <= -2 ? "#cc1a1a" : "#a8710a";
+  return {
+    now, lagnaName: RASHIS[lagnaIdx], lagnaNature,
+    moonSign: moon.rashi, moonNak: moon.nakshatraTa, moonHouse,
+    score, verdict, verdictColor, factors,
+    placements: h.placements.map(p => ({ ta: p.ta, symbol: p.symbol, rashi: p.rashi, house: houseOf(p) })),
+  };
+}
+
 // #27 உபபத லக்னம் (UPAPADA LAGNA) — BPHS 29: Arudha of 12th house, for spouse
 function calcUpapadaLagna(lagnaRashiIdx, placements) {
   const h12Rashi = (lagnaRashiIdx + 11) % 12;
@@ -4253,6 +4294,7 @@ export default function AstrologyApp() {
   const [jaiminiData, setJaiminiData] = useState(null);
   const [charaDashaData, setCharaDashaData] = useState(null);
   const [varshaphalaData, setVarshaphalaData] = useState(null);
+  const [prashnaData, setPrashnaData] = useState(null);
   const [vimshopakaData, setVimshopakaData] = useState(null);
   const [kalaSarpa, setKalaSarpa] = useState(null);
   const [chevvaiDosham, setChevvaiDosham] = useState(null);
@@ -5549,6 +5591,7 @@ ${aiPart}
               <option value="shodashavarga">🕉 மேல் வர்க்கங்கள் (D16,D20,D24,D27,D40,D45)</option>
               <option value="jaimini">☯ ஜைமினி (ராசி திருஷ்டி, அர்கலா, காரகர், சர தசா)</option>
               <option value="varshaphala">📅 வர்ஷபலன் (ஆண்டு ஜாதகம் — Tajaka)</option>
+              <option value="prashna">❓ பிரஸ்னம் (இப்போது கேள்வி — Horary)</option>
               <option value="kalasarpa">🐍 கால சர்ப்ப தோஷம்</option>
               <option value="chevvai">🔴 செவ்வாய் தோஷம்</option>
               <option value="bhava">🏠 பாவ சக்கரம் (Bhava Chart)</option>
@@ -6100,6 +6143,51 @@ ${aiPart}
               <div style={{fontSize:8,color:"#777",marginTop:6,lineHeight:1.5}}>
                 வர்ஷ பிரவேசம் = சூரியன் ஜன்ம நிலைக்கு திரும்பும் தருணம். முந்தா = ஜன்ம லக்னம் + வயது (ஆண்டுக்கு 1 ராசி). * இறுதி வர்ஷேஸ் பஞ்ச வர்கீய பலத்தால் தீர்மானிக்கப்படும் (நூல்களுக்கிடையே சிறிது வேறுபாடு உண்டு) — எனவே வேட்பாளர்கள் மட்டும் காட்டப்படுகிறது, ஊகிக்கப்படவில்லை.
               </div>
+            </div>
+          )}
+
+          {/* ═══ பிரஸ்னம் (Prashna — current-moment horary) ═══ */}
+          {advancedView==="prashna" && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:8,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                ❓ பிரஸ்னம் (Prashna Horary)
+              </div>
+              <div style={{fontSize:10.5,color:"#555",lineHeight:1.6,marginBottom:10}}>
+                மனதில் ஒரு கேள்வியை நினைத்து, <b>இப்போது</b> கீழே பொத்தானை அழுத்துங்கள். அந்த தருணத்துக்கான லக்னம் அமைத்து பலன் பார்க்கப்படும் (தத்கால பிரஸ்ன முறை).
+              </div>
+              <button onClick={()=>{ const geo=resolveBirthGeo(formData); setPrashnaData(calcPrashnaChart(geo.lat, geo.lon)); }}
+                className="jn-shine" style={{...btnGold, marginBottom:12}}>
+                🔮 இப்போது பிரஸ்னம் போடு
+              </button>
+
+              {prashnaData && (
+                <div>
+                  <div style={{padding:"10px 12px",borderRadius:10,background:`${prashnaData.verdictColor}12`,border:`1px solid ${prashnaData.verdictColor}30`,marginBottom:10}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span style={{fontSize:12,fontWeight:700,color:"#7b1c1c"}}>தீர்ப்பு</span>
+                      <span style={{fontSize:13,fontWeight:700,color:prashnaData.verdictColor}}>{prashnaData.verdict}</span>
+                    </div>
+                    <div style={{fontSize:10,color:"#666",marginTop:3}}>{prashnaData.now.toLocaleString("ta-IN")}</div>
+                  </div>
+
+                  <div style={{fontSize:11,color:"#333",lineHeight:1.7,marginBottom:10,background:"#f5efe3",border:"1px solid #e6dcc9",borderRadius:8,padding:"8px 10px"}}>
+                    <div>🔼 <b>பிரஸ்ன லக்னம்:</b> <span style={{color:"#7b1c1c",fontWeight:700}}>{prashnaData.lagnaName}</span> — {prashnaData.lagnaNature}</div>
+                    <div>☽ <b>சந்திரன்:</b> {prashnaData.moonSign} ({prashnaData.moonNak}) — {prashnaData.moonHouse}ஆம் வீடு</div>
+                  </div>
+
+                  <div style={{fontSize:11,fontWeight:700,color:"#a8710a",marginBottom:4}}>காரணிகள்</div>
+                  {prashnaData.factors.map((f,i)=>(
+                    <div key={i} style={{fontSize:10,color:"#555",marginBottom:3,display:"flex",gap:6}}>
+                      <span style={{color:f.good?"#0d7a30":"#cc1a1a",fontWeight:700}}>{f.good?"▲":"▼"}</span>
+                      <span>{f.text}</span>
+                    </div>
+                  ))}
+
+                  <div style={{fontSize:8,color:"#777",marginTop:8,lineHeight:1.5}}>
+                    தத்கால பிரஸ்னம் — கேள்வி கேட்ட தருணத்துக்கு லக்னம். சுபன் கேந்திர/திரிகோணத்தில் = சாதகம், பாபன் லக்னத்தில் = தடை, சந்திரனின் நிலை முக்கியம். (KP 249 sub-lord முறை பயன்படுத்தப்படவில்லை — அது variant-heavy.)
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
