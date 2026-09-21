@@ -888,6 +888,62 @@ function calcCharaDasha(lagnaRashiIdx, placements, birthDateObj) {
   return { dashas, direction: forward ? "நேர் (zodiacal)" : "மாறு (reverse)", currentRashi: current ? current.rashiName : null };
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// வர்ஷபலன் / தாஜக (VARSHAPHALA — annual/solar-return chart)
+// • Varsha Pravesh = the moment the Sun returns to its EXACT natal sidereal
+//   longitude in the target year (found by iterating the engine near the birthday).
+// • Varsha Lagna = the ascendant at that moment; the annual chart is cast for it.
+// • Muntha = a progressed point: natal Lagna sign at birth, advancing one sign
+//   per completed year → (natalLagna + age) % 12.
+// • Varshesha (year lord) is classically the strongest of 5 Panchadhikari by
+//   Pancha Vargeeya Bala. That strength scheme is intricate/varies between texts,
+//   so this shows the CANDIDATES transparently rather than asserting one winner.
+// ═══════════════════════════════════════════════════════════════════
+function calcVarshaphala(natalHoro, dobISO, lat, lon, targetYear) {
+  if (!natalHoro || !natalHoro.placements) return null;
+  const [by, bm, bd] = dobISO.split('-').map(Number);
+  const natalSun = natalHoro.placements.find(p => p.ta === "சூரியன்");
+  if (!natalSun) return null;
+  const natalSunLong = natalSun.rashiIdx * 30 + natalSun.degExact;
+  const natalLagnaIdx = natalHoro.lagna;
+  const pad = (n) => String(n).padStart(2, '0');
+  // ── find solar-return moment near the birthday of targetYear ──
+  let est = new Date(targetYear, bm - 1, bd, 12, 0, 0);
+  for (let iter = 0; iter < 7; iter++) {
+    const iso = `${est.getFullYear()}-${pad(est.getMonth() + 1)}-${pad(est.getDate())}`;
+    const tob = `${pad(est.getHours())}:${pad(est.getMinutes())}`;
+    const h = generateHoroscope(iso, tob, lat, lon, true);
+    const sun = h.placements.find(p => p.ta === "சூரியன்");
+    if (!sun) break;
+    let diff = natalSunLong - (sun.rashiIdx * 30 + sun.degExact);
+    while (diff > 180) diff -= 360; while (diff < -180) diff += 360;
+    if (Math.abs(diff) < 0.0008) break;
+    est = new Date(est.getTime() + (diff / 0.9856) * 86400000); // Sun ~0.9856°/day
+  }
+  const pIso = `${est.getFullYear()}-${pad(est.getMonth() + 1)}-${pad(est.getDate())}`;
+  const pTob = `${pad(est.getHours())}:${pad(est.getMinutes())}`;
+  const annual = generateHoroscope(pIso, pTob, lat, lon, false);
+  const age = targetYear - by;
+  const munthaIdx = (natalLagnaIdx + age) % 12;
+  const munthaHouse = ((munthaIdx - annual.lagna + 12) % 12) + 1;
+  // 5 Varshesha candidates (Panchadhikari) — the 3 unambiguous lords + Muntha lord;
+  // the final winner needs Pancha Vargeeya Bala (shown as candidates, not asserted).
+  const uniq = (arr) => [...new Map(arr.map(c => [c.planet, c])).values()];
+  const candidates = uniq([
+    { role: "முந்தா அதிபதி", planet: RASHI_LORD_NAME[munthaIdx] },
+    { role: "வர்ஷ லக்ன அதிபதி", planet: RASHI_LORD_NAME[annual.lagna] },
+    { role: "ஜன்ம லக்ன அதிபதி", planet: RASHI_LORD_NAME[natalLagnaIdx] },
+  ]);
+  return {
+    year: targetYear, age,
+    praveshDate: est,
+    varshaLagnaName: annual.lagnaName, varshaLagnaIdx: annual.lagna,
+    annualPlacements: annual.placements.map(p => ({ ta: p.ta, symbol: p.symbol, rashi: p.rashi, house: ((p.rashiIdx - annual.lagna + 12) % 12) + 1 })),
+    munthaIdx, munthaName: RASHIS[munthaIdx], munthaLord: RASHI_LORD_NAME[munthaIdx], munthaHouse,
+    candidates,
+  };
+}
+
 // #27 உபபத லக்னம் (UPAPADA LAGNA) — BPHS 29: Arudha of 12th house, for spouse
 function calcUpapadaLagna(lagnaRashiIdx, placements) {
   const h12Rashi = (lagnaRashiIdx + 11) % 12;
@@ -4196,6 +4252,7 @@ export default function AstrologyApp() {
   const [d45Data, setD45Data] = useState(null);
   const [jaiminiData, setJaiminiData] = useState(null);
   const [charaDashaData, setCharaDashaData] = useState(null);
+  const [varshaphalaData, setVarshaphalaData] = useState(null);
   const [vimshopakaData, setVimshopakaData] = useState(null);
   const [kalaSarpa, setKalaSarpa] = useState(null);
   const [chevvaiDosham, setChevvaiDosham] = useState(null);
@@ -4506,6 +4563,7 @@ export default function AstrologyApp() {
       setD45Data(calcD45Akshavedamsa(result.placements));
       setJaiminiData(calcJaiminiAnalysis(result));
       { const [cY,cM,cD]=dobISO.split('-').map(Number); setCharaDashaData(calcCharaDasha(result.lagna, result.placements, new Date(cY,cM-1,cD))); }
+      { const nowY=new Date().getFullYear(); let vp=calcVarshaphala(result,dobISO,geoT.lat,geoT.lon,nowY); if(vp && vp.praveshDate>new Date()) vp=calcVarshaphala(result,dobISO,geoT.lat,geoT.lon,nowY-1); setVarshaphalaData(vp); }
       setVimshopakaData(result.placements.filter(p=>CLASSICAL_7.includes(p.ta)).map(p=>({ta:p.ta,symbol:p.symbol,...calcVimshopakaBala(p,result.lagna,result.placements)})));
       setKalaSarpa(detectKalaSarpa(result.placements, result.lagna));
       setChevvaiDosham(detectChevvaiDosham(result.placements, result.lagna));
@@ -4577,6 +4635,7 @@ export default function AstrologyApp() {
       setD45Data(calcD45Akshavedamsa(h.placements));
       setJaiminiData(calcJaiminiAnalysis(h));
       { const [cY,cM,cD]=dobISO.split('-').map(Number); setCharaDashaData(calcCharaDasha(h.lagna, h.placements, new Date(cY,cM-1,cD))); }
+      { const nowY=new Date().getFullYear(); let vp=calcVarshaphala(h,dobISO,geo.lat,geo.lon,nowY); if(vp && vp.praveshDate>new Date()) vp=calcVarshaphala(h,dobISO,geo.lat,geo.lon,nowY-1); setVarshaphalaData(vp); }
       setVimshopakaData(h.placements.filter(p=>CLASSICAL_7.includes(p.ta)).map(p=>({ta:p.ta,symbol:p.symbol,...calcVimshopakaBala(p,h.lagna,h.placements)})));
       setKalaSarpa(detectKalaSarpa(h.placements, h.lagna));
       setChevvaiDosham(detectChevvaiDosham(h.placements, h.lagna));
@@ -5488,7 +5547,8 @@ ${aiPart}
               <option value="d10">💼 தசாம்சம் D10 (தொழில்)</option>
               <option value="divisional">🔀 பிரிவு சக்கரங்கள் (D2,D3,D4,D7,D12,D60)</option>
               <option value="shodashavarga">🕉 மேல் வர்க்கங்கள் (D16,D20,D24,D27,D40,D45)</option>
-              <option value="jaimini">☯ ஜைமினி (ராசி திருஷ்டி, அர்கலா, காரகர்)</option>
+              <option value="jaimini">☯ ஜைமினி (ராசி திருஷ்டி, அர்கலா, காரகர், சர தசா)</option>
+              <option value="varshaphala">📅 வர்ஷபலன் (ஆண்டு ஜாதகம் — Tajaka)</option>
               <option value="kalasarpa">🐍 கால சர்ப்ப தோஷம்</option>
               <option value="chevvai">🔴 செவ்வாய் தோஷம்</option>
               <option value="bhava">🏠 பாவ சக்கரம் (Bhava Chart)</option>
@@ -5989,6 +6049,56 @@ ${aiPart}
 
               <div style={{fontSize:9,color:"#777",marginTop:6,lineHeight:1.5}}>
                 ராசி திருஷ்டி: சர→ஸ்திர (அடுத்தது தவிர), ஸ்திர→சர (அடுத்தது தவிர), உभய→உभய. அர்கலா: 2/4/11ஆம் வீட்டு கிரகம் தலையீடு, விரோதம் 12/10/3ல் இருந்து — ஜைமினி முறை.
+              </div>
+            </div>
+          )}
+
+          {/* ═══ வர்ஷபலன் (Varshaphala — annual chart) ═══ */}
+          {advancedView==="varshaphala" && varshaphalaData && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:8,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                📅 வர்ஷபலன் — {varshaphalaData.year}–{varshaphalaData.year+1} (வயது {varshaphalaData.age})
+              </div>
+
+              <div style={{fontSize:11,color:"#333",lineHeight:1.7,marginBottom:10,background:"#f5efe3",border:"1px solid #e6dcc9",borderRadius:8,padding:"8px 10px"}}>
+                <div>☀ <b>வர்ஷ பிரவேசம்:</b> {varshaphalaData.praveshDate.toLocaleDateString("ta-IN")} {varshaphalaData.praveshDate.toLocaleTimeString("ta-IN",{hour:'2-digit',minute:'2-digit'})}</div>
+                <div>🔼 <b>வர்ஷ லக்னம்:</b> <span style={{color:"#7b1c1c",fontWeight:700}}>{varshaphalaData.varshaLagnaName}</span></div>
+                <div>🎯 <b>முந்தா:</b> <span style={{color:"#7b1c1c",fontWeight:700}}>{varshaphalaData.munthaName}</span> ({varshaphalaData.munthaHouse}ஆம் வர்ஷ வீடு) — அதிபதி {varshaphalaData.munthaLord}</div>
+              </div>
+
+              {/* Annual chart planet houses */}
+              <div style={{fontSize:11,fontWeight:700,color:"#a8710a",marginBottom:5}}>ஆண்டு ஜாதக கிரக நிலை</div>
+              <div style={{overflowX:"auto",marginBottom:10}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
+                  <thead><tr style={{borderBottom:"1.5px solid #d4a85340"}}>
+                    <th style={{padding:"4px 3px",color:"#b8860b",fontWeight:700,textAlign:"left"}}>கிரகம்</th>
+                    <th style={{padding:"4px 3px",color:"#b8860b",fontWeight:700,textAlign:"left"}}>ராசி</th>
+                    <th style={{padding:"4px 3px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>வர்ஷ வீடு</th>
+                  </tr></thead>
+                  <tbody>
+                    {varshaphalaData.annualPlacements.map((p,i)=>(
+                      <tr key={i} style={{borderBottom:"1px solid #eee",background:i%2?"#fafafa":"transparent"}}>
+                        <td style={{padding:"5px 3px",color:"#7b1c1c",fontWeight:600}}>{p.symbol} {p.ta}</td>
+                        <td style={{padding:"5px 3px",color:"#333"}}>{p.rashi}</td>
+                        <td style={{padding:"5px 3px",textAlign:"center",color:"#333",fontWeight:600}}>{p.house}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Varshesha candidates */}
+              <div style={{fontSize:11,fontWeight:700,color:"#a8710a",marginBottom:4}}>வர்ஷேஸ் (ஆண்டு அதிபதி) — வேட்பாளர்கள்</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:6}}>
+                {varshaphalaData.candidates.map((c,i)=>(
+                  <div key={i} style={{fontSize:9,padding:"4px 8px",borderRadius:6,background:"#f5efe3",border:"1px solid #e6dcc9",color:"#5f1414"}}>
+                    <b>{c.planet}</b> — {c.role}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{fontSize:8,color:"#777",marginTop:6,lineHeight:1.5}}>
+                வர்ஷ பிரவேசம் = சூரியன் ஜன்ம நிலைக்கு திரும்பும் தருணம். முந்தா = ஜன்ம லக்னம் + வயது (ஆண்டுக்கு 1 ராசி). * இறுதி வர்ஷேஸ் பஞ்ச வர்கீய பலத்தால் தீர்மானிக்கப்படும் (நூல்களுக்கிடையே சிறிது வேறுபாடு உண்டு) — எனவே வேட்பாளர்கள் மட்டும் காட்டப்படுகிறது, ஊகிக்கப்படவில்லை.
               </div>
             </div>
           )}
