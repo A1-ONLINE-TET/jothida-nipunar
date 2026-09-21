@@ -4151,6 +4151,7 @@ export default function AstrologyApp() {
   const [d40Data, setD40Data] = useState(null);
   const [d45Data, setD45Data] = useState(null);
   const [jaiminiData, setJaiminiData] = useState(null);
+  const [vimshopakaData, setVimshopakaData] = useState(null);
   const [kalaSarpa, setKalaSarpa] = useState(null);
   const [chevvaiDosham, setChevvaiDosham] = useState(null);
   const [bhavaChart, setBhavaChart] = useState(null);
@@ -4459,6 +4460,7 @@ export default function AstrologyApp() {
       setD40Data(calcD40Khavedamsa(result.placements));
       setD45Data(calcD45Akshavedamsa(result.placements));
       setJaiminiData(calcJaiminiAnalysis(result));
+      setVimshopakaData(result.placements.filter(p=>CLASSICAL_7.includes(p.ta)).map(p=>({ta:p.ta,symbol:p.symbol,...calcVimshopakaBala(p,result.lagna,result.placements)})));
       setKalaSarpa(detectKalaSarpa(result.placements, result.lagna));
       setChevvaiDosham(detectChevvaiDosham(result.placements, result.lagna));
       // Bhava (Chalit) cusps need the EXACT ascendant longitude (0–360), not the sign
@@ -4528,6 +4530,7 @@ export default function AstrologyApp() {
       setD40Data(calcD40Khavedamsa(h.placements));
       setD45Data(calcD45Akshavedamsa(h.placements));
       setJaiminiData(calcJaiminiAnalysis(h));
+      setVimshopakaData(h.placements.filter(p=>CLASSICAL_7.includes(p.ta)).map(p=>({ta:p.ta,symbol:p.symbol,...calcVimshopakaBala(p,h.lagna,h.placements)})));
       setKalaSarpa(detectKalaSarpa(h.placements, h.lagna));
       setChevvaiDosham(detectChevvaiDosham(h.placements, h.lagna));
       // Bhava cusps need the exact ascendant longitude (see backend path note above).
@@ -5827,6 +5830,27 @@ ${aiPart}
               <div style={{fontSize:9,color:"#777777",marginTop:8,lineHeight:1.6}}>
                 D16=வாகனம்/சுகபோகம் • D20=ஆன்மீகம்/வழிபாடு • D24=கல்வி/அறிவு • D27=பலம்/பலவீனம் • D40=தாய்வழி சுப/அசுபம் • D45=தந்தைவழி/நடத்தை — BPHS Parashari முறை. இவை ராசி (D1), நவாம்சம் (D9), தசாம்சம் (D10) உடன் சேர்ந்து முழு Shodashavarga (16 சக்கரம்) அமைப்பை நிறைவு செய்கின்றன.
               </div>
+
+              {/* Vimshopaka Bala (ShadVarga 20-point strength) */}
+              {vimshopakaData && (
+                <div style={{marginTop:12,paddingTop:10,borderTop:"1px dashed #e6dcc9"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#a8710a",marginBottom:6}}>விம்சோபக பலம் (Vimshopaka — ஷட்வர்க்க 20)</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                    {vimshopakaData.map((v,i)=>(
+                      <div key={i} style={{fontSize:9,padding:"4px 8px",borderRadius:6,minWidth:78,
+                        background:v.percentage>=70?"#e6f4ea":v.percentage>=45?"#f5efe3":"#fde8e8",
+                        border:`1px solid ${v.percentage>=70?"#b7e1c7":v.percentage>=45?"#e6dcc9":"#f5c6c6"}`}}>
+                        <div style={{fontWeight:700,color:"#5f1414"}}>{v.symbol} {v.ta}</div>
+                        <div style={{color:v.percentage>=70?"#0d7a30":v.percentage>=45?"#a8710a":"#cc1a1a",fontWeight:700}}>{v.total}/20 ({v.percentage}%)</div>
+                        {v.classification && v.classification!=="—" && <div style={{color:"#777",fontSize:8}}>{v.classification}</div>}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{fontSize:8,color:"#777",marginTop:6,lineHeight:1.5}}>
+                    ஷட்வர்க்கம் (D1×6+D2×2+D3×4+D9×5+D12×2+D30×1 = 20) கிரக கண்ணியம் அடிப்படையில் — BPHS அத்.17. 70%+ = மிக பலம், 45%+ = நடுத்தரம்.
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
