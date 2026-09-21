@@ -6276,76 +6276,183 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
 
     const downloadPDF = () => {
       const h = horoscope;
+      const fmtD = (d) => d ? d.toLocaleDateString("ta-IN") : "";
+      // ── ஓலை-style section builder ──
+      const sec = (icon, title, inner) => `<div class="sec"><div class="sec-hd"><span class="sec-ic">${icon}</span><span>${title}</span><span class="sec-lace">✦ ✦ ✦</span></div>${inner}</div>`;
+
+      // 1. நிராயண ஸ்புடங்கள்
       const pRows = h.placements.map((p,i)=>{
         const lord = getNakshatraLord(p.nakIdx);
-        const flags = `${p.isRetrograde && p.ta !== "ராகு" && p.ta !== "கேது" ? ' <span style="color:#c00;font-size:9px">℞</span>' : ""}${p.isCombust ? ' <span style="color:#fff;background:#f60;font-size:7px;padding:0 2px;border-radius:2px;font-weight:700">C</span>' : ""}${p.isMoolaTri ? ' <span style="color:#0a7;font-size:8px">MT</span>' : ""}`;
-        return `<tr style="background:${i%2===0?"#fff":"#f9f9f0"}"><td style="padding:6px 8px">${p.ta}${flags}</td><td style="padding:6px 8px;font-family:monospace">${p.dms||p.fullLong}</td><td style="padding:6px 8px">${p.rashi}</td><td style="padding:6px 8px">${p.nakshatraTa||""} - ${p.pada||""}</td><td style="padding:6px 8px;color:#8b4500">${lord.name}</td></tr>`;
+        const flags = `${p.isRetrograde && p.ta !== "ராகு" && p.ta !== "கேது" ? ' <span style="color:#c00;font-size:9px">℞</span>' : ""}${p.isCombust ? ' <span style="color:#fff;background:#b85c00;font-size:7px;padding:0 2px;border-radius:2px;font-weight:700">அஸ்</span>' : ""}`;
+        return `<tr${i%2?' class="alt"':''}><td>${p.ta}${flags}</td><td class="mono">${p.dms||p.fullLong}</td><td>${p.rashi}</td><td>${p.nakshatraTa||""} - ${p.pada||""}</td><td style="color:#7b1c1c">${lord.name}</td></tr>`;
       }).join("");
-      // Full Dasha table (all 9 periods with dates)
-      const dashaRows = dashaData ? dashaData.dashas.map((d,i)=>
-        `<tr style="background:${d.isCurrent?"#e8f5e9":i%2===0?"#fff":"#f9f9f0"}${d.isCurrent?";font-weight:700":""}">
-          <td style="padding:6px 8px">${d.name}${d.isCurrent?' <span style="color:#1a8d1a;font-size:10px">(நடப்பு)</span>':""}</td>
-          <td style="padding:6px 8px;text-align:center">${d.years} ஆண்டு</td>
-          <td style="padding:6px 8px">${d.startDate.toLocaleDateString("ta-IN")}</td>
-          <td style="padding:6px 8px">${d.endDate.toLocaleDateString("ta-IN")}</td>
-        </tr>`
-      ).join("") : "";
-      const dashaSection = dashaData ? `<div class="sec-title">விம்சோத்தரி தசா காலக்கணக்கு (Vimshottari Dasha)</div>
-        <p style="font-size:12px;color:#555;margin-bottom:8px">பிறப்பு நட்சத்திரம்: <strong>${dashaData.birthNakshatra}</strong> — நட்சத்திர நாதன்: <strong>${dashaData.birthLord.name}</strong></p>
-        <table class="pt"><thead><tr><th>தசை (Mahadasha)</th><th style="text-align:center">காலம்</th><th>தொடக்கம்</th><th>முடிவு</th></tr></thead>
-        <tbody>${dashaRows}</tbody></table>` : "";
 
-      // Generate chart SVGs for PDF
+      // 2. Charts
       const rashiSVG = chartSVGString(h.placements, h.lagna, "ராசி", false);
       const movable2=[0,3,6,9],fixed2=[1,4,7,10];
       const nDeg=h.lagnaDeg||0, nPart=Math.floor(nDeg/(30/9));
       let nStart; if(movable2.includes(h.lagna))nStart=0; else if(fixed2.includes(h.lagna))nStart=9; else nStart=6;
       const navLagna2=(nStart+nPart)%12;
       const navSVG = navamsaData ? chartSVGString(navamsaData, navLagna2, "நவாம்சம்", true) : "";
-      const chartSection = `<div class="sec-title">ராசி சக்கரம் / நவாம்ச சக்கரம்</div>
-        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:16px">
-          <div style="flex:1;min-width:280px;max-width:340px">${rashiSVG}</div>
-          ${navSVG?`<div style="flex:1;min-width:280px;max-width:340px">${navSVG}</div>`:""}
-        </div>`;
-      const aiPart = prediction ? `<div style="margin-top:20px;border-top:2px solid #1a8d1a;padding-top:16px"><h3 style="color:#1a8d1a;font-size:14px">🤖 AI ஜோதிட பலன்</h3><p style="font-size:13px;line-height:2;white-space:pre-wrap;margin-top:8px">${escapeHtml(prediction)}</p></div>` : "";
-      const html = `<!DOCTYPE html><html lang="ta"><head><meta charset="UTF-8"/><title>${escapeHtml(formData.name)} — ஜாதகம்</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet"/>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Noto Sans Tamil',sans-serif;background:#fff;color:#222;padding:20px}
-.page{max-width:700px;margin:0 auto;border:3px solid #1a8d1a;border-radius:4px;overflow:hidden}
-.hdr{background:#1a8d1a;color:#fff;text-align:center;padding:14px}.hdr h1{font-size:20px;margin:0 0 2px}.hdr p{font-size:11px;opacity:.8}
-.body{padding:20px}
-.info-tbl{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:13px}
-.info-tbl td{padding:5px 8px;border-bottom:1px solid #eee}.info-tbl td:first-child{color:#1a8d1a;font-weight:600;width:40%}
-.sec-title{font-size:14px;font-weight:700;color:#1a8d1a;border-bottom:2px solid #1a8d1a;padding-bottom:4px;margin:16px 0 10px}
-table.pt{width:100%;border-collapse:collapse;font-size:12px;border:1px solid #1a8d1a}
-table.pt th{background:#1a8d1a;color:#fff;padding:7px 8px;text-align:left;font-size:11px}
-table.pt td{padding:6px 8px;border-bottom:1px solid #ddd}
-.ftr{background:#1a8d1a;color:#fff;text-align:center;padding:10px;font-size:10px;margin-top:16px}
-@media print{body{padding:0}.page{border:none}.no-print{display:none!important}}
-.btn{position:fixed;bottom:20px;right:20px;background:#1a8d1a;color:#fff;border:none;border-radius:30px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans Tamil',sans-serif;box-shadow:0 4px 16px #0003}
+      // D10 தசாம்சம் — தொழில் வர்க்க சக்கரம் (rasi-name mapped pseudo-placements)
+      const d10SVG = d10Data ? (() => {
+        const list = d10Data.map(p => ({ ta: p.ta, rashi: RASHIS[p.d10Rashi], nakshatraTa: "", pada: null, nakIdx: -1 }));
+        const dPart = Math.min(9, Math.floor((h.lagnaDeg || 0) / 3));
+        const dStart = h.lagna % 2 === 0 ? h.lagna : (h.lagna + 8) % 12;
+        return chartSVGString(list, (dStart + dPart) % 12, "தசாம்சம் D10 (தொழில்)", false);
+      })() : "";
+
+      // 3. லக்னவாரி சுப/பாபர் + மாரக/பாதக
+      const fnPart = functionalNature ? sec("⚖","லக்னவாரி சுப-பாபர் (BPHS Ch.34)",
+        `<table class="pt"><thead><tr><th>கிரகம்</th><th>இயல்பு</th><th>காரணம்</th></tr></thead><tbody>` +
+        Object.entries(functionalNature).map(([ta,fn],i)=>`<tr${i%2?' class="alt"':''}><td>${ta}</td><td style="font-weight:700;color:${fn.nature==="யோககாரகன்"||fn.nature==="சுபன்"?"#1b5e20":fn.nature==="பாபன்"?"#a02020":"#6b5a13"}">${fn.nature==="யோககாரகன்"?"👑 யோககாரகன்":fn.nature}</td><td style="font-size:9px">${fn.reasons.join(" • ")}</td></tr>`).join("") +
+        `</tbody></table>` +
+        (marakaBadhaka ? `<div class="olainote">☠ <b>மாரகாதிபதிகள் (2,7):</b> ${marakaBadhaka.marakaLords.join(", ")}${marakaBadhaka.occupants27.length?` • மாரக ஸ்தானத்தில்: ${marakaBadhaka.occupants27.join(", ")}`:""} &nbsp;|&nbsp; <b>பாதகாதிபதி:</b> ${marakaBadhaka.badhakaLord} (${marakaBadhaka.lagnaType} → ${marakaBadhaka.badhakaHouse}ஆம் வீடு)</div>` : "")) : "";
+
+      // 4. ஷட்பலம்
+      const sbPart = shadBala ? sec("💪","ஷட்பலம் (BPHS Ch.27)",
+        `<table class="pt"><thead><tr><th>கிரகம்</th><th>ஸ்தான</th><th>திக்</th><th>கால</th><th>சேஷ்டா</th><th>நைசர்.</th><th>திருக்</th><th>மொத்தம்/தேவை</th><th>நிலை</th><th>இஷ்ட/கஷ்ட</th></tr></thead><tbody>` +
+        shadBala.map((s,i)=>`<tr${i%2?' class="alt"':''}><td>${s.ta}</td><td>${Math.round(s.sthanaBala)}</td><td>${Math.round(s.digBala)}</td><td>${Math.round(s.kalaBala)}</td><td>${Math.round(s.cheshtaBala)}</td><td>${Math.round(s.naisargikaBala)}</td><td>${Math.round(s.drikBala)}</td><td class="mono">${Math.round(s.total)}/${s.required}</td><td style="color:${s.strong?"#1b5e20":"#a02020"};font-weight:700">${s.status}</td><td class="mono">${s.ishtaPhala}/${s.kashtaPhala}</td></tr>`).join("") +
+        `</tbody></table>`) : "";
+
+      // 5. அஷ்டகவர்க்கம் (SAV)
+      const savPart = (ashtakavargaData && ashtakavargaData.sav) ? sec("🔢","சர்வாஷ்டகவர்க்கம்",
+        `<table class="pt"><thead><tr>${RASHIS.map(r=>`<th style="font-size:8.5px;padding:4px 3px">${r}</th>`).join("")}</tr></thead><tbody><tr>` +
+        ashtakavargaData.sav.map(v=>`<td style="text-align:center;font-weight:700;color:${v>=30?"#1b5e20":v<=25?"#a02020":"#333"}">${v}</td>`).join("") +
+        `</tr></tbody></table><div class="olainote">30+ பரல் = வலுவான ராசி • 25- = பலவீனம் • மொத்தம் 337</div>`) : "";
+
+      // 6. அவஸ்தைகள்
+      const avPart = avasthasData ? sec("🌗","கிரக அவஸ்தைகள் (BPHS Ch.45)",
+        `<table class="pt"><thead><tr><th>கிரகம்</th><th>பாலாதி</th><th>தீப்தாதி</th><th>ஜாக்ரதாதி</th></tr></thead><tbody>` +
+        avasthasData.map((a,i)=>`<tr${i%2?' class="alt"':''}><td>${a.ta} <span style="font-size:8px;color:#888">${a.rashi} ${a.degree}°</span></td><td>${a.baladi.name} (~${a.baladi.pct}%)</td><td>${a.deeptadi} — <span style="font-size:9px">${a.deeptadiDesc}</span></td><td>${a.jagradadi}</td></tr>`).join("") +
+        `</tbody></table>`) : "";
+
+      // 7. கிரக சூழல்
+      const pcPart = planetContext ? sec("🔗","கிரக சூழல் — மற்ற கிரகங்களால் பலன் மாற்றம்",
+        planetContext.map(pc=>`<div class="olabox"><b>${pc.symbol} ${pc.ta}</b> — ${pc.rashi}, ${pc.house}ஆம் வீடு (${pc.nakshatraTa||""}${pc.pada?`-${pc.pada}`:""}) <span style="float:right;font-weight:700;color:${pc.net>=2?"#1b5e20":pc.net<=-2?"#a02020":"#6b5a13"}">${pc.verdict}</span><div style="font-size:9px;line-height:1.7;margin-top:2px">${pc.chain.map(c=>`<span style="color:${c.score>0?"#1b5e20":c.score<0?"#8a4a00":"#555"}">• ${c.k}: ${c.text}</span>`).join("<br>")}</div></div>`).join("")) : "";
+
+      // 8. பாவ பலம்
+      const bbPart = bhavaBalaData ? sec("🏠","பாவ பலம் — வீட்டு வலிமை",
+        `<table class="pt"><thead><tr><th>வீடு</th><th>அதிபதி</th><th>அதிபதி பலம்</th><th>திக்</th><th>திருஷ்டி</th><th>மொத்தம்</th><th>நிலை</th></tr></thead><tbody>` +
+        bhavaBalaData.map((b,i)=>`<tr${i%2?' class="alt"':''}><td>${b.houseNum} (${b.houseRashi})</td><td>${b.lordName}</td><td>${b.lordBala}</td><td>${b.digBala}</td><td>${b.drishtiBala}</td><td style="font-weight:700">${b.total}</td><td style="color:${b.verdict==="பலமுள்ளது"?"#1b5e20":b.verdict==="பலவீனம்"?"#a02020":"#6b5a13"};font-weight:700">${b.verdict}</td></tr>`).join("") +
+        `</tbody></table>`) : "";
+
+      // 9. யோகங்கள் & தோஷங்கள்
+      const allYogas = [...(mahapurushaYogas||[]).map(y=>({icon:"👑",name:y.name,type:"yoga",desc:`${y.planet} ${y.house}ஆம் வீட்டில் — ${y.effect}`})), ...(classicalYogas||[])];
+      const yogaPart = allYogas.length ? sec("🕉","யோகங்கள் & தோஷங்கள்",
+        allYogas.map(y=>`<div class="olabox" style="border-left-color:${y.type==="dosha"?"#a02020":"#1b5e20"}"><b>${y.icon||""} ${y.name}</b> <span style="font-size:8.5px;color:${y.type==="dosha"?"#a02020":"#1b5e20"}">[${y.type==="dosha"?"தோஷம்":"யோகம்"}]</span><div style="font-size:9.5px;color:#4a3a20">${y.desc||""}</div></div>`).join("") +
+        (kalaSarpa?.present?`<div class="olabox" style="border-left-color:#a02020"><b>🐍 ${kalaSarpa.type}</b> — ${kalaSarpa.direction}<div style="font-size:9px">பரிகாரம்: ${kalaSarpa.remedy}</div></div>`:"") +
+        (chevvaiDosham?`<div class="olabox" style="border-left-color:${chevvaiDosham.present&&!chevvaiDosham.cancelled?"#a02020":"#1b5e20"}"><b>🔴 செவ்வாய் தோஷம்:</b> ${chevvaiDosham.present?(chevvaiDosham.cancelled?`உண்டு ஆனால் நிவர்த்தி (${chevvaiDosham.cancelReason})`:`உண்டு (${chevvaiDosham.severityText||""})`):"இல்லை"}</div>`:"")) : "";
+
+      // 10. தசா — MD table + நடப்பு MD-இன் புக்திகள்
+      const now = new Date();
+      const dashaRows = dashaData ? dashaData.dashas.map((d,i)=>{
+        const cur = now >= d.startDate && now < d.endDate;
+        return `<tr${cur?' style="background:#e8dcb0;font-weight:700"':(i%2?' class="alt"':'')}><td>${d.name}${cur?' <span style="font-size:9px;color:#1b5e20">(நடப்பு)</span>':""}</td><td style="text-align:center">${d.years} ஆண்டு</td><td>${fmtD(d.startDate)}</td><td>${fmtD(d.endDate)}</td></tr>`;
+      }).join("") : "";
+      const curMD = dashaData?.dashas.find(d=>now>=d.startDate&&now<d.endDate);
+      const bhuktiRows = curMD?.antardashas ? curMD.antardashas.map((a,i)=>{
+        const cur = now >= a.startDate && now < a.endDate;
+        return `<tr${cur?' style="background:#e8dcb0;font-weight:700"':(i%2?' class="alt"':'')}><td>${curMD.name} / ${a.name}${cur?' <span style="font-size:9px;color:#1b5e20">(நடப்பு)</span>':""}</td><td>${fmtD(a.startDate)}</td><td>${fmtD(a.endDate)}</td></tr>`;
+      }).join("") : "";
+      const dashaPart = dashaData ? sec("📅","விம்சோத்தரி தசா",
+        `<div class="olainote">பிறப்பு நட்சத்திரம்: <b>${dashaData.birthNakshatra}</b> • நாதன்: <b>${dashaData.birthLord.name}</b></div>` +
+        `<table class="pt"><thead><tr><th>மகா தசை</th><th style="text-align:center">காலம்</th><th>தொடக்கம்</th><th>முடிவு</th></tr></thead><tbody>${dashaRows}</tbody></table>` +
+        (bhuktiRows?`<div style="height:6px"></div><table class="pt"><thead><tr><th>நடப்பு தசையின் புக்திகள்</th><th>தொடக்கம்</th><th>முடிவு</th></tr></thead><tbody>${bhuktiRows}</tbody></table>`:"")) : "";
+
+      // 11. வரிசை-நிபந்தனை
+      const seqPart = (sequenceLinks && sequenceLinks.length) ? sec("⛓","வரிசை-நிபந்தனை பலன்கள் — எது எதற்குப் பின்",
+        sequenceLinks.map(lk=>`<div class="olabox"><b>${lk.icon} ${lk.afterTa}</b> <span style="font-size:8.5px;color:#7b1c1c">[${lk.strengthTa}]</span><div style="font-size:10px">${lk.text}</div><div style="font-size:9px;color:#7b1c1c">📐 ${lk.how}${lk.dashaNote?` — <span style="color:#1b5e20">${lk.dashaNote}</span>`:""}</div></div>`).join("")) : "";
+
+      // 12. Deep analysis (திருமணம்/ஆரோக்கியம்/தொழில்)
+      const kaPart = keyAreas ? sec("🔮","முக்கிய வாழ்க்கைப் பகுதி பகுப்பாய்வு",
+        ["marriage","health","career"].map(k=>{ const a=keyAreas[k]; if(!a) return "";
+          return `<div class="olabox"><b>${a.icon} ${a.area}</b> — <span style="font-weight:700">${a.verdict}</span><div style="font-size:9.5px;margin-top:2px">${a.summary||""}</div>${(a.factors||[]).slice(0,6).map(f=>`<div style="font-size:9px;color:${(f.weight||0)>0?"#1b5e20":"#8a4a00"}">• ${f.text}</div>`).join("")}</div>`; }).join("")) : "";
+
+      // 13. குடும்பம் & உடல்நலம்
+      const fhPart = familyHealthData ? sec("👨‍👩‍👧","குடும்பம் & உடல்நல குறியீடுகள்",
+        `<div class="olabox"><b>👫 சகோதரர்கள்:</b> ${familyHealthData.siblings.lean}<div style="font-size:9px">${familyHealthData.siblings.detail}</div></div>` +
+        `<div class="olabox"><b>👶 குழந்தைகள்:</b> ${familyHealthData.children.restriction?"⚠ சந்ததியில் தடை/குறைவு சாத்தியம்":"சுமூக குறியீடு"}<div style="font-size:9px">${familyHealthData.children.detail} ${familyHealthData.children.note}</div></div>` +
+        (familyHealthData.healthTendencies.length?`<div class="olabox"><b>🩺 நோய் நாட்டம்:</b>${familyHealthData.healthTendencies.map(t=>`<div style="font-size:9.5px">• ${t.planet} பலவீனம் → ${t.area}</div>`).join("")}</div>`:"")) : "";
+
+      // 14. பரிகாரம்
+      const remPart = (remediesData && remediesData.length) ? sec("💎","பரிகாரங்கள்",
+        `<table class="pt"><thead><tr><th>கிரகம்</th><th>ரத்தினம்</th><th>மந்திரம்</th><th>கோயில்</th><th>தானம்</th></tr></thead><tbody>` +
+        remediesData.filter(r=>r.needsRemedy).map((r,i)=>`<tr${i%2?' class="alt"':''}><td>${r.ta}</td><td>${r.gem}</td><td style="font-size:9px">${r.mantra}</td><td style="font-size:9px">${r.temple}</td><td style="font-size:9px">${r.donate}</td></tr>`).join("") +
+        `</tbody></table>`) : "";
+
+      // 15. AI கணிப்பு
+      const aiPart = prediction ? sec("🤖","AI ஜோதிட பலன்", `<p style="font-size:11px;line-height:2;white-space:pre-wrap">${escapeHtml(prediction)}</p>`) : "";
+
+      // Extra panchanga row values
+      const gulikaRow = gulikaData ? `<tr><td>குளிகன் (மாந்தி)</td><td>: ${gulikaData.rashi} ${gulikaData.degInSign}° — ${gulikaData.nakshatra} (${gulikaData.timeLabel})</td></tr>` : "";
+      const sensNote = btSensitivity ? btSensitivity.map(w=>`<div class="olainote" style="border-color:#a02020;color:#a02020">⚠ ${w.text}</div>`).join("") : "";
+
+      const html = `<!DOCTYPE html><html lang="ta"><head><meta charset="UTF-8"/><title>${escapeHtml(formData.name)} — முழு ஜாதகம்</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;600;700&family=Noto+Serif+Tamil:wght@600;700&display=swap" rel="stylesheet"/>
+<style>*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans Tamil',sans-serif;background:#e8dcc0;color:#3a2a10;padding:18px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+/* ── ஓலைச்சுவடி (palm-leaf) page ── */
+.page{max-width:760px;margin:0 auto;background:linear-gradient(180deg,#f6ecce 0%,#f0e3ba 50%,#eaddb0 100%);border:3px double #8b5a2b;border-radius:8px;overflow:hidden;box-shadow:0 6px 30px #0003}
+.ola-edge{height:10px;background:repeating-linear-gradient(90deg,#8b5a2b 0 6px,#b8894a 6px 12px,#8b5a2b 12px 18px)}
+.hdr{background:linear-gradient(180deg,#7b1c1c,#5d1414);text-align:center;padding:18px 20px 14px;border-bottom:3px solid #d4a853}
+.hdr h1{font-size:22px;color:#f6ecce;font-family:'Noto Serif Tamil',serif;letter-spacing:1px}
+.hdr .nm{font-size:17px;color:#f0c75e;font-weight:700;margin-top:3px}
+.hdr .sub{font-size:9px;color:#f0c75e99;letter-spacing:3px;margin-top:4px}
+.body{padding:18px 22px}
+.sec{margin-bottom:16px;page-break-inside:avoid}
+.sec-hd{display:flex;align-items:center;gap:8px;background:linear-gradient(90deg,#7b1c1c,#9a3020);color:#f6ecce;font-family:'Noto Serif Tamil',serif;font-size:13px;font-weight:700;padding:6px 12px;border-radius:4px;border-left:5px solid #d4a853;margin-bottom:8px}
+.sec-lace{margin-left:auto;color:#d4a853;font-size:9px;letter-spacing:4px}
+.info-tbl{width:100%;border-collapse:collapse;font-size:11.5px}
+.info-tbl td{padding:4px 8px;border-bottom:1px dashed #c9b585}.info-tbl td:first-child{color:#7b1c1c;font-weight:700;width:38%}
+table.pt{width:100%;border-collapse:collapse;font-size:10px;border:1.5px solid #8b5a2b;background:#faf3dc}
+table.pt th{background:#7b1c1c;color:#f6ecce;padding:5px 6px;text-align:left;font-size:9.5px}
+table.pt td{padding:4px 6px;border-bottom:1px solid #dcc99a}
+table.pt tr.alt td{background:#f3e9c8}
+.mono{font-family:monospace}
+.olabox{background:#faf3dc;border:1px solid #d9c48c;border-left:4px solid #b8894a;border-radius:4px;padding:6px 10px;margin-bottom:6px;font-size:10.5px;page-break-inside:avoid}
+.olainote{background:#f3e9c8;border:1px dashed #b8894a;border-radius:4px;padding:5px 10px;margin:6px 0;font-size:9.5px;color:#5a4520}
+.charts{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.charts>div{flex:1;min-width:280px;max-width:340px;background:#fffdf2;border:2px solid #8b5a2b;border-radius:6px;padding:6px}
+.ftr{background:#5d1414;color:#f0c75e;text-align:center;padding:12px;font-size:9px;line-height:1.8;border-top:3px solid #d4a853}
+@media print{body{padding:0;background:#fff}.page{border:none;box-shadow:none;max-width:100%}.no-print{display:none!important}.sec{page-break-inside:avoid}}
+.btn{position:fixed;bottom:20px;right:20px;background:#7b1c1c;color:#f6ecce;border:2px solid #d4a853;border-radius:30px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans Tamil',sans-serif;box-shadow:0 4px 16px #0004}
 </style></head><body><div class="page">
-<div class="hdr"><img src="${MURUGAN_IMG}" alt="முருகன்" style="width:70px;height:70px;object-fit:contain;border-radius:50%;border:2px solid #fff8;margin-bottom:8px;"/><h1>☉ ${escapeHtml(formData.name)} — ஜாதக விவரம்</h1><p>JATHAGAM • VEDIC BIRTH CHART</p></div>
+<div class="ola-edge"></div>
+<div class="hdr"><img src="${MURUGAN_IMG}" alt="முருகன்" style="width:70px;height:70px;object-fit:contain;border-radius:50%;border:2px solid #d4a853;margin-bottom:6px;"/>
+<h1>✦ ஸ்ரீ ஜாதக ஓலை ✦</h1><div class="nm">${escapeHtml(formData.name)}</div>
+<div class="sub">COMPLETE JATHAGAM • ALL CLASSICAL ENGINES • தமிழ் ஜோதிடம்</div></div>
 <div class="body">
-<table class="info-tbl">
+${sec("📋","பிறப்பு & பஞ்சாங்க விவரம்",`<table class="info-tbl">
 <tr><td>பெயர்</td><td>: ${escapeHtml(formData.name)}</td></tr>
-<tr><td>பிறந்த நாள்</td><td>: ${formData.dob}</td></tr>
-<tr><td>பிறந்த நேரம்</td><td>: ${birthTime}</td></tr>
+<tr><td>பிறந்த நாள் / நேரம்</td><td>: ${formData.dob} • ${birthTime}</td></tr>
 <tr><td>பிறந்த இடம்</td><td>: ${escapeHtml(formData.pob||"—")}</td></tr>
-<tr><td>உதய லக்னம்</td><td>: ${h.lagnaName}</td></tr>
-<tr><td>ராசி</td><td>: ${h.moonRashi}</td></tr>
-<tr><td>விண்மீன்</td><td>: ${h.nakshatra}, பாதம் ${h.nakshatraPada||1}</td></tr>
-<tr><td>நிலவு நாள்(திதி)</td><td>: ${h.tithi||""}, ${h.paksham||""}</td></tr>
-<tr><td>கரணம்</td><td>: ${h.karanam||"—"}</td></tr>
-<tr><td>யோகம்</td><td>: ${h.yogam||"—"}</td></tr>
-</table>
-${chartSection}
-<div class="sec-title">நிராயண ஸ்புடங்கள்</div>
-<table class="pt"><thead><tr><th>கிரகம்</th><th>தீர்காம்சம்</th><th>ராசி</th><th>நட்சத்திரம்-பாதம்</th><th>அதிபதி</th></tr></thead><tbody>
-<tr style="background:#e8f5e9;font-weight:700"><td>லக்னம்</td><td style="font-family:monospace">${h.lagnaDMS||""}</td><td>${h.lagnaName}</td><td>${h.lagnaNakshatra||""} - ${h.lagnaPada||""}</td></tr>
-${pRows}</tbody></table>
-${dashaSection}
+<tr><td>உதய லக்னம்</td><td>: ${h.lagnaName} — ${h.lagnaNakshatra||""}, பாதம் ${h.lagnaPada||""}</td></tr>
+<tr><td>ராசி / விண்மீன்</td><td>: ${h.moonRashi} / ${h.nakshatra}, பாதம் ${h.nakshatraPada||1}</td></tr>
+<tr><td>திதி / கரணம் / யோகம்</td><td>: ${h.tithi||""}, ${h.paksham||""} / ${h.karanam||"—"} / ${h.yogam||"—"}</td></tr>
+${gulikaRow}
+${tamilDate?`<tr><td>தமிழ் தேதி (சௌரம்)</td><td>: ${tamilDate.display||`${tamilDate.month||""} ${tamilDate.day||""}`}</td></tr>`:""}
+</table>${sensNote}`)}
+${sec("🕉","ராசி • நவாம்சம் • தசாம்ச சக்கரங்கள்",`<div class="charts"><div>${rashiSVG}</div>${navSVG?`<div>${navSVG}</div>`:""}${d10SVG?`<div>${d10SVG}</div>`:""}</div>`)}
+${sec("🪐","நிராயண ஸ்புடங்கள்",`<table class="pt"><thead><tr><th>கிரகம்</th><th>தீர்காம்சம்</th><th>ராசி</th><th>நட்சத்திரம்-பாதம்</th><th>நட்சத்திராதிபதி</th></tr></thead><tbody>
+<tr style="background:#e8dcb0;font-weight:700"><td>லக்னம்</td><td class="mono">${h.lagnaDMS||""}</td><td>${h.lagnaName}</td><td>${h.lagnaNakshatra||""} - ${h.lagnaPada||""}</td><td></td></tr>
+${pRows}</tbody></table>`)}
+${fnPart}
+${pcPart}
+${sbPart}
+${savPart}
+${avPart}
+${bbPart}
+${yogaPart}
+${dashaPart}
+${seqPart}
+${kaPart}
+${fhPart}
+${remPart}
 ${aiPart}
-</div><div class="ftr">ஜோதிட நிபுணர் | Jean Meeus Algorithms | Lahiri Ayanamsa | ${new Date().toLocaleDateString("ta-IN")}</div>
+</div>
+<div class="ftr">🕉 ஜோதிட நிபுணர் — முழு ஜாதக ஓலை<br>Swiss Ephemeris (Lahiri) • BPHS/சாராவளி classical engines • உருவாக்கம்: ${new Date().toLocaleDateString("ta-IN")}<br>இது கணினி-கணித ஜாதகம் — முக்கிய முடிவுகளுக்கு அனுபவ ஜோதிடரை அணுகவும்</div>
+<div class="ola-edge"></div>
 </div><button class="btn no-print" onclick="window.print()">📄 PDF சேமி / அச்சிடு</button></body></html>`;
       try {
         const blob = new Blob([html],{type:'text/html;charset=utf-8'});
