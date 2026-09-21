@@ -341,8 +341,9 @@ export function analyzeCareer(horoscope, grahaBala, dashaData) {
     }
   }
 
-  // FACTOR 5: Raja Yoga / Dhana Yoga presence boosts career
-  // (checked via classicalYogas passed separately — handled in caller)
+  // FACTOR 5: Raja/Dhana yogas are shown in the dedicated "யோகங்கள்" section, not
+  // scored into this career verdict (a yoga-weighted boost would need verification
+  // against known-truth charts before being trusted — intentionally not applied here).
 
   // FACTOR 6: Current dasha lord's relation to 10th house
   if (dashaData && dashaData.dashas) {

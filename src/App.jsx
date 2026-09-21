@@ -1469,7 +1469,7 @@ function calcSadeSati(birthMoonRashi, saturnTodayRashi) {
   if (houseFromMoon === 2)  return { active:true, phase:"இறங்கு சாடே சாதி", phaseEn:"Setting Phase", desc:"ஏழரை சனி முடிவை நோக்கி செல்கிறது — குடும்பம், பொருளாதாரத்தில் கவனம் தேவை.", severity:"caution" };
   if (houseFromMoon === 8)  return { active:true, phase:"அஷ்டம சனி (கண்டக சனி)", phaseEn:"Ashtama Shani", desc:"சனி 8ஆம் வீட்டில் — ஆரோக்கியம், எதிர்பாராத சிக்கல்களில் கவனம் தேவை.", severity:"caution" };
   if (houseFromMoon === 4)  return { active:true, phase:"அர்த்தாஷ்டம சனி", phaseEn:"Ardhashtama Shani", desc:"சனி 4ஆம் வீட்டில் — மனநிலை, வீடு தொடர்பான விஷயங்களில் கவனம்.", severity:"caution" };
-  return { active:false, phase:"ஏழரை சனி இல்லை", phaseEn:"No Sade Sati", desc:"தற்போது சனி தொடர்பான சிறப்பு கவனம் தேவையில்லை.", severity:"none" };
+  return { active:false, phase:"ஏழரை சனி இல்லை", phaseEn:"No Sade Sati", desc:"தற்போது ஏழரை சனி (சாடே சாதி) இல்லை. சனியின் கோச்சார (பெயர்ச்சி) பலனை தனியே கீழே பார்க்கவும்.", severity:"none" };
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -3175,15 +3175,19 @@ function calcBhavaPhalam(horoscope, grahaBala, chevvaiDosham, dashaData, classic
         effect: PLANET_IN_HOUSE[p.ta] ? PLANET_IN_HOUSE[p.ta][houseNum] : ""
       }));
 
-      // House lord strength → determines if the house's matters flourish
+      // House-lord strength/placement — stated as a FACT about the lord only.
+      // NOT a life-area verdict (marriage/health/career verdicts come solely from
+      // the deep-analysis section). This avoids the lord looking "excellent" while
+      // the area verdict says "challenges" (or vice-versa).
       let lordVerdict = "";
       if (lordInfo.lordStrength) {
         const score = lordInfo.lordStrength.score;
         const lordHouseGood = [1,4,5,7,9,10,11].includes(lordInfo.lordHouse);
-        if (score >= 7 && lordHouseGood) lordVerdict = "மிகச் சிறந்த நிலை — இந்த விஷயங்கள் நன்கு செழிக்கும்";
-        else if (score >= 5 && lordHouseGood) lordVerdict = "நல்ல நிலை — சாதகமான பலன்";
-        else if (score < 4 || [6,8,12].includes(lordInfo.lordHouse)) lordVerdict = "சவால்கள் இருக்கலாம் — முயற்சி/பரிகாரம் தேவை";
-        else lordVerdict = "நடுத்தர நிலை";
+        if ([6,8,12].includes(lordInfo.lordHouse)) lordVerdict = "அதிபதி துஸ்தானத்தில் (6/8/12)";
+        else if (score >= 7 && lordHouseGood) lordVerdict = "அதிபதி பலமாக, சாதக ஸ்தானத்தில்";
+        else if (score >= 5 && lordHouseGood) lordVerdict = "அதிபதி நல்ல நிலையில்";
+        else if (score < 4) lordVerdict = "அதிபதி பலவீனம்";
+        else lordVerdict = "அதிபதி நடுத்தர நிலையில்";
       }
 
       return {
@@ -4190,10 +4194,14 @@ export default function AstrologyApp() {
   const [backendUrl, setBackendUrl] = useState("https://jothida-api.onrender.com");
   const [apiSource, setApiSource] = useState("");
 
-  const fetchFromBackend = async (dob, hour, minute, city) => {
+  const fetchFromBackend = async (dob, hour, minute, city, geoOverride) => {
     try {
       const [y, m, d] = dob.split('-').map(Number);
-      const geo = geocodeCity(city);
+      // Use the precisely-resolved birth geo (OSM/manual lat-lon) when the caller
+      // supplies it, so the Swiss-Ephemeris lagna/house chart is computed at the
+      // SAME coordinates as shadbala/gochara. Falls back to the fuzzy city DB
+      // (Porutham callers pass no override — Chennai default, as before).
+      const geo = geoOverride || geocodeCity(city);
       const url = `${backendUrl}/api/horoscope?year=${y}&month=${m}&day=${d}&hour=${hour}&minute=${minute}&lat=${geo.lat}&lon=${geo.lon}&tz=5.5`;
       // Render free tier cold start can take 30-60s — cap at 10s so the user doesn't
       // stare at the loading screen forever. Falls back to the local engine.
@@ -4282,12 +4290,14 @@ export default function AstrologyApp() {
     }
     const finalTime = `${String(h24).padStart(2,'0')}:${String(min24).padStart(2,'0')}`;
 
+    // Resolve the birth geo ONCE (precise OSM/manual coords when available) and use it
+    // for BOTH the backend chart request and shadbala/gochara — keeps them consistent.
+    const geoT = resolveBirthGeo(formData);
     // Try API first, fallback to local
-    let result = await fetchFromBackend(dobISO, h24, min24, formData.pob);
+    let result = await fetchFromBackend(dobISO, h24, min24, formData.pob, geoT);
     if (result) {
       setApiSource("api");
       setHoroscope(result);
-      const geoT = resolveBirthGeo(formData);
       setNavamsaData(calculateNavamsa(result.placements));
       setGrahaBala(calcGrahaBala(result.placements));
       setMahapurushaYogas(detectMahapurushaYogas(result.placements, result.lagna));
@@ -4303,8 +4313,10 @@ export default function AstrologyApp() {
       setD7Data(calcD7Saptamsa(result.placements));
       setKalaSarpa(detectKalaSarpa(result.placements, result.lagna));
       setChevvaiDosham(detectChevvaiDosham(result.placements, result.lagna));
-      const lagnaP = result.placements.find(p => p.ta === "லக்னம்") || { degExact: 0, rashiIdx: result.lagna };
-      const lagnaFullDeg = result.lagna * 30 + (lagnaP.degExact || 0);
+      // Bhava (Chalit) cusps need the EXACT ascendant longitude (0–360), not the sign
+      // boundary. lagnaFullLong is the true sidereal ascendant degree (there is no
+      // "லக்னம்" entry in placements, so the old find() always returned undefined → 0).
+      const lagnaFullDeg = (result.lagnaFullLong != null) ? result.lagnaFullLong : (result.lagna * 30);
       setBhavaChart(calcBhavaChart(result.placements, lagnaFullDeg));
       setNavamsaStrength(calcNavamsaStrength(result.placements));
       setShadBala(calcShadbala(result.placements, result.lagna, dobISO, finalTime, geoT.lat, geoT.lon));
@@ -4326,7 +4338,9 @@ export default function AstrologyApp() {
       setTransitOverlay(calcTransitOverlay(result.placements, transitH.placements, birthMoon?.rashiIdx || 0));
       setInauspiciousTimes(calcInauspiciousTimes(new Date(), geoT.lat));
       const birthNakP = result.placements.find(p => p.ta === "சந்திரன்");
-      setMuhurthaData(calcMuhurtha(new Date(), birthNakP?.nakIdx || 0));
+      // Guard: parseBackendResponse sets nakIdx via indexOf → -1 on any Tamil spelling
+      // mismatch, and -1 || 0 stays -1 (‑1 is truthy). Clamp to a valid 0–26 index.
+      setMuhurthaData(calcMuhurtha(new Date(), (birthNakP && birthNakP.nakIdx >= 0) ? birthNakP.nakIdx : 0));
       setPlanetTransitAnalysis(calcPlanetTransitAnalysis(birthMoon?.rashiIdx || 0, transitH.placements));
       setRemediesData(getRemedies(result.placements, calcGrahaBala(result.placements)));
       const moonP = result.placements.find(p => p.ta === "சந்திரன்");
@@ -4361,8 +4375,8 @@ export default function AstrologyApp() {
       setD7Data(calcD7Saptamsa(h.placements));
       setKalaSarpa(detectKalaSarpa(h.placements, h.lagna));
       setChevvaiDosham(detectChevvaiDosham(h.placements, h.lagna));
-      const lagnaP2 = h.placements.find(p => p.ta === "லக்னம்") || { degExact: 0, rashiIdx: h.lagna };
-      const lagnaFullDeg2 = h.lagna * 30 + (lagnaP2.degExact || 0);
+      // Bhava cusps need the exact ascendant longitude (see backend path note above).
+      const lagnaFullDeg2 = (h.lagnaFullLong != null) ? h.lagnaFullLong : (h.lagna * 30);
       setBhavaChart(calcBhavaChart(h.placements, lagnaFullDeg2));
       setNavamsaStrength(calcNavamsaStrength(h.placements));
       setShadBala(calcShadbala(h.placements, h.lagna, dobISO, finalTime, geo.lat, geo.lon));
@@ -4375,7 +4389,7 @@ export default function AstrologyApp() {
       const birthMoon2 = h.placements.find(p => p.ta === "சந்திரன்");
       setTransitOverlay(calcTransitOverlay(h.placements, transitH2.placements, birthMoon2?.rashiIdx || 0));
       setInauspiciousTimes(calcInauspiciousTimes(new Date(), geo.lat));
-      setMuhurthaData(calcMuhurtha(new Date(), birthMoon2?.nakIdx || 0));
+      setMuhurthaData(calcMuhurtha(new Date(), (birthMoon2 && birthMoon2.nakIdx >= 0) ? birthMoon2.nakIdx : 0));
       setPlanetTransitAnalysis(calcPlanetTransitAnalysis(birthMoon2?.rashiIdx || 0, transitH2.placements));
       setRemediesData(getRemedies(h.placements, calcGrahaBala(h.placements)));
       // Calculate moon longitude for dasha
@@ -4550,61 +4564,66 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
   };
   const grahaCardBorder = (planetTa) => GRAHA_COLORS[planetTa] || "#b8860b";
 
-  // ─── PROFESSIONAL HINDU LIGHT THEME ───
+  // ─── SACRED-LUXE HINDU LIGHT THEME (World No.1 design system) ───
   const base = {
     minHeight:"100vh",
-    background:"#ffffff",
-    fontFamily:"'Segoe UI','Noto Sans Tamil',system-ui,sans-serif",
-    color:"#1a1a1a", position:"relative", overflow:"hidden"
+    background:"transparent",           // lets the body's fixed warm gradient show through every screen
+    fontFamily:"'Noto Sans Tamil','Segoe UI',system-ui,sans-serif",
+    color:"#241a15", position:"relative", overflow:"hidden"
   };
   const container = {
-    maxWidth:420, margin:"0 auto", padding:"0 20px",
+    maxWidth:430, margin:"0 auto", padding:"0 20px",
     position:"relative", zIndex:3,
     opacity:fadeIn?1:0, transform:fadeIn?"translateY(0)":"translateY(14px)",
-    transition:"opacity 0.45s ease, transform 0.45s ease"
+    transition:"opacity 0.5s cubic-bezier(0.22,1,0.36,1), transform 0.5s cubic-bezier(0.22,1,0.36,1)"
   };
   const T = {
     gold: "#7b1c1c",
-    goldBg: "#eadada",
-    accent: "#b8860b",
+    goldBg: "#f4e6d8",
+    accent: "#a8710a",
     accentSoft: "#b8860b",
-    text: "#1a1a1a",
-    textSoft: "#333333",
-    textMuted: "#666666",
-    bg: "#ffffff",
-    cardBg: "#ffffff",
-    cardBorder: "1px solid #e0e0e0",
-    inputBg: "#fafafa",
-    inputBorder: "1.5px solid #d0d0d0",
-    inputColor: "#1a1a1a",
+    text: "#241a15",
+    textSoft: "#4a3d35",
+    textMuted: "#7a6b60",
+    bg: "#fffdf8",
+    cardBg: "rgba(255,253,248,0.92)",
+    cardBorder: "1px solid #ecdfce",
+    inputBg: "#fffdf7",
+    inputBorder: "1.5px solid #e2d3bf",
+    inputColor: "#241a15",
     good: "#0d7a30",
     bad: "#cc1a1a",
-    neutral: "#7a5200",
-    shadow: "0 4px 20px rgba(0,0,0,0.08)",
+    neutral: "#a8710a",
+    shadow: "0 10px 34px -12px rgba(90,40,10,0.18), 0 2px 8px rgba(90,40,10,0.05)",
     pink: "#9b2c2c",
     roseGold: "#b8860b",
   };
   const btnGold = {
-    background:"linear-gradient(135deg, #7b1c1c, #9b2c2c, #7b1c1c)",
-    color:"#ffffff", border:"none", borderRadius:14, padding:"14px 0",
-    width:"100%", fontSize:16, fontWeight:700, cursor:"pointer",
-    boxShadow:"0 4px 20px #7b1c1c30"
+    background:"linear-gradient(135deg, #8f2020 0%, #7b1c1c 45%, #5f1414 100%)",
+    color:"#fff7ec", border:"1px solid #7b1c1c", borderRadius:14, padding:"15px 0",
+    width:"100%", fontSize:16, fontWeight:700, cursor:"pointer", letterSpacing:0.3,
+    boxShadow:"0 10px 26px -8px rgba(123,28,28,0.55), inset 0 1px 0 rgba(255,255,255,0.18)",
+    position:"relative", overflow:"hidden"
   };
   const btnOutline = {
-    background:"transparent", color:"#7b1c1c",
-    border:"1.5px solid #7b1c1c40", borderRadius:14,
-    padding:"12px 0", width:"100%", fontSize:15, fontWeight:600, cursor:"pointer"
+    background:"rgba(255,253,248,0.7)", color:"#7b1c1c",
+    border:"1.5px solid #d9c3a8", borderRadius:14,
+    padding:"13px 0", width:"100%", fontSize:15, fontWeight:600, cursor:"pointer",
+    backdropFilter:"blur(6px)", boxShadow:"0 2px 10px rgba(90,40,10,0.05)"
   };
   const inputStyle = {
-    width:"100%", padding:"13px 16px",
-    background:"#fafafa", border:"1.5px solid #d0d0d0",
-    borderRadius:12, color:"#1a1a1a", fontSize:15, outline:"none",
+    width:"100%", padding:"14px 16px",
+    background:"#fffdf7", border:"1.5px solid #e2d3bf",
+    borderRadius:12, color:"#241a15", fontSize:15, outline:"none",
     boxSizing:"border-box"
   };
-  const labelStyle = { display:"block", marginBottom:6, fontSize:13, color:"#b8860b", fontWeight:700 };
+  const labelStyle = { display:"block", marginBottom:7, fontSize:12.5, color:"#a8710a", fontWeight:700, letterSpacing:0.3, textTransform:"uppercase" };
   const card = {
-    background:"#ffffff", border:"1px solid #e8e8e8",
-    borderRadius:18, padding:20, boxShadow:"0 2px 12px rgba(0,0,0,0.04)"
+    background:"linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,253,248,0.9))",
+    border:"1px solid #ecdfce",
+    borderRadius:18, padding:20,
+    boxShadow:"0 10px 34px -14px rgba(90,40,10,0.16), 0 1px 4px rgba(90,40,10,0.04)",
+    backdropFilter:"blur(4px)"
   };
 
   // ═══════ SPLASH ═══════
@@ -4613,20 +4632,22 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
       <MantraChakra speed={70} size={620} opacity={0.18}/>
       <div style={{textAlign:"center", zIndex:3, animation:"splashIn 1.2s ease-out"}}>
         <div onClick={()=>{ const ok = playOmSound(); if(ok) setOmPlayed(true); }} style={{
-          width:160, height:160, margin:"0 auto 28px", borderRadius:"50%",
-          background:"radial-gradient(circle at 50% 50%, #f0c75e40, #d4a85320, transparent)",
+          width:168, height:168, margin:"0 auto 30px", borderRadius:"50%",
+          background:"radial-gradient(circle at 50% 45%, #f7e2a640, #d4a85322, transparent 72%)",
           boxShadow:"0 0 80px #d4a85370, 0 0 160px #d4a85330, 0 0 240px #d4a85315",
           display:"flex", alignItems:"center", justifyContent:"center",
-          animation:"sunPulse 3s ease-in-out infinite", cursor:"pointer",
+          animation:"sunPulse 3s ease-in-out infinite, jnFloat 5s ease-in-out infinite", cursor:"pointer",
           overflow:"hidden", border:"3px solid #d4a85380"
-        }}><img src="/murugan.png" alt="முருகன்" style={{width:140,height:140,objectFit:"contain",borderRadius:"50%",filter:"drop-shadow(0 0 12px #d4a85360)"}}/></div>
-        <h1 style={{fontSize:32, fontWeight:700, margin:"0 0 8px", letterSpacing:3, color:"#7b1c1c"}}>ஜோதிட நிபுணர்</h1>
-        <p style={{fontSize:13, color:"#b8860b", letterSpacing:5, fontWeight:500}}>JOTHIDA NIPUNAR</p>
-        <p style={{fontSize:11, color:"#b8860b80", marginTop:12}}>✦ Advanced Vedic Astrology ✦</p>
-        <div style={{marginTop:40}}>
-          <div style={{width:36,height:3,borderRadius:2,margin:"0 auto",
-            background:"linear-gradient(90deg,transparent,#d4a853,transparent)",
-            animation:"pulse 1.5s ease-in-out infinite"}}/>
+        }}><img src="/murugan.png" alt="முருகன்" style={{width:144,height:144,objectFit:"contain",borderRadius:"50%",filter:"drop-shadow(0 0 12px #d4a85360)"}}/></div>
+        <h1 className="jn-serif" style={{fontSize:36, fontWeight:700, margin:"0 0 10px", letterSpacing:2,
+          background:"linear-gradient(180deg,#9b2c2c,#7b1c1c 60%,#5f1414)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text"}}>ஜோதிட நிபுணர்</h1>
+        <p className="jn-latin" style={{fontSize:15, color:"#a8710a", letterSpacing:7, fontWeight:600}}>JOTHIDA NIPUNAR</p>
+        <p style={{fontSize:11, color:"#b8860b", marginTop:14, letterSpacing:1.5}}>✦ Swiss Ephemeris · Classical Vedic Astrology ✦</p>
+        <div style={{marginTop:40, display:"flex", gap:7, justifyContent:"center", alignItems:"center"}}>
+          {[0,1,2].map(i=>(
+            <div key={i} style={{width:7,height:7,borderRadius:"50%",background:"#b8860b",
+              animation:`jnGlowPulse 1.4s ease-in-out ${i*0.2}s infinite`}}/>
+          ))}
         </div>
       </div>
       <style>{`
@@ -4849,7 +4870,7 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
                 </div>
               )}
             </div>
-            <button style={{...btnGold,opacity:(!formData.name||!isValidDDMMYYYY(formData.dob))?0.4:1,
+            <button className="jn-shine" style={{...btnGold,opacity:(!formData.name||!isValidDDMMYYYY(formData.dob))?0.4:1,
               pointerEvents:(!formData.name||!isValidDDMMYYYY(formData.dob))?"none":"auto"}} onClick={handleSubmit}>
               ஜாதகம் உருவாக்கு ☉
             </button>
@@ -5059,23 +5080,43 @@ ${aiPart}
 
     return (
       <div style={base}>
-        <div style={{...container,paddingTop:20,paddingBottom:30}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-            <button onClick={()=>goTo(SCREEN.FORM)} style={{background:"none",border:"none",color:T.accent,fontSize:14,cursor:"pointer",padding:0}}>← திரும்பு</button>
-            <h2 style={{fontSize:16,fontWeight:700,margin:0,color:T.gold}}>{formData.name} — ஜாதகம்</h2>
-            <div/>
+        <div style={{...container,paddingTop:16,paddingBottom:30}} className="jn-in">
+          <div style={{display:"flex",alignItems:"center",marginBottom:14}}>
+            <button onClick={()=>goTo(SCREEN.FORM)} style={{background:"rgba(255,253,248,0.8)",border:"1px solid #e2d3bf",borderRadius:10,color:T.accent,fontSize:13,cursor:"pointer",padding:"7px 12px",fontWeight:600}}>←</button>
+          </div>
+
+          {/* ═══ HERO — premium name banner ═══ */}
+          <div style={{
+            position:"relative", overflow:"hidden", borderRadius:20, marginBottom:14,
+            padding:"22px 20px", textAlign:"center",
+            background:"linear-gradient(135deg, #8f2020 0%, #7b1c1c 48%, #5f1414 100%)",
+            boxShadow:"0 14px 34px -12px rgba(123,28,28,0.55)"
+          }}>
+            <div style={{position:"absolute",inset:0,opacity:0.16,pointerEvents:"none",
+              background:"radial-gradient(120px 120px at 85% 15%, #f7e2a6, transparent), radial-gradient(160px 160px at 10% 110%, #e8c979, transparent)"}}/>
+            <div style={{position:"relative",zIndex:1}}>
+              <div style={{fontSize:11,letterSpacing:4,color:"#f7e2a6",fontWeight:600,marginBottom:6}}>✦ ஜாதக விவரம் ✦</div>
+              <h2 className="jn-serif" style={{fontSize:26,fontWeight:700,margin:"0 0 8px",color:"#fff7ec",letterSpacing:0.5}}>{formData.name}</h2>
+              <div style={{display:"inline-flex",gap:8,flexWrap:"wrap",justifyContent:"center"}}>
+                {[horoscope.lagnaName+" லக்னம்", horoscope.moonRashi+" ராசி", horoscope.nakshatra].map((chip,i)=>(
+                  <span key={i} style={{fontSize:11,fontWeight:600,color:"#5f1414",background:"linear-gradient(180deg,#f7e2a6,#e8c979)",
+                    padding:"4px 11px",borderRadius:20,boxShadow:"0 2px 6px rgba(0,0,0,0.12)"}}>{chip}</span>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* ═══ TAB SWITCHER: ஜாதகம் / இன்றைய பலன் ═══ */}
-          <div style={{display:"flex",gap:0,marginBottom:14,background:"#f0e0e0",borderRadius:12,padding:3}}>
+          <div style={{display:"flex",gap:4,marginBottom:14,background:"#f2e4d3",borderRadius:14,padding:4,boxShadow:"inset 0 1px 3px rgba(90,40,10,0.08)"}}>
             <button style={{
-              flex:1,padding:"10px 0",border:"none",borderRadius:10,
-              background:"#7b1c1c",
-              color:"#fffdf5",fontSize:12,fontWeight:700,cursor:"pointer"
+              flex:1,padding:"11px 0",border:"none",borderRadius:11,
+              background:"linear-gradient(135deg,#7b1c1c,#5f1414)",
+              color:"#fff7ec",fontSize:12.5,fontWeight:700,cursor:"pointer",
+              boxShadow:"0 4px 12px -4px rgba(123,28,28,0.6)"
             }}>📜 ஜாதகம்</button>
             <button onClick={()=>openDailyScreen()} style={{
-              flex:1,padding:"10px 0",border:"none",borderRadius:10,
-              background:"transparent",color:T.accentSoft,fontSize:12,fontWeight:600,cursor:"pointer"
+              flex:1,padding:"11px 0",border:"none",borderRadius:11,
+              background:"transparent",color:T.accent,fontSize:12.5,fontWeight:600,cursor:"pointer"
             }}>📅 இன்றைய பலன்</button>
           </div>
 
@@ -5306,7 +5347,7 @@ ${aiPart}
                         hr.occupants.map((occ, oi) => (
                           <div key={oi} style={{fontSize:11,color:"#333",marginBottom:4,lineHeight:1.5}}>
                             <span style={{fontWeight:700,color:"#7b1c1c"}}>{occ.symbol} {occ.planet}</span>
-                            {occ.condition && <span style={{fontSize:9,color:"#0d7a30",marginLeft:4}}>({occ.condition})</span>}
+                            {occ.condition && <span style={{fontSize:9,color:/நீசம்|பகை|அஸ்தங்கம்/.test(occ.condition)?"#cc1a1a":/உச்சம்|சொந்த|ஆட்சி|மூலத்திரிகோண/.test(occ.condition)?"#0d7a30":"#8b6914",marginLeft:4}}>({occ.condition})</span>}
                             <br/>{occ.effect}
                           </div>
                         ))
@@ -5321,7 +5362,7 @@ ${aiPart}
                         <div style={{fontSize:10,color:"#555",marginTop:2}}>
                           அதிபதி <b>{hr.lordInfo.lordName}</b> → {hr.lordInfo.lordHouse}ஆம் வீட்டில்
                           {hr.lordInfo.lordStrength && <span> ({hr.lordInfo.lordStrength.status})</span>}
-                          {hr.lordVerdict && <span style={{color:hr.lordVerdict.includes("சிறந்த")?"#0d7a30":hr.lordVerdict.includes("சவால்")?"#cc1a1a":"#8b6914"}}> — {hr.lordVerdict}</span>}
+                          {hr.lordVerdict && <span style={{color:(hr.lordVerdict.includes("பலமாக")||hr.lordVerdict.includes("நல்ல"))?"#0d7a30":(hr.lordVerdict.includes("பலவீன")||hr.lordVerdict.includes("துஸ்தான"))?"#cc1a1a":"#8b6914"}}> — {hr.lordVerdict}</span>}
                         </div>
                       )}
                     </div>
@@ -6544,7 +6585,7 @@ ${aiPart}
                     <div style={{fontSize:22,fontWeight:800,color:"#7b1c1c",letterSpacing:6}}>
                       {dailyNums.join("  ")}
                     </div>
-                    <div style={{fontSize:8,color:"#777777",marginTop:3}}>திதி + நட்சத்திரம் + கிழமை அடிப்படை</div>
+                    <div style={{fontSize:8,color:"#777777",marginTop:3}}>திதி + நட்சத்திரம் + கிழமை எண்கணித அடிப்படை (classical தசா அல்ல)</div>
                   </div>
                   <div style={{background:"linear-gradient(135deg,#b8860b15,#d4a85308)",borderRadius:8,padding:"10px 12px",border:"1px solid #b8860b25"}}>
                     <div style={{fontSize:9,color:"#555555",marginBottom:4}}>💎 ராசி ரத்தினம்</div>
