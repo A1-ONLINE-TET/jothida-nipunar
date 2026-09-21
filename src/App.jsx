@@ -5280,61 +5280,51 @@ ${aiPart}
             </select>
           </div>
 
-          {/* ═══ 3.3 முக்கிய 3 வாழ்க்கை பகுப்பாய்வு (KEY LIFE AREAS) ═══ */}
-          {keyAreas && (
-            <div style={{...card,marginBottom:10,padding:"14px 16px"}}>
-              <div style={{fontSize:15,fontWeight:700,color:"#7b1c1c",marginBottom:2,textAlign:"center"}}>🔮 முக்கிய வாழ்க்கை பகுப்பாய்வு</div>
-              <div style={{fontSize:9,color:"#8b6914",textAlign:"center",marginBottom:12}}>திருமணம் • ஆரோக்கியம் • தொழில் — பல classical factors இணைத்து</div>
-
-              {[keyAreas.marriage, keyAreas.health, keyAreas.career].map((a, ai) => (
-                <div key={ai} style={{marginBottom:14,border:`1px solid ${a.verdictColor}30`,borderRadius:10,overflow:"hidden"}}>
-                  {/* Header with verdict */}
-                  <div style={{background:`${a.verdictColor}12`,padding:"10px 12px",borderBottom:`1px solid ${a.verdictColor}20`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <span style={{fontSize:14,fontWeight:700,color:"#7b1c1c"}}>{a.icon} {a.area}</span>
-                      <span style={{fontSize:12,fontWeight:700,color:a.verdictColor}}>{a.verdict}</span>
-                    </div>
-                    <div style={{fontSize:11,color:"#444",marginTop:4,lineHeight:1.5}}>{a.summary}</div>
-                  </div>
-                  {/* Factors */}
-                  <div style={{padding:"8px 12px"}}>
-                    {a.factors.map((f, fi) => (
-                      <div key={fi} style={{fontSize:10,color:"#555",marginBottom:4,lineHeight:1.5,display:"flex",gap:6}}>
-                        <span style={{color:f.weight>0?"#0d7a30":f.weight<0?"#cc1a1a":"#999",fontWeight:700,flexShrink:0}}>
-                          {f.weight>0?"▲":f.weight<0?"▼":"•"}
-                        </span>
-                        <span>{f.text}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-
-              <div style={{fontSize:8,color:"#aaa",textAlign:"center",marginTop:6,fontStyle:"italic"}}>
-                ▲ சாதகம் • ▼ கவனம் • BPHS/சாராவளி/பலதீபிகா classical விதிகள் இணைத்து — கிரக நிலை, அதிபதி, காரகன், பார்வை, நவாம்சம்
-              </div>
-              <div style={{fontSize:8,color:"#b8860b",textAlign:"center",marginTop:4}}>
-                * இது classical ஜோதிட பகுப்பாய்வு — ஒருவரின் முயற்சி, முடிவுகள், சூழல் இதை மாற்றலாம்
-              </div>
-            </div>
-          )}
+          {/* Deep 3-area analysis is now integrated INTO each life-area block below
+              (marriage/health/career), so there is a single unified reading per area
+              instead of a separate top verdict that could contradict the detail. */}
 
           {/* ═══ 3.4 பாவ பலன் (LIFE-AREA READINGS) ═══ */}
           {bhavaPhalam && (
             <div style={{...card,marginBottom:10,padding:"14px 16px"}}>
-              <div style={{fontSize:15,fontWeight:700,color:"#7b1c1c",marginBottom:4,textAlign:"center"}}>📖 ஜாதக பலன்கள் (விவரம்)</div>
-              <div style={{fontSize:9,color:"#8b6914",textAlign:"center",marginBottom:4,fontStyle:"italic"}}>
-                கீழே ஒவ்வொரு கிரகத்தின் தனிப்பட்ட classical பொருள் — மொத்த முடிவுக்கு மேலே 🔮 பகுப்பாய்வைப் பார்க்கவும்
+              <div style={{fontSize:15,fontWeight:700,color:"#7b1c1c",marginBottom:6,textAlign:"center"}}>📖 ஜாதக பலன்கள் (விவரம்)</div>
+              <div style={{fontSize:10,color:"#6b5a48",background:"#f5efe3",border:"1px solid #e6dcc9",borderRadius:8,padding:"7px 10px",marginBottom:10,lineHeight:1.5,textAlign:"center"}}>
+                ⓘ திருமணம் • ஆரோக்கியம் • தொழில் — ஒவ்வொன்றுக்கும் <b>🔮 மொத்த முடிவு</b> (எல்லா காரணிகளையும் சேர்த்தது) அந்தந்த பகுதியில் மேலே; அதற்குக் கீழே <b>தனி classical குறிப்புகள்</b> (சில சாதகம், சில பாதகம்).
               </div>
               <div style={{fontSize:10,color:"#8b6914",textAlign:"center",marginBottom:12}}>
                 லக்னம்: {bhavaPhalam.lagna} • ராசி: {bhavaPhalam.moonRashi} • நட்சத்திரம்: {bhavaPhalam.nakshatra}
               </div>
 
-              {bhavaPhalam.areas.map((area, ai) => (
+              {bhavaPhalam.areas.map((area, ai) => {
+                // Deep verdict (marriage/health/career) integrated into THIS area's block —
+                // the single source of the combined reading for that area.
+                const ka = keyAreas ? keyAreas[area.key] : null;
+                return (
                 <div key={ai} style={{marginBottom:14,borderLeft:"3px solid #f0c75e",paddingLeft:10}}>
                   <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:6}}>
                     {area.icon} {area.ta}
                   </div>
+
+                  {ka && (
+                    <div style={{border:`1px solid ${ka.verdictColor}30`,borderRadius:10,overflow:"hidden",marginBottom:10}}>
+                      <div style={{background:`${ka.verdictColor}12`,padding:"9px 11px",borderBottom:`1px solid ${ka.verdictColor}20`}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                          <span style={{fontSize:12,fontWeight:700,color:"#7b1c1c"}}>🔮 மொத்த முடிவு</span>
+                          <span style={{fontSize:12,fontWeight:700,color:ka.verdictColor,textAlign:"right"}}>{ka.verdict}</span>
+                        </div>
+                        <div style={{fontSize:10.5,color:"#444",marginTop:4,lineHeight:1.5,whiteSpace:"pre-line"}}>{ka.summary}</div>
+                      </div>
+                      <div style={{padding:"7px 11px"}}>
+                        {ka.factors.map((f, fi) => (
+                          <div key={fi} style={{fontSize:10,color:"#555",marginBottom:4,lineHeight:1.5,display:"flex",gap:6}}>
+                            <span style={{color:f.weight>0?"#0d7a30":f.weight<0?"#cc1a1a":"#999",fontWeight:700,flexShrink:0}}>{f.weight>0?"▲":f.weight<0?"▼":"•"}</span>
+                            <span>{f.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {ka && <div style={{fontSize:9,color:"#8b6914",fontWeight:600,marginBottom:5}}>கீழே தனி classical குறிப்புகள் ⬇</div>}
 
                   {area.houseReadings.map((hr, hi) => (
                     <div key={hi} style={{marginBottom:8}}>
@@ -5368,14 +5358,17 @@ ${aiPart}
                     </div>
                   ))}
 
-                  {/* Special note (e.g. Chevvai Dosham for marriage) */}
+                  {/* Special note (e.g. Chevvai Dosham) — informational fact, rendered
+                      NEUTRAL (not green) so a "dosham cancelled" line never looks like a
+                      positive marriage verdict beside the 🔮 challenges verdict above. */}
                   {area.specialNote && (
-                    <div style={{fontSize:10,color:area.specialNote.includes("⚠")?"#cc1a1a":"#0d7a30",background:area.specialNote.includes("⚠")?"#fff0f0":"#f0fff0",padding:"6px 8px",borderRadius:6,marginTop:4}}>
+                    <div style={{fontSize:10,color:area.specialNote.includes("⚠")?"#cc1a1a":"#6b5a48",background:area.specialNote.includes("⚠")?"#fff0f0":"#f5efe3",border:"1px solid #e6dcc9",padding:"6px 8px",borderRadius:6,marginTop:4}}>
                       {area.specialNote}
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
 
               {/* Current Dasha context — the time dimension */}
               {bhavaPhalam.dashaContext && (

@@ -377,7 +377,15 @@ export function analyzeCareer(horoscope, grahaBala, dashaData) {
     summary = "தொழில் வீட்டில் தடைகள் உள்ளன. துறை தேர்வில் கவனம், பொறுமை, பரிகாரம் உதவும். மாற்றங்களுக்கு தயாராக இருக்கவும்.";
   }
 
+  // Suitable-profession suggestion — classical karaka fields of the planets shaping
+  // the 10th house (occupants if any, else the 10th lord). Prepended so the reader
+  // sees WHICH fields fit, e.g. teaching/advisory for Jupiter, writing/business for Mercury.
+  const fieldSources = occupants10.length > 0 ? occupants10.map(p => p.ta) : [h10LordName];
+  const suggestedFields = fieldSources.map(n => CAREER_FIELDS[n]).filter(Boolean).join(" / ");
+  if (suggestedFields) summary = `🎯 பொருத்தமான துறை: ${suggestedFields}.\n${summary}`;
+
   return { area: "தொழில்", icon: "💼", score, verdict, verdictColor, summary, factors,
+           suggestedFields,
            details: { h10LordName, h10LordHouse, occupants: occupants10.map(p=>p.ta) } };
 }
 
