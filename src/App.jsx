@@ -3155,6 +3155,168 @@ function calcBirthTimeSensitivity(horoscope) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// வாழ்க்கை நிகழ்வு காலக்கணிப்பு (LIFE-EVENT TIMING ENGINE)
+// அனுபவ ஜோதிடர் முறை — ஒவ்வொரு கேள்விக்கும் ஒரே generic framework:
+//   1. வாக்குறுதி (Promise): வீடு-அதிபதி-காரக பலம் → ஜாதகத்தில் உண்டா?
+//   2. Activation: எந்தக் கிரகங்களின் தசா-புக்தி நிகழ்வைத் தூண்டும்?
+//   3. கோசார filter: குரு+சனி இரட்டை transit ஆதரவு உள்ள windows
+//   4. தரவரிசை தேதி-வரம்புகள் + நம்பிக்கை + முழு காரணச் சங்கிலி
+// அனைத்தும் ஏற்கனவே உள்ள engines-இல் இருந்தே (shadbala, functional
+// nature, planet context, drishti, dasha, transit) — புதிய கணிதம் இல்லை.
+// ═══════════════════════════════════════════════════════════════════
+const EVENT_TOPICS = {
+  marriage:  { ta:"திருமணம்", icon:"💒", primary:7,  support:[2,11], karakas:["சுக்கிரன்","குரு"], minAge:17 },
+  career:    { ta:"தொழில்/வேலை", icon:"💼", primary:10, support:[6,2,11], karakas:["சனி","சூரியன்","புதன்"], minAge:16 },
+  children:  { ta:"குழந்தை", icon:"👶", primary:5,  support:[2,11], karakas:["குரு"], minAge:17 },
+  property:  { ta:"வீடு/வாகனம்", icon:"🏠", primary:4,  support:[2,11], karakas:["செவ்வாய்","சந்திரன்"], minAge:18 },
+  foreign:   { ta:"வெளிநாடு", icon:"✈️", primary:12, support:[9,3], karakas:["ராகு"], minAge:16 },
+  education: { ta:"உயர்கல்வி", icon:"🎓", primary:5,  support:[4,9], karakas:["புதன்","குரு"], minAge:14 },
+  wealth:    { ta:"செல்வ வளர்ச்சி", icon:"💰", primary:11, support:[2,9], karakas:["குரு","சுக்கிரன்"], minAge:16 }
+};
+
+// ஒரு ராசியிலிருந்து மற்றொரு ராசியை கிரகம் பார்க்கிறதா/அமர்ந்துள்ளதா (whole-sign)
+function planetHitsRashi(planetTa, fromRashiIdx, targetRashiIdx) {
+  if (fromRashiIdx === targetRashiIdx) return true;
+  const rules = DRISHTI_RULES[planetTa] || DRISHTI_RULES.default;
+  return rules.includes(((targetRashiIdx - fromRashiIdx + 12) % 12) + 1);
+}
+
+function calcEventTiming(topicKey, deps) {
+  const { horoscope, dashaData, shadBala, functionalNat, planetCtx, chevvai, navStrength, geo, ayanamsaKey, dobISO } = deps;
+  const topic = EVENT_TOPICS[topicKey];
+  if (!topic || !horoscope || !dashaData) return null;
+  const lagnaIdx = horoscope.lagna;
+  const placements = horoscope.placements;
+  const houseRashi = (h) => (lagnaIdx + h - 1) % 12;
+  const houseOf = (p) => ((p.rashiIdx - lagnaIdx + 12) % 12) + 1;
+  const lordOf = (h) => RASHI_LORD_NAME[houseRashi(h)];
+  const findP = (ta) => placements.find(p => p.ta === ta);
+  const sbOf = (ta) => (shadBala || []).find(s => s.ta === ta);
+  const natureOf = (ta) => functionalNat?.[ta]?.nature || "சமம்";
+  const ctxOf = (ta) => (planetCtx || []).find(c => c.ta === ta);
+
+  // ═══ 1. வாக்குறுதி (PROMISE) ═══
+  const pReasons = [];
+  let promise = 50;
+  const pLordName = lordOf(topic.primary);
+  const pLord = findP(pLordName);
+  const pRashiIdx = houseRashi(topic.primary);
+
+  const sb = sbOf(pLordName);
+  if (sb) {
+    const ratio = sb.total / sb.required;
+    if (ratio >= 1) { promise += 12; pReasons.push(`+ ${topic.primary}ஆம் அதிபதி ${pLordName} ஷட்பலத்தில் பலம் (${Math.round(sb.total)}/${sb.required})`); }
+    else if (ratio < 0.6) { promise -= 12; pReasons.push(`− ${topic.primary}ஆம் அதிபதி ${pLordName} ஷட்பலத்தில் பலவீனம்`); }
+  }
+  if (pLord) {
+    const lh = houseOf(pLord);
+    if ([1,4,5,7,9,10].includes(lh)) { promise += 8; pReasons.push(`+ அதிபதி ${pLordName} ${lh}ஆம் வீட்டில் (கேந்திர/திரிகோணம்)`); }
+    else if ([6,8,12].includes(lh)) { promise -= 10; pReasons.push(`− அதிபதி ${pLordName} ${lh}ஆம் வீட்டில் (துஸ்தானம்)`); }
+    if (pLord.isCombust) { promise -= 6; pReasons.push(`− அதிபதி அஸ்தங்கம்`); }
+    const pctx = ctxOf(pLordName);
+    if (pctx) {
+      if (pctx.net >= 2) { promise += 6; pReasons.push(`+ அதிபதியின் கிரக சூழல் சாதகம் (ராசிநாதன்/நட்சத்திராதிபதி பலம்)`); }
+      else if (pctx.net <= -2) { promise -= 6; pReasons.push(`− அதிபதியின் கிரக சூழல் பாதகம்`); }
+    }
+    const nv = (navStrength || []).find(n => n.ta === pLordName);
+    if (nv) {
+      if (nv.vargottama) { promise += 6; pReasons.push(`+ அதிபதி வர்கோத்தமம் (D9 உறுதிப்பாடு)`); }
+      else if (nv.d9Status === "நீசம்") { promise -= 6; pReasons.push(`− அதிபதி நவாம்சத்தில் நீசம்`); }
+    }
+  }
+  // primary வீட்டில் உள்ளோர்
+  placements.filter(p => houseOf(p) === topic.primary).forEach(p => {
+    const n = natureOf(p.ta);
+    if (n === "யோககாரகன்" || n === "சுபன்") { promise += 6; pReasons.push(`+ ${topic.primary}இல் ${p.ta} (${n})`); }
+    else if (n === "பாபன்" || p.ta === "ராகு" || p.ta === "கேது") { promise -= 5; pReasons.push(`− ${topic.primary}இல் ${p.ta} (${n === "பாபன்" ? "பாபன்" : "சாயா கிரகம்"})`); }
+  });
+  // primary வீட்டின் மீதான பார்வைகள்
+  aspectorsOnHouse(placements, lagnaIdx, pRashiIdx).forEach(a => {
+    const n = natureOf(a.planet);
+    if (n === "யோககாரகன்" || n === "சுபன்") { promise += 4; pReasons.push(`+ ${a.planet} (${n}) ${topic.primary}ஐ பார்க்கிறார்`); }
+    else if (n === "பாபன்") { promise -= 4; pReasons.push(`− ${a.planet} (பாபன்) ${topic.primary}ஐ பார்க்கிறார்`); }
+  });
+  // காரகர்கள்
+  topic.karakas.forEach(k => {
+    const kp = findP(k);
+    if (!kp) return;
+    const dig = signDignity(kp);
+    if (dig === "உச்சம்" || dig === "சொந்தம்") { promise += 5; pReasons.push(`+ காரகன் ${k} ${dig}`); }
+    else if (dig === "நீசம்") { promise -= 5; pReasons.push(`− காரகன் ${k} நீசம்`); }
+  });
+  // திருமணம்-சிறப்பு: செவ்வாய் தோஷம்
+  if (topicKey === "marriage" && chevvai?.present && !chevvai?.cancelled) {
+    promise -= 10; pReasons.push(`− செவ்வாய் தோஷம் (நிவர்த்தி இல்லை) — பொருத்தம்/பரிகாரம் கவனம்`);
+  }
+  promise = Math.max(5, Math.min(95, Math.round(promise)));
+  const promiseVerdict = promise >= 65 ? "வலுவான வாக்குறுதி" : promise >= 45 ? "நடுத்தர வாக்குறுதி" : "பலவீன வாக்குறுதி — தாமதம்/பரிகாரத்துடன்";
+
+  // ═══ 2. ACTIVATION கிரகங்கள் + எடைகள் ═══
+  const weights = {};
+  const addW = (ta, w, why) => { if (!ta) return; if (!weights[ta]) weights[ta] = { w: 0, why: [] }; weights[ta].w += w; weights[ta].why.push(why); };
+  addW(pLordName, 3, `${topic.primary}ஆம் அதிபதி`);
+  placements.filter(p => houseOf(p) === topic.primary).forEach(p => addW(p.ta, 2.5, `${topic.primary}இல் அமர்வு`));
+  topic.karakas.forEach(k => addW(k, 2, "காரகன்"));
+  topic.support.forEach(h => addW(lordOf(h), 1.5, `${h}ஆம் அதிபதி`));
+  aspectorsOnHouse(placements, lagnaIdx, pRashiIdx).forEach(a => addW(a.planet, 1.2, `${topic.primary}ஐ பார்வை`));
+  // அதிபதியின் நட்சத்திராதிபதி வழியாகவும் activation (KP அடிப்படை)
+  if (pLord && pLord.nakIdx >= 0) addW(getNakshatraLord(pLord.nakIdx).name, 1.2, `அதிபதியின் நட்சத்திராதிபதி`);
+  Object.keys(weights).forEach(ta => { if (natureOf(ta) === "யோககாரகன்") weights[ta].w += 0.5; });
+
+  // ═══ 3. தசா windows (இன்று → +12 ஆண்டு) ═══
+  const now = new Date();
+  const horizon = new Date(now.getFullYear() + 12, now.getMonth(), now.getDate());
+  const [by, bm, bd] = (dobISO || "2000-01-01").split('-').map(Number);
+  const minAgeDate = new Date(by + topic.minAge, bm - 1, bd);
+  const windows = [];
+  (dashaData.dashas || []).forEach(md => {
+    (md.antardashas || []).forEach(ad => {
+      if (ad.endDate < now || ad.startDate > horizon || ad.endDate < minAgeDate) return;
+      const mdW = weights[md.name]?.w || 0;
+      const adW = weights[ad.name]?.w || 0;
+      let score = mdW + adW * 1.6;
+      const reasons = [];
+      if (mdW > 0) reasons.push(`தசாநாதன் ${md.name}: ${weights[md.name].why.join(", ")}`);
+      if (adW > 0) reasons.push(`புக்திநாதன் ${ad.name}: ${weights[ad.name].why.join(", ")}`);
+      if (mdW > 0 && adW > 0) { score += 1; reasons.push("தசை+புக்தி இரண்டும் தொடர்புடையவை — வலுவான activation"); }
+      if (score <= 0.5) return;
+      windows.push({
+        start: ad.startDate < now ? now : ad.startDate, end: ad.endDate > horizon ? horizon : ad.endDate,
+        md: md.name, ad: ad.name, score, reasons
+      });
+    });
+  });
+  windows.sort((a, b) => b.score - a.score);
+
+  // ═══ 4. கோசார filter — top windows-க்கு குரு+சனி இரட்டை transit ═══
+  const top = windows.slice(0, 8);
+  top.forEach(w => {
+    try {
+      const mid = new Date((w.start.getTime() + w.end.getTime()) / 2);
+      const midISO = `${mid.getFullYear()}-${String(mid.getMonth()+1).padStart(2,'0')}-${String(mid.getDate()).padStart(2,'0')}`;
+      const th = generateHoroscope(midISO, "12:00", geo.lat, geo.lon, true, ayanamsaKey);
+      const tJup = th.placements.find(p => p.ta === "குரு");
+      const tSat = th.placements.find(p => p.ta === "சனி");
+      const targets = [pRashiIdx, pLord ? pLord.rashiIdx : pRashiIdx];
+      const jupHit = tJup && targets.some(t => planetHitsRashi("குரு", tJup.rashiIdx, t));
+      const satHit = tSat && targets.some(t => planetHitsRashi("சனி", tSat.rashiIdx, t));
+      if (jupHit && satHit) { w.score += 2; w.reasons.push(`குரு (${tJup.rashi}) + சனி (${tSat.rashi}) இருவரும் ${topic.primary}ஆம் வீடு/அதிபதியை தொடுகின்றனர் — இரட்டை transit ஆதரவு`); }
+      else if (jupHit) { w.score += 1; w.reasons.push(`குரு (${tJup.rashi}) ${topic.primary}ஆம் வீடு/அதிபதியை பார்க்கிறார் — transit ஆதரவு`); }
+      else if (satHit) { w.score += 0.5; w.reasons.push(`சனி (${tSat.rashi}) ${topic.primary}ஆம் வீடு/அதிபதி தொடர்பில்`); }
+      w.gocharaChecked = true;
+    } catch (e) { /* transit calc தோல்வி — தசா score மட்டும் */ }
+  });
+  top.sort((a, b) => b.score - a.score);
+  const results = top.slice(0, 5).map(w => ({
+    ...w,
+    confidence: w.score >= 7 ? "உயர்" : w.score >= 4.5 ? "நடுத்தரம்" : "குறைவு"
+  }));
+
+  return { topic: topic.ta, icon: topic.icon, promise, promiseVerdict, pReasons, windows: results,
+    activation: Object.entries(weights).sort((a,b)=>b[1].w-a[1].w).map(([ta,v])=>({ta,w:Math.round(v.w*10)/10,why:v.why.join(", ")})) };
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // நிபந்தனை சுபத்துவம் (CONDITIONAL BENEFICS) — classical refinement:
 //   சந்திரன்: வளர்பிறை (சுக்ல பக்ஷம்) → சுபன்; தேய்பிறை → பாப சாயல்
 //   புதன்: பாப கிரக சேர்க்கையில் (செவ்வாய்/சனி/ராகு/கேது/தேய்சந்திரன்)
@@ -4961,6 +5123,8 @@ export default function AstrologyApp() {
   const [gulikaData, setGulikaData] = useState(null);
   const [btSensitivity, setBtSensitivity] = useState(null);
   const [planetContext, setPlanetContext] = useState(null);
+  const [eventTiming, setEventTiming] = useState({});
+  const [eventTopic, setEventTopic] = useState("marriage");
   const [inauspiciousTimes, setInauspiciousTimes] = useState(null);
   const [muhurthaData, setMuhurthaData] = useState(null);
   const [planetTransitAnalysis, setPlanetTransitAnalysis] = useState(null);
@@ -5413,6 +5577,20 @@ export default function AstrologyApp() {
       setBtSensitivity(calcBirthTimeSensitivity(h));
     }
     goTo(SCREEN.RESULT);
+  };
+
+  // வாழ்க்கை நிகழ்வு காலக்கணிப்பு — கேட்கும்போது (on-demand) கணக்கிடு
+  const runEventTiming = (topicKey) => {
+    if (!horoscope || !dashaData) return;
+    const geo = resolveBirthGeo(formData);
+    const [dd, mm, yy] = (formData.dob || "1.1.2000").split(".").map(Number);
+    const dobISO = `${yy}-${String(mm).padStart(2,"0")}-${String(dd).padStart(2,"0")}`;
+    const res = calcEventTiming(topicKey, {
+      horoscope, dashaData, shadBala, functionalNat: functionalNature,
+      planetCtx: planetContext, chevvai: chevvaiDosham, navStrength: navamsaStrength,
+      geo, ayanamsaKey, dobISO
+    });
+    setEventTiming(prev => ({ ...prev, [topicKey]: res }));
   };
 
   const getCurrentDashaInfo = () => {
@@ -6304,6 +6482,7 @@ ${aiPart}
               <option value="drishti">👁 கிரக திருஷ்டி (Aspects)</option>
               <option value="funcnature">⚖ லக்னவாரி சுப-பாபர் / மாரக-பாதகர்</option>
               <option value="planetcontext">🔗 கிரக சூழல் (ராசிநாதன்-நட்சத்திராதிபதி-சேர்க்கை-பார்வை)</option>
+              <option value="eventtiming">🎯 வாழ்க்கை நிகழ்வு காலக்கணிப்பு (எப்போது?)</option>
               <option value="avasthas">🌗 கிரக அவஸ்தைகள் (Avasthas)</option>
               <option value="bhavabala">🏠 பாவ பலம் (Bhava Bala)</option>
               <option value="d10">💼 தசாம்சம் D10 (தொழில்)</option>
@@ -7307,6 +7486,84 @@ ${aiPart}
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ═══ வாழ்க்கை நிகழ்வு காலக்கணிப்பு ═══ */}
+          {advancedView==="eventtiming" && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:8,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                🎯 வாழ்க்கை நிகழ்வு காலக்கணிப்பு — "எப்போது?"
+              </div>
+              {/* Topic chips */}
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
+                {Object.entries(EVENT_TOPICS).map(([key,t])=>(
+                  <button key={key} onClick={()=>{ setEventTopic(key); if(!eventTiming[key]) runEventTiming(key); }}
+                    style={{padding:"5px 10px",borderRadius:16,fontSize:10.5,fontWeight:600,cursor:"pointer",
+                      border:`1.5px solid ${eventTopic===key?"#7b1c1c":"#d4a853"}`,
+                      background:eventTopic===key?"#7b1c1c":"#fffdf5",
+                      color:eventTopic===key?"#fffdf5":"#7b1c1c"}}>
+                    {t.icon} {t.ta}
+                  </button>
+                ))}
+              </div>
+              {(() => {
+                const et = eventTiming[eventTopic];
+                if (!et) return (
+                  <div style={{padding:"14px",textAlign:"center",fontSize:11,color:"#8b6914",background:"#faf6e8",borderRadius:8}}>
+                    மேலே ஒரு கேள்வியைத் தேர்ந்தெடுக்கவும் — தசா × கோசாரம் × வாக்குறுதி மூன்றையும் இணைத்து கணிக்கப்படும்
+                  </div>
+                );
+                return (
+                  <div>
+                    {/* 1. வாக்குறுதி */}
+                    <div style={{marginBottom:10,padding:"10px 12px",borderRadius:8,
+                      background:et.promise>=65?"#f1f8e9":et.promise<45?"#fdf0f0":"#fff8e1",
+                      border:`1px solid ${et.promise>=65?"#c5e1a5":et.promise<45?"#f0c8c8":"#ffe082"}`}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                        <span style={{fontSize:12,fontWeight:700,color:"#333"}}>{et.icon} ஜாதக வாக்குறுதி (Promise)</span>
+                        <span style={{fontSize:12,fontWeight:800,color:et.promise>=65?"#1b5e20":et.promise<45?"#cc1a1a":"#7a5200"}}>{et.promise}% — {et.promiseVerdict}</span>
+                      </div>
+                      <div style={{height:8,background:"#eee",borderRadius:4,overflow:"hidden",marginBottom:6}}>
+                        <div style={{width:`${et.promise}%`,height:"100%",borderRadius:4,
+                          background:et.promise>=65?"linear-gradient(90deg,#66bb6a,#2e7d32)":et.promise<45?"linear-gradient(90deg,#ef9a9a,#c62828)":"linear-gradient(90deg,#ffe082,#f9a825)"}}/>
+                      </div>
+                      {et.pReasons.map((r,i)=>(
+                        <div key={i} style={{fontSize:9.5,lineHeight:1.6,color:r.startsWith("+")?"#2e7d32":"#a03a00"}}>{r}</div>
+                      ))}
+                    </div>
+                    {/* 2. தேதி-வரம்புகள் */}
+                    <div style={{fontSize:11.5,fontWeight:700,color:"#7b1c1c",marginBottom:6}}>📅 சாதகமான காலக்கட்டங்கள் (தசா × கோசாரம்)</div>
+                    {et.windows.length === 0 && (
+                      <div style={{fontSize:10.5,color:"#8b6914",padding:"8px"}}>அடுத்த 12 ஆண்டுகளில் வலுவான தசா activation இல்லை — நீண்ட கால தசா பட்டியலைப் பார்க்கவும்</div>
+                    )}
+                    {et.windows.map((w,i)=>(
+                      <div key={i} style={{marginBottom:8,padding:"8px 10px",borderRadius:8,
+                        background:i===0?"#f1f8e9":"#faf9f5",
+                        border:`1.5px solid ${i===0?"#7cb342":"#e6dcc9"}`}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+                          <span style={{fontSize:11.5,fontWeight:700,color:"#1a1a1a"}}>
+                            {i===0 && "⭐ "}{w.start.toLocaleDateString('ta-IN',{year:'numeric',month:'short'})} — {w.end.toLocaleDateString('ta-IN',{year:'numeric',month:'short'})}
+                          </span>
+                          <span style={{fontSize:9.5,fontWeight:800,padding:"2px 8px",borderRadius:10,
+                            background:w.confidence==="உயர்"?"#dcfce7":w.confidence==="நடுத்தரம்"?"#fef9c3":"#fee2e2",
+                            color:w.confidence==="உயர்"?"#1b5e20":w.confidence==="நடுத்தரம்"?"#7a5200":"#cc1a1a"}}>
+                            நம்பிக்கை: {w.confidence}
+                          </span>
+                        </div>
+                        <div style={{fontSize:10,color:"#7b1c1c",fontWeight:600,marginBottom:2}}>{w.md} தசை / {w.ad} புக்தி</div>
+                        {w.reasons.map((r,ri)=>(
+                          <div key={ri} style={{fontSize:9.5,color:"#555",lineHeight:1.6}}>• {r}</div>
+                        ))}
+                      </div>
+                    ))}
+                    <div style={{fontSize:9,color:"#777",marginTop:6,lineHeight:1.5}}>
+                      முறை: ஜாதக வாக்குறுதி (அதிபதி ஷட்பலம் + சூழல் + D9 + காரகர்) → தசா-புக்தி activation (எடை-கூட்டல்) →
+                      குரு+சனி இரட்டை transit சரிபார்ப்பு. வாக்குறுதி பலவீனமாக இருந்தால் காலம் மட்டும் போதாது — பரிகாரம்/பொருத்தம் இணைக்கவும்.
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
