@@ -787,6 +787,63 @@ function calcArudhaLagna(lagnaRashiIdx, placements) {
   return { rashi: arudhaRashi, rashiName: RASHIS[arudhaRashi] };
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// JAIMINI ராசி திருஷ்டி (RASHI DRISHTI) & அர்கலா (ARGALA)
+// Rashi Drishti (sign aspects): movable signs aspect the fixed signs except the
+//   adjacent one; fixed aspect the movable signs except the adjacent one; dual
+//   signs aspect the other dual signs. (Standard Jaimini sign-aspect rule.)
+// Argala (intervention): planets in the 2nd/4th/11th from a sign cause argala;
+//   the counter (virodha argala) comes from the 12th/10th/3rd respectively.
+//   Argala is effective (unobstructed) when its planets outnumber the counter's.
+// ═══════════════════════════════════════════════════════════════════
+const _MOVABLE_SIGNS = [0,3,6,9], _FIXED_SIGNS = [1,4,7,10], _DUAL_SIGNS = [2,5,8,11];
+function calcRashiDrishti(rashiIdx) {
+  const mod = rashiIdx % 3; // 0=movable, 1=fixed, 2=dual
+  if (mod === 0) return _FIXED_SIGNS.filter(f => f !== (rashiIdx + 1) % 12);
+  if (mod === 1) return _MOVABLE_SIGNS.filter(m => m !== (rashiIdx + 11) % 12);
+  return _DUAL_SIGNS.filter(d => d !== rashiIdx);
+}
+function planetsAspectingSign(targetRashiIdx, placements) {
+  return placements.filter(p => p.ta !== "லக்னம்" && calcRashiDrishti(p.rashiIdx).includes(targetRashiIdx));
+}
+function calcArgala(targetRashiIdx, placements) {
+  const houseFrom = (offset) => (targetRashiIdx + offset) % 12;
+  const planetsIn = (rIdx) => placements.filter(p => p.ta !== "லக்னம்" && p.rashiIdx === rIdx);
+  // {argala house-offset, counter (virodha) house-offset, label}
+  const pairs = [
+    { arg: 1,  vir: 11, name: "2ஆம் வீடு (செல்வம்)" },   // 2nd argala ⟂ 12th
+    { arg: 3,  vir: 9,  name: "4ஆம் வீடு (சுகம்)" },      // 4th argala ⟂ 10th
+    { arg: 10, vir: 2,  name: "11ஆம் வீடு (லாபம்)" },    // 11th argala ⟂ 3rd
+  ];
+  return pairs.map(pr => {
+    const argP = planetsIn(houseFrom(pr.arg)), virP = planetsIn(houseFrom(pr.vir));
+    return {
+      house: pr.name,
+      argPlanets: argP.map(p => p.ta),
+      virPlanets: virP.map(p => p.ta),
+      effective: argP.length > 0 && argP.length > virP.length,
+      partial: argP.length > 0 && argP.length === virP.length,
+    };
+  }).filter(r => r.argPlanets.length > 0 || r.virPlanets.length > 0);
+}
+// Master Jaimini analysis — Rashi Drishti + Argala on Lagna and Arudha Lagna.
+function calcJaiminiAnalysis(horoscope) {
+  if (!horoscope || !horoscope.placements) return null;
+  const lagnaIdx = horoscope.lagna, placements = horoscope.placements;
+  const arudha = horoscope.arudhaLagna || calcArudhaLagna(lagnaIdx, placements);
+  const arudhaIdx = arudha ? arudha.rashi : null;
+  const mapAsp = (idx) => idx == null ? [] : planetsAspectingSign(idx, placements).map(p => ({ ta: p.ta, from: RASHIS[p.rashiIdx] }));
+  return {
+    lagnaName: RASHIS[lagnaIdx],
+    lagnaDrishtiSigns: calcRashiDrishti(lagnaIdx).map(i => RASHIS[i]),
+    lagnaAspectedBy: mapAsp(lagnaIdx),
+    lagnaArgala: calcArgala(lagnaIdx, placements),
+    arudhaName: arudhaIdx != null ? RASHIS[arudhaIdx] : null,
+    arudhaAspectedBy: mapAsp(arudhaIdx),
+    charaKarakas: horoscope.charaKarakas || null,
+  };
+}
+
 // #27 உபபத லக்னம் (UPAPADA LAGNA) — BPHS 29: Arudha of 12th house, for spouse
 function calcUpapadaLagna(lagnaRashiIdx, placements) {
   const h12Rashi = (lagnaRashiIdx + 11) % 12;
@@ -4093,6 +4150,7 @@ export default function AstrologyApp() {
   const [d27Data, setD27Data] = useState(null);
   const [d40Data, setD40Data] = useState(null);
   const [d45Data, setD45Data] = useState(null);
+  const [jaiminiData, setJaiminiData] = useState(null);
   const [kalaSarpa, setKalaSarpa] = useState(null);
   const [chevvaiDosham, setChevvaiDosham] = useState(null);
   const [bhavaChart, setBhavaChart] = useState(null);
@@ -4400,6 +4458,7 @@ export default function AstrologyApp() {
       setD27Data(calcD27Bhamsa(result.placements));
       setD40Data(calcD40Khavedamsa(result.placements));
       setD45Data(calcD45Akshavedamsa(result.placements));
+      setJaiminiData(calcJaiminiAnalysis(result));
       setKalaSarpa(detectKalaSarpa(result.placements, result.lagna));
       setChevvaiDosham(detectChevvaiDosham(result.placements, result.lagna));
       // Bhava (Chalit) cusps need the EXACT ascendant longitude (0–360), not the sign
@@ -4468,6 +4527,7 @@ export default function AstrologyApp() {
       setD27Data(calcD27Bhamsa(h.placements));
       setD40Data(calcD40Khavedamsa(h.placements));
       setD45Data(calcD45Akshavedamsa(h.placements));
+      setJaiminiData(calcJaiminiAnalysis(h));
       setKalaSarpa(detectKalaSarpa(h.placements, h.lagna));
       setChevvaiDosham(detectChevvaiDosham(h.placements, h.lagna));
       // Bhava cusps need the exact ascendant longitude (see backend path note above).
@@ -5378,6 +5438,7 @@ ${aiPart}
               <option value="d10">💼 தசாம்சம் D10 (தொழில்)</option>
               <option value="divisional">🔀 பிரிவு சக்கரங்கள் (D2,D3,D4,D7,D12,D60)</option>
               <option value="shodashavarga">🕉 மேல் வர்க்கங்கள் (D16,D20,D24,D27,D40,D45)</option>
+              <option value="jaimini">☯ ஜைமினி (ராசி திருஷ்டி, அர்கலா, காரகர்)</option>
               <option value="kalasarpa">🐍 கால சர்ப்ப தோஷம்</option>
               <option value="chevvai">🔴 செவ்வாய் தோஷம்</option>
               <option value="bhava">🏠 பாவ சக்கரம் (Bhava Chart)</option>
@@ -5765,6 +5826,65 @@ ${aiPart}
               </div>
               <div style={{fontSize:9,color:"#777777",marginTop:8,lineHeight:1.6}}>
                 D16=வாகனம்/சுகபோகம் • D20=ஆன்மீகம்/வழிபாடு • D24=கல்வி/அறிவு • D27=பலம்/பலவீனம் • D40=தாய்வழி சுப/அசுபம் • D45=தந்தைவழி/நடத்தை — BPHS Parashari முறை. இவை ராசி (D1), நவாம்சம் (D9), தசாம்சம் (D10) உடன் சேர்ந்து முழு Shodashavarga (16 சக்கரம்) அமைப்பை நிறைவு செய்கின்றன.
+              </div>
+            </div>
+          )}
+
+          {/* ═══ ஜைமினி — ராசி திருஷ்டி, அர்கலா, சர காரகர் ═══ */}
+          {advancedView==="jaimini" && jaiminiData && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:8,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                ☯ ஜைமினி பகுப்பாய்வு (Jaimini)
+              </div>
+
+              {/* Chara Karakas */}
+              {jaiminiData.charaKarakas && jaiminiData.charaKarakas.length > 0 && (
+                <div style={{marginBottom:12}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#a8710a",marginBottom:5}}>சர காரகர்கள் (Chara Karakas)</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                    {jaiminiData.charaKarakas.map((k,i)=>(
+                      <div key={i} style={{fontSize:9,padding:"3px 7px",borderRadius:5,background:"#f5efe3",border:"1px solid #e6dcc9",color:"#5f1414"}}>
+                        <b>{k.ta}</b>{k.planet?` — ${k.planet}`:""}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Rashi Drishti on Lagna */}
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#a8710a",marginBottom:5}}>ராசி திருஷ்டி — லக்னம் ({jaiminiData.lagnaName})</div>
+                <div style={{fontSize:10,color:"#555",lineHeight:1.6}}>
+                  லக்னம் இந்த ராசிகளை பார்க்கிறது: <b style={{color:"#7b1c1c"}}>{jaiminiData.lagnaDrishtiSigns.join(", ")}</b>
+                </div>
+                <div style={{fontSize:10,color:"#555",lineHeight:1.6,marginTop:3}}>
+                  லக்னத்தை பார்க்கும் கிரகங்கள்: {jaiminiData.lagnaAspectedBy.length>0
+                    ? <b style={{color:"#7b1c1c"}}>{jaiminiData.lagnaAspectedBy.map(a=>`${a.ta} (${a.from})`).join(", ")}</b>
+                    : <span style={{color:"#999"}}>இல்லை</span>}
+                </div>
+              </div>
+
+              {/* Argala on Lagna */}
+              <div style={{marginBottom:10}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#a8710a",marginBottom:5}}>அர்கலா — லக்னத்தின் மேல்</div>
+                {jaiminiData.lagnaArgala.length>0 ? jaiminiData.lagnaArgala.map((a,i)=>(
+                  <div key={i} style={{fontSize:10,color:"#555",lineHeight:1.6,marginBottom:3,padding:"4px 8px",background:a.effective?"#e6f4ea":a.partial?"#f5efe3":"#fde8e8",borderRadius:5,border:`1px solid ${a.effective?"#b7e1c7":a.partial?"#e6dcc9":"#f5c6c6"}`}}>
+                    <b>{a.house}</b>: அர்கலா [{a.argPlanets.join(", ")||"—"}] · விரோதம் [{a.virPlanets.join(", ")||"—"}]
+                    <span style={{fontWeight:700,color:a.effective?"#0d7a30":a.partial?"#a8710a":"#cc1a1a"}}> — {a.effective?"செயல்படும் அர்கலா":a.partial?"பகுதி தடை":"தடைபட்டது"}</span>
+                  </div>
+                )) : <div style={{fontSize:10,color:"#999"}}>குறிப்பிடத்தக்க அர்கலா இல்லை</div>}
+              </div>
+
+              {/* Arudha */}
+              {jaiminiData.arudhaName && (
+                <div style={{fontSize:10,color:"#555",lineHeight:1.6,marginBottom:4}}>
+                  <b style={{color:"#a8710a"}}>அருட லக்னம் (AL):</b> {jaiminiData.arudhaName}
+                  {jaiminiData.arudhaAspectedBy.length>0 && <span> — பார்க்கும் கிரகங்கள்: <b style={{color:"#7b1c1c"}}>{jaiminiData.arudhaAspectedBy.map(a=>a.ta).join(", ")}</b></span>}
+                </div>
+              )}
+
+              <div style={{fontSize:9,color:"#777",marginTop:6,lineHeight:1.5}}>
+                ராசி திருஷ்டி: சர→ஸ்திர (அடுத்தது தவிர), ஸ்திர→சர (அடுத்தது தவிர), உभय→உभய. அர்கலா: 2/4/11ஆம் வீட்டு கிரகம் தலையீடு, விரோதம் 12/10/3ல் இருந்து — ஜைமினி முறை.
               </div>
             </div>
           )}
