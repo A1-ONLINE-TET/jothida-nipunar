@@ -208,7 +208,7 @@ function enrichPlacementsWithStates(placements) {
 // Sun: ~0.01° accuracy | Moon: ~0.5° (6 perturbation terms)
 // Lagna: Local Sidereal Time method | Ayanamsa: Lahiri
 // ═══════════════════════════════════════════════════════════════════
-function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false) {
+function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false, ayanamsaKey="lahiri") {
   // Parse Y/M/D directly from "YYYY-MM-DD" string — avoids the classic JS bug where
   // new Date("YYYY-MM-DD") parses as UTC midnight, then local getters (getDate()) can
   // shift the day backward by one for users in negative-UTC-offset timezones (e.g. Americas).
@@ -232,8 +232,11 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false
   // ── Obliquity of Ecliptic ──
   const eps = 23.4393 - 0.01300 * T;
 
-  // ── Lahiri Ayanamsa (Chitrapaksha) — IENA-adopted value at J2000.0 ──
-  const ayanamsa = 23.856 + (T * 100 * 50.29 / 3600);
+  // ── Ayanamsa (default Lahiri/Chitrapaksha; selectable: lahiri/kp/raman/yukteshwar).
+  // AYANAMSA_SYSTEMS.lahiri.calc is byte-identical to the previous hardcoded formula,
+  // so the default output is unchanged. ──
+  const _ayanFn = (AYANAMSA_SYSTEMS[ayanamsaKey] || AYANAMSA_SYSTEMS.lahiri).calc;
+  const ayanamsa = _ayanFn(T);
 
   // ══════ SUN (Meeus Ch. 25) ══════
   const L0 = norm(280.46646 + 36000.76983 * T + 0.0003032 * T * T);
@@ -358,7 +361,7 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false
   // longitude decreasing). Uses the same heliocentric→geocentric method as above.
   {
     const T2 = (JD + 1 - 2451545.0) / 36525;
-    const ayanamsa2 = 23.856 + (T2 * 100 * 50.29 / 3600);
+    const ayanamsa2 = _ayanFn(T2); // same ayanamsa system as the natal chart
     const geoNext = (planetKey) => {
       const pp = keplerHeliocentric(planetKey, T2);
       const ee = keplerHeliocentric("Earth", T2);
@@ -630,16 +633,15 @@ const AYANAMSA_SYSTEMS = {
   },
   raman: {
     name: "பி.வி. ராமன்", nameEn: "B.V. Raman",
-    desc: "Raman's Ayanamsa — slightly different from Lahiri",
-    // Raman: 22°27'37.76" at 1900 + precession 50.3333"/year
-    calc: (T) => 22.4605 + ((T + 1) * 100 * 50.3333 / 3600) // T+1 because T is from J2000, Raman epoch is 1900
-  },
-  yukteshwar: {
-    name: "யுக்தேஸ்வர்", nameEn: "Sri Yukteshwar",
-    desc: "Yukteshwar's system from Holy Science (1894)",
-    // Yukteshwar: 22°27'59" at 1893 + 54"/year
-    calc: (T) => 22.4664 + ((T + 1.07) * 100 * 54 / 3600) // epoch ~1893
+    desc: "Raman's Ayanamsa — ~1.4° less than Lahiri",
+    // Raman ayanamsa ≈ 22°27'37.76" (22.4605°) at J2000.0, precessing at ~50.3333"/year.
+    // Verified: this gives Raman−Lahiri ≈ −1.4° at 1981, the correct classical offset.
+    // (An earlier "(T+1)" epoch term double-counted a century of precession — removed.)
+    calc: (T) => 22.4605 + (T * 100 * 50.3333 / 3600)
   }
+  // NOTE: Sri Yukteshwar ayanamsa intentionally omitted — its formula could not be
+  // verified against a trusted reference, and showing an unverified value would give
+  // a wrong chart. Add it back only once its J2000 base + rate are confirmed.
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -4269,6 +4271,7 @@ export default function AstrologyApp() {
   // ── Backend API (Swiss Ephemeris — deploy on Render.com) ──
   // After deploying, paste your Render URL here:
   const [backendUrl, setBackendUrl] = useState("https://jothida-api.onrender.com");
+  const [ayanamsaKey, setAyanamsaKey] = useState("lahiri");
   const [apiSource, setApiSource] = useState("");
 
   const fetchFromBackend = async (dob, hour, minute, city, geoOverride) => {
@@ -4371,7 +4374,10 @@ export default function AstrologyApp() {
     // for BOTH the backend chart request and shadbala/gochara — keeps them consistent.
     const geoT = resolveBirthGeo(formData);
     // Try API first, fallback to local
-    let result = await fetchFromBackend(dobISO, h24, min24, formData.pob, geoT);
+    // The Swiss-Ephemeris backend computes Lahiri only. When the user picks a
+    // different ayanamsa, skip the backend and use the local engine (which honours
+    // the selection) so the chosen ayanamsa actually takes effect.
+    let result = ayanamsaKey === "lahiri" ? await fetchFromBackend(dobISO, h24, min24, formData.pob, geoT) : null;
     if (result) {
       setApiSource("api");
       setHoroscope(result);
@@ -4441,7 +4447,7 @@ export default function AstrologyApp() {
     } else {
       setApiSource("local");
       const geo = resolveBirthGeo(formData);
-      const h = generateHoroscope(dobISO, finalTime, geo.lat, geo.lon);
+      const h = generateHoroscope(dobISO, finalTime, geo.lat, geo.lon, false, ayanamsaKey);
       setHoroscope(h);
       setNavamsaData(calculateNavamsa(h.placements));
       setGrahaBala(calcGrahaBala(h.placements));
@@ -4979,6 +4985,21 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
             {backendUrl
               ? "✓ Swiss Ephemeris Backend — 100% NASA accuracy"
               : "Backend இல்லை — Local Jean Meeus Engine (~0.5° accuracy)"}
+          </div>
+        </div>
+
+        {/* Ayanamsa selector */}
+        <div style={{...card, marginTop:14, padding:"14px 16px"}}>
+          <label style={{fontSize:12,color:"#a8710a",fontWeight:700,display:"block",marginBottom:8}}>🌀 அயனாம்சம் (Ayanamsa)</label>
+          <select value={ayanamsaKey} onChange={e=>setAyanamsaKey(e.target.value)}
+            style={{...inputStyle,fontSize:13,padding:"11px 14px",cursor:"pointer"}}>
+            {Object.entries(AYANAMSA_SYSTEMS).map(([k,v])=>(
+              <option key={k} value={k}>{v.name} — {v.nameEn}</option>
+            ))}
+          </select>
+          <div style={{fontSize:10,marginTop:6,color:"#8b6914",lineHeight:1.5}}>
+            {AYANAMSA_SYSTEMS[ayanamsaKey]?.desc}
+            {ayanamsaKey!=="lahiri" && <span style={{color:"#cc1a1a"}}><br/>⚠ லாஹிரி அல்லாத அயனாம்சம் — local engine பயன்படுத்தப்படும் (backend Lahiri மட்டுமே).</span>}
           </div>
         </div>
 
