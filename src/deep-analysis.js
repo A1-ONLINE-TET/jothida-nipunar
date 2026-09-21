@@ -455,14 +455,52 @@ function analyzeFamilyHealthIndications(horoscope, grahaBala) {
   const strengthOf = (n) => grahaBala?.find(g => g.ta === n);
   const isAfflicted = (n) => { const g = strengthOf(n); const p = find(n); if (!p) return false; const house = ((p.rashiIdx - lagnaIdx + 12) % 12) + 1; return (g && g.score < 4) || (g && (g.status === "நீசம்" || g.status === "பகை")) || DUSTHANA.includes(house) || p.isCombust; };
 
-  // ── Siblings (3rd house = co-borns; lord + occupants set the gender leaning) ──
+  // ── Siblings v2: multi-factor classical gender vote ──
+  // Classical விதிகள் (Prasna Marga / Saravali):
+  //   ஒற்றை ராசி → ஆண் சாய்வு, இரட்டை ராசி → பெண் சாய்வு.
+  //   ஆண் கிரகம் (சூரி,செவ்,குரு) / பெண் (சந்,சுக்) நேரடி பாலினம் தரும்;
+  //   நடுநிலை கிரகம் (புத,சனி) அமர்ந்த ராசியின் பாலினத்தை எடுக்கும்.
+  // Factors (எடை): 3ஆம் அதிபதி(2 / நடுநிலை-ராசிவழி 1.5) > சகோதர காரகன்
+  //   செவ்வாய் அமர்ந்த ராசி(1.5) = 3இல் அமர்ந்தோர்(1.5/1) >
+  //   3ஐ பார்ப்போர்(1/0.5) = 3ஆம் ராசி இயல்பு(1) = D3-இல் 3ஆம் அதிபதி(1).
+  // (D3 த்ரேக்காணம் = சகோதர வர்க்கம் — BPHS)
   const h3 = houseRashi(3), h3Lord = _RL[h3], occ3 = occupants(h3);
-  const sibSources = [h3Lord, ...occ3.map(p => p.ta)];
-  const sibFem = sibSources.filter(n => FEM_PLANETS.includes(n)).length;
-  const sibMasc = sibSources.filter(n => MASC_PLANETS.includes(n)).length;
+  const oddSign = (r) => r % 2 === 0; // idx 0=மேஷம் → ஒற்றை
+  const isDirectGender = (n) => MASC_PLANETS.includes(n) || FEM_PLANETS.includes(n);
+  const genderOf = (n, p) => MASC_PLANETS.includes(n) ? "M" : FEM_PLANETS.includes(n) ? "F"
+    : (p ? (oddSign(p.rashiIdx) ? "M" : "F") : "");
+  let sibM = 0, sibF = 0; const sibWhy = [];
+  const sibVote = (g, w, why) => {
+    if (!g) return;
+    if (g === "M") sibM += w; else sibF += w;
+    sibWhy.push(`${why} → ${g === "M" ? "ஆண்" : "பெண்"}`);
+  };
+  // 1. 3ஆம் அதிபதி — நேரடி பாலினம் அல்லது அமர்ந்த ராசி வழி
+  const l3p = find(h3Lord);
+  sibVote(genderOf(h3Lord, l3p), isDirectGender(h3Lord) ? 2 : 1.5,
+    `3ஆம் அதிபதி ${h3Lord}${!isDirectGender(h3Lord) && l3p ? ` (நடுநிலை — ${l3p.rashi} ${oddSign(l3p.rashiIdx) ? "ஒற்றை" : "இரட்டை"} ராசியில்)` : isDirectGender(h3Lord) ? ` (${MASC_PLANETS.includes(h3Lord) ? "ஆண்" : "பெண்"} கிரகம்)` : ""}`);
+  // 2. சகோதர காரகன் செவ்வாய் — அமர்ந்த ராசி பாலினம்
+  const sibMars = find("செவ்வாய்");
+  if (sibMars) sibVote(oddSign(sibMars.rashiIdx) ? "M" : "F", 1.5,
+    `காரகன் செவ்வாய் ${sibMars.rashi} (${oddSign(sibMars.rashiIdx) ? "ஒற்றை" : "இரட்டை"}) ராசியில்`);
+  // 3. 3இல் அமர்ந்தோர்
+  occ3.forEach(p => sibVote(genderOf(p.ta, p), isDirectGender(p.ta) ? 1.5 : 1,
+    `3இல் ${p.ta}${!isDirectGender(p.ta) ? ` (நடுநிலை — ${p.rashi} ${oddSign(p.rashiIdx) ? "ஒற்றை" : "இரட்டை"})` : ""}`));
+  // 4. 3ஐ பார்ப்போர்
+  placements.filter(p => p.rashiIdx !== h3 && planetAspectsHouse(p, lagnaIdx, 3))
+    .forEach(p => sibVote(genderOf(p.ta, p), isDirectGender(p.ta) ? 1 : 0.5, `${p.ta} 3ஐ பார்க்கிறார்`));
+  // 5. 3ஆம் ராசியின் இயல்பு
+  sibVote(oddSign(h3) ? "M" : "F", 1, `3ஆம் ராசி ${oddSign(h3) ? "ஒற்றை" : "இரட்டை"} இயல்பு`);
+  // 6. D3 த்ரேக்காணம் — 3ஆம் அதிபதி D3-இல் அமரும் ராசி (1st/5th/9th drekkana விதி)
+  if (l3p) {
+    const dg = l3p.degExact ?? l3p.degree ?? 0;
+    const d3r = dg < 10 ? l3p.rashiIdx : dg < 20 ? (l3p.rashiIdx + 4) % 12 : (l3p.rashiIdx + 8) % 12;
+    sibVote(oddSign(d3r) ? "M" : "F", 1, `D3 த்ரேக்காணத்தில் 3ஆம் அதிபதி ${oddSign(d3r) ? "ஒற்றை" : "இரட்டை"} ராசியில்`);
+  }
+  const sibDiff = sibF - sibM;
   const siblings = {
-    lean: sibFem > sibMasc ? "சகோதரி (பெண்) சாத்தியம் அதிகம்" : sibMasc > sibFem ? "சகோதரர் (ஆண்) சாத்தியம் அதிகம்" : "ஆண்/பெண் கலப்பு அல்லது தெளிவில்லை",
-    detail: `3ஆம் வீட்டு அதிபதி ${h3Lord} (${FEM_PLANETS.includes(h3Lord) ? "பெண் கிரகம்" : MASC_PLANETS.includes(h3Lord) ? "ஆண் கிரகம்" : "நடுநிலை"})${occ3.length ? `, 3ல் ${occ3.map(p => p.ta).join(", ")}` : ", 3ல் கிரகம் இல்லை"}`,
+    lean: sibDiff >= 1.5 ? "சகோதரி (பெண்) சாத்தியம் அதிகம்" : sibDiff <= -1.5 ? "சகோதரர் (ஆண்) சாத்தியம் அதிகம்" : "ஆண்/பெண் கலப்பு அல்லது தெளிவில்லை",
+    detail: `மதிப்பீடு — பெண் ${sibF} : ஆண் ${sibM} புள்ளிகள். ${sibWhy.join(" • ")}`,
   };
 
   // ── Children (5th house; malefics restrict; gender NOT asserted — unreliable) ──
