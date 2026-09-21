@@ -4745,19 +4745,11 @@ export default function AstrologyApp() {
       setPlanetTransitAnalysis(calcPlanetTransitAnalysis(birthMoon2?.rashiIdx || 0, transitH2.placements));
       setRemediesData(getRemedies(h.placements, calcGrahaBala(h.placements)));
       // Calculate moon longitude for dasha
-      const [dY,dM,dD] = dobISO.split('-').map(Number);
-      const dDate = new Date(dY, dM-1, dD); // local-time construction, matches new Date(2000,0,1) reference below — avoids UTC/local mismatch
-      const T2 = ((dDate - new Date(2000,0,1)) / 86400000 / 36525);
-      const Lm2 = ((218.3165+481267.8813*T2)%360+360)%360;
-      const Dm2 = ((297.8502+445267.1115*T2)%360+360)%360;
-      const Mm2 = ((134.9634+477198.8676*T2)%360+360)%360;
-      const Fm2 = ((93.2721+483202.0175*T2)%360+360)%360;
-      const Ms2 = ((357.52911+35999.05029*T2)%360+360)%360;
-      const ayanamsa2 = 23.856+(T2*100*50.29/3600);
-      const r = Math.PI/180;
-      const mCorr = 6.289*Math.sin(Mm2*r)-1.274*Math.sin((2*Dm2-Mm2)*r)+0.658*Math.sin(2*Dm2*r)
-        -0.214*Math.sin(2*Mm2*r)-0.186*Math.sin(Ms2*r)+0.110*Math.sin(2*Fm2*r);
-      const mLong = (((Lm2+mCorr)%360+360)%360-ayanamsa2+360)%360;
+      // Moon for Vimshottari dasha — use the Moon already computed in h.placements
+      // (generateHoroscope used the SELECTED ayanamsa). Previously this recomputed
+      // Moon with a hardcoded Lahiri ayanamsa, which broke dasha for KP/Raman.
+      const moonForDasha = h.placements.find(p => p.ta === "சந்திரன்");
+      const mLong = moonForDasha ? moonForDasha.fullLong : 0;
       const dashaResult2 = calculateDasha(mLong, dobISO);
       setDashaData(dashaResult2);
       // Bhava Phalam — links all computed logic
