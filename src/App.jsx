@@ -3317,6 +3317,97 @@ function calcEventTiming(topicKey, deps) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// வரிசை-நிபந்தனை பலன்கள் (CONDITIONAL SEQUENCE LINKAGES)
+// "இது நடந்த பிறகுதான் அது" — classical சம்பந்த விதி: இரு வீடுகளின்
+// அதிபதிகள் சேர்க்கை / பரஸ்பர பார்வை / பரிவர்த்தனை / ஒருவர் வீட்டில்
+// மற்றவர் அமர்வு கொண்டால், அவ்விரு வாழ்க்கைப் பகுதிகளும் பிணைந்தவை —
+// முந்தைய நிகழ்வுக்குப் (திருமணம்/தொழில்...) பின் பிந்தையது மலரும்.
+// தசா வரிசையுடன் இணைத்து "எந்த தசையில் இந்த இணைப்பு செயல்படும்" என்றும் கூறும்.
+// ═══════════════════════════════════════════════════════════════════
+const SEQUENCE_RULES = [
+  { after: 7,  target: 2,  afterTa: "திருமணத்திற்குப் பின்", icon: "💒→💰",
+    text: "செல்வம்/குடும்பச் சேமிப்பு திருமணத்திற்குப் பின் பெருகும் — வாழ்க்கைத் துணை அதிர்ஷ்டத்தைக் கொண்டு வருவார்" },
+  { after: 7,  target: 11, afterTa: "திருமணத்திற்குப் பின்", icon: "💒→📈",
+    text: "லாபங்களும் ஆசை நிறைவேற்றமும் திருமணத்திற்குப் பின் உயரும்" },
+  { after: 7,  target: 9,  afterTa: "திருமணத்திற்குப் பின்", icon: "💒→🍀",
+    text: "பாக்கியம்/அதிர்ஷ்டம் திருமணத்திற்குப் பின் திறக்கும் — துணை வழி தெய்வ அனுகூலம்" },
+  { after: 7,  target: 10, afterTa: "திருமணத்திற்குப் பின்", icon: "💒→💼",
+    text: "தொழில் உயர்வு திருமணத்திற்குப் பின் வேகம் பெறும்" },
+  { after: 10, target: 4,  afterTa: "தொழில் நிலைபெற்ற பின்", icon: "💼→🏠",
+    text: "வீடு/வாகன யோகம் தொழில் நிலைபெற்ற பின் கைகூடும்" },
+  { after: 10, target: 2,  afterTa: "தொழில் நிலைபெற்ற பின்", icon: "💼→💰",
+    text: "செல்வச் சேர்க்கை சுய தொழில்/பதவி உயர்வுடன் பிணைந்தது" },
+  { after: 12, target: 10, afterTa: "வெளியிடம் சென்ற பின்", icon: "✈️→💼",
+    text: "தொழில் உயர்வு வெளிநாடு அல்லது பிறந்த இடம் விட்டு நகர்ந்த பின் — தொலைவில் வாழ்வு சிறக்கும்" },
+  { after: 12, target: 2,  afterTa: "வெளிநாட்டு தொடர்பின் வழி", icon: "✈️→💰",
+    text: "வருவாய் வெளிநாட்டு/தொலைதூரத் தொடர்பில் — வெளியிடச் சம்பாத்தியம்" },
+  { after: 5,  target: 11, afterTa: "குழந்தை பாக்கியத்திற்குப் பின்", icon: "👶→📈",
+    text: "லாப விருத்தி புத்திர பாக்கியத்திற்குப் பின் — குழந்தை அதிர்ஷ்டம் கொண்டு வரும்" },
+  { after: 9,  target: 10, afterTa: "தந்தை/குரு அனுகூலத்துடன்", icon: "🍀→💼",
+    text: "தொழில் உயர்வு தந்தை/குரு/தெய்வ அனுகூலத்துடன் பிணைந்தது — அவர்கள் ஆசியுடன் முன்னேற்றம்" },
+  { after: 4,  target: 9,  afterTa: "வீடு/தாய்வழி நிலைபெற்ற பின்", icon: "🏠→🍀",
+    text: "அதிர்ஷ்ட உயர்வு சொந்த வீடு/தாய்வழி நிலைப்பாட்டிற்குப் பின்" },
+];
+
+function calcSequenceLinkages(placements, lagnaIdx, functionalNat, dashaData) {
+  const houseRashi = (h) => (lagnaIdx + h - 1) % 12;
+  const lordOf = (h) => RASHI_LORD_NAME[houseRashi(h)];
+  const findP = (ta) => placements.find(p => p.ta === ta);
+  const houseOf = (p) => ((p.rashiIdx - lagnaIdx + 12) % 12) + 1;
+  const drishti = calcGrahaDrishti(placements);
+  const now = new Date();
+
+  // நடப்பு + அடுத்த மகா தசைகள் — இணைப்பு எப்போது செயல்படும் என்று சொல்ல
+  const upcomingMDs = (dashaData?.dashas || []).filter(d => d.endDate > now).slice(0, 3);
+
+  const links = [];
+  SEQUENCE_RULES.forEach(rule => {
+    const aLord = lordOf(rule.after), tLord = lordOf(rule.target);
+    if (aLord === tLord) {
+      // ஒரே கிரகம் இரு வீடுகளையும் ஆள்கிறது — உள்ளார்ந்த பிணைப்பு
+      const p = findP(aLord);
+      if (!p) return;
+      links.push({ ...rule, strength: 3, strengthTa: "மிக வலுவான இணைப்பு",
+        how: `${aLord} ஒருவரே ${rule.after} & ${rule.target} இரு வீடுகளுக்கும் அதிபதி — இரு பலன்களும் ஒரே தசையில், ஒன்றன்பின் ஒன்றாக`,
+        lords: [aLord] });
+      return;
+    }
+    const aP = findP(aLord), tP = findP(tLord);
+    if (!aP || !tP) return;
+    const hows = [];
+    let strength = 0;
+    // 1. பரிவர்த்தனை — வலிமை மிக்கது
+    if (RASHI_LORD_NAME[aP.rashiIdx] === tLord && RASHI_LORD_NAME[tP.rashiIdx] === aLord) {
+      strength = 3; hows.push(`${aLord} ↔ ${tLord} ராசி பரிவர்த்தனை`);
+    } else {
+      // 2. சேர்க்கை
+      if (aP.rashiIdx === tP.rashiIdx) { strength = Math.max(strength, 2.5); hows.push(`${aLord} + ${tLord} ${houseOf(aP)}ஆம் வீட்டில் சேர்க்கை`); }
+      // 3. அமர்வு — target அதிபதி after வீட்டில் / after அதிபதி target வீட்டில்
+      if (houseOf(tP) === rule.after) { strength = Math.max(strength, 2); hows.push(`${rule.target}ஆம் அதிபதி ${tLord} ${rule.after}ஆம் வீட்டில் அமர்வு`); }
+      if (houseOf(aP) === rule.target) { strength = Math.max(strength, 2); hows.push(`${rule.after}ஆம் அதிபதி ${aLord} ${rule.target}ஆம் வீட்டில் அமர்வு`); }
+      // 4. பரஸ்பர பார்வை
+      const mutual = drishti.some(x => x.from === aLord && x.to === tLord) && drishti.some(x => x.from === tLord && x.to === aLord);
+      if (mutual) { strength = Math.max(strength, 1.5); hows.push(`${aLord} ↔ ${tLord} பரஸ்பர பார்வை`); }
+      // 5. after-அதிபதியின் பார்வை target வீட்டின் மீது
+      else if (planetHitsRashi(aLord, aP.rashiIdx, houseRashi(rule.target)) && aP.rashiIdx !== houseRashi(rule.target)) {
+        strength = Math.max(strength, 1); hows.push(`${rule.after}ஆம் அதிபதி ${aLord} பார்வை ${rule.target}ஆம் வீட்டின் மீது`);
+      }
+    }
+    if (strength === 0) return;
+    // இணைப்பு எந்த தசையில் செயல்படும்?
+    const actMD = upcomingMDs.find(md => md.name === aLord || md.name === tLord);
+    const dashaNote = actMD
+      ? `${actMD.name} மகா தசையில் (${actMD.startDate.getFullYear()}–${actMD.endDate.getFullYear()}) இந்த இணைப்பு செயல்படும்`
+      : null;
+    links.push({ ...rule, strength,
+      strengthTa: strength >= 3 ? "மிக வலுவான இணைப்பு" : strength >= 2 ? "வலுவான இணைப்பு" : "மித இணைப்பு",
+      how: hows.join(" • "), lords: [aLord, tLord], dashaNote });
+  });
+  links.sort((a, b) => b.strength - a.strength);
+  return links;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // நிபந்தனை சுபத்துவம் (CONDITIONAL BENEFICS) — classical refinement:
 //   சந்திரன்: வளர்பிறை (சுக்ல பக்ஷம்) → சுபன்; தேய்பிறை → பாப சாயல்
 //   புதன்: பாப கிரக சேர்க்கையில் (செவ்வாய்/சனி/ராகு/கேது/தேய்சந்திரன்)
@@ -5124,6 +5215,7 @@ export default function AstrologyApp() {
   const [btSensitivity, setBtSensitivity] = useState(null);
   const [planetContext, setPlanetContext] = useState(null);
   const [eventTiming, setEventTiming] = useState({});
+  const [sequenceLinks, setSequenceLinks] = useState(null);
   const [eventTopic, setEventTopic] = useState("marriage");
   const [inauspiciousTimes, setInauspiciousTimes] = useState(null);
   const [muhurthaData, setMuhurthaData] = useState(null);
@@ -5489,6 +5581,7 @@ export default function AstrologyApp() {
       const _fn1 = calcFunctionalNature(result.lagna);
       setFunctionalNature(_fn1);
       setPlanetContext(calcPlanetContext(result.placements, result.lagna, _fn1));
+      setSequenceLinks(calcSequenceLinkages(result.placements, result.lagna, _fn1, dashaResult));
       setMarakaBadhaka(calcMarakaBadhaka(result.lagna, result.placements));
       setAvasthasData(calcAvasthas(result.placements));
       setBhavaBalaData(calcBhavaBala(result.placements, result.lagna, _sb1));
@@ -5570,6 +5663,7 @@ export default function AstrologyApp() {
       const _fn2 = calcFunctionalNature(h.lagna);
       setFunctionalNature(_fn2);
       setPlanetContext(calcPlanetContext(h.placements, h.lagna, _fn2));
+      setSequenceLinks(calcSequenceLinkages(h.placements, h.lagna, _fn2, dashaResult2));
       setMarakaBadhaka(calcMarakaBadhaka(h.lagna, h.placements));
       setAvasthasData(calcAvasthas(h.placements));
       setBhavaBalaData(calcBhavaBala(h.placements, h.lagna, _sb2));
@@ -6483,6 +6577,7 @@ ${aiPart}
               <option value="funcnature">⚖ லக்னவாரி சுப-பாபர் / மாரக-பாதகர்</option>
               <option value="planetcontext">🔗 கிரக சூழல் (ராசிநாதன்-நட்சத்திராதிபதி-சேர்க்கை-பார்வை)</option>
               <option value="eventtiming">🎯 வாழ்க்கை நிகழ்வு காலக்கணிப்பு (எப்போது?)</option>
+              <option value="sequence">⛓ வரிசை-நிபந்தனை பலன்கள் (எது எதற்குப் பின்?)</option>
               <option value="avasthas">🌗 கிரக அவஸ்தைகள் (Avasthas)</option>
               <option value="bhavabala">🏠 பாவ பலம் (Bhava Bala)</option>
               <option value="d10">💼 தசாம்சம் D10 (தொழில்)</option>
@@ -7489,6 +7584,44 @@ ${aiPart}
             </div>
           )}
 
+          {/* ═══ வரிசை-நிபந்தனை பலன்கள் ═══ */}
+          {advancedView==="sequence" && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:8,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                ⛓ வரிசை-நிபந்தனை பலன்கள் — "எது எதற்குப் பின்?"
+              </div>
+              <div style={{fontSize:10,color:"#666",marginBottom:8,lineHeight:1.6}}>
+                Classical சம்பந்த விதி: இரு வீடுகளின் அதிபதிகள் இணைந்தால் (சேர்க்கை/பரிவர்த்தனை/அமர்வு/பார்வை)
+                அவ்விரு வாழ்க்கைப் பகுதிகளும் பிணைந்தவை — முந்தையது நிகழ்ந்த பின் பிந்தையது மலரும்.
+              </div>
+              {(!sequenceLinks || sequenceLinks.length === 0) ? (
+                <div style={{padding:"12px",textAlign:"center",fontSize:11,color:"#8b6914",background:"#faf6e8",borderRadius:8}}>
+                  இந்த ஜாதகத்தில் குறிப்பிடத்தக்க வரிசை-இணைப்புகள் இல்லை — ஒவ்வொரு பகுதியும் தன் தசையில் தனித்தே பலன் தரும்
+                </div>
+              ) : sequenceLinks.map((lk, i) => (
+                <div key={i} style={{marginBottom:8,padding:"9px 11px",borderRadius:8,
+                  background:lk.strength>=3?"#f1f8e9":lk.strength>=2?"#faf9f0":"#faf9f5",
+                  border:`1.5px solid ${lk.strength>=3?"#7cb342":lk.strength>=2?"#d4a853":"#e6dcc9"}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                    <span style={{fontSize:12,fontWeight:700,color:"#1a1a1a"}}>{lk.icon} {lk.afterTa}</span>
+                    <span style={{fontSize:9,fontWeight:800,padding:"2px 8px",borderRadius:10,
+                      background:lk.strength>=3?"#dcfce7":lk.strength>=2?"#fef9c3":"#f5f0e0",
+                      color:lk.strength>=3?"#1b5e20":"#7a5200"}}>{lk.strengthTa}</span>
+                  </div>
+                  <div style={{fontSize:11,color:"#333",lineHeight:1.6,marginBottom:3}}>{lk.text}</div>
+                  <div style={{fontSize:9.5,color:"#7b1c1c",lineHeight:1.5}}>📐 {lk.how}</div>
+                  {lk.dashaNote && (
+                    <div style={{fontSize:9.5,color:"#0d7a30",fontWeight:600,marginTop:2}}>⏳ {lk.dashaNote}</div>
+                  )}
+                </div>
+              ))}
+              <div style={{fontSize:9,color:"#777",marginTop:6,lineHeight:1.5}}>
+                வலிமை: பரிவர்த்தனை/இரட்டை ஆட்சி &gt; சேர்க்கை &gt; அமர்வு &gt; பரஸ்பர பார்வை &gt; ஒருவழிப் பார்வை.
+                தசா குறிப்பு = நடப்பு/அடுத்த 3 மகா தசைகளில் இணைப்பு-அதிபதியின் தசை.
+              </div>
+            </div>
+          )}
+
           {/* ═══ வாழ்க்கை நிகழ்வு காலக்கணிப்பு ═══ */}
           {advancedView==="eventtiming" && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
@@ -7557,6 +7690,23 @@ ${aiPart}
                         ))}
                       </div>
                     ))}
+                    {/* இக்கேள்வியுடன் பிணைந்த வரிசை-நிபந்தனைகள் */}
+                    {(() => {
+                      const th = EVENT_TOPICS[eventTopic]?.primary;
+                      const rel = (sequenceLinks || []).filter(lk => lk.after === th || lk.target === th);
+                      if (!rel.length) return null;
+                      return (
+                        <div style={{marginTop:8,padding:"8px 10px",background:"#faf6e8",borderRadius:8,border:"1px solid #e6dcc9"}}>
+                          <div style={{fontSize:10.5,fontWeight:700,color:"#7b1c1c",marginBottom:4}}>⛓ இக்கேள்வியுடன் பிணைந்த நிபந்தனைகள்</div>
+                          {rel.map((lk,li)=>(
+                            <div key={li} style={{fontSize:9.5,color:"#4a3a20",lineHeight:1.6,marginBottom:3}}>
+                              {lk.icon} {lk.text} <span style={{color:"#7b1c1c"}}>({lk.how})</span>
+                              {lk.dashaNote && <span style={{color:"#0d7a30",fontWeight:600}}> — {lk.dashaNote}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                     <div style={{fontSize:9,color:"#777",marginTop:6,lineHeight:1.5}}>
                       முறை: ஜாதக வாக்குறுதி (அதிபதி ஷட்பலம் + சூழல் + D9 + காரகர்) → தசா-புக்தி activation (எடை-கூட்டல்) →
                       குரு+சனி இரட்டை transit சரிபார்ப்பு. வாக்குறுதி பலவீனமாக இருந்தால் காலம் மட்டும் போதாது — பரிகாரம்/பொருத்தம் இணைக்கவும்.
