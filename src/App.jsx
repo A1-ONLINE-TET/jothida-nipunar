@@ -3272,16 +3272,26 @@ function calcShadbala(placements, lagnaIdx, dobISO, tob, lat, lon) {
 // ═══════════════════════════════════════════════════════════════════
 function calcTransitOverlay(birthPlacements, transitPlacements, birthMoonRashiIdx) {
   if (!transitPlacements) return null;
+  // ஜென்ம நட்சத்திரம் — every transiting planet's nakshatra is measured
+  // against it (9-தாரா cycle), refining the rashi-level palan below.
+  const birthMoon = birthPlacements.find(bp => bp.ta === "சந்திரன்");
+  const birthNakIdx = (birthMoon && birthMoon.nakIdx >= 0) ? birthMoon.nakIdx : -1;
   return transitPlacements.map(tp => {
     const birthP = birthPlacements.find(bp => bp.ta === tp.ta);
     const houseFromMoon = ((tp.rashiIdx - birthMoonRashiIdx + 12) % 12) + 1;
     const sameAsBirth = birthP ? tp.rashiIdx === birthP.rashiIdx : false;
+    // நட்சத்திர அளவு கோசாரம் — transit nakshatra, its lord, and Tara Bala
+    // from the birth star (finer timing than the whole-rashi transit)
+    const nakLord = getNakshatraLord(tp.nakIdx);
+    const tara = (birthNakIdx >= 0 && tp.nakIdx >= 0) ? calcTaraBala(birthNakIdx, tp.nakIdx) : null;
     return {
       ...tp,
       houseFromMoon,
       birthRashi: birthP?.rashi || "—",
       birthRashiIdx: birthP?.rashiIdx,
       sameAsBirth,
+      nakLordName: nakLord.name,
+      tara,
       transitEffect: [1,3,6,10,11].includes(houseFromMoon) ? "சுபம்" : [2,5,9].includes(houseFromMoon) ? "நடுநிலை" : "அசுபம்"
     };
   });
@@ -3403,7 +3413,7 @@ const GURU_TRANSIT_EFFECTS = {
   11: {effect:"சுபம்",desc:"லாபம், புதிய நண்பர்கள், ஆசைகள் நிறைவேறும், சமூக உயர்வு."},
   12: {effect:"அசுபம்",desc:"செலவு அதிகம், வெளிநாடு வாய்ப்பு, ஆன்மீகம், தூக்கமின்மை."}
 };
-function calcPlanetTransitAnalysis(birthMoonRashiIdx, transitPlacements) {
+function calcPlanetTransitAnalysis(birthMoonRashiIdx, transitPlacements, birthNakIdx = -1) {
   if (!transitPlacements) return null;
   const saturn = transitPlacements.find(p => p.ta === "சனி");
   const jupiter = transitPlacements.find(p => p.ta === "குரு");
@@ -3412,11 +3422,19 @@ function calcPlanetTransitAnalysis(birthMoonRashiIdx, transitPlacements) {
   const saniIn712or8 = saniHouse && [7,7.5,8,1,2].includes(saniHouse);
   const isSadeSati = saniHouse && (saniHouse === 12 || saniHouse === 1 || saniHouse === 2);
   const sadeSatiPhase = saniHouse === 12 ? "ஏறு பாதை (12th)" : saniHouse === 1 ? "உச்ச பாதை (1st — ஜென்ம சனி)" : saniHouse === 2 ? "இறங்கு பாதை (2nd)" : null;
+  // நட்சத்திர அளவு — the 2½-yr (Sani) / 1-yr (Guru) rashi stay divides into
+  // ~3 nakshatra legs; the tara from the birth star refines timing within it.
+  const nakInfo = (p) => p && p.nakIdx >= 0 ? {
+    nakshatraTa: p.nakshatraTa, pada: p.pada,
+    nakLordName: getNakshatraLord(p.nakIdx).name,
+    tara: birthNakIdx >= 0 ? calcTaraBala(birthNakIdx, p.nakIdx) : null
+  } : {};
   return {
     sani: saturn ? {
       currentRashi: saturn.rashi,
       houseFromMoon: saniHouse,
       ...SANI_TRANSIT_EFFECTS[saniHouse],
+      ...nakInfo(saturn),
       isSadeSati,
       sadeSatiPhase,
       isAshtama: saniHouse === 8,
@@ -3425,7 +3443,8 @@ function calcPlanetTransitAnalysis(birthMoonRashiIdx, transitPlacements) {
     guru: jupiter ? {
       currentRashi: jupiter.rashi,
       houseFromMoon: guruHouse,
-      ...GURU_TRANSIT_EFFECTS[guruHouse]
+      ...GURU_TRANSIT_EFFECTS[guruHouse],
+      ...nakInfo(jupiter)
     } : null
   };
 }
@@ -4803,7 +4822,7 @@ export default function AstrologyApp() {
       // Guard: parseBackendResponse sets nakIdx via indexOf → -1 on any Tamil spelling
       // mismatch, and -1 || 0 stays -1 (‑1 is truthy). Clamp to a valid 0–26 index.
       setMuhurthaData(calcMuhurtha(new Date(), (birthNakP && birthNakP.nakIdx >= 0) ? birthNakP.nakIdx : 0));
-      setPlanetTransitAnalysis(calcPlanetTransitAnalysis(birthMoon?.rashiIdx || 0, transitH.placements));
+      setPlanetTransitAnalysis(calcPlanetTransitAnalysis(birthMoon?.rashiIdx || 0, transitH.placements, (birthMoon && birthMoon.nakIdx >= 0) ? birthMoon.nakIdx : -1));
       setRemediesData(getRemedies(result.placements, calcGrahaBala(result.placements)));
       const moonP = result.placements.find(p => p.ta === "சந்திரன்");
       const moonLongFromApi = moonP ? (moonP.rashiIdx * 30 + moonP.degExact) : 0;
@@ -4871,7 +4890,7 @@ export default function AstrologyApp() {
       setTransitOverlay(calcTransitOverlay(h.placements, transitH2.placements, birthMoon2?.rashiIdx || 0));
       setInauspiciousTimes(calcInauspiciousTimes(new Date(), geo.lat));
       setMuhurthaData(calcMuhurtha(new Date(), (birthMoon2 && birthMoon2.nakIdx >= 0) ? birthMoon2.nakIdx : 0));
-      setPlanetTransitAnalysis(calcPlanetTransitAnalysis(birthMoon2?.rashiIdx || 0, transitH2.placements));
+      setPlanetTransitAnalysis(calcPlanetTransitAnalysis(birthMoon2?.rashiIdx || 0, transitH2.placements, (birthMoon2 && birthMoon2.nakIdx >= 0) ? birthMoon2.nakIdx : -1));
       setRemediesData(getRemedies(h.placements, calcGrahaBala(h.placements)));
       // Calculate moon longitude for dasha
       // Moon for Vimshottari dasha — use the Moon already computed in h.placements
@@ -6698,6 +6717,8 @@ ${aiPart}
                           <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>ஜனன ராசி</th>
                           <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>கோசார ராசி</th>
                           <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>சந்திரனிலிருந்து</th>
+                          <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>நட்சத்திரம்</th>
+                          <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>தாரை</th>
                           <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>பலன்</th>
                         </tr>
                       </thead>
@@ -6708,6 +6729,17 @@ ${aiPart}
                             <td style={{padding:"6px 4px",textAlign:"center",color:"#7b1c1c",fontWeight:600}}>{p.birthRashi}</td>
                             <td style={{padding:"6px 4px",textAlign:"center",color:"#b8860b",fontWeight:600}}>{p.transitRashi||p.rashi}</td>
                             <td style={{padding:"6px 4px",textAlign:"center",color:"#333",fontWeight:600}}>{p.houseFromMoon}</td>
+                            <td style={{padding:"6px 4px",textAlign:"center",color:"#333"}}>
+                              {p.nakshatraTa || "—"}{p.pada ? `-${p.pada}` : ""}
+                              {p.nakLordName && p.nakLordName !== "—" && (
+                                <div style={{fontSize:8.5,color:"#8b6914"}}>அதி: {p.nakLordName}</div>
+                              )}
+                            </td>
+                            <td style={{padding:"6px 4px",textAlign:"center",fontWeight:600,fontSize:10,
+                              color:p.tara ? (p.tara.mood==="good"?"#0d7a30":"#cc1a1a") : "#999"}}
+                              title={p.tara ? p.tara.desc.replace(/நாள்/g,"காலம்") : ""}>
+                              {p.tara ? p.tara.name.replace(" தாரை","") : "—"}
+                            </td>
                             <td style={{padding:"6px 4px",textAlign:"center",
                               color:p.transitEffect==="சுபம்"?"#0d7a30":p.transitEffect==="அசுபம்"?"#cc1a1a":"#7a5200",
                               fontWeight:700,fontSize:10}}>
@@ -6719,7 +6751,9 @@ ${aiPart}
                     </table>
                   </div>
                   <div style={{fontSize:9,color:"#777777",marginTop:8,lineHeight:1.5}}>
-                    சந்திர ராசியிலிருந்து கோசாரக் கிரகங்களின் நிலை • சுப/அசுப பலன்கள் Vedha இல்லாமல் கணிக்கப்பட்டவை
+                    சந்திர ராசியிலிருந்து கோசாரக் கிரகங்களின் நிலை • சுப/அசுப பலன்கள் Vedha இல்லாமல் கணிக்கப்பட்டவை<br/>
+                    தாரை = ஜென்ம நட்சத்திரத்திலிருந்து கோசாரக் கிரகத்தின் நட்சத்திரம் வரை 9-தாரா சுழற்சி — ராசிப் பலனை நட்சத்திர அளவில் நுட்பமாக்குகிறது.
+                    பச்சை தாரை = அந்தக் கிரக காரகங்கள் சாதகம் • சிவப்பு தாரை = அக்காலத்தில் கவனம் தேவை
                   </div>
                 </div>
               ) : (
@@ -6852,6 +6886,16 @@ ${aiPart}
                   <div style={{fontSize:11,color:"#333",marginBottom:4}}>
                     தற்போது: <span style={{fontWeight:700,color:"#7b1c1c"}}>{planetTransitAnalysis.sani.currentRashi}</span> — சந்திரனிலிருந்து <span style={{fontWeight:700}}>{planetTransitAnalysis.sani.houseFromMoon}ம் வீடு</span>
                   </div>
+                  {planetTransitAnalysis.sani.nakshatraTa && (
+                    <div style={{fontSize:10.5,color:"#333",marginBottom:4}}>
+                      ✨ நட்சத்திரப் பயணம்: <b>{planetTransitAnalysis.sani.nakshatraTa}{planetTransitAnalysis.sani.pada?`-${planetTransitAnalysis.sani.pada}`:""}</b> (அதிபதி: {planetTransitAnalysis.sani.nakLordName})
+                      {planetTransitAnalysis.sani.tara && (
+                        <span style={{fontWeight:700,marginLeft:4,color:planetTransitAnalysis.sani.tara.mood==="good"?"#0d7a30":"#cc1a1a"}}>
+                          • {planetTransitAnalysis.sani.tara.name} — {planetTransitAnalysis.sani.tara.desc.replace(/நாள்/g,"காலம்")}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div style={{fontSize:10,color:"#333",lineHeight:1.6}}>{planetTransitAnalysis.sani.desc}</div>
                   {planetTransitAnalysis.sani.isSadeSati && (
                     <div style={{marginTop:8,padding:"8px 10px",background:"#fde8e8",borderRadius:6,border:"1px solid #f5c6c6"}}>
@@ -6880,6 +6924,16 @@ ${aiPart}
                   <div style={{fontSize:11,color:"#333",marginBottom:4}}>
                     தற்போது: <span style={{fontWeight:700,color:"#7b1c1c"}}>{planetTransitAnalysis.guru.currentRashi}</span> — சந்திரனிலிருந்து <span style={{fontWeight:700}}>{planetTransitAnalysis.guru.houseFromMoon}ம் வீடு</span>
                   </div>
+                  {planetTransitAnalysis.guru.nakshatraTa && (
+                    <div style={{fontSize:10.5,color:"#333",marginBottom:4}}>
+                      ✨ நட்சத்திரப் பயணம்: <b>{planetTransitAnalysis.guru.nakshatraTa}{planetTransitAnalysis.guru.pada?`-${planetTransitAnalysis.guru.pada}`:""}</b> (அதிபதி: {planetTransitAnalysis.guru.nakLordName})
+                      {planetTransitAnalysis.guru.tara && (
+                        <span style={{fontWeight:700,marginLeft:4,color:planetTransitAnalysis.guru.tara.mood==="good"?"#0d7a30":"#cc1a1a"}}>
+                          • {planetTransitAnalysis.guru.tara.name} — {planetTransitAnalysis.guru.tara.desc.replace(/நாள்/g,"காலம்")}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div style={{fontSize:10,color:"#333",lineHeight:1.6}}>{planetTransitAnalysis.guru.desc}</div>
                 </div>
               )}
