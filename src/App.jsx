@@ -2801,6 +2801,43 @@ function findSankrantiDate(targetRashiIdx, estimateDaysBack, birthDateObj, lat, 
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// தமிழ் தேதி (TAMIL SOLAR CALENDAR DATE) — சௌர மானம்
+// Tamil month = which sidereal rashi the Sun occupies (Mesha=Chithirai).
+// Tamil date = days elapsed since the Sun entered that rashi (Sankranti) + 1.
+// Reuses the same Meeus engine (lightweight). Verified: Tamil New Year
+// (14 Apr) = Chithirai 1, Pongal (15 Jan) = Thai 1.
+// ═══════════════════════════════════════════════════════════════════
+const TAMIL_SOLAR_MONTHS = ["சித்திரை","வைகாசி","ஆனி","ஆடி","ஆவணி","புரட்டாசி",
+  "ஐப்பசி","கார்த்திகை","மார்கழி","தை","மாசி","பங்குனி"];
+// Mesha(0)=Chithirai ... Meena(11)=Panguni
+
+function calcTamilDate(dob, tob, lat, lon) {
+  // dob = "YYYY-MM-DD"
+  const [y, m, d] = dob.split('-').map(Number);
+  const birthDate = new Date(y, m - 1, d);
+  const h = generateHoroscope(dob, tob || "12:00", lat, lon, true);
+  const sun = h.placements.find(p => p.ta === "சூரியன்");
+  if (!sun) return null;
+  const sunRashi = Math.floor(sun.fullLong / 30); // 0=Mesha=Chithirai
+  const tamilMonth = TAMIL_SOLAR_MONTHS[sunRashi];
+
+  // Find Sankranti (Sun's entry into this rashi) by stepping back day-by-day
+  let tamilDay = 1;
+  for (let back = 1; back <= 34; back++) {
+    const prev = new Date(birthDate.getTime() - back * 86400000);
+    const iso = `${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}-${String(prev.getDate()).padStart(2,'0')}`;
+    const hp = generateHoroscope(iso, "12:00", lat, lon, true);
+    const sp = hp.placements.find(p => p.ta === "சூரியன்");
+    if (!sp || Math.floor(sp.fullLong / 30) !== sunRashi) {
+      tamilDay = back; // 'back' days before birth the Sun was still in the previous rashi
+      break;
+    }
+  }
+  return { month: tamilMonth, day: tamilDay, monthIdx: sunRashi,
+           display: `${tamilMonth} ${tamilDay}` };
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // Heliocentric → geocentric orbital mechanics — for Yuddha Bala (planetary war),
 // which classically needs each planet's ecliptic LATITUDE to decide the winner
 // ("those posited in the north... should be considered as victorious" — the
@@ -4309,6 +4346,8 @@ export default function AstrologyApp() {
   const [remediesData, setRemediesData] = useState(null);
   const [bhavaPhalam, setBhavaPhalam] = useState(null);
   const [keyAreas, setKeyAreas] = useState(null);
+  const [tamilDate, setTamilDate] = useState(null);
+  const [showTamilDate, setShowTamilDate] = useState(false);
   const [expandedDasha, setExpandedDasha] = useState(null);
   // Porutham
   const [poruthBride, setPoruthBride] = useState({ name:"", dob:"", tob:"", ampm:"AM" });
@@ -4577,6 +4616,11 @@ export default function AstrologyApp() {
     // Resolve the birth geo ONCE (precise OSM/manual coords when available) and use it
     // for BOTH the backend chart request and shadbala/gochara — keeps them consistent.
     const geoT = resolveBirthGeo(formData);
+
+    // Tamil solar-calendar date (optional display) — computed from the birth data
+    try {
+      setTamilDate(calcTamilDate(dobISO, finalTime, geoT.lat, geoT.lon));
+    } catch (e) { setTamilDate(null); }
     // Try API first, fallback to local
     // The Swiss-Ephemeris backend computes Lahiri only. When the user picks a
     // different ayanamsa, skip the backend and use the local engine (which honours
@@ -5463,9 +5507,26 @@ ${aiPart}
                 ))}
               </tbody>
             </table>
+            {/* தமிழ் தேதி — optional toggle */}
+            <div style={{marginTop:8,paddingTop:8,borderTop:"1px dashed #d4a85350"}}>
+              <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:11}}>
+                <input type="checkbox" checked={showTamilDate} onChange={e=>setShowTamilDate(e.target.checked)} style={{cursor:"pointer"}}/>
+                <span style={{color:"#7b1c1c",fontWeight:600}}>📅 தமிழ் தேதி காட்டு (சௌர மானம்)</span>
+              </label>
+              {showTamilDate && tamilDate && (
+                <div style={{marginTop:6,padding:"6px 10px",background:"#fff8e8",borderRadius:6,fontSize:12}}>
+                  <span style={{color:"#b8860b",fontWeight:600}}>தமிழ் தேதி:</span>{" "}
+                  <span style={{color:"#7b1c1c",fontWeight:700}}>{tamilDate.month} {tamilDate.day}</span>
+                  <div style={{fontSize:9,color:"#999",marginTop:2,fontStyle:"italic"}}>
+                    சூரியன் {RASHIS[tamilDate.monthIdx]} ராசியில் — திருக்கணித சௌர மான முறை
+                  </div>
+                </div>
+              )}
+              {showTamilDate && !tamilDate && (
+                <div style={{marginTop:6,fontSize:10,color:"#999"}}>தமிழ் தேதி கணக்கிட முடியவில்லை</div>
+              )}
+            </div>
           </div>
-
-          {/* ═══ 2. RASHI + NAVAMSA CHARTS ═══ */}
           <div style={{...card,marginBottom:10,padding:8}}>
             <TraditionalChart horoscope={horoscope} navamsaData={navamsaData} title="ராசி" showNavamsa={true}/>
           </div>
