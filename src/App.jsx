@@ -2481,6 +2481,77 @@ function calcD7Saptamsa(placements) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// ADDITIONAL SHODASHAVARGA CHARTS (Parashari BPHS counting rules)
+// Sign class by index: movable(chara)=idx%3===0, fixed(sthira)=idx%3===1,
+// dual(dvisvabhava)=idx%3===2. Element = idx%4 (0=fiery,1=earthy,2=airy,3=watery).
+// "Odd" sign = idx%2===0 (Aries, the 1st sign, is odd). Completes the 16-chart set.
+// ═══════════════════════════════════════════════════════════════════
+
+// D16 ஷோடசாம்சம் (Kalamsa) — வாகனம், சுகபோகம். 1.875° each. Movable→Aries, Fixed→Leo, Dual→Sagittarius.
+function calcD16Shodasamsa(placements) {
+  return placements.map(p => {
+    const part = Math.min(15, Math.floor(p.degExact / (30/16)));
+    const cls = p.rashiIdx % 3;
+    const start = cls === 0 ? 0 : cls === 1 ? 4 : 8;
+    const d16Rashi = (start + part) % 12;
+    return { ...p, d16Rashi, d16RashiName: RASHIS[d16Rashi] };
+  });
+}
+
+// D20 விம்சாம்சம் (Vimsamsa) — ஆன்மீகம், வழிபாடு. 1.5° each. Movable→Aries, Fixed→Sagittarius, Dual→Leo.
+function calcD20Vimsamsa(placements) {
+  return placements.map(p => {
+    const part = Math.min(19, Math.floor(p.degExact / 1.5));
+    const cls = p.rashiIdx % 3;
+    const start = cls === 0 ? 0 : cls === 1 ? 8 : 4;
+    const d20Rashi = (start + part) % 12;
+    return { ...p, d20Rashi, d20RashiName: RASHIS[d20Rashi] };
+  });
+}
+
+// D24 சதுர்விம்சாம்சம் (Siddhamsa) — கல்வி, அறிவு. 1.25° each. Odd→Leo, Even→Cancer.
+function calcD24Siddhamsa(placements) {
+  return placements.map(p => {
+    const part = Math.min(23, Math.floor(p.degExact / 1.25));
+    const start = (p.rashiIdx % 2 === 0) ? 4 : 3;
+    const d24Rashi = (start + part) % 12;
+    return { ...p, d24Rashi, d24RashiName: RASHIS[d24Rashi] };
+  });
+}
+
+// D27 பம்சம் / நக்ஷத்திராம்சம் (Bhamsa) — பலம்/பலவீனம். 1.111° each.
+// Fiery→Aries, Earthy→Cancer, Airy→Libra, Watery→Capricorn.
+function calcD27Bhamsa(placements) {
+  return placements.map(p => {
+    const part = Math.min(26, Math.floor(p.degExact / (30/27)));
+    const start = [0,3,6,9][p.rashiIdx % 4];
+    const d27Rashi = (start + part) % 12;
+    return { ...p, d27Rashi, d27RashiName: RASHIS[d27Rashi] };
+  });
+}
+
+// D40 கவேதாம்சம் (Khavedamsa) — தாய்வழி, சுப/அசுபம். 0.75° each. Odd→Aries, Even→Libra.
+function calcD40Khavedamsa(placements) {
+  return placements.map(p => {
+    const part = Math.min(39, Math.floor(p.degExact / 0.75));
+    const start = (p.rashiIdx % 2 === 0) ? 0 : 6;
+    const d40Rashi = (start + part) % 12;
+    return { ...p, d40Rashi, d40RashiName: RASHIS[d40Rashi] };
+  });
+}
+
+// D45 அக்ஷவேதாம்சம் (Akshavedamsa) — தந்தைவழி, நடத்தை. 0.6667° each. Movable→Aries, Fixed→Leo, Dual→Sagittarius.
+function calcD45Akshavedamsa(placements) {
+  return placements.map(p => {
+    const part = Math.min(44, Math.floor(p.degExact / (30/45)));
+    const cls = p.rashiIdx % 3;
+    const start = cls === 0 ? 0 : cls === 1 ? 4 : 8;
+    const d45Rashi = (start + part) % 12;
+    return { ...p, d45Rashi, d45RashiName: RASHIS[d45Rashi] };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // 6. ஷட்பலம் (SHADBALA — 6-fold planetary strength)
 // ═══════════════════════════════════════════════════════════════════
 const DIG_BALA_HOUSES = {
@@ -4014,6 +4085,12 @@ export default function AstrologyApp() {
   const [d60Data, setD60Data] = useState(null);
   const [d4Data, setD4Data] = useState(null);
   const [d7Data, setD7Data] = useState(null);
+  const [d16Data, setD16Data] = useState(null);
+  const [d20Data, setD20Data] = useState(null);
+  const [d24Data, setD24Data] = useState(null);
+  const [d27Data, setD27Data] = useState(null);
+  const [d40Data, setD40Data] = useState(null);
+  const [d45Data, setD45Data] = useState(null);
   const [kalaSarpa, setKalaSarpa] = useState(null);
   const [chevvaiDosham, setChevvaiDosham] = useState(null);
   const [bhavaChart, setBhavaChart] = useState(null);
@@ -4311,6 +4388,12 @@ export default function AstrologyApp() {
       setD60Data(calcD60Shashtiamsa(result.placements));
       setD4Data(calcD4Chaturthamsa(result.placements));
       setD7Data(calcD7Saptamsa(result.placements));
+      setD16Data(calcD16Shodasamsa(result.placements));
+      setD20Data(calcD20Vimsamsa(result.placements));
+      setD24Data(calcD24Siddhamsa(result.placements));
+      setD27Data(calcD27Bhamsa(result.placements));
+      setD40Data(calcD40Khavedamsa(result.placements));
+      setD45Data(calcD45Akshavedamsa(result.placements));
       setKalaSarpa(detectKalaSarpa(result.placements, result.lagna));
       setChevvaiDosham(detectChevvaiDosham(result.placements, result.lagna));
       // Bhava (Chalit) cusps need the EXACT ascendant longitude (0–360), not the sign
@@ -4373,6 +4456,12 @@ export default function AstrologyApp() {
       setD60Data(calcD60Shashtiamsa(h.placements));
       setD4Data(calcD4Chaturthamsa(h.placements));
       setD7Data(calcD7Saptamsa(h.placements));
+      setD16Data(calcD16Shodasamsa(h.placements));
+      setD20Data(calcD20Vimsamsa(h.placements));
+      setD24Data(calcD24Siddhamsa(h.placements));
+      setD27Data(calcD27Bhamsa(h.placements));
+      setD40Data(calcD40Khavedamsa(h.placements));
+      setD45Data(calcD45Akshavedamsa(h.placements));
       setKalaSarpa(detectKalaSarpa(h.placements, h.lagna));
       setChevvaiDosham(detectChevvaiDosham(h.placements, h.lagna));
       // Bhava cusps need the exact ascendant longitude (see backend path note above).
@@ -5267,6 +5356,7 @@ ${aiPart}
               <option value="drishti">👁 கிரக திருஷ்டி (Aspects)</option>
               <option value="d10">💼 தசாம்சம் D10 (தொழில்)</option>
               <option value="divisional">🔀 பிரிவு சக்கரங்கள் (D2,D3,D4,D7,D12,D60)</option>
+              <option value="shodashavarga">🕉 மேல் வர்க்கங்கள் (D16,D20,D24,D27,D40,D45)</option>
               <option value="kalasarpa">🐍 கால சர்ப்ப தோஷம்</option>
               <option value="chevvai">🔴 செவ்வாய் தோஷம்</option>
               <option value="bhava">🏠 பாவ சக்கரம் (Bhava Chart)</option>
@@ -5614,6 +5704,46 @@ ${aiPart}
               )}
               <div style={{fontSize:9,color:"#777777",marginTop:8,lineHeight:1.5}}>
                 D2=செல்வம் • D3=சகோதரர்கள் • D4=சொத்து/வாகனம் • D7=குழந்தைகள் • D12=பெற்றோர் • D60=கர்மம் — Parashari முறை
+              </div>
+            </div>
+          )}
+
+          {/* ═══ மேல் வர்க்கங்கள் (Shodashavarga — D16/D20/D24/D27/D40/D45) ═══ */}
+          {advancedView==="shodashavarga" && d16Data && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:8,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                🕉 மேல் வர்க்க சக்கரங்கள் (Higher Divisional Charts)
+              </div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:10.5}}>
+                  <thead>
+                    <tr style={{borderBottom:"1.5px solid #d4a85340"}}>
+                      <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"left"}}>கிரகம்</th>
+                      <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>D16 வாகனம்</th>
+                      <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>D20 ஆன்மீகம்</th>
+                      <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>D24 கல்வி</th>
+                      <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>D27 பலம்</th>
+                      <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>D40 தாய்வழி</th>
+                      <th style={{padding:"5px 4px",color:"#b8860b",fontWeight:700,textAlign:"center"}}>D45 தந்தைவழி</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {d16Data.map((p,i) => (
+                      <tr key={i} style={{borderBottom:"1px solid #eee",background:i%2?"#fafafa":"transparent"}}>
+                        <td style={{padding:"6px 4px",color:"#1a1a1a",fontWeight:600}}>{p.ta}</td>
+                        <td style={{padding:"6px 4px",textAlign:"center",color:"#7b1c1c",fontWeight:600}}>{p.d16RashiName?.slice(0,4)}</td>
+                        <td style={{padding:"6px 4px",textAlign:"center",color:"#7b1c1c",fontWeight:600}}>{d20Data&&d20Data[i]?d20Data[i].d20RashiName?.slice(0,4):""}</td>
+                        <td style={{padding:"6px 4px",textAlign:"center",color:"#7b1c1c",fontWeight:600}}>{d24Data&&d24Data[i]?d24Data[i].d24RashiName?.slice(0,4):""}</td>
+                        <td style={{padding:"6px 4px",textAlign:"center",color:"#7b1c1c",fontWeight:600}}>{d27Data&&d27Data[i]?d27Data[i].d27RashiName?.slice(0,4):""}</td>
+                        <td style={{padding:"6px 4px",textAlign:"center",color:"#7b1c1c",fontWeight:600}}>{d40Data&&d40Data[i]?d40Data[i].d40RashiName?.slice(0,4):""}</td>
+                        <td style={{padding:"6px 4px",textAlign:"center",color:"#7b1c1c",fontWeight:600}}>{d45Data&&d45Data[i]?d45Data[i].d45RashiName?.slice(0,4):""}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{fontSize:9,color:"#777777",marginTop:8,lineHeight:1.6}}>
+                D16=வாகனம்/சுகபோகம் • D20=ஆன்மீகம்/வழிபாடு • D24=கல்வி/அறிவு • D27=பலம்/பலவீனம் • D40=தாய்வழி சுப/அசுபம் • D45=தந்தைவழி/நடத்தை — BPHS Parashari முறை. இவை ராசி (D1), நவாம்சம் (D9), தசாம்சம் (D10) உடன் சேர்ந்து முழு Shodashavarga (16 சக்கரம்) அமைப்பை நிறைவு செய்கின்றன.
               </div>
             </div>
           )}
