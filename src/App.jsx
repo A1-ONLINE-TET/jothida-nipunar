@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { MURUGAN_IMG } from "./murugan-b64.js";
 import { PLANET_IN_HOUSE, HOUSE_THEMES, LIFE_AREAS } from "./bhava-phalam.js";
+import { NAK_SPAN, subLordOf, drishtiVirupa, virupaGrade } from "./precision.js";
 import { analyzeKeyLifeAreas, analyzeFamilyHealthIndications } from "./deep-analysis.js";
 
 const NAKSHATRAS = [
@@ -3155,41 +3156,10 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
   const natalMoon = findP("சந்திரன்");
   const unifiedOf = (ta) => (unified || []).find(u => u.ta === ta) || null;
 
-  // ═══ ஸ்புட திருஷ்டி (BPHS Ch.26) — பார்வையின் அளவு 0-60 விருபா ═══
-  // ராசி-அளவு "யார் பார்க்கிறார்" என்பதுடன், டிகிரி இடைவெளிப்படி
-  // "எவ்வளவு வலுவாக" என்பதையும் அளக்கும் — முழு(60)/முக்கால்/அரை/கால்.
-  const drishtiVirupa = (fromLong, toLong, fromTa) => {
-    const a = (toLong - fromLong + 360) % 360;
-    // சிறப்புப் பார்வைகள் — முழு பலம் (சனி 3,10 • செவ்வாய் 4,8 • குரு 5,9)
-    if (fromTa === "சனி" && ((a >= 60 && a < 90) || (a >= 270 && a < 300))) return 60;
-    if (fromTa === "செவ்வாய்" && ((a >= 90 && a < 120) || (a >= 210 && a < 240))) return 60;
-    if (fromTa === "குரு" && ((a >= 120 && a < 150) || (a >= 240 && a < 270))) return 60;
-    if (a >= 30 && a < 60) return (a - 30) / 2;
-    if (a >= 60 && a < 90) return (a - 60) + 15;
-    if (a >= 90 && a < 120) return 30 + (120 - a) / 2;
-    if (a >= 120 && a < 150) return 150 - a;
-    if (a >= 150 && a < 180) return (a - 150) * 2;
-    if (a >= 180 && a <= 300) return (300 - a) / 2;
-    return 0;
-  };
-  const virupaGrade = (v) => v >= 45 ? "முழு" : v >= 30 ? "முக்கால்" : v >= 15 ? "அரை" : "கால்";
-
-  // ═══ KP உட்பிரிவு அதிபதி (Sub-lord) — நட்சத்திரத்துக்குள் விம்சோத்தரி
-  // விகிதப்படி 9 உட்பிரிவுகள். விதி: நட்சத்திராதிபதி "எந்த விஷயம்" என்று
-  // காட்டுவார்; உட்பிரிவு அதிபதி "நிறைவேறுமா" என்று முடிவு செய்வார். ═══
-  const NAK_SPAN = 360 / 27;
-  const subLordOf = (fullLong) => {
-    const nak = Math.floor(((fullLong % 360) + 360) % 360 / NAK_SPAN);
-    let pos = (((fullLong % 360) + 360) % 360) - nak * NAK_SPAN;
-    const startIdx = NAK_DASHA_MAP[nak];
-    for (let i = 0; i < 9; i++) {
-      const lord = DASHA_LORDS[(startIdx + i) % 9];
-      const span = (lord.years / 120) * NAK_SPAN;
-      if (pos < span) return lord.name;
-      pos -= span;
-    }
-    return DASHA_LORDS[startIdx].name;
-  };
+  // ஸ்புட திருஷ்டி (BPHS Ch.26), KP உட்பிரிவு அதிபதி — precision.js-இல்
+  // இருந்து இறக்குமதி (தூய functions; scripts/test-precision.mjs golden-test
+  // செய்கிறது — விதி: நட்சத்திராதிபதி "எதை" காட்டுவார், உட்பிரிவு அதிபதி
+  // "நிறைவேறுமா" என்று முடிப்பார்)
 
   // ═══ BAV பிந்து + கக்ஷ்யா (BPHS அஷ்டகவர்க்கம்) ═══
   // transit கிரகன் தன் சொந்த BAV-இல் பிந்துள்ள ராசியில் நடக்கும்போதே நல்ல
@@ -3270,7 +3240,16 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
   const dashaConfidence = (d, relatedSet, linkedHouses) => {
     const cur = dashaAt(d);
     if (!cur) return null;
-    const isRel = (ta) => !ta ? false : relatedSet.has(ta) || housesOwnedBy(ta, lagnaIdx).some(hh => linkedHouses.includes(hh));
+    // தொடர்பு: நேரடி (கிரகமே/ஆட்சி) அல்லது KP நட்சத்திர வழி — தசாநாதன்
+    // அமர்ந்த நட்சத்திரத்தின் அதிபதி இப்பாவங்களுடன் தொடர்புடையவரா
+    const direct = (ta) => !ta ? false : relatedSet.has(ta) || housesOwnedBy(ta, lagnaIdx).some(hh => linkedHouses.includes(hh));
+    const viaStar = (ta) => {
+      if (!ta) return false;
+      const pp = findP(ta);
+      const sl = pp && pp.nakIdx >= 0 ? getNakshatraLord(pp.nakIdx).name : null;
+      return sl ? direct(sl) : false;
+    };
+    const isRel = (ta) => direct(ta) || viaStar(ta);
     const mdRel = isRel(cur.md), adRel = isRel(cur.ad);
     const conf = mdRel && adRel ? "மிக உயர்" : adRel ? "உயர்" : mdRel ? "நடுத்தரம்" : "குறை";
     return { ...cur, mdRel, adRel, conf,
@@ -3323,6 +3302,51 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
       prev = diff;
     });
     return Math.max(1, passes);
+  };
+
+  // ═══ Trigger நாட்கள் — classical விதி: மந்த கிரகங்கள் (குரு/சனி/தசை)
+  // காலத்தை வாக்களிக்கும்; வேக கிரகங்கள் (சூரியன்/செவ்வாய்) அந்த நாளை trigger
+  // செய்யும். Window-க்குள் அவை ஜென்ம ஸ்புடத்தை கடக்கும் நாட்களை mean-motion
+  // அனுமானம் + உண்மை transit சரிபார்ப்பால் கணிக்கிறோம் (துல்லியம் ~±1-2 நாள்) ═══
+  const triggerDaysIn = (from, to, natalLong) => {
+    const out = [];
+    [["சூரியன்", 0.9856], ["செவ்வாய்", 0.524]].forEach(([tp, rate]) => {
+      const t0 = transitAt(from);
+      const p0 = t0?.placements.find(x => x.ta === tp);
+      if (!p0) return;
+      const gap = ((natalLong - p0.fullLong) + 360) % 360;
+      let d = new Date(from.getTime() + (gap / rate) * 86400000);
+      let guard = 0;
+      while (d <= to && guard++ < 14) {
+        const t1 = transitAt(d);
+        const p1 = t1?.placements.find(x => x.ta === tp);
+        if (p1) {
+          const diff = ((natalLong - p1.fullLong + 540) % 360) - 180;
+          d = new Date(d.getTime() + (diff / rate) * 86400000);
+          const t2 = transitAt(d);
+          const p2 = t2?.placements.find(x => x.ta === tp);
+          const fin = p2 ? Math.abs(((natalLong - p2.fullLong + 540) % 360) - 180) : 99;
+          // செவ்வாய் வக்ரத்தில் அனுமானம் பிசகலாம் — 3°-க்குள் இருந்தால் மட்டும் ஏற்பு
+          if (d >= from && d <= to && fin <= 3) out.push({ planet: tp, date: new Date(d) });
+        }
+        d = new Date(d.getTime() + (360 / rate) * 86400000);
+      }
+    });
+    return out.sort((a, b) => a.date - b.date).slice(0, 4);
+  };
+
+  // ராகு/கேது true-node அலைவால் துண்டுபடும் windows-ஐ இணை (gap < 35 நாள்)
+  const mergeWins = (wins, gapDays) => {
+    const out = [];
+    wins.forEach(w => {
+      const last = out[out.length - 1];
+      if (last && (w.from.getTime() - last.to.getTime()) < gapDays * 86400000) {
+        last.to = w.to;
+        last.mid = new Date((last.from.getTime() + last.to.getTime()) / 2);
+        last.label = `${fmtDay(last.from)} — ${fmtDay(last.to)}`;
+      } else out.push({ ...w });
+    });
+    return out;
   };
 
   const houses = [1,2,3,4,5,6,7,8,9,10,11,12].map(houseNum => {
@@ -3397,10 +3421,35 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
       const relatedSet = new Set([p.ta, ...(star ? [star.starLord] : [])]);
       const annotate = (tpName) => (w) => {
         const tMid = transitAt(w.mid);
+        // வேதை/கக்ஷ்யா — நடுப்புள்ளியில் மட்டுமல்ல, window முழுவதும் (10-நாள்
+        // grid-இன் ஏற்கனவே கணித்த புள்ளிகள் — புதிய கணிப்புச் சுமை இல்லை):
+        // வேக கிரகங்களால் வேதை window-க்குள் மாறும்; % ஆகக் காட்டுவதே நேர்மை
+        const inWin = samples.filter(s => s.d >= w.from && s.d <= w.to);
+        const vMid = vedhaCheck(tpName, tMid);
+        let vedha = vMid;
+        if (vMid && inWin.length >= 2) {
+          const vAll = inWin.map(s => vedhaCheck(tpName, s.t)).filter(Boolean);
+          const favN = vAll.filter(v => v.fav).length;
+          const cleanN = vAll.filter(v => v.fav && !v.vedha).length;
+          const favPct = Math.round(favN / vAll.length * 100);
+          const cleanPct = favN ? Math.round(cleanN / vAll.length * 100) : 0;
+          vedha = { ...vMid, favPct, cleanPct,
+            text: favPct === 0
+              ? `சந்திரனிலிருந்து இக்கால transit சாதக நிலையில் இல்லை — பாவ-activation மட்டுமே`
+              : `சாதக நாட்கள் ${favPct}% • அதில் வேதையில்லா சுத்த நாட்கள் ${cleanPct}%${cleanPct >= 60 ? " ✓" : cleanPct === 0 ? " — முழுக்க வேதை, பலன் தடைபடும்" : " — சுத்த நாட்களில் முயற்சி சிறக்கும்"}` };
+        }
+        const bMid = bavCheck(tpName, tMid);
+        let bav = bMid;
+        if (bMid && inWin.length >= 2) {
+          const bAll = inWin.map(s => bavCheck(tpName, s.t)).filter(Boolean);
+          const kPct = Math.round(bAll.filter(b => b.kBindu).length / bAll.length * 100);
+          bav = { ...bMid, kPct, text: `${bMid.text} • கக்ஷ்யா-பிந்து நாட்கள் ~${kPct}%` };
+        }
         return { ...w,
           dasha: dashaConfidence(w.mid, relatedSet, linkedHousesArr),
-          vedha: vedhaCheck(tpName, tMid),
-          bav: bavCheck(tpName, tMid) };
+          vedha, bav,
+          // Trigger நாட்கள் — சூரியன்/செவ்வாய் ஜென்ம ஸ்புடத்தை கடக்கும் குறிப்பிட்ட நாட்கள்
+          triggers: p.fullLong != null ? triggerDaysIn(w.from, w.to, p.fullLong).map(x => ({ planet: x.planet, label: fmtDay(x.date) })) : [] };
       };
       const jupWindows = windowsFor(t => t && t["குரு"] && targets.some(tg => planetHitsRashi("குரு", t["குரு"].rashiIdx, tg)), 3)
         .map(annotate("குரு"))
@@ -3409,9 +3458,21 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
           : `குரு அருள் transit — அசுப/கலப்பு இணைப்பின் சிக்கல் தணிந்து நல்முடிவு நோக்கி நகரும் காலம்` }));
       const satWindows = windowsFor(t => t && t["சனி"] && targets.some(tg => planetHitsRashi("சனி", t["சனி"].rashiIdx, tg)), 3)
         .map(annotate("சனி"))
-        .map(w => ({ ...w, text: isSubhaNature(satNature)
-          ? `சனி transit — உழைப்பு/பொறுப்பு வழியே இப்பலன் உறுதியாகும் காலம்`
-          : `சனி transit — தாமதம்/சோதனை; ${star && star.tone === "அசுபம்" ? "அசுப பலன் உணரப்படக்கூடிய" : "பலன் தாமதமாகக் கூடிய"} காலம் — பரிகாரம் பலன் தரும்` }));
+        .map(w => {
+          let text = isSubhaNature(satNature)
+            ? `சனி transit — உழைப்பு/பொறுப்பு வழியே இப்பலன் உறுதியாகும் காலம்`
+            : `சனி transit — தாமதம்/சோதனை; ${star && star.tone === "அசுபம்" ? "அசுப பலன் உணரப்படக்கூடிய" : "பலன் தாமதமாகக் கூடிய"} காலம் — பரிகாரம் பலன் தரும்`;
+          // ஏழரை சனி / அஷ்டம சனி மேற்பொருந்தல் — சந்திர ராசியிலிருந்து சனியின் நிலை
+          if (natalMoon) {
+            const satMid = transitAt(w.mid)?.["சனி"];
+            if (satMid) {
+              const dFromMoon = ((satMid.rashiIdx - natalMoon.rashiIdx + 12) % 12) + 1;
+              if ([12, 1, 2].includes(dFromMoon)) text += ` • ⚠ இக்காலம் ஏழரை சனிக்குள்ளும் (${dFromMoon === 12 ? "விரய" : dFromMoon === 1 ? "ஜன்ம" : "பாத"} சனி) அமைகிறது — பொறுமை/பரிகாரம் அவசியம்`;
+              else if (dFromMoon === 8) text += ` • ⚠ அஷ்டம சனி காலம் — கூடுதல் கவனம்`;
+            }
+          }
+          return { ...w, text };
+        });
 
       // அடுக்கு-2+3: நட்சத்திர-தொடுகை & டிகிரி-தொடுகை (குரு/சனி/ராகு/கேது)
       const touches = [];
@@ -3419,9 +3480,13 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
         const nakLo = p.nakIdx * NAK_SPAN, nakHi = nakLo + NAK_SPAN;
         const inNak = (L) => { const x = ((L % 360) + 360) % 360; return x >= nakLo && x < nakHi; };
         ["குரு", "சனி", "ராகு", "கேது"].forEach(tpName => {
-          windowsFor(t => t && t[tpName] && inNak(t[tpName].fullLong), 2).forEach(w => {
+          // ராகு/கேது true-node முன்-பின் அலைவால் windows துண்டுபடும் — 35-நாள்
+          // இடைவெளிக்குள் இருப்பவற்றை ஒரே பெயர்ச்சிக் காலமாக இணை
+          const rawWins = windowsFor(t => t && t[tpName] && inNak(t[tpName].fullLong), tpName === "ராகு" || tpName === "கேது" ? 5 : 2);
+          const wins = (tpName === "ராகு" || tpName === "கேது") ? mergeWins(rawWins, 35).slice(0, 2) : rawWins;
+          wins.forEach(w => {
             const passes = countPasses(tpName, p.fullLong, w.from, w.to);
-            touches.push({ planet: tpName, type: "நட்சத்திரம்", label: w.label, passes,
+            touches.push({ planet: tpName, type: "நட்சத்திரம்", label: w.label, from: w.from, to: w.to, passes,
               text: tpName === "ராகு" || tpName === "கேது"
                 ? `${tpName} ${p.nakshatraTa} நட்சத்திரத்தில் பெயர்ச்சி — ${p.ta} காரகங்களில் திடீர் மாற்றம்/trigger காலம்`
                 : `${tpName} ${p.ta}-இன் ஜென்ம நட்சத்திரத்தையே (${p.nakshatraTa}) கடக்கிறார் — மிகக் கூர்மையான activation${passes >= 3 ? `; ${passes}-கடப்பு (வக்ரத்துடன்) — இறுதி கடப்பில் பலன் நிறைவு` : ""}` });
@@ -3431,7 +3496,7 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
         ["குரு", "சனி"].forEach(tpName => {
           windowsFor(t => t && t[tpName] && angDiff(t[tpName].fullLong, p.fullLong) <= 1, 2).forEach(w => {
             const passes = countPasses(tpName, p.fullLong, w.from, w.to);
-            touches.push({ planet: tpName, type: "டிகிரி", label: w.label, passes,
+            touches.push({ planet: tpName, type: "டிகிரி", label: w.label, from: w.from, to: w.to, passes,
               text: `${tpName} ${p.ta}-இன் ஜென்ம ஸ்புடத்தை (±1°) நேரடியாகத் தொடுகிறார் — பலன் உச்சம் அடையும் நாட்கள்${passes >= 3 ? `; ${passes}-கடப்பு — இறுதி கடப்பே முடிவு தரும்` : ""}` });
           });
         });
@@ -3668,57 +3733,14 @@ function buildActivationWeights(topicKey, placements, lagnaIdx, functionalNat) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// பின்நோக்கு சரிபார்ப்பு (BACK-TEST) — World No.1 துல்லியத்தின் அடித்தளம்.
-// நடந்த நிகழ்வின் (திருமணம்/வேலை...) உண்மையான தேதியை உள்ளிட்டால்,
-// அன்று ஓடிய தசை-புக்தி + அன்றைய குரு/சனி கோசாரம் — engine-ன் அதே
-// விதிகளால் — அந்நாளை அடையாளம் காட்டியிருக்குமா என்று மதிப்பிடும்.
-// பொருந்தினால் விதிகள் சரி; பொருந்தாவிட்டால் அது விதி-மேம்பாட்டுத் தரவு.
+// ஜாதக வாக்குறுதி (EVENT PROMISE) — ஒரு கேள்விக்கு ஜாதகம் என்ன அளவு
+// வாக்களிக்கிறது (0-100). calcEventTiming (எதிர்காலம்) மற்றும் calcBacktest
+// (சரிபார்ப்பு) இரண்டும் இதே ஒரே கணிப்பைப் பயன்படுத்தும்.
 // ═══════════════════════════════════════════════════════════════════
-function calcBacktest(topicKey, eventDate, deps) {
-  const { horoscope, dashaData, functionalNat, geo, ayanamsaKey } = deps;
-  if (!horoscope || !dashaData?.dashas) return null;
-  const act = buildActivationWeights(topicKey, horoscope.placements, horoscope.lagna, functionalNat);
-  if (!act.topic) return null;
-  const { topic, weights, pRashiIdx, pLord } = act;
-  const reasons = [];
-  // 1. நிகழ்வு நாளில் ஓடிய தசை-புக்தி — activation எடை
-  const md = dashaData.dashas.find(d => eventDate >= d.startDate && eventDate < d.endDate);
-  const ad = md?.antardashas?.find(a => eventDate >= a.startDate && eventDate < a.endDate);
-  const mdW = md ? (weights[md.name]?.w || 0) : 0;
-  const adW = ad ? (weights[ad.name]?.w || 0) : 0;
-  let score = mdW + adW * 1.6;
-  if (md) reasons.push(mdW > 0
-    ? `நிகழ்வு நாளில் ${md.name} தசை — activation எடை ${Math.round(mdW*10)/10} (${weights[md.name].why.join(", ")})`
-    : `நிகழ்வு நாளில் ${md.name} தசை — இக்கேள்வியுடன் நேரடித் தொடர்பில்லை`);
-  if (ad) reasons.push(adW > 0
-    ? `${ad.name} புக்தி — எடை ${Math.round(adW*10)/10} (${weights[ad.name].why.join(", ")})`
-    : `${ad.name} புக்தி — தொடர்பில்லை`);
-  if (mdW > 0 && adW > 0) { score += 1; reasons.push("தசை + புக்தி இரண்டும் தொடர்புடையவை — engine இதை வலுவான window ஆகக் கொடுத்திருக்கும்"); }
-  // 2. அன்றைய குரு/சனி கோசாரம் — primary வீடு/அதிபதி தொடுகை
-  try {
-    const iso = `${eventDate.getFullYear()}-${String(eventDate.getMonth()+1).padStart(2,'0')}-${String(eventDate.getDate()).padStart(2,'0')}`;
-    const th = generateHoroscope(iso, "12:00", geo.lat, geo.lon, true, ayanamsaKey);
-    const tJup = th.placements.find(x => x.ta === "குரு"), tSat = th.placements.find(x => x.ta === "சனி");
-    const targets = [pRashiIdx, pLord ? pLord.rashiIdx : pRashiIdx];
-    const jupHit = tJup && targets.some(tg => planetHitsRashi("குரு", tJup.rashiIdx, tg));
-    const satHit = tSat && targets.some(tg => planetHitsRashi("சனி", tSat.rashiIdx, tg));
-    if (jupHit && satHit) { score += 2; reasons.push(`அன்று குரு (${tJup.rashi}) + சனி (${tSat.rashi}) இருவரும் ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடுகின்றனர் — இரட்டை transit ✓`); }
-    else if (jupHit) { score += 1; reasons.push(`அன்று குரு (${tJup.rashi}) ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடுகிறார் ✓`); }
-    else if (satHit) { score += 0.5; reasons.push(`அன்று சனி (${tSat.rashi}) ${topic.primary}ஆம் வீடு/அதிபதி தொடர்பில்`); }
-    else reasons.push("அன்று குரு/சனி இருவரும் நேரடித் தொடர்பில் இல்லை");
-  } catch (e) { /* transit கணிப்பு தோல்வி — தசை score மட்டும் */ }
-  score = Math.round(score * 10) / 10;
-  const hit = score >= 7 ? "உயர்" : score >= 4.5 ? "நடுத்தரம்" : "குறை";
-  const verdict = hit === "உயர்" ? "✅ Engine இக்காலத்தை வலுவான window ஆக முன்கூட்டியே காட்டியிருக்கும்"
-    : hit === "நடுத்தரம்" ? "🟡 ஓரளவு அடையாளம் — காலம் தொடர்புடையதே, ஆனால் மேலும் கூர்மை தேவை"
-    : "❌ Engine விதிகள் இந்நிகழ்வைப் பிடிக்கவில்லை — இதுவே விதி மேம்பாட்டுக்கான மதிப்புமிக்க தரவு";
-  return { topic: topic.ta, icon: topic.icon, score, hit, verdict, reasons, md: md?.name || "—", ad: ad?.name || "—" };
-}
-
-function calcEventTiming(topicKey, deps) {
-  const { horoscope, dashaData, shadBala, functionalNat, planetCtx, chevvai, navStrength, geo, ayanamsaKey, dobISO, ashtakavarga, avasthas } = deps;
+function calcEventPromise(topicKey, deps) {
+  const { horoscope, shadBala, functionalNat, planetCtx, chevvai, navStrength, ashtakavarga, avasthas } = deps;
   const topic = EVENT_TOPICS[topicKey];
-  if (!topic || !horoscope || !dashaData) return null;
+  if (!topic || !horoscope) return { promise: 50, pReasons: [], promiseVerdict: "" };
   const lagnaIdx = horoscope.lagna;
   const placements = horoscope.placements;
   const houseRashi = (h) => (lagnaIdx + h - 1) % 12;
@@ -3729,7 +3751,6 @@ function calcEventTiming(topicKey, deps) {
   const natureOf = (ta) => functionalNat?.[ta]?.nature || "சமம்";
   const ctxOf = (ta) => (planetCtx || []).find(c => c.ta === ta);
 
-  // ═══ 1. வாக்குறுதி (PROMISE) ═══
   const pReasons = [];
   let promise = 50;
   const pLordName = lordOf(topic.primary);
@@ -3778,13 +3799,13 @@ function calcEventTiming(topicKey, deps) {
     if (dig === "உச்சம்" || dig === "சொந்தம்") { promise += 5; pReasons.push(`+ காரகன் ${k} ${dig}`); }
     else if (dig === "நீசம்") { promise -= 5; pReasons.push(`− காரகன் ${k} நீசம்`); }
   });
-  // சர்வாஷ்டகவர்க்கம் — primary வீட்டு ராசியின் SAV பிந்து (இணைப்பு அடுக்கு)
+  // சர்வாஷ்டகவர்க்கம் — primary வீட்டு ராசியின் SAV பிந்து
   const pSav = ashtakavarga?.sav?.[pRashiIdx];
   if (pSav != null) {
     if (pSav >= 30) { promise += 8; pReasons.push(`+ ${topic.primary}ஆம் வீட்டு ராசியில் SAV ${pSav} பிந்து (≥30) — அஷ்டகவர்க்க ஆதரவு வலு`); }
     else if (pSav <= 24) { promise -= 8; pReasons.push(`− ${topic.primary}ஆம் வீட்டு ராசியில் SAV ${pSav} பிந்து (≤24) — அஷ்டகவர்க்க ஆதரவு குறைவு`); }
   }
-  // அதிபதியின் அவஸ்தை — BPHS 45: பலன் தீவிர அளவு (இணைப்பு அடுக்கு)
+  // அதிபதியின் அவஸ்தை — BPHS 45
   const pAv = (avasthas || []).find(a => a.ta === pLordName);
   if (pAv) {
     if (pAv.baladi.pct >= 100) { promise += 5; pReasons.push(`+ அதிபதி ${pLordName} ${pAv.baladi.name} — முழு பலன் தரும் நிலை`); }
@@ -3796,6 +3817,121 @@ function calcEventTiming(topicKey, deps) {
   }
   promise = Math.max(5, Math.min(95, Math.round(promise)));
   const promiseVerdict = promise >= 65 ? "வலுவான வாக்குறுதி" : promise >= 45 ? "நடுத்தர வாக்குறுதி" : "பலவீன வாக்குறுதி — தாமதம்/பரிகாரத்துடன்";
+  return { promise, pReasons, promiseVerdict };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// பின்நோக்கு சரிபார்ப்பு (BACK-TEST) — World No.1 துல்லியத்தின் அடித்தளம்.
+// நடந்த நிகழ்வின் (திருமணம்/வேலை...) உண்மையான தேதியை உள்ளிட்டால்,
+// அன்று ஓடிய தசை-புக்தி + அன்றைய குரு/சனி கோசாரம் — engine-ன் அதே
+// விதிகளால் — அந்நாளை அடையாளம் காட்டியிருக்குமா என்று மதிப்பிடும்.
+// பொருந்தினால் விதிகள் சரி; பொருந்தாவிட்டால் அது விதி-மேம்பாட்டுத் தரவு.
+// ═══════════════════════════════════════════════════════════════════
+function calcBacktest(topicKey, eventDate, deps) {
+  const { horoscope, dashaData, functionalNat, geo, ayanamsaKey, dobISO } = deps;
+  if (!horoscope || !dashaData?.dashas) return null;
+  const act = buildActivationWeights(topicKey, horoscope.placements, horoscope.lagna, functionalNat);
+  if (!act.topic) return null;
+  const { topic, weights, pRashiIdx, pLord } = act;
+
+  // ஒரே scoring — நிகழ்வு தேதிக்கும் ஒப்பீட்டு (control) தேதிகளுக்கும் இதே விதி.
+  // collect=true எனில் காரண விவரங்களும் திரட்டப்படும் (நிகழ்வு தேதிக்கு மட்டும்).
+  const scoreDate = (d, collect) => {
+    const reasons = collect ? [] : null;
+    const md = dashaData.dashas.find(x => d >= x.startDate && d < x.endDate);
+    const ad = md?.antardashas?.find(x => d >= x.startDate && d < x.endDate);
+    const mdW = md ? (weights[md.name]?.w || 0) : 0;
+    const adW = ad ? (weights[ad.name]?.w || 0) : 0;
+    let dScore = mdW + adW * 1.6;
+    if (collect) {
+      if (md) reasons.push(mdW > 0
+        ? `நிகழ்வு நாளில் ${md.name} தசை — activation எடை ${Math.round(mdW*10)/10} (${weights[md.name].why.join(", ")})`
+        : `நிகழ்வு நாளில் ${md.name} தசை — இக்கேள்வியுடன் நேரடித் தொடர்பில்லை`);
+      if (ad) reasons.push(adW > 0
+        ? `${ad.name} புக்தி — எடை ${Math.round(adW*10)/10} (${weights[ad.name].why.join(", ")})`
+        : `${ad.name} புக்தி — தொடர்பில்லை`);
+    }
+    if (mdW > 0 && adW > 0) { dScore += 1; if (collect) reasons.push("தசை + புக்தி இரண்டும் தொடர்புடையவை — engine இதை வலுவான window ஆகக் கொடுத்திருக்கும்"); }
+    let tScore = 0;
+    try {
+      const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const th = generateHoroscope(iso, "12:00", geo.lat, geo.lon, true, ayanamsaKey);
+      const tJup = th.placements.find(x => x.ta === "குரு"), tSat = th.placements.find(x => x.ta === "சனி");
+      const targets = [pRashiIdx, pLord ? pLord.rashiIdx : pRashiIdx];
+      const jupHit = tJup && targets.some(tg => planetHitsRashi("குரு", tJup.rashiIdx, tg));
+      const satHit = tSat && targets.some(tg => planetHitsRashi("சனி", tSat.rashiIdx, tg));
+      if (jupHit && satHit) { tScore = 2; if (collect) reasons.push(`அன்று குரு (${tJup.rashi}) + சனி (${tSat.rashi}) இருவரும் ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடுகின்றனர் — இரட்டை transit ✓`); }
+      else if (jupHit) { tScore = 1; if (collect) reasons.push(`அன்று குரு (${tJup.rashi}) ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடுகிறார் ✓`); }
+      else if (satHit) { tScore = 0.5; if (collect) reasons.push(`அன்று சனி (${tSat.rashi}) ${topic.primary}ஆம் வீடு/அதிபதி தொடர்பில்`); }
+      else if (collect) reasons.push("அன்று குரு/சனி இருவரும் நேரடித் தொடர்பில் இல்லை");
+    } catch (e) { /* transit கணிப்பு தோல்வி — தசை score மட்டும் */ }
+    return { score: Math.round((dScore + tScore) * 10) / 10, dScore: Math.round(dScore*10)/10, tScore, reasons,
+      md: md?.name || "—", ad: ad?.name || "—" };
+  };
+
+  const ev = scoreDate(eventDate, true);
+
+  // ═══ ஒப்பீட்டு-தேதி percentile — அறிவியல் நேர்மையின் மையம் ═══
+  // நிகழ்வு தேதி மட்டும் அதிக score பெற்றால் போதாது — வாழ்நாளின் சீரிடை
+  // 48 தேதிகளுடன் ஒப்பிட்டு "எல்லா நாட்களிலும் top X%" என்று நிரூபிக்க வேண்டும்.
+  // சீரிடை (deterministic) தேதிகள் — random அல்ல, எனவே மீண்டும் ஓட்டினாலும் அதே முடிவு.
+  const percentile = (() => {
+    let startD;
+    if (dobISO) { const [by, bm, bd] = dobISO.split('-').map(Number); startD = new Date(by + (topic.minAge || 15), bm - 1, bd); }
+    else startD = new Date(eventDate.getFullYear() - 15, 0, 1);
+    const endD = new Date();
+    if (startD >= endD) return null;
+    const N = 48;
+    const step = (endD.getTime() - startD.getTime()) / N;
+    const controls = [];
+    for (let i = 0; i < N; i++) {
+      const cd = new Date(startD.getTime() + step * (i + 0.5));
+      controls.push(scoreDate(cd, false).score);
+    }
+    const below = controls.filter(s => s < ev.score).length;
+    const equal = controls.filter(s => s === ev.score).length;
+    const beatPct = Math.round(((below + equal / 2) / N) * 100);
+    const sorted = [...controls].sort((a, b) => a - b);
+    return { n: N, beatPct, topPct: 100 - beatPct, median: sorted[Math.floor(N / 2)], max: sorted[N - 1] };
+  })();
+
+  // ═══ ஜாதக வாக்குறுதி — காலம் சரியாக இருந்தும் வாக்குறுதி பலவீனமெனில்
+  // அது engine-தவறு அல்ல; அந்தச் சூழலை வெளிப்படையாகக் காட்டு ═══
+  const promiseR = calcEventPromise(topicKey, deps);
+
+  const hit = ev.score >= 7 ? "உயர்" : ev.score >= 4.5 ? "நடுத்தரம்" : "குறை";
+  let verdict = hit === "உயர்" ? "✅ Engine இக்காலத்தை வலுவான window ஆக முன்கூட்டியே காட்டியிருக்கும்"
+    : hit === "நடுத்தரம்" ? "🟡 ஓரளவு அடையாளம் — காலம் தொடர்புடையதே, ஆனால் மேலும் கூர்மை தேவை"
+    : "❌ Engine விதிகள் இந்நிகழ்வைப் பிடிக்கவில்லை — இதுவே விதி மேம்பாட்டுக்கான மதிப்புமிக்க தரவு";
+  if (percentile && percentile.topPct <= 10 && hit !== "குறை") verdict += ` — வாழ்நாள் ஒப்பீட்டில் top ${percentile.topPct}% நாள் ★`;
+
+  return { topic: topic.ta, icon: topic.icon, score: ev.score, dScore: ev.dScore, tScore: ev.tScore,
+    hit, verdict, reasons: ev.reasons, md: ev.md, ad: ev.ad, percentile,
+    promise: promiseR.promise, promiseVerdict: promiseR.promiseVerdict,
+    promiseNote: hit === "குறை" && promiseR.promise < 45
+      ? `குறிப்பு: இக்கேள்விக்கு ஜாதக வாக்குறுதியே ${promiseR.promise}/100 (பலவீனம்) — miss என்பது காலவிதி-தவறு மட்டுமல்ல, வாக்குறுதிச் சூழலும் சேர்ந்த முடிவு`
+      : null };
+}
+
+function calcEventTiming(topicKey, deps) {
+  const { horoscope, dashaData, shadBala, functionalNat, planetCtx, chevvai, navStrength, geo, ayanamsaKey, dobISO, ashtakavarga, avasthas } = deps;
+  const topic = EVENT_TOPICS[topicKey];
+  if (!topic || !horoscope || !dashaData) return null;
+  const lagnaIdx = horoscope.lagna;
+  const placements = horoscope.placements;
+  const houseRashi = (h) => (lagnaIdx + h - 1) % 12;
+  const houseOf = (p) => ((p.rashiIdx - lagnaIdx + 12) % 12) + 1;
+  const lordOf = (h) => RASHI_LORD_NAME[houseRashi(h)];
+  const findP = (ta) => placements.find(p => p.ta === ta);
+  const sbOf = (ta) => (shadBala || []).find(s => s.ta === ta);
+  const natureOf = (ta) => functionalNat?.[ta]?.nature || "சமம்";
+  const ctxOf = (ta) => (planetCtx || []).find(c => c.ta === ta);
+
+  // ═══ 1. வாக்குறுதி (PROMISE) — பொது engine வழி (backtest-உம் இதையே பயன்படுத்தும்) ═══
+  const pLordName = lordOf(topic.primary);
+  const pLord = findP(pLordName);
+  const pRashiIdx = houseRashi(topic.primary);
+  const { promise, pReasons, promiseVerdict } = calcEventPromise(topicKey, deps);
 
   // ═══ 2. ACTIVATION கிரகங்கள் + எடைகள் — பொது builder வழி
   //     (இதே எடைகளை back-test engine-ும் பயன்படுத்துகிறது: எதிர்காலக்
@@ -5875,11 +6011,19 @@ export default function AstrologyApp() {
     const [dd, mm, yy] = btDateStr.split('.').map(Number);
     const eventDate = new Date(yy, mm - 1, dd);
     const geoB = resolveBirthGeo(formData);
-    const res = calcBacktest(btTopic, eventDate, { horoscope, dashaData, functionalNat: functionalNature, geo: geoB, ayanamsaKey });
+    const res = calcBacktest(btTopic, eventDate, {
+      horoscope, dashaData, functionalNat: functionalNature, geo: geoB, ayanamsaKey,
+      // வாக்குறுதி கணிப்புக்கான முழு deps — எதிர்கால engine-உடன் ஒரே விதி
+      shadBala, planetCtx: planetContext, navStrength: navamsaStrength, chevvai: chevvaiDosham,
+      ashtakavarga: ashtakavargaData, avasthas: avasthasData,
+      dobISO: parseDDMMYYYY(formData.dob)
+    });
     if (!res) return;
     setBtResult(res);
     setBacktests(prev => {
-      const next = [{ id: Date.now(), chart: `${formData.name} (${formData.dob})`, topic: res.topic, icon: res.icon, dateStr: btDateStr, score: res.score, hit: res.hit }, ...prev].slice(0, 100);
+      const next = [{ id: Date.now(), chart: `${formData.name} (${formData.dob})`, topic: res.topic, icon: res.icon, dateStr: btDateStr,
+        score: res.score, hit: res.hit, dScore: res.dScore, tScore: res.tScore,
+        topPct: res.percentile ? res.percentile.topPct : null }, ...prev].slice(0, 100);
       persistBacktests(next);
       return next;
     });
@@ -7076,7 +7220,7 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
               <b>${oc.symbol} ${oc.ta}</b>${oc.star?` — ${oc.star.nak}${oc.star.pada?`-${oc.star.pada}`:""} (அதிபதி: ${oc.star.starLord})`:""} <span style="float:right;font-weight:700;color:${vColor}">${oc.verdict}</span>
               ${oc.star?`<div style="background:#eef0fa;border:1px solid #c5cae9;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:9.5px;line-height:1.7">🔗 <b>பாவகத் தொடர்பு:</b> ${oc.star.text}${oc.linkPower&&oc.linkPower.star!=null?`<br>⚡ <b>செயல்திறன்:</b> ${oc.ta} ${oc.linkPower.self??"—"}/100 • நட்சத்திராதிபதி ${oc.star.starLord} ${oc.linkPower.star}/100`:""}${oc.kp?`<br>🎯 ${oc.kp.text}`:""}${oc.bhavaPos?`<br>🏠 ${oc.bhavaPos.text}`:""}</div>`:""}
               ${oc.aspects.length?`<div style="background:#fdf6e6;border:1px solid #e8d5a0;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:9.5px;line-height:1.7"><b>👁 பார்வைகள் (ஸ்புட திருஷ்டி அளவுடன்):</b> ${oc.aspects.map(a=>`<span style="color:${a.tone==="சுபம்"?"#1b5e20":a.tone==="அசுபம்"?"#a02020":"#8a6d00"}">${a.from} (${a.nature}${a.isSpecial?", சிறப்பு":""}${a.virupa!=null?` • ${a.virupa}/60 ${a.grade}`:""}) — ${a.text}</span>`).join("<br>")}</div>`:`<div style="font-size:9px;color:#888;margin:3px 0">👁 பார்வை இல்லை — தன் இயல்பிலேயே பலன்</div>`}
-              ${(oc.jupWindows.length||oc.satWindows.length)?`<div style="background:#edf5ea;border:1px solid #c5dcc0;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:9.5px;line-height:1.7"><b style="color:#33691e">📅 கோசார பலன் காலங்கள் (நாள்-அளவு):</b><br>${[...oc.jupWindows.map(w=>({...w,sym:"♃",col:"#1b5e20"})),...oc.satWindows.map(w=>({...w,sym:"♄",col:"#7a5200"}))].map(w=>`<span style="color:${w.col}">${w.sym} <b>${w.label}</b> — ${w.text}</span>${w.dasha?`<br><span style="font-size:8.5px">⏳ தசை-இணைவு [${w.dasha.conf}]: ${w.dasha.text}</span>`:""}${w.vedha?`<br><span style="font-size:8.5px;color:${w.vedha.vedha?"#a02020":"#33691e"}">🛡 ${w.vedha.text}</span>`:""}${w.bav?`<br><span style="font-size:8.5px;color:#5a4a20">🔢 ${w.bav.text}</span>`:""}`).join("<br>")}</div>`:""}
+              ${(oc.jupWindows.length||oc.satWindows.length)?`<div style="background:#edf5ea;border:1px solid #c5dcc0;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:9.5px;line-height:1.7"><b style="color:#33691e">📅 கோசார பலன் காலங்கள் (நாள்-அளவு):</b><br>${[...oc.jupWindows.map(w=>({...w,sym:"♃",col:"#1b5e20"})),...oc.satWindows.map(w=>({...w,sym:"♄",col:"#7a5200"}))].map(w=>`<span style="color:${w.col}">${w.sym} <b>${w.label}</b> — ${w.text}</span>${w.dasha?`<br><span style="font-size:8.5px">⏳ தசை-இணைவு [${w.dasha.conf}]: ${w.dasha.text}</span>`:""}${w.vedha?`<br><span style="font-size:8.5px;color:${w.vedha.vedha?"#a02020":"#33691e"}">🛡 ${w.vedha.text}</span>`:""}${w.bav?`<br><span style="font-size:8.5px;color:#5a4a20">🔢 ${w.bav.text}</span>`:""}${w.triggers&&w.triggers.length?`<br><span style="font-size:8.5px;color:#7b1c1c;font-weight:700">⚡ Trigger நாட்கள்: ${w.triggers.map(tg=>`${tg.planet==="சூரியன்"?"☉":"♂"} ${tg.label}`).join(" • ")} (±1-2 நாள்)</span>`:""}`).join("<br>")}</div>`:""}
               ${oc.touches&&oc.touches.length?`<div style="background:#eef0fa;border:1px solid #c5cae9;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:9px;line-height:1.7"><b style="color:#303f9f">🎯 கூர்மையான தொடுகைகள் (நட்சத்திரம் / ஸ்புடம் ±1°):</b><br>${oc.touches.map(tc=>`<span style="color:${tc.type==="டிகிரி"?"#7b1c1c":"#303f9f"}">${tc.type==="டிகிரி"?"🔥":"⭐"} <b>${tc.label}</b> — ${tc.text}</span>`).join("<br>")}</div>`:""}
               ${oc.remedies.length?`<div style="background:#fdeef0;border:1px solid #eabfc7;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:9.5px;line-height:1.7"><b style="color:#a02020">🙏 பரிகாரம்:</b><br>${oc.remedies.map(r=>`<b>${r.planet} கிரக பரிகாரம்</b> <i style="font-size:8.5px;color:#8a5a30">(எதற்காக: ${r.why})</i><br>📿 ${r.mantra} — ${r.count} • 🛕 ${r.temple}<br>🎁 ${r.day} அன்று ${r.donate} தானம் • 💎 ${r.gem}`).join("<br>")}</div>`:`<div style="font-size:8.5px;color:#33691e;margin:3px 0">🙏 பரிகாரம் தேவையில்லை — இணைப்பும் பார்வைகளும் சுபம்</div>`}
             </div>`;
@@ -7402,9 +7546,39 @@ ${aiPart}
                 // நட்சத்திர-பாவக இணைப்பு — முதல் தேர்விலேயே கணி (12 ஆண்டு transit sampling)
                 if (v === "nakbhava" && !nakBhavaData && horoscope && functionalNature) {
                   const geoNB = resolveBirthGeo(formData);
-                  setNakBhavaData(calcNakshatraBhavaLinks(horoscope.placements, horoscope.lagna, functionalNature, geoNB, ayanamsaKey,
+                  const nb = calcNakshatraBhavaLinks(horoscope.placements, horoscope.lagna, functionalNature, geoNB, ayanamsaKey,
                     // துல்லிய அடுக்குகள்: தசை×கோசாரம், இணைப்புப் பலம், BAV/கக்ஷ்யா, பாவ சந்தி
-                    { dashaData, unified: unifiedStrength, ashtakavarga: ashtakavargaData, lagnaFullLong: horoscope.lagnaFullLong }));
+                    { dashaData, unified: unifiedStrength, ashtakavarga: ashtakavargaData, lagnaFullLong: horoscope.lagnaFullLong });
+                  setNakBhavaData(nb);
+                  // டிகிரி-தொடுகை (±1°) தேதிகளை Swiss Ephemeris backend-ஆல் மறு-உறுதி —
+                  // local engine-இல் குரு/சனிக்கு ~0.05-0.1° பிழை சாத்தியம் → சனிக்கு ~3 நாள்
+                  // நகரலாம்; சில புள்ளிகள் மட்டுமே என்பதால் backend-ஐ இங்கு மட்டும் அழைக்கிறோம்
+                  (async () => {
+                    let changed = false;
+                    for (const hs of nb.houses) {
+                      if (hs.isEmpty) continue;
+                      for (const oc of hs.occupants) {
+                        for (const tc of (oc.touches || [])) {
+                          if (tc.type !== "டிகிரி" || !tc.from) continue;
+                          try {
+                            const midD = new Date((tc.from.getTime() + tc.to.getTime()) / 2);
+                            const sw = await fetchTransitFromBackend(midD, geoNB.lat, geoNB.lon);
+                            const swp = sw?.placements?.find(x => x.ta === tc.planet);
+                            if (!swp) continue;
+                            const swLong = swp.fullLong != null ? swp.fullLong : swp.rashiIdx * 30 + (swp.degExact || 0);
+                            const isoM = `${midD.getFullYear()}-${String(midD.getMonth()+1).padStart(2,'0')}-${String(midD.getDate()).padStart(2,'0')}`;
+                            const lp = generateHoroscope(isoM, "12:00", geoNB.lat, geoNB.lon, true, ayanamsaKey).placements.find(x => x.ta === tc.planet);
+                            if (!lp) continue;
+                            const dDeg = ((swLong - lp.fullLong + 540) % 360) - 180;
+                            const shift = Math.round(dDeg / (tc.planet === "குரு" ? 0.083 : 0.034));
+                            tc.swissNote = Math.abs(shift) <= 1 ? "Swiss Ephemeris ✓ சரிபார்க்கப்பட்டது" : `Swiss சரிபார்ப்பு: ~${shift > 0 ? "+" : ""}${shift} நாள் திருத்தம்`;
+                            changed = true;
+                          } catch (e) { /* backend தூங்கினால் — local மதிப்பே நிற்கும் */ }
+                        }
+                      }
+                    }
+                    if (changed) setNakBhavaData(prev => prev === nb ? { ...nb, houses: [...nb.houses] } : prev);
+                  })();
                 }
               }}
               style={{
@@ -8669,6 +8843,13 @@ ${aiPart}
                                   🔢 {w.bav.text}
                                 </div>
                               )}
+                              {w.triggers && w.triggers.length > 0 && (
+                                <div style={{fontSize:8.5,lineHeight:1.6,color:"#7b1c1c",fontWeight:600}}>
+                                  ⚡ Trigger நாட்கள் (வேக கிரகம் ஜென்ம ஸ்புடம் தொடும்): {w.triggers.map((tg,tgi)=>(
+                                    <span key={tgi}>{tgi>0 && " • "}{tg.planet==="சூரியன்"?"☉":"♂"} {tg.label}</span>
+                                  ))} — இந்நாட்களில் நிகழ்வு வாய்ப்பு உச்சம் (±1-2 நாள்)
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -8680,6 +8861,7 @@ ${aiPart}
                           {oc.touches.map((tc,ti)=>(
                             <div key={ti} style={{fontSize:8.5,lineHeight:1.65,color:tc.type==="டிகிரி"?"#7b1c1c":"#303f9f",marginBottom:2}}>
                               {tc.type==="டிகிரி"?"🔥":"⭐"} <b>{tc.label}</b> — {tc.text}
+                              {tc.swissNote && <b style={{color:"#00695c"}}> [{tc.swissNote}]</b>}
                             </div>
                           ))}
                         </div>
@@ -8761,7 +8943,24 @@ ${aiPart}
                   </div>
                   <div style={{fontSize:10,color:"#555",marginBottom:4}}>
                     {btResult.icon} {btResult.topic} • {btDateStr} • {btResult.md} தசை / {btResult.ad} புக்தி • மதிப்பெண்: <b>{btResult.score}</b> ({btResult.hit})
+                    <span style={{color:"#888"}}> — தசைப் பங்கு {btResult.dScore} + transit பங்கு {btResult.tScore}</span>
                   </div>
+                  {/* Percentile — அறிவியல் ஒப்பீடு: நிகழ்வு நாள் vs வாழ்நாள் சீரிடை நாட்கள் */}
+                  {btResult.percentile && (
+                    <div style={{fontSize:10,fontWeight:700,marginBottom:4,padding:"5px 8px",borderRadius:6,
+                      background:btResult.percentile.topPct<=10?"#dcfce7":btResult.percentile.topPct<=30?"#fef9c3":"#fee2e2",
+                      color:btResult.percentile.topPct<=10?"#1b5e20":btResult.percentile.topPct<=30?"#7a5200":"#cc1a1a"}}>
+                      📊 அறிவியல் ஒப்பீடு: இந்நாளின் activation, வாழ்நாளின் {btResult.percentile.n} சீரிடை நாட்களுடன் ஒப்பிட்டதில் <b>top {btResult.percentile.topPct}%</b>
+                      <span style={{fontWeight:400}}> (சராசரி நாள் score {btResult.percentile.median}, அதிகபட்சம் {btResult.percentile.max} — உங்கள் நாள் {btResult.score})</span>
+                    </div>
+                  )}
+                  {/* ஜாதக வாக்குறுதி சூழல் */}
+                  <div style={{fontSize:9.5,color:"#6b5a13",marginBottom:4}}>
+                    🔮 இக்கேள்விக்கான ஜாதக வாக்குறுதி: <b>{btResult.promise}/100</b> ({btResult.promiseVerdict})
+                  </div>
+                  {btResult.promiseNote && (
+                    <div style={{fontSize:9,color:"#8a5a30",fontStyle:"italic",marginBottom:4}}>{btResult.promiseNote}</div>
+                  )}
                   {btResult.reasons.map((r,ri)=>(
                     <div key={ri} style={{fontSize:9.5,lineHeight:1.65,color:"#4a3a20"}}>• {r}</div>
                   ))}
@@ -8771,11 +8970,24 @@ ${aiPart}
               {backtests.length > 0 && (()=>{
                 const matched = backtests.filter(b=>b.hit!=="குறை").length;
                 const pct = Math.round(matched/backtests.length*100);
+                // தவறு-பகுப்பாய்வு: miss-களில் எந்தப் பகுதி (தசை / transit) தவறியது —
+                // இதுவே எந்த விதியை fine-tune செய்ய வேண்டும் என்பதன் நேரடி feedback
+                const misses = backtests.filter(b=>b.hit==="குறை" && b.dScore!=null);
+                const dashaMiss = misses.filter(b=>b.dScore<=1).length;
+                const transitMiss = misses.filter(b=>b.tScore===0).length;
+                const withPct = backtests.filter(b=>b.topPct!=null);
+                const avgTop = withPct.length ? Math.round(withPct.reduce((s,b)=>s+b.topPct,0)/withPct.length) : null;
                 return (
                   <div style={{padding:"8px 10px",background:"#f0e8d0",borderRadius:8,marginBottom:8}}>
                     <div style={{fontSize:11,fontWeight:700,color:"#7b1c1c"}}>
                       📊 மொத்த துல்லியம்: {backtests.length} நிகழ்வுகளில் {matched} பொருத்தம் — <span style={{color:pct>=70?"#1b5e20":pct>=50?"#8a6d00":"#cc1a1a"}}>{pct}%</span>
+                      {avgTop!=null && <span style={{fontWeight:600,color:"#5a4a20"}}> • சராசரி percentile: top {avgTop}%</span>}
                     </div>
+                    {misses.length > 0 && (
+                      <div style={{fontSize:9,color:"#a03a00",marginTop:2}}>
+                        🔍 தவறு-பகுப்பாய்வு: {misses.length} miss-இல் — தசை-தொடர்பின்மை {dashaMiss}, transit-இன்மை {transitMiss} (எந்த விதியை மேம்படுத்த வேண்டும் என்பதன் நேரடி feedback)
+                      </div>
+                    )}
                     <div style={{fontSize:8.5,color:"#8b6914",marginTop:2}}>பல ஜாதகங்களில் பல நிகழ்வுகளை சோதிக்க சோதிக்க இந்த அளவீடு நம்பகமாகும் — இதுவே உலகத்தர சான்று</div>
                   </div>
                 );
