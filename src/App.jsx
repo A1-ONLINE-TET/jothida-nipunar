@@ -5297,6 +5297,24 @@ function isValidDDMMYYYY(str) {
   return !isNaN(d.getTime()) && d.getFullYear() >= 1900 && d.getFullYear() <= 2100;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// சேமித்த ஜாதகங்கள் (SAVED PROFILES) — localStorage-இல் பிறப்பு விவரங்கள்.
+// ஜாதகம் உருவாக்கும்போது தானாக சேமிக்கப்படும்; அடுத்த முறை ஒரே தட்டில்
+// மீண்டும் திறக்கலாம் (குடும்பம் முழுவதற்கும் — 20 வரை).
+// localStorage private-mode/blocked நிலைகளில் throw ஆகலாம் — எல்லா
+// அணுகலும் try/catch-இல்; கிடைக்காவிட்டால் வசதி மட்டும் மறையும், app இயங்கும்.
+// ═══════════════════════════════════════════════════════════════════
+const PROFILES_KEY = "jn_profiles_v1";
+function loadProfiles() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(PROFILES_KEY) || "[]");
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) { return []; }
+}
+function persistProfiles(list) {
+  try { localStorage.setItem(PROFILES_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable — skip */ }
+}
+
 const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8 };
 
 export default function AstrologyApp() {
@@ -5304,6 +5322,35 @@ export default function AstrologyApp() {
   const [authMode, setAuthMode] = useState("login");
   const [user, setUser] = useState(null);
   const [formData, setFormData] = useState({ name:"", dob:"", tob:"", pob:"", ampm:"AM", pobLat:null, pobLon:null, pobSource:null });
+  // சேமித்த ஜாதகங்கள் — lazy initializer: localStorage read ஒருமுறை மட்டும்
+  const [profiles, setProfiles] = useState(loadProfiles);
+
+  // ஜாதகம் வெற்றிகரமாக உருவானதும் அழைக்கப்படும் — அதே நபர் (பெயர்+தேதி+நேரம்)
+  // ஏற்கனவே இருந்தால் புதுப்பிக்கும்; இல்லையேல் பட்டியலின் முதலில் சேர்க்கும்.
+  const saveCurrentProfile = () => {
+    if (!formData.name || !formData.dob) return;
+    setProfiles(prev => {
+      const rest = prev.filter(p => !(p.name === formData.name && p.dob === formData.dob && p.tob === formData.tob && p.ampm === formData.ampm));
+      const next = [{
+        id: Date.now(),
+        name: formData.name, dob: formData.dob, tob: formData.tob, ampm: formData.ampm,
+        pob: formData.pob, pobLat: formData.pobLat, pobLon: formData.pobLon, pobSource: formData.pobSource,
+        savedAt: new Date().toISOString()
+      }, ...rest].slice(0, 20);
+      persistProfiles(next);
+      return next;
+    });
+  };
+
+  const loadProfile = (p) => {
+    setFormData({ name:p.name||"", dob:p.dob||"", tob:p.tob||"", pob:p.pob||"", ampm:p.ampm||"AM",
+      pobLat:p.pobLat ?? null, pobLon:p.pobLon ?? null, pobSource:p.pobSource ?? null });
+    setPlaceResults([]); setPlaceDropdownOpen(false);
+  };
+
+  const deleteProfile = (id) => {
+    setProfiles(prev => { const next = prev.filter(p => p.id !== id); persistProfiles(next); return next; });
+  };
   const [horoscope, setHoroscope] = useState(null);
   const [prediction, setPrediction] = useState("");
   const [predictionLoading, setPredictionLoading] = useState(false);
@@ -5779,6 +5826,8 @@ export default function AstrologyApp() {
       const moonForDasha = h.placements.find(p => p.ta === "சந்திரன்");
       runAllEngines(h, { dobISO, finalTime, geo, transitH: transitH2, moonLong: moonForDasha ? moonForDasha.fullLong : 0 });
     }
+    // ஜாதகம் வெற்றிகரமாக உருவானது — பிறப்பு விவரங்களை localStorage-இல் சேமி
+    saveCurrentProfile();
     goTo(SCREEN.RESULT);
   };
 
@@ -6102,6 +6151,36 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
             }}>⭐ Premium</button>
           </div>
         </div>
+
+        {/* ═══ சேமித்த ஜாதகங்கள் — ஒரே தட்டில் மீண்டும் திறக்க ═══ */}
+        {profiles.length > 0 && (
+          <div style={{...card, marginBottom:16, padding:"14px 16px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:T.gold,marginBottom:2}}>📂 சேமித்த ஜாதகங்கள்</div>
+            <div style={{fontSize:9.5,color:"#8b6914",marginBottom:10}}>தட்டினால் விவரங்கள் நிரப்பப்படும் — பிறகு「ஜாதகம் உருவாக்கு」அழுத்தவும்</div>
+            {profiles.map(p => (
+              <div key={p.id}
+                onClick={()=>loadProfile(p)}
+                style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,
+                  padding:"9px 12px",marginBottom:6,borderRadius:10,cursor:"pointer",
+                  background:"#faf6e8",border:"1px solid #e6dcc9"}}>
+                <div style={{minWidth:0}}>
+                  <div style={{fontSize:12.5,fontWeight:700,color:"#7b1c1c",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                    ☉ {p.name}
+                  </div>
+                  <div style={{fontSize:10,color:"#666",marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                    {p.dob} • {p.tob} {p.ampm === "AM" ? "காலை" : "மாலை"}{p.pob ? ` • ${p.pob}` : ""}
+                  </div>
+                </div>
+                <button
+                  onClick={(e)=>{ e.stopPropagation(); deleteProfile(p.id); }}
+                  title="நீக்கு"
+                  style={{background:"none",border:"1px solid #e0c8c8",borderRadius:8,color:"#cc1a1a",
+                    fontSize:12,cursor:"pointer",padding:"5px 9px",flexShrink:0}}>🗑</button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div style={card}>
           <div style={{display:"flex",flexDirection:"column",gap:18}}>
             <div><label style={labelStyle}>பெயர் *</label>
