@@ -3899,14 +3899,33 @@ function calcBacktest(topicKey, eventDate, deps) {
   // அது engine-தவறு அல்ல; அந்தச் சூழலை வெளிப்படையாகக் காட்டு ═══
   const promiseR = calcEventPromise(topicKey, deps);
 
-  const hit = ev.score >= 7 ? "உயர்" : ev.score >= 4.5 ? "நடுத்தரம்" : "குறை";
+  // ═══ இறுதித் தரம் — மதிப்பெண் + percentile இரண்டும் சேர்ந்தே ═══
+  // உண்மை-தரவு பாடம் (அபூதாகிர் ஜாதகம்): நீண்ட தசைகளில் பல நாட்களும் உயர்
+  // மதிப்பெண் பெறும்; தவறான தேதி கூட "உயர்" ஆகிவிடும். percentile-தான்
+  // காலம்-பிரித்தறியும் உண்மை அளவுகோல் — உண்மை திருமணக் காலம் top 3% (14.2),
+  // தவறான தேதி top 45% (9.2). எனவே: percentile மோசமெனில் தரம் இறங்கும்,
+  // அரிதான உச்சமெனில் தரம் ஏறும்.
+  let hit = ev.score >= 7 ? "உயர்" : ev.score >= 4.5 ? "நடுத்தரம்" : "குறை";
+  let discNote = null;
+  if (percentile) {
+    if (hit === "உயர்" && percentile.topPct > 40) {
+      hit = "நடுத்தரம்";
+      discNote = `மதிப்பெண் ${ev.score} உயர்வாக இருந்தும், வாழ்நாளின் ~${percentile.beatPct <= 50 ? 100 - percentile.topPct : percentile.beatPct}% நாட்களும் இதே அளவை எட்டுகின்றன (top ${percentile.topPct}% மட்டுமே) — இச்சூழலில் காலம்-பிரித்தறியும் கூர்மை குறைவு; தரம் நேர்மையாக இறக்கப்பட்டது`;
+    } else if (hit === "நடுத்தரம்" && percentile.topPct > 60) {
+      hit = "குறை";
+      discNote = `மதிப்பெண் நடுத்தரமெனினும் வாழ்நாளின் பெரும்பாலான நாட்கள் இதைவிட உயர்வு (top ${percentile.topPct}%) — பொருத்தமாகக் கருத முடியாது`;
+    } else if (hit === "நடுத்தரம்" && percentile.topPct <= 10) {
+      hit = "உயர்";
+      discNote = `மதிப்பெண் நடுத்தரமே எனினும் வாழ்நாள் ஒப்பீட்டில் top ${percentile.topPct}% — இச்சூழலின் அரிதான உச்சம்; தரம் உயர்த்தப்பட்டது`;
+    }
+  }
   let verdict = hit === "உயர்" ? "✅ Engine இக்காலத்தை வலுவான window ஆக முன்கூட்டியே காட்டியிருக்கும்"
     : hit === "நடுத்தரம்" ? "🟡 ஓரளவு அடையாளம் — காலம் தொடர்புடையதே, ஆனால் மேலும் கூர்மை தேவை"
     : "❌ Engine விதிகள் இந்நிகழ்வைப் பிடிக்கவில்லை — இதுவே விதி மேம்பாட்டுக்கான மதிப்புமிக்க தரவு";
-  if (percentile && percentile.topPct <= 10 && hit !== "குறை") verdict += ` — வாழ்நாள் ஒப்பீட்டில் top ${percentile.topPct}% நாள் ★`;
+  if (percentile && percentile.topPct <= 10 && hit === "உயர்") verdict += ` — வாழ்நாள் ஒப்பீட்டில் top ${percentile.topPct}% நாள் ★`;
 
   return { topic: topic.ta, icon: topic.icon, score: ev.score, dScore: ev.dScore, tScore: ev.tScore,
-    hit, verdict, reasons: ev.reasons, md: ev.md, ad: ev.ad, percentile,
+    hit, verdict, discNote, reasons: ev.reasons, md: ev.md, ad: ev.ad, percentile,
     promise: promiseR.promise, promiseVerdict: promiseR.promiseVerdict,
     promiseNote: hit === "குறை" && promiseR.promise < 45
       ? `குறிப்பு: இக்கேள்விக்கு ஜாதக வாக்குறுதியே ${promiseR.promise}/100 (பலவீனம்) — miss என்பது காலவிதி-தவறு மட்டுமல்ல, வாக்குறுதிச் சூழலும் சேர்ந்த முடிவு`
@@ -8958,6 +8977,11 @@ ${aiPart}
                   <div style={{fontSize:9.5,color:"#6b5a13",marginBottom:4}}>
                     🔮 இக்கேள்விக்கான ஜாதக வாக்குறுதி: <b>{btResult.promise}/100</b> ({btResult.promiseVerdict})
                   </div>
+                  {btResult.discNote && (
+                    <div style={{fontSize:9,color:"#7a5200",fontWeight:600,marginBottom:4,padding:"4px 8px",background:"#fef9e7",borderRadius:6,border:"1px dashed #e6cf7a"}}>
+                      ⚖ {btResult.discNote}
+                    </div>
+                  )}
                   {btResult.promiseNote && (
                     <div style={{fontSize:9,color:"#8a5a30",fontStyle:"italic",marginBottom:4}}>{btResult.promiseNote}</div>
                   )}
