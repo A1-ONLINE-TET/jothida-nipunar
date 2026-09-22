@@ -3127,6 +3127,143 @@ function buildUnifiedStrength({ placements, lagnaIdx, grahaBala, shadBala, vimsh
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// நட்சத்திர-பாவக இணைப்பு (NAKSHATRA-BHAVA LINKAGE ENGINE)
+// ஒவ்வொரு பாவத்திலும் அமர்ந்த கிரகம்:
+//   1. எந்த நட்சத்திரத்தில் அமர்ந்துள்ளது → அந்த நட்சத்திராதிபதி எந்தெந்த
+//      பாவங்களின் அதிபதி + எங்கு அமர்ந்துள்ளார் → கிரகம் அந்த பாவங்களின்
+//      பலனையும் தரும் (classical + KP நட்சத்திராதிபதி விதி — கிரகன் தன்
+//      நட்சத்திராதிபதியின் காரியங்களையே முதன்மையாகச் செய்வான்).
+//   2. அந்தக் கிரகத்தை எந்தெந்த கிரகங்கள் பார்க்கின்றன (Parashari drishti)
+//      → லக்னவாரி சுப/அசுப இயல்புப்படி பார்வைப் பலன்.
+//   3. கோசாரம்: குரு/சனி அந்தக் கிரகத்தின் ராசியையோ நட்சத்திராதிபதியின்
+//      ராசியையோ transit-இல் தொடும் காலகட்டங்கள் (அடுத்த 12 ஆண்டு, மாத அளவில்)
+//      → அப்போதுதான் இந்த இணைப்பின் சுப/அசுப பலன்கள் வெளிப்படும்.
+//   4. அசுப இணைப்பு/பார்வைக்கு — பாதிக்கும் கிரகத்தின் பரிகாரம்.
+// ═══════════════════════════════════════════════════════════════════
+function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayanamsaKey) {
+  const houseOf = (p) => ((p.rashiIdx - lagnaIdx + 12) % 12) + 1;
+  const findP = (ta) => placements.find(x => x.ta === ta);
+  const natureOf = (ta) => functionalNat?.[ta]?.nature || (ta === "ராகு" || ta === "கேது" ? "சார்பு" : "சமம்");
+  const isSubhaNature = (n) => n === "யோககாரகன்" || n === "சுபன்";
+  const isAsubhaNature = (ta, n) => n === "பாபன்" || ta === "ராகு" || ta === "கேது";
+  const drishti = calcGrahaDrishti(placements);
+
+  // ── கோசார மாதிரிகள் — அடுத்த 144 மாதங்களுக்கு (12 ஆண்டு) குரு/சனி ராசி,
+  //    மாதத்திற்கு ஒரு முறை (15ஆம் தேதி நண்பகல்); எல்லா வீடுகளுக்கும் பொது ──
+  const samples = [];
+  const now = new Date();
+  for (let m = 0; m < 144; m++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + m, 15);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-15`;
+    try {
+      const th = generateHoroscope(iso, "12:00", geo.lat, geo.lon, true, ayanamsaKey);
+      samples.push({ d, jup: th.placements.find(p => p.ta === "குரு")?.rashiIdx ?? -1,
+                        sat: th.placements.find(p => p.ta === "சனி")?.rashiIdx ?? -1 });
+    } catch (e) { /* ஒரு மாதம் தவறினாலும் மற்றவை தொடரும் */ }
+  }
+  // hit-fn உண்மையாகும் தொடர்ச்சியான மாதங்களை காலவரம்புகளாக இணை
+  const fmt = (d) => d.toLocaleDateString('ta-IN', { year: 'numeric', month: 'short' });
+  const windowsFor = (hitFn, maxN) => {
+    const wins = [];
+    let start = null, last = null;
+    samples.forEach(s => {
+      if (hitFn(s)) { if (!start) start = s.d; last = s.d; }
+      else if (start) { wins.push({ from: start, to: last }); start = null; }
+    });
+    if (start) wins.push({ from: start, to: last });
+    return wins.slice(0, maxN).map(w => ({ label: `${fmt(w.from)} — ${fmt(w.to)}` }));
+  };
+
+  const houses = [1,2,3,4,5,6,7,8,9,10,11,12].map(houseNum => {
+    const houseRashiIdx = (lagnaIdx + houseNum - 1) % 12;
+    const occupants = placements.filter(p => p.rashiIdx === houseRashiIdx);
+    const theme = HOUSE_THEMES[houseNum];
+    if (occupants.length === 0) {
+      const lordName = RASHI_LORD_NAME[houseRashiIdx];
+      const lordP = findP(lordName);
+      return { houseNum, houseTa: theme?.ta, theme: theme?.theme, houseRashi: RASHIS[houseRashiIdx], isEmpty: true,
+        note: `கிரகம் இல்லை — அதிபதி ${lordName} ${lordP ? houseOf(lordP) + "ஆம் வீட்டில்" : ""}. இவ்வீட்டுப் பலன் அதிபதி வழியே.` };
+    }
+
+    const occAnalysis = occupants.map(p => {
+      // ── 1. நட்சத்திராதிபதி வழி பாவகத் தொடர்பு ──
+      let star = null;
+      if (p.nakIdx >= 0) {
+        const starLord = getNakshatraLord(p.nakIdx).name;
+        const slP = starLord === p.ta ? p : findP(starLord);
+        const slOwns = housesOwnedBy(starLord, lagnaIdx);           // ராகு/கேதுவுக்கு []
+        const slHouse = slP ? houseOf(slP) : null;
+        const linkedHouses = [...new Set([...slOwns, ...(slHouse ? [slHouse] : [])])].sort((a,b)=>a-b);
+        const slNature = natureOf(starLord);
+        const dusthanaLink = linkedHouses.some(h => [6,8,12].includes(h));
+        const subhaLink = linkedHouses.some(h => [1,4,5,7,9,10,11].includes(h));
+        // இணைப்பின் தொனி: நட்சத்திராதிபதியின் லக்னவாரி இயல்பு + இணையும் பாவங்கள்
+        const tone = isSubhaNature(slNature) && !dusthanaLink ? "சுபம்"
+                   : isAsubhaNature(starLord, slNature) && dusthanaLink ? "அசுபம்"
+                   : isAsubhaNature(starLord, slNature) || dusthanaLink ? "கலப்பு"
+                   : subhaLink ? "சுபம்" : "கலப்பு";
+        const themeTexts = linkedHouses.map(h => `${h} (${HOUSE_THEMES[h]?.theme || ""})`).join(", ");
+        star = {
+          nak: p.nakshatraTa, pada: p.pada, starLord, slHouse, slOwns, linkedHouses, tone,
+          slNature,
+          text: `${p.ta} ${p.nakshatraTa} நட்சத்திரத்தில் — அதிபதி ${starLord} (${slNature}${slHouse ? `, ${slHouse}இல் அமர்வு` : ""}${slOwns.length ? `, ${slOwns.join(",")} ஆட்சி` : ""}). எனவே ${p.ta} இவ்வீட்டுப் (${houseNum}) பலனுடன் ${themeTexts} பாவப் பலன்களையும் இணைத்துத் தருவார்${tone === "சுபம்" ? " — சுப இணைப்பு" : tone === "அசுபம்" ? " — அசுப இணைப்பு, கவனம்" : " — கலப்பு இணைப்பு"}.`
+        };
+      }
+
+      // ── 2. இக்கிரகத்தின் மீதான பார்வைகள் ──
+      // ராகு/கேது: calcGrahaDrishti nodes-ஐ target ஆக சேர்க்காது (BPHS — நோடுகள்
+      // பார்வை செய்யா; ஆனால் பார்வை பெறும்) — அவற்றுக்கு ராசி-அடிப்படை
+      // aspectorsOnHouse வழி அவை அமர்ந்த ராசியின் மீதான பார்வைகளை எடு.
+      const rawAspects = CLASSICAL_7.includes(p.ta)
+        ? drishti.filter(a => a.to === p.ta).map(a => ({ from: a.from, isSpecial: a.isSpecial }))
+        : aspectorsOnHouse(placements, lagnaIdx, p.rashiIdx).map(a => ({ from: a.planet, isSpecial: a.isSpecial ?? false }));
+      const aspects = rawAspects.map(a => {
+        const an = natureOf(a.from);
+        const tone = isSubhaNature(an) ? "சுபம்" : isAsubhaNature(a.from, an) ? "அசுபம்" : "கலப்பு";
+        return { from: a.from, isSpecial: a.isSpecial, nature: an, tone,
+          text: DRISHTI_EFFECT[a.from]?.text || "" };
+      });
+      const subhaAsp = aspects.filter(a => a.tone === "சுபம்").length;
+      const asubhaAsp = aspects.filter(a => a.tone === "அசுபம்").length;
+
+      // ── 3. கோசாரம் — குரு/சனி இக்கிரக ராசி அல்லது நட்சத்திராதிபதி ராசியை தொடும் காலம் ──
+      const targets = [...new Set([p.rashiIdx, ...(star && star.starLord ? (() => { const s = star.starLord === p.ta ? p : findP(star.starLord); return s ? [s.rashiIdx] : []; })() : [])])];
+      const linkSubha = star ? star.tone === "சுபம்" : subhaAsp >= asubhaAsp;
+      const satNature = natureOf("சனி");
+      const jupWindows = windowsFor(s => targets.some(t => planetHitsRashi("குரு", s.jup, t)), 3)
+        .map(w => ({ ...w, text: linkSubha
+          ? `குரு transit ஆதரவு — இந்த இணைப்பின் சுப பலன்கள் (${star ? star.linkedHouses.join(",") + " பாவங்கள்" : houseNum + "ஆம் பாவம்"}) மலரும் காலம்`
+          : `குரு அருள் transit — அசுப/கலப்பு இணைப்பின் சிக்கல் தணிந்து நல்முடிவு நோக்கி நகரும் காலம்` }));
+      const satWindows = windowsFor(s => targets.some(t => planetHitsRashi("சனி", s.sat, t)), 3)
+        .map(w => ({ ...w, text: isSubhaNature(satNature)
+          ? `சனி transit — உழைப்பு/பொறுப்பு வழியே இப்பலன் உறுதியாகும் காலம்`
+          : `சனி transit — தாமதம்/சோதனை; ${star && star.tone === "அசுபம்" ? "அசுப பலன் உணரப்படக்கூடிய" : "பலன் தாமதமாகக் கூடிய"} காலம் — பரிகாரம் பலன் தரும்` }));
+
+      // ── 4. பரிகாரம் — அசுபமாகப் பாதிக்கும் கிரகங்களுக்கு மட்டும் ──
+      const afflictors = [...new Set([
+        ...aspects.filter(a => a.tone === "அசுபம்").map(a => a.from),
+        ...(star && star.tone !== "சுபம்" && isAsubhaNature(star.starLord, star.slNature) ? [star.starLord] : []),
+      ])];
+      const remedies = afflictors.map(ta => {
+        const r = PLANET_REMEDIES[ta];
+        return r ? { planet: ta, mantra: r.mantra, count: r.mantraCount, temple: r.temple, day: r.day, donate: r.donate } : null;
+      }).filter(Boolean);
+
+      const verdict = (star ? star.tone : null) === "அசுபம்" || asubhaAsp > subhaAsp ? "அசுபம் மேலோங்கும் — பரிகாரம் அவசியம்"
+        : (star ? star.tone : null) === "சுபம்" && subhaAsp >= asubhaAsp ? "சுபம் மேலோங்கும்"
+        : "சுப-அசுப கலப்பு";
+      return { ta: p.ta, symbol: p.symbol, rashi: p.rashi, star, aspects, subhaAsp, asubhaAsp,
+               jupWindows, satWindows, remedies, verdict };
+    });
+
+    return { houseNum, houseTa: theme?.ta, theme: theme?.theme, houseRashi: RASHIS[houseRashiIdx],
+             isEmpty: false, occupants: occAnalysis };
+  });
+
+  return { houses, generatedAt: new Date().toISOString() };
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // தசா சந்தி (DASHA SANDHI) — இரு தசைகள்/புக்திகள் மாறும் இடைக்காலம்.
 // மகா தசை மாற்றம் ±30 நாள், புக்தி மாற்றம் ±10 நாள் எச்சரிக்கை.
 // ═══════════════════════════════════════════════════════════════════
@@ -5401,6 +5538,9 @@ export default function AstrologyApp() {
   const [transitOverlay, setTransitOverlay] = useState(null);
   const [functionalNature, setFunctionalNature] = useState(null);
   const [unifiedStrength, setUnifiedStrength] = useState(null);
+  // நட்சத்திர-பாவக இணைப்பு — கோசார sampling கனமானதால் (144 மாத transit கணிப்பு)
+  // view தேர்ந்தெடுக்கும்போது மட்டுமே lazy ஆக கணிக்கப்படும்
+  const [nakBhavaData, setNakBhavaData] = useState(null);
   const [marakaBadhaka, setMarakaBadhaka] = useState(null);
   const [avasthasData, setAvasthasData] = useState(null);
   const [bhavaBalaData, setBhavaBalaData] = useState(null);
@@ -5750,6 +5890,8 @@ export default function AstrologyApp() {
     setRemediesData(getRemedies(placements, grahaBalaR, unifiedR));
     setGulikaData(calcGulikaPosition(dobISO, finalTime, geo.lat, geo.lon, ayanamsaKey));
     setBtSensitivity(calcBirthTimeSensitivity(h));
+    // புதிய ஜாதகம் — பழைய நட்சத்திர-பாவக கணிப்பு செல்லாது; அடுத்த view-தேர்வில் மீண்டும் கணிக்கும்
+    setNakBhavaData(null);
   };
 
   const handleSubmit = async () => {
@@ -6859,7 +7001,15 @@ ${aiPart}
             </div>
             <select
               value={advancedView}
-              onChange={e=>setAdvancedView(e.target.value)}
+              onChange={e=>{
+                const v = e.target.value;
+                setAdvancedView(v);
+                // நட்சத்திர-பாவக இணைப்பு — முதல் தேர்விலேயே கணி (12 ஆண்டு transit sampling)
+                if (v === "nakbhava" && !nakBhavaData && horoscope && functionalNature) {
+                  const geoNB = resolveBirthGeo(formData);
+                  setNakBhavaData(calcNakshatraBhavaLinks(horoscope.placements, horoscope.lagna, functionalNature, geoNB, ayanamsaKey));
+                }
+              }}
               style={{
                 width:"100%", padding:"10px 12px", background:"#f5f0e0",
                 border:"1.5px solid #d4a85330", borderRadius:10, color:"#1a1a1a",
@@ -6869,6 +7019,7 @@ ${aiPart}
               <option value="">— பார்க்க வேண்டியதைத் தேர்ந்தெடுக்கவும் —</option>
               <option value="grahabala">💪 கிரக பலம் (Graha Bala)</option>
               <option value="unified">🧩 ஒருங்கிணைந்த கிரக பலம் (எல்லா அளவுகோலும் ஒன்றாக)</option>
+              <option value="nakbhava">⭐ நட்சத்திர-பாவக இணைப்பு + பார்வை + கோசார காலம் + பரிகாரம்</option>
               <option value="yogas">🕉 யோகங்கள் (Mahapurusha + Classical)</option>
               <option value="ashtakavarga">🔢 சர்வாஷ்டகவர்க்கம்</option>
               <option value="drishti">👁 கிரக திருஷ்டி (Aspects)</option>
@@ -8033,6 +8184,86 @@ ${aiPart}
                   </div>
                 );
               })()}
+            </div>
+          )}
+
+          {/* ═══ நட்சத்திர-பாவக இணைப்பு — நட்சத்திராதிபதி வழி பாவத் தொடர்பு,
+               பார்வைப் பலன், கோசார காலக்கட்டம், பரிகாரம் ═══ */}
+          {advancedView==="nakbhava" && nakBhavaData && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:4,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                ⭐ நட்சத்திர-பாவக இணைப்பு — கிரகன் யாருடைய நட்சத்திரத்தில்? எந்தப் பாவப் பலன்? எப்போது?
+              </div>
+              <div style={{fontSize:9.5,color:"#8b6914",marginBottom:10,lineHeight:1.6}}>
+                விதி: கிரகன் அமர்ந்த நட்சத்திரத்தின் அதிபதி எந்தப் பாவங்களை ஆள்கிறாரோ/அமர்ந்துள்ளாரோ — அந்தப் பாவப்
+                பலன்களையும் அக்கிரகன் இணைத்துத் தருவான் (classical/KP). அதன் மீதான பார்வைகள் சுப/அசுபத்தை மாற்றும்;
+                குரு/சனி கோசாரம் அந்த ராசிகளைத் தொடும்போதே பலன் வெளிப்படும்.
+              </div>
+              {nakBhavaData.houses.map((hs,hi)=>(
+                <div key={hi} style={{marginBottom:hs.isEmpty?6:10,padding:hs.isEmpty?"6px 10px":"10px 12px",borderRadius:8,
+                  background:hs.isEmpty?"#faf9f5":"#fffdf7",border:`1px solid ${hs.isEmpty?"#eee5d5":"#e6dcc9"}`}}>
+                  <div style={{fontSize:11.5,fontWeight:700,color:"#7b1c1c"}}>
+                    {hs.houseNum}ஆம் வீடு ({hs.houseRashi}) — {hs.theme}
+                  </div>
+                  {hs.isEmpty ? (
+                    <div style={{fontSize:9.5,color:"#888",marginTop:2}}>{hs.note}</div>
+                  ) : hs.occupants.map((oc,oi)=>(
+                    <div key={oi} style={{marginTop:8,paddingTop:8,borderTop:oi>0?"1px dashed #e6dcc9":"none"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                        <span style={{fontSize:11.5,fontWeight:700}}>{oc.symbol} {oc.ta}
+                          {oc.star && <span style={{fontSize:9.5,color:"#8b6914",fontWeight:500}}> — {oc.star.nak}{oc.star.pada?`-${oc.star.pada}`:""} (அதிபதி: {oc.star.starLord})</span>}
+                        </span>
+                        <span style={{fontSize:9.5,fontWeight:800,padding:"2px 8px",borderRadius:10,
+                          background:oc.verdict.startsWith("சுபம்")?"#dcfce7":oc.verdict.startsWith("அசுபம்")?"#fee2e2":"#fef9c3",
+                          color:oc.verdict.startsWith("சுபம்")?"#1b5e20":oc.verdict.startsWith("அசுபம்")?"#cc1a1a":"#7a5200"}}>{oc.verdict}</span>
+                      </div>
+                      {/* 1. நட்சத்திராதிபதி வழி பாவகத் தொடர்பு */}
+                      {oc.star && (
+                        <div style={{fontSize:9.5,lineHeight:1.65,color:"#4a3a20",background:"#faf6e8",border:"1px solid #eee0c5",borderRadius:6,padding:"6px 8px",marginBottom:5}}>
+                          🔗 {oc.star.text}
+                        </div>
+                      )}
+                      {/* 2. பார்வைகள் */}
+                      {oc.aspects.length > 0 ? oc.aspects.map((a,ai)=>(
+                        <div key={ai} style={{fontSize:9.5,lineHeight:1.6,
+                          color:a.tone==="சுபம்"?"#2e7d32":a.tone==="அசுபம்"?"#a03a00":"#6b5a13"}}>
+                          👁 <b>{a.from}</b> ({a.nature}{a.isSpecial?", சிறப்புப் பார்வை":""}) பார்க்கிறார் — {a.text}
+                        </div>
+                      )) : (
+                        <div style={{fontSize:9.5,color:"#999"}}>👁 இக்கிரகத்தின் மீது எந்தப் பார்வையும் இல்லை — தன் இயல்பிலேயே பலன் தரும்</div>
+                      )}
+                      {/* 3. கோசார காலக்கட்டங்கள் */}
+                      {(oc.jupWindows.length > 0 || oc.satWindows.length > 0) && (
+                        <div style={{marginTop:5,padding:"6px 8px",background:"#f0f6ec",border:"1px solid #d8e6cf",borderRadius:6}}>
+                          <div style={{fontSize:9.5,fontWeight:700,color:"#33691e",marginBottom:2}}>📅 கோசாரத்தில் பலன் வெளிப்படும் காலங்கள் (அடுத்த 12 ஆண்டு)</div>
+                          {oc.jupWindows.map((w,wi)=>(
+                            <div key={"j"+wi} style={{fontSize:9,lineHeight:1.6,color:"#2e7d32"}}>♃ <b>{w.label}</b> — {w.text}</div>
+                          ))}
+                          {oc.satWindows.map((w,wi)=>(
+                            <div key={"s"+wi} style={{fontSize:9,lineHeight:1.6,color:"#7a5200"}}>♄ <b>{w.label}</b> — {w.text}</div>
+                          ))}
+                        </div>
+                      )}
+                      {/* 4. பரிகாரம் — அசுபமாகப் பாதிக்கும் கிரகங்களுக்கு */}
+                      {oc.remedies.length > 0 && (
+                        <div style={{marginTop:5,padding:"6px 8px",background:"#fdf3f0",border:"1px solid #f0d5c8",borderRadius:6}}>
+                          <div style={{fontSize:9.5,fontWeight:700,color:"#a03a00",marginBottom:2}}>🙏 பரிகாரம் (பாதிக்கும் கிரகத்திற்கு)</div>
+                          {oc.remedies.map((r,ri)=>(
+                            <div key={ri} style={{fontSize:9,lineHeight:1.65,color:"#5a3a20"}}>
+                              <b>{r.planet}</b>: {r.mantra} ({r.count}) • {r.temple} • {r.day} அன்று {r.donate} தானம்
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))}
+              <div style={{fontSize:9,color:"#777",marginTop:6,lineHeight:1.5}}>
+                முறை: நட்சத்திராதிபதி விதி (BPHS/KP) → லக்னவாரி சுப-அசுபம் → Parashari பார்வை → குரு/சனி transit
+                (கிரக ராசி + நட்சத்திராதிபதி ராசி மீது சேர்க்கை/சிறப்புப் பார்வை, மாத அளவு துல்லியம்).
+                கோசாரக் காலங்கள் பலன் "வெளிப்படும்" நேரம்; பலனின் அளவு ஜாதக வாக்குறுதியையே சார்ந்தது.
+              </div>
             </div>
           )}
 
