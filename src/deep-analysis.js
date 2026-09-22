@@ -49,10 +49,40 @@ function navamsaSign(p) {
   return (p.rashiIdx * 9 + navPart) % 12;
 }
 
+// ── ctx: ஒருங்கிணைந்த இணைப்பு அடுக்கு (App-இன் மைய engine-களில் இருந்து) ──
+// ctx = { sav: [12], shadBala: [{ta,total,required,strong}], functionalNat: {ta:{nature}} }
+// இல்லாவிட்டால் (null) பழைய factor-கள் மட்டுமே — verdict முறை மாறாது.
+// SAV (சர்வாஷ்டகவர்க்கம்) — அந்த வீட்டு ராசியின் மொத்த பிந்து: ≥30 வலு, ≤24 குறை (சராசரி ~28).
+function savFactor(ctx, houseRashiIdx, houseLabel, factors) {
+  const sav = ctx?.sav?.[houseRashiIdx];
+  if (sav == null) return 0;
+  if (sav >= 30) { factors.push({ text: `${houseLabel} ராசியில் சர்வாஷ்டகவர்க்கம் ${sav} பிந்து (≥30) — வீட்டிற்கு வலுவான ஆதரவு`, weight: +1 }); return 1; }
+  if (sav <= 24) { factors.push({ text: `${houseLabel} ராசியில் சர்வாஷ்டகவர்க்கம் ${sav} பிந்து (≤24) — வீட்டு ஆதரவு குறைவு`, weight: -1 }); return -1; }
+  factors.push({ text: `${houseLabel} ராசியில் சர்வாஷ்டகவர்க்கம் ${sav} பிந்து — சராசரி நிலை`, weight: 0 });
+  return 0;
+}
+// ஷட்பலம் — BPHS 6-அம்ச பலம்: dignity-மட்டும் பார்க்கும் grahaBala-விலிருந்து சுயாதீன உறுதிப்பாடு
+function shadbalaFactor(ctx, planetName, roleLabel, factors) {
+  const sb = ctx?.shadBala?.find(s => s.ta === planetName);
+  if (!sb) return 0;
+  const ratio = sb.total / sb.required;
+  if (ratio >= 1) { factors.push({ text: `${roleLabel} ${planetName} ஷட்பலத்தில் தேவையை எட்டுகிறார் (${Math.round(sb.total)}/${sb.required} ரூபா) — BPHS உறுதிப்பாடு`, weight: +1 }); return 1; }
+  if (ratio < 0.6) { factors.push({ text: `${roleLabel} ${planetName} ஷட்பலத்தில் மிகக் குறைவு (${Math.round(sb.total)}/${sb.required} ரூபா)`, weight: -1 }); return -1; }
+  return 0;
+}
+// லக்னவாரி இயல்பு — அதே கிரகம் இந்த லக்னத்திற்கு யோககாரகனா/பாபனா
+function functionalFactor(ctx, planetName, roleLabel, factors) {
+  const fn = ctx?.functionalNat?.[planetName];
+  if (!fn) return 0;
+  if (fn.nature === "யோககாரகன்") { factors.push({ text: `${roleLabel} ${planetName} இந்த லக்னத்திற்கு யோககாரகன் — பலன் உயர்வாக விளையும்`, weight: +1 }); return 1; }
+  if (fn.nature === "பாபன்") { factors.push({ text: `${roleLabel} ${planetName} இந்த லக்னத்திற்கு செயல்முறை பாபன் — பலனில் கலப்பு/தடை`, weight: -1 }); return -1; }
+  return 0;
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // MARRIAGE ANALYSIS (7th house) — the #1 consultation reason
 // ═══════════════════════════════════════════════════════════════════
-export function analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStrength) {
+export function analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStrength, ctx) {
   const RASHI_LORD = ["செவ்வாய்","சுக்கிரன்","புதன்","சந்திரன்","சூரியன்","புதன்","சுக்கிரன்","செவ்வாய்","குரு","சனி","சனி","குரு"];
   const lagnaIdx = horoscope.lagna;
   const placements = horoscope.placements;
@@ -148,6 +178,11 @@ export function analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStre
     }
   }
 
+  // FACTOR 7 (இணைப்பு அடுக்கு): 7ஆம் ராசியின் SAV + 7ஆம் அதிபதியின் ஷட்பலம் + லக்னவாரி இயல்பு
+  score += savFactor(ctx, h7Rashi, "7ஆம் வீட்டு", factors);
+  score += shadbalaFactor(ctx, h7LordName, "7ஆம் அதிபதி", factors);
+  score += functionalFactor(ctx, h7LordName, "7ஆம் அதிபதி", factors);
+
   // VERDICT
   let verdict, verdictColor, summary;
   if (score >= 3) {
@@ -172,7 +207,7 @@ export function analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStre
 // ═══════════════════════════════════════════════════════════════════
 // HEALTH ANALYSIS (1st, 6th, 8th houses + Lagna lord)
 // ═══════════════════════════════════════════════════════════════════
-export function analyzeHealth(horoscope, grahaBala) {
+export function analyzeHealth(horoscope, grahaBala, ctx) {
   const RASHI_LORD = ["செவ்வாய்","சுக்கிரன்","புதன்","சந்திரன்","சூரியன்","புதன்","சுக்கிரன்","செவ்வாய்","குரு","சனி","சனி","குரு"];
   const lagnaIdx = horoscope.lagna;
   const placements = horoscope.placements;
@@ -247,6 +282,10 @@ export function analyzeHealth(horoscope, grahaBala) {
     factors.push({ text: `லக்னத்தை சுப கிரகம் பார்க்கிறது: ${beneficAspects1.map(p=>p.ta).join(", ")} — ஆரோக்கியத்திற்கு பாதுகாப்பு`, weight: +1 });
   }
 
+  // FACTOR 7 (இணைப்பு அடுக்கு): லக்ன ராசியின் SAV + லக்னாதிபதியின் ஷட்பலம்
+  score += savFactor(ctx, lagnaIdx, "லக்ன", factors);
+  score += shadbalaFactor(ctx, lagnaLordName, "லக்னாதிபதி", factors);
+
   let verdict, verdictColor, summary;
   if (score >= 3) {
     verdict = "மிகச் சிறந்த ஆரோக்கியம்"; verdictColor = "#0d7a30";
@@ -269,7 +308,7 @@ export function analyzeHealth(horoscope, grahaBala) {
 // ═══════════════════════════════════════════════════════════════════
 // CAREER ANALYSIS (10th house + lord, Sun/Saturn/Mercury karakas)
 // ═══════════════════════════════════════════════════════════════════
-export function analyzeCareer(horoscope, grahaBala, dashaData) {
+export function analyzeCareer(horoscope, grahaBala, dashaData, ctx) {
   const RASHI_LORD = ["செவ்வாய்","சுக்கிரன்","புதன்","சந்திரன்","சூரியன்","புதன்","சுக்கிரன்","செவ்வாய்","குரு","சனி","சனி","குரு"];
   const lagnaIdx = horoscope.lagna;
   const placements = horoscope.placements;
@@ -362,6 +401,11 @@ export function analyzeCareer(horoscope, grahaBala, dashaData) {
     }
   }
 
+  // FACTOR 7 (இணைப்பு அடுக்கு): 10ஆம் ராசியின் SAV + 10ஆம் அதிபதியின் ஷட்பலம் + லக்னவாரி இயல்பு
+  score += savFactor(ctx, h10Rashi, "10ஆம் வீட்டு", factors);
+  score += shadbalaFactor(ctx, h10LordName, "10ஆம் அதிபதி", factors);
+  score += functionalFactor(ctx, h10LordName, "10ஆம் அதிபதி", factors);
+
   let verdict, verdictColor, summary;
   if (score >= 3) {
     verdict = "மிகச் சிறந்த தொழில் யோகம்"; verdictColor = "#0d7a30";
@@ -416,12 +460,12 @@ function addBalanceNote(area) {
   return area;
 }
 
-export function analyzeKeyLifeAreas(horoscope, grahaBala, chevvaiDosham, navamsaStrength, dashaData) {
+export function analyzeKeyLifeAreas(horoscope, grahaBala, chevvaiDosham, navamsaStrength, dashaData, ctx) {
   if (!horoscope || !horoscope.placements) return null;
   return {
-    marriage: addBalanceNote(analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStrength)),
-    health: addBalanceNote(analyzeHealth(horoscope, grahaBala)),
-    career: addBalanceNote(analyzeCareer(horoscope, grahaBala, dashaData)),
+    marriage: addBalanceNote(analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStrength, ctx)),
+    health: addBalanceNote(analyzeHealth(horoscope, grahaBala, ctx)),
+    career: addBalanceNote(analyzeCareer(horoscope, grahaBala, dashaData, ctx)),
   };
 }
 
