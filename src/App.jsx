@@ -3639,6 +3639,82 @@ function planetHitsRashi(planetTa, fromRashiIdx, targetRashiIdx) {
   return rules.includes(((targetRashiIdx - fromRashiIdx + 12) % 12) + 1);
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// ACTIVATION எடைகள் — ஒரு கேள்விக்கு (திருமணம்/தொழில்...) எந்தக் கிரகம்
+// எவ்வளவு எடையுடன் காலத்தை activate செய்யும். calcEventTiming (எதிர்காலம்)
+// மற்றும் calcBacktest (கடந்தகால சரிபார்ப்பு) இரண்டும் இதையே பயன்படுத்தும்.
+// ═══════════════════════════════════════════════════════════════════
+function buildActivationWeights(topicKey, placements, lagnaIdx, functionalNat) {
+  const topic = EVENT_TOPICS[topicKey];
+  if (!topic) return { topic: null, weights: {}, pRashiIdx: 0, pLordName: null, pLord: null };
+  const houseRashi = (h) => (lagnaIdx + h - 1) % 12;
+  const houseOfP = (x) => ((x.rashiIdx - lagnaIdx + 12) % 12) + 1;
+  const lordOf = (h) => RASHI_LORD_NAME[houseRashi(h)];
+  const natureOf = (ta) => functionalNat?.[ta]?.nature || "சமம்";
+  const pRashiIdx = houseRashi(topic.primary);
+  const pLordName = lordOf(topic.primary);
+  const pLord = placements.find(x => x.ta === pLordName);
+  const weights = {};
+  const addW = (ta, w, why) => { if (!ta) return; if (!weights[ta]) weights[ta] = { w: 0, why: [] }; weights[ta].w += w; weights[ta].why.push(why); };
+  addW(pLordName, 3, `${topic.primary}ஆம் அதிபதி`);
+  placements.filter(x => houseOfP(x) === topic.primary).forEach(x => addW(x.ta, 2.5, `${topic.primary}இல் அமர்வு`));
+  topic.karakas.forEach(k => addW(k, 2, "காரகன்"));
+  topic.support.forEach(h => addW(lordOf(h), 1.5, `${h}ஆம் அதிபதி`));
+  aspectorsOnHouse(placements, lagnaIdx, pRashiIdx).forEach(a => addW(a.planet, 1.2, `${topic.primary}ஐ பார்வை`));
+  // அதிபதியின் நட்சத்திராதிபதி வழியாகவும் activation (KP அடிப்படை)
+  if (pLord && pLord.nakIdx >= 0) addW(getNakshatraLord(pLord.nakIdx).name, 1.2, `அதிபதியின் நட்சத்திராதிபதி`);
+  Object.keys(weights).forEach(ta => { if (natureOf(ta) === "யோககாரகன்") weights[ta].w += 0.5; });
+  return { topic, weights, pRashiIdx, pLordName, pLord };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// பின்நோக்கு சரிபார்ப்பு (BACK-TEST) — World No.1 துல்லியத்தின் அடித்தளம்.
+// நடந்த நிகழ்வின் (திருமணம்/வேலை...) உண்மையான தேதியை உள்ளிட்டால்,
+// அன்று ஓடிய தசை-புக்தி + அன்றைய குரு/சனி கோசாரம் — engine-ன் அதே
+// விதிகளால் — அந்நாளை அடையாளம் காட்டியிருக்குமா என்று மதிப்பிடும்.
+// பொருந்தினால் விதிகள் சரி; பொருந்தாவிட்டால் அது விதி-மேம்பாட்டுத் தரவு.
+// ═══════════════════════════════════════════════════════════════════
+function calcBacktest(topicKey, eventDate, deps) {
+  const { horoscope, dashaData, functionalNat, geo, ayanamsaKey } = deps;
+  if (!horoscope || !dashaData?.dashas) return null;
+  const act = buildActivationWeights(topicKey, horoscope.placements, horoscope.lagna, functionalNat);
+  if (!act.topic) return null;
+  const { topic, weights, pRashiIdx, pLord } = act;
+  const reasons = [];
+  // 1. நிகழ்வு நாளில் ஓடிய தசை-புக்தி — activation எடை
+  const md = dashaData.dashas.find(d => eventDate >= d.startDate && eventDate < d.endDate);
+  const ad = md?.antardashas?.find(a => eventDate >= a.startDate && eventDate < a.endDate);
+  const mdW = md ? (weights[md.name]?.w || 0) : 0;
+  const adW = ad ? (weights[ad.name]?.w || 0) : 0;
+  let score = mdW + adW * 1.6;
+  if (md) reasons.push(mdW > 0
+    ? `நிகழ்வு நாளில் ${md.name} தசை — activation எடை ${Math.round(mdW*10)/10} (${weights[md.name].why.join(", ")})`
+    : `நிகழ்வு நாளில் ${md.name} தசை — இக்கேள்வியுடன் நேரடித் தொடர்பில்லை`);
+  if (ad) reasons.push(adW > 0
+    ? `${ad.name} புக்தி — எடை ${Math.round(adW*10)/10} (${weights[ad.name].why.join(", ")})`
+    : `${ad.name} புக்தி — தொடர்பில்லை`);
+  if (mdW > 0 && adW > 0) { score += 1; reasons.push("தசை + புக்தி இரண்டும் தொடர்புடையவை — engine இதை வலுவான window ஆகக் கொடுத்திருக்கும்"); }
+  // 2. அன்றைய குரு/சனி கோசாரம் — primary வீடு/அதிபதி தொடுகை
+  try {
+    const iso = `${eventDate.getFullYear()}-${String(eventDate.getMonth()+1).padStart(2,'0')}-${String(eventDate.getDate()).padStart(2,'0')}`;
+    const th = generateHoroscope(iso, "12:00", geo.lat, geo.lon, true, ayanamsaKey);
+    const tJup = th.placements.find(x => x.ta === "குரு"), tSat = th.placements.find(x => x.ta === "சனி");
+    const targets = [pRashiIdx, pLord ? pLord.rashiIdx : pRashiIdx];
+    const jupHit = tJup && targets.some(tg => planetHitsRashi("குரு", tJup.rashiIdx, tg));
+    const satHit = tSat && targets.some(tg => planetHitsRashi("சனி", tSat.rashiIdx, tg));
+    if (jupHit && satHit) { score += 2; reasons.push(`அன்று குரு (${tJup.rashi}) + சனி (${tSat.rashi}) இருவரும் ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடுகின்றனர் — இரட்டை transit ✓`); }
+    else if (jupHit) { score += 1; reasons.push(`அன்று குரு (${tJup.rashi}) ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடுகிறார் ✓`); }
+    else if (satHit) { score += 0.5; reasons.push(`அன்று சனி (${tSat.rashi}) ${topic.primary}ஆம் வீடு/அதிபதி தொடர்பில்`); }
+    else reasons.push("அன்று குரு/சனி இருவரும் நேரடித் தொடர்பில் இல்லை");
+  } catch (e) { /* transit கணிப்பு தோல்வி — தசை score மட்டும் */ }
+  score = Math.round(score * 10) / 10;
+  const hit = score >= 7 ? "உயர்" : score >= 4.5 ? "நடுத்தரம்" : "குறை";
+  const verdict = hit === "உயர்" ? "✅ Engine இக்காலத்தை வலுவான window ஆக முன்கூட்டியே காட்டியிருக்கும்"
+    : hit === "நடுத்தரம்" ? "🟡 ஓரளவு அடையாளம் — காலம் தொடர்புடையதே, ஆனால் மேலும் கூர்மை தேவை"
+    : "❌ Engine விதிகள் இந்நிகழ்வைப் பிடிக்கவில்லை — இதுவே விதி மேம்பாட்டுக்கான மதிப்புமிக்க தரவு";
+  return { topic: topic.ta, icon: topic.icon, score, hit, verdict, reasons, md: md?.name || "—", ad: ad?.name || "—" };
+}
+
 function calcEventTiming(topicKey, deps) {
   const { horoscope, dashaData, shadBala, functionalNat, planetCtx, chevvai, navStrength, geo, ayanamsaKey, dobISO, ashtakavarga, avasthas } = deps;
   const topic = EVENT_TOPICS[topicKey];
@@ -3721,17 +3797,11 @@ function calcEventTiming(topicKey, deps) {
   promise = Math.max(5, Math.min(95, Math.round(promise)));
   const promiseVerdict = promise >= 65 ? "வலுவான வாக்குறுதி" : promise >= 45 ? "நடுத்தர வாக்குறுதி" : "பலவீன வாக்குறுதி — தாமதம்/பரிகாரத்துடன்";
 
-  // ═══ 2. ACTIVATION கிரகங்கள் + எடைகள் ═══
-  const weights = {};
-  const addW = (ta, w, why) => { if (!ta) return; if (!weights[ta]) weights[ta] = { w: 0, why: [] }; weights[ta].w += w; weights[ta].why.push(why); };
-  addW(pLordName, 3, `${topic.primary}ஆம் அதிபதி`);
-  placements.filter(p => houseOf(p) === topic.primary).forEach(p => addW(p.ta, 2.5, `${topic.primary}இல் அமர்வு`));
-  topic.karakas.forEach(k => addW(k, 2, "காரகன்"));
-  topic.support.forEach(h => addW(lordOf(h), 1.5, `${h}ஆம் அதிபதி`));
-  aspectorsOnHouse(placements, lagnaIdx, pRashiIdx).forEach(a => addW(a.planet, 1.2, `${topic.primary}ஐ பார்வை`));
-  // அதிபதியின் நட்சத்திராதிபதி வழியாகவும் activation (KP அடிப்படை)
-  if (pLord && pLord.nakIdx >= 0) addW(getNakshatraLord(pLord.nakIdx).name, 1.2, `அதிபதியின் நட்சத்திராதிபதி`);
-  Object.keys(weights).forEach(ta => { if (natureOf(ta) === "யோககாரகன்") weights[ta].w += 0.5; });
+  // ═══ 2. ACTIVATION கிரகங்கள் + எடைகள் — பொது builder வழி
+  //     (இதே எடைகளை back-test engine-ும் பயன்படுத்துகிறது: எதிர்காலக்
+  //      கணிப்பும் கடந்தகால சரிபார்ப்பும் ஒரே விதிகளில் இருந்தால்தான்
+  //      accuracy அளவீடு அர்த்தமுள்ளதாகும்) ═══
+  const weights = buildActivationWeights(topicKey, placements, lagnaIdx, functionalNat).weights;
 
   // ═══ 3. தசா windows (இன்று → +12 ஆண்டு) ═══
   const now = new Date();
@@ -5692,6 +5762,16 @@ function persistProfiles(list) {
   try { localStorage.setItem(PROFILES_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable — skip */ }
 }
 
+// பின்நோக்கு சரிபார்ப்பு பதிவுகள் — accuracy சேமிப்பு (World No.1 அளவீடு:
+// எத்தனை உண்மை நிகழ்வுகளை engine சரியாக அடையாளம் காட்டியது)
+const BACKTESTS_KEY = "jn_backtests_v1";
+function loadBacktests() {
+  try { const a = JSON.parse(localStorage.getItem(BACKTESTS_KEY) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+}
+function persistBacktests(list) {
+  try { localStorage.setItem(BACKTESTS_KEY, JSON.stringify(list)); } catch (e) { /* skip */ }
+}
+
 const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8 };
 
 export default function AstrologyApp() {
@@ -5784,6 +5864,26 @@ export default function AstrologyApp() {
   // PDF-க்காக: user இந்த ஜாதகத்தில் எந்த "மேலும் ஆழமான" பகுதிகளை திறந்து
   // பார்த்தார் — PDF-இல் அவை மட்டுமே இணைக்கப்படும் (select செய்து பார்த்தவை மட்டும்)
   const [viewedViews, setViewedViews] = useState(() => new Set());
+  // பின்நோக்கு சரிபார்ப்பு — நடந்த நிகழ்வுகளுடன் engine விதிகளை சோதித்தல்
+  const [btTopic, setBtTopic] = useState("marriage");
+  const [btDateStr, setBtDateStr] = useState("");
+  const [btResult, setBtResult] = useState(null);
+  const [backtests, setBacktests] = useState(loadBacktests);
+
+  const runBacktest = () => {
+    if (!horoscope || !dashaData || !isValidDDMMYYYY(btDateStr)) return;
+    const [dd, mm, yy] = btDateStr.split('.').map(Number);
+    const eventDate = new Date(yy, mm - 1, dd);
+    const geoB = resolveBirthGeo(formData);
+    const res = calcBacktest(btTopic, eventDate, { horoscope, dashaData, functionalNat: functionalNature, geo: geoB, ayanamsaKey });
+    if (!res) return;
+    setBtResult(res);
+    setBacktests(prev => {
+      const next = [{ id: Date.now(), chart: `${formData.name} (${formData.dob})`, topic: res.topic, icon: res.icon, dateStr: btDateStr, score: res.score, hit: res.hit }, ...prev].slice(0, 100);
+      persistBacktests(next);
+      return next;
+    });
+  };
   const [marakaBadhaka, setMarakaBadhaka] = useState(null);
   const [avasthasData, setAvasthasData] = useState(null);
   const [bhavaBalaData, setBhavaBalaData] = useState(null);
@@ -7317,6 +7417,7 @@ ${aiPart}
               <option value="grahabala">💪 கிரக பலம் (Graha Bala)</option>
               <option value="unified">🧩 ஒருங்கிணைந்த கிரக பலம் (எல்லா அளவுகோலும் ஒன்றாக)</option>
               <option value="nakbhava">⭐ நட்சத்திர-பாவக இணைப்பு + பார்வை + கோசார காலம் + பரிகாரம்</option>
+              <option value="backtest">🧪 பின்நோக்கு சரிபார்ப்பு — நடந்த நிகழ்வுகளுடன் engine துல்லியத்தை சோதி</option>
               <option value="yogas">🕉 யோகங்கள் (Mahapurusha + Classical)</option>
               <option value="ashtakavarga">🔢 சர்வாஷ்டகவர்க்கம்</option>
               <option value="drishti">👁 கிரக திருஷ்டி (Aspects)</option>
@@ -8613,6 +8714,84 @@ ${aiPart}
                 (கிரக ராசி + நட்சத்திராதிபதி ராசி மீது சேர்க்கை/சிறப்புப் பார்வை, மாத அளவு துல்லியம்).
                 கோசாரக் காலங்கள் பலன் "வெளிப்படும்" நேரம்; பலனின் அளவு ஜாதக வாக்குறுதியையே சார்ந்தது.
               </div>
+            </div>
+          )}
+
+          {/* ═══ பின்நோக்கு சரிபார்ப்பு — உண்மை நிகழ்வுகளுடன் engine accuracy ═══ */}
+          {advancedView==="backtest" && (
+            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:4,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
+                🧪 பின்நோக்கு சரிபார்ப்பு — Engine துல்லியத்தை நிரூபிக்கும் கருவி
+              </div>
+              <div style={{fontSize:9.5,color:"#8b6914",marginBottom:10,lineHeight:1.6}}>
+                வாழ்க்கையில் <b>ஏற்கனவே நடந்த</b> நிகழ்வின் தேதியை உள்ளிடுங்கள் (எ.கா. திருமண நாள்) —
+                அன்று ஓடிய தசை-புக்தி + அன்றைய குரு/சனி கோசாரத்தை engine-ன் அதே விதிகளால் மதிப்பிட்டு,
+                "இந்நாளை முன்கூட்டியே அடையாளம் காட்டியிருக்குமா" என்று நேர்மையாகச் சொல்லும்.
+                பொருந்தினால் விதிகள் சரி; பொருந்தாவிட்டால் அதுவே மேம்பாட்டுத் தரவு.
+              </div>
+              {/* கேள்வி தேர்வு */}
+              <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:8}}>
+                {Object.entries(EVENT_TOPICS).map(([k,v])=>(
+                  <button key={k} onClick={()=>setBtTopic(k)} style={{
+                    padding:"6px 10px",borderRadius:14,fontSize:10.5,fontWeight:600,cursor:"pointer",
+                    border:`1.5px solid ${btTopic===k?"#7b1c1c":"#e6dcc9"}`,
+                    background:btTopic===k?"#7b1c1c":"#faf9f5",color:btTopic===k?"#fffdf5":"#555"
+                  }}>{v.icon} {v.ta}</button>
+                ))}
+              </div>
+              {/* தேதி + சரிபார் */}
+              <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
+                <input type="text" inputMode="numeric" maxLength={10} placeholder="நிகழ்வு தேதி DD.MM.YYYY"
+                  value={btDateStr}
+                  onChange={e=>setBtDateStr(formatDateInput(e.target.value))}
+                  style={{flex:1,padding:"10px 12px",background:"#f5f0e0",border:"1.5px solid #d4a85330",borderRadius:10,fontSize:13,letterSpacing:1,fontFamily:"monospace",outline:"none"}}/>
+                <button onClick={runBacktest} disabled={!isValidDDMMYYYY(btDateStr)} style={{
+                  padding:"10px 16px",borderRadius:10,border:"none",cursor:isValidDDMMYYYY(btDateStr)?"pointer":"not-allowed",
+                  background:isValidDDMMYYYY(btDateStr)?"linear-gradient(135deg,#7b1c1c,#9b2c2c)":"#ddd",
+                  color:"#fffdf5",fontSize:12,fontWeight:700}}>சரிபார் →</button>
+              </div>
+              {/* முடிவு */}
+              {btResult && (
+                <div style={{marginBottom:10,padding:"10px 12px",borderRadius:8,
+                  background:btResult.hit==="உயர்"?"#f1f8e9":btResult.hit==="குறை"?"#fdf0f0":"#fef9e7",
+                  border:`1.5px solid ${btResult.hit==="உயர்"?"#7cb342":btResult.hit==="குறை"?"#f0c8c8":"#e6cf7a"}`}}>
+                  <div style={{fontSize:11.5,fontWeight:800,marginBottom:3,
+                    color:btResult.hit==="உயர்"?"#1b5e20":btResult.hit==="குறை"?"#cc1a1a":"#8a6d00"}}>
+                    {btResult.verdict}
+                  </div>
+                  <div style={{fontSize:10,color:"#555",marginBottom:4}}>
+                    {btResult.icon} {btResult.topic} • {btDateStr} • {btResult.md} தசை / {btResult.ad} புக்தி • மதிப்பெண்: <b>{btResult.score}</b> ({btResult.hit})
+                  </div>
+                  {btResult.reasons.map((r,ri)=>(
+                    <div key={ri} style={{fontSize:9.5,lineHeight:1.65,color:"#4a3a20"}}>• {r}</div>
+                  ))}
+                </div>
+              )}
+              {/* மொத்த accuracy */}
+              {backtests.length > 0 && (()=>{
+                const matched = backtests.filter(b=>b.hit!=="குறை").length;
+                const pct = Math.round(matched/backtests.length*100);
+                return (
+                  <div style={{padding:"8px 10px",background:"#f0e8d0",borderRadius:8,marginBottom:8}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#7b1c1c"}}>
+                      📊 மொத்த துல்லியம்: {backtests.length} நிகழ்வுகளில் {matched} பொருத்தம் — <span style={{color:pct>=70?"#1b5e20":pct>=50?"#8a6d00":"#cc1a1a"}}>{pct}%</span>
+                    </div>
+                    <div style={{fontSize:8.5,color:"#8b6914",marginTop:2}}>பல ஜாதகங்களில் பல நிகழ்வுகளை சோதிக்க சோதிக்க இந்த அளவீடு நம்பகமாகும் — இதுவே உலகத்தர சான்று</div>
+                  </div>
+                );
+              })()}
+              {/* வரலாறு */}
+              {backtests.map(b=>(
+                <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:6,
+                  padding:"5px 8px",marginBottom:4,borderRadius:6,background:"#faf9f5",border:"1px solid #eee5d5"}}>
+                  <span style={{fontSize:9.5,color:"#555"}}>{b.icon} {b.topic} • {b.dateStr} • {b.chart}</span>
+                  <span style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                    <b style={{fontSize:9.5,color:b.hit==="உயர்"?"#1b5e20":b.hit==="குறை"?"#cc1a1a":"#8a6d00"}}>{b.score} • {b.hit}</b>
+                    <button onClick={()=>setBacktests(prev=>{const next=prev.filter(x=>x.id!==b.id);persistBacktests(next);return next;})}
+                      style={{background:"none",border:"none",color:"#cc1a1a",fontSize:10,cursor:"pointer",padding:0}}>🗑</button>
+                  </span>
+                </div>
+              ))}
             </div>
           )}
 
