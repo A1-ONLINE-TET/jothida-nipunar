@@ -3239,15 +3239,28 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
           ? `சனி transit — உழைப்பு/பொறுப்பு வழியே இப்பலன் உறுதியாகும் காலம்`
           : `சனி transit — தாமதம்/சோதனை; ${star && star.tone === "அசுபம்" ? "அசுப பலன் உணரப்படக்கூடிய" : "பலன் தாமதமாகக் கூடிய"} காலம் — பரிகாரம் பலன் தரும்` }));
 
-      // ── 4. பரிகாரம் — அசுபமாகப் பாதிக்கும் கிரகங்களுக்கு மட்டும் ──
-      const afflictors = [...new Set([
-        ...aspects.filter(a => a.tone === "அசுபம்").map(a => a.from),
-        ...(star && star.tone !== "சுபம்" && isAsubhaNature(star.starLord, star.slNature) ? [star.starLord] : []),
-      ])];
-      const remedies = afflictors.map(ta => {
+      // ── 4. பரிகாரம் — யாருக்கு, எதற்காக என்று தெளிவாக ──
+      //   (அ) அசுப பார்வை செய்யும் கிரகம் — அப்பார்வையின் கடுமை தணிய
+      //   (ஆ) நட்சத்திராதிபதி — இணைப்பு சுபமில்லாத எல்லா நிலையிலும் (அசுபம்/கலப்பு)
+      //       அவரை வலுப்படுத்துவதே முதன்மைப் பரிகாரம்: சுப கிரகமே 6/8/12-இல்
+      //       பலவீனமாக இருந்தாலும் அவருக்கான பரிகாரமே இணைப்பை சீராக்கும்
+      //   (இ) அமர்ந்த கிரகமே ராகு/கேது/பாபன் எனில் — அவருக்கும்
+      const remedyMap = new Map(); // ta → why[]
+      const addRemedy = (ta, why) => {
+        if (!ta || !PLANET_REMEDIES[ta]) return;
+        if (!remedyMap.has(ta)) remedyMap.set(ta, []);
+        remedyMap.get(ta).push(why);
+      };
+      aspects.filter(a => a.tone === "அசுபம்").forEach(a =>
+        addRemedy(a.from, `${a.from}-இன் அசுப பார்வை ${p.ta} மீது விழுகிறது — அதன் கடுமை தணிய`));
+      if (star && star.tone !== "சுபம்")
+        addRemedy(star.starLord, `நட்சத்திராதிபதி ${star.starLord} (${star.slNature}${star.slHouse ? `, ${star.slHouse}ஆம் வீட்டில்` : ""}) வலுப்பெற்றால் ${p.ta} வழி வரும் ${star.linkedHouses.join(",")} பாவப் பலன்கள் சீராகும்`);
+      if ((p.ta === "ராகு" || p.ta === "கேது" || natureOf(p.ta) === "பாபன்") && (!star || star.tone !== "சுபம்"))
+        addRemedy(p.ta, `${p.ta} ${houseNum}ஆம் வீட்டில் அமர்ந்திருப்பதன் அசுப விளைவு தணிய`);
+      const remedies = [...remedyMap.entries()].map(([ta, whys]) => {
         const r = PLANET_REMEDIES[ta];
-        return r ? { planet: ta, mantra: r.mantra, count: r.mantraCount, temple: r.temple, day: r.day, donate: r.donate } : null;
-      }).filter(Boolean);
+        return { planet: ta, why: whys.join(" • "), gem: r.gem, mantra: r.mantra, count: r.mantraCount, temple: r.temple, day: r.day, donate: r.donate };
+      });
 
       const verdict = (star ? star.tone : null) === "அசுபம்" || asubhaAsp > subhaAsp ? "அசுபம் மேலோங்கும் — பரிகாரம் அவசியம்"
         : (star ? star.tone : null) === "சுபம்" && subhaAsp >= asubhaAsp ? "சுபம் மேலோங்கும்"
@@ -6737,7 +6750,7 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
               ${oc.star?`<div style="background:#eef0fa;border:1px solid #c5cae9;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:9.5px;line-height:1.7">🔗 <b>பாவகத் தொடர்பு:</b> ${oc.star.text}</div>`:""}
               ${oc.aspects.length?`<div style="background:#fdf6e6;border:1px solid #e8d5a0;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:9.5px;line-height:1.7"><b>👁 பார்வைகள்:</b> ${oc.aspects.map(a=>`<span style="color:${a.tone==="சுபம்"?"#1b5e20":a.tone==="அசுபம்"?"#a02020":"#8a6d00"}">${a.from} (${a.nature}${a.isSpecial?", சிறப்பு":""}) — ${a.text}</span>`).join("<br>")}</div>`:`<div style="font-size:9px;color:#888;margin:3px 0">👁 பார்வை இல்லை — தன் இயல்பிலேயே பலன்</div>`}
               ${(oc.jupWindows.length||oc.satWindows.length)?`<div style="background:#edf5ea;border:1px solid #c5dcc0;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:9.5px;line-height:1.7"><b style="color:#33691e">📅 கோசார பலன் காலங்கள்:</b><br>${oc.jupWindows.map(w=>`<span style="color:#1b5e20">♃ <b>${w.label}</b> — ${w.text}</span>`).join("<br>")}${oc.jupWindows.length&&oc.satWindows.length?"<br>":""}${oc.satWindows.map(w=>`<span style="color:#7a5200">♄ <b>${w.label}</b> — ${w.text}</span>`).join("<br>")}</div>`:""}
-              ${oc.remedies.length?`<div style="background:#fdeef0;border:1px solid #eabfc7;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:9.5px;line-height:1.7"><b style="color:#a02020">🙏 பரிகாரம்:</b><br>${oc.remedies.map(r=>`<b>${r.planet}</b>: ${r.mantra} (${r.count}) • ${r.temple} • ${r.day} — ${r.donate} தானம்`).join("<br>")}</div>`:""}
+              ${oc.remedies.length?`<div style="background:#fdeef0;border:1px solid #eabfc7;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:9.5px;line-height:1.7"><b style="color:#a02020">🙏 பரிகாரம்:</b><br>${oc.remedies.map(r=>`<b>${r.planet} கிரக பரிகாரம்</b> <i style="font-size:8.5px;color:#8a5a30">(எதற்காக: ${r.why})</i><br>📿 ${r.mantra} — ${r.count} • 🛕 ${r.temple}<br>🎁 ${r.day} அன்று ${r.donate} தானம் • 💎 ${r.gem}`).join("<br>")}</div>`:`<div style="font-size:8.5px;color:#33691e;margin:3px 0">🙏 பரிகாரம் தேவையில்லை — இணைப்பும் பார்வைகளும் சுபம்</div>`}
             </div>`;
           }).join("") + `</div>`).join("") +
         `<div class="olainote">🔵 பாவகத் தொடர்பு • 🟡 பார்வைகள் • 🟢 கோசார காலம் • 🔴 பரிகாரம் — நான்கு பகுதிகளும் நிறத்தால் பிரிக்கப்பட்டுள்ளன</div>`, "cIndigo") : "";
@@ -8298,15 +8311,25 @@ ${aiPart}
                           ))}
                         </div>
                       )}
-                      {/* 4. பரிகாரம் — அசுபமாகப் பாதிக்கும் கிரகங்களுக்கு */}
-                      {oc.remedies.length > 0 && (
+                      {/* 4. பரிகாரம் — யாருக்கு, எதற்காக, என்ன செய்ய */}
+                      {oc.remedies.length > 0 ? (
                         <div style={{marginTop:5,padding:"6px 8px",background:"#fdf3f0",border:"1px solid #f0d5c8",borderRadius:6}}>
-                          <div style={{fontSize:9.5,fontWeight:700,color:"#a03a00",marginBottom:2}}>🙏 பரிகாரம் (பாதிக்கும் கிரகத்திற்கு)</div>
+                          <div style={{fontSize:9.5,fontWeight:700,color:"#a03a00",marginBottom:2}}>🙏 பரிகாரம்</div>
                           {oc.remedies.map((r,ri)=>(
-                            <div key={ri} style={{fontSize:9,lineHeight:1.65,color:"#5a3a20"}}>
-                              <b>{r.planet}</b>: {r.mantra} ({r.count}) • {r.temple} • {r.day} அன்று {r.donate} தானம்
+                            <div key={ri} style={{marginBottom:5,paddingBottom:4,borderBottom:ri<oc.remedies.length-1?"1px dashed #f0d5c8":"none"}}>
+                              <div style={{fontSize:9.5,fontWeight:700,color:"#7b1c1c"}}>{r.planet} கிரக பரிகாரம்</div>
+                              <div style={{fontSize:8.5,color:"#8a5a30",lineHeight:1.6,fontStyle:"italic"}}>எதற்காக: {r.why}</div>
+                              <div style={{fontSize:9,lineHeight:1.7,color:"#5a3a20"}}>
+                                📿 மந்திரம்: {r.mantra} — {r.count}<br/>
+                                🛕 கோயில்: {r.temple}<br/>
+                                🎁 {r.day} அன்று {r.donate} தானம் • 💎 ரத்தினம்: {r.gem}
+                              </div>
                             </div>
                           ))}
+                        </div>
+                      ) : (
+                        <div style={{marginTop:5,fontSize:9,color:"#33691e",background:"#f0f6ec",border:"1px solid #d8e6cf",borderRadius:6,padding:"4px 8px"}}>
+                          🙏 பரிகாரம் தேவையில்லை — இக்கிரகத்தின் இணைப்பும் பார்வைகளும் சுபமாக உள்ளன
                         </div>
                       )}
                     </div>
