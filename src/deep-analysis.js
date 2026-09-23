@@ -89,7 +89,9 @@ export function analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStre
   const find = (n) => placements.find(p => p.ta === n);
 
   const factors = [];       // each: {text, weight} weight: +good / -bad
+  const chips = [];         // சிறு-அடையாளங்கள் (வகை/தோஷ சுருக்கம்) — UI chip வரிசைக்கு
   let score = 0;
+  const gender = ctx?.gender || null; // "ஆண்" / "பெண்" / null (தெரியாதபோது பொது விதி)
 
   // House 7 details
   const h7Rashi = (lagnaIdx + 6) % 12;
@@ -97,6 +99,23 @@ export function analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStre
   const h7Lord = find(h7LordName);
   const h7LordHouse = h7Lord ? ((h7Lord.rashiIdx - lagnaIdx + 12) % 12) + 1 : null;
   const occupants7 = placements.filter(p => p.rashiIdx === h7Rashi);
+
+  // FACTOR 0: லக்ன அடித்தளம் — ஜாதகரின் சுபாவம்/சகிப்புத்தன்மை (1+7 இணைத்துப்
+  // பார்க்கும் classical விதி). லக்னாதிபதி பலமாக இருந்தால் உறவின் சவால்களைத்
+  // தாங்கும் திறன் உண்டு.
+  {
+    const lagnaLordName = RASHI_LORD[lagnaIdx];
+    const lagnaLord = find(lagnaLordName);
+    const lagnaLordHouse = lagnaLord ? ((lagnaLord.rashiIdx - lagnaIdx + 12) % 12) + 1 : null;
+    const lStr = strengthLevel(lagnaLordName, grahaBala);
+    if (lagnaLordHouse && DUSTHANA.includes(lagnaLordHouse)) {
+      score -= 1;
+      factors.push({ text: `லக்னாதிபதி (${lagnaLordName}) ${lagnaLordHouse}ஆம் வீட்டில் — சுய-பலம்/சகிப்புத்தன்மை பக்கம் கவனம் (1+7 அடித்தள விதி)`, weight: -1 });
+    } else if (lStr.level === "strong") {
+      score += 1;
+      factors.push({ text: `லக்னாதிபதி (${lagnaLordName}) பலம் — விட்டுக்கொடுக்கும் மனப்பான்மை/உறவைத் தாங்கும் திறன் நல்லது`, weight: +1 });
+    }
+  }
 
   // FACTOR 1: 7th lord placement (MOST important for marriage stability)
   if (h7LordHouse) {
@@ -115,19 +134,41 @@ export function analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStre
     else if (lordStr.level === "strong") { score += 1; factors.push({ text: `7ஆம் வீட்டு அதிபதி பலம் (${lordStr.status})`, weight: +1 }); }
   }
 
-  // FACTOR 2: Venus (Kalatra Karaka — significator of spouse) condition
-  const venus = find("சுக்கிரன்");
-  if (venus) {
-    const venusHouse = ((venus.rashiIdx - lagnaIdx + 12) % 12) + 1;
-    const venusStr = strengthLevel("சுக்கிரன்", grahaBala);
-    if (DUSTHANA.includes(venusHouse) || venusStr.level === "weak" || venus.isCombust) {
-      score -= 1;
-      const why = [DUSTHANA.includes(venusHouse) ? venusHouse+"ஆம் வீட்டில்" : "", venus.isCombust ? "அஸ்தங்கம்" : "", venusStr.level==="weak" ? "பலவீனம்" : ""].filter(Boolean).join(", ");
-      factors.push({ text: `கல்யாண காரகன் சுக்கிரன் — ${why} — திருமண சுகத்தில் குறை`, weight: -1 });
-    } else if (venusStr.level === "strong") {
-      score += 1;
-      factors.push({ text: `கல்யாண காரகன் சுக்கிரன் பலமாக உள்ளார் — திருமண சுகம்`, weight: +1 });
+  // FACTOR 2: களத்திர காரகர் — பாலின வேறுபாட்டுடன் (classical):
+  // ஆண் ஜாதகம் → மனைவி காரகன் சுக்கிரன் (முதன்மை); பெண் ஜாதகம் → கணவன்
+  // காரகன் குரு (முதன்மை — மாங்கல்ய பலமும் இவரே). பாலினம் தெரியாதபோது
+  // இருவரையும் சம எடையில் (பழைய பொது விதி).
+  const karakaCheck = (name, label, primary) => {
+    const kp = find(name);
+    if (!kp) return;
+    const kHouse = ((kp.rashiIdx - lagnaIdx + 12) % 12) + 1;
+    const kStr = strengthLevel(name, grahaBala);
+    const w = primary ? 1.5 : 1;
+    if (DUSTHANA.includes(kHouse) || kStr.level === "weak" || kp.isCombust) {
+      score -= primary ? 2 : 1;
+      const why = [DUSTHANA.includes(kHouse) ? kHouse+"ஆம் வீட்டில்" : "", kp.isCombust ? "அஸ்தங்கம்" : "", kStr.level==="weak" ? "பலவீனம்" : ""].filter(Boolean).join(", ");
+      factors.push({ text: `${label} ${name} — ${why} — ${primary ? "முதன்மை காரக பலவீனம் — " : ""}திருமண சுகத்தில் குறை`, weight: -(primary ? 2 : 1) });
+    } else if (kStr.level === "strong") {
+      score += primary ? 2 : 1;
+      factors.push({ text: `${label} ${name} பலமாக உள்ளார் — ${primary ? "முதன்மை காரக பலம் — " : ""}நல்ல துணை/திருமண சுகம்`, weight: +(primary ? 2 : 1) });
     }
+  };
+  if (gender === "ஆண்") {
+    karakaCheck("சுக்கிரன்", "மனைவி காரகன்", true);
+    karakaCheck("குரு", "தார்மீக காரகன்", false);
+    chips.push({ label: "காரகன்: சுக்கிரன் (ஆண் ஜாதகம்)", tone: "info" });
+  } else if (gender === "பெண்") {
+    karakaCheck("குரு", "கணவன் காரகன் (மாங்கல்ய பலம்)", true);
+    karakaCheck("சுக்கிரன்", "தாம்பத்ய காரகன்", false);
+    chips.push({ label: "காரகன்: குரு (பெண் ஜாதகம்)", tone: "info" });
+  } else {
+    karakaCheck("சுக்கிரன்", "கல்யாண காரகன்", false);
+    karakaCheck("குரு", "கல்யாண காரகன்", false);
+  }
+  // செவ்வாய் — இரு பாலருக்கும் தாம்பத்ய ஈர்ப்பு காரகன் (சிறு எடை)
+  {
+    const marsStr = strengthLevel("செவ்வாய்", grahaBala);
+    if (marsStr.level === "weak") factors.push({ text: "தாம்பத்ய ஈர்ப்பு காரகன் செவ்வாய் பலவீனம் — உணர்வுப் பக்கம் கவனம்", weight: 0 });
   }
 
   // FACTOR 3: Malefics in 7th house (Mars, Saturn, Rahu, Ketu, Sun)
@@ -183,6 +224,126 @@ export function analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStre
   score += shadbalaFactor(ctx, h7LordName, "7ஆம் அதிபதி", factors);
   score += functionalFactor(ctx, h7LordName, "7ஆம் அதிபதி", factors);
 
+  // FACTOR 8: ராகு-கேது அச்சு தோஷம் — 1-7 (களத்திர அச்சு) அல்லது 2-8
+  // (குடும்ப-மாங்கல்ய அச்சு) இல் நிழல் கிரக அச்சு அமர்வு → தாமதம்/புரிதலின்மை
+  {
+    const rahu = find("ராகு"), ketu = find("கேது");
+    if (rahu && ketu) {
+      const rH = ((rahu.rashiIdx - lagnaIdx + 12) % 12) + 1;
+      const axis = [rH, ((ketu.rashiIdx - lagnaIdx + 12) % 12) + 1].sort((a,b)=>a-b).join("-");
+      if (axis === "1-7") {
+        score -= 1;
+        factors.push({ text: "ராகு-கேது அச்சு 1-7 (லக்ன-களத்திர அச்சில்) — திருமணத் தாமதம்/புரிதலின்மை சாத்தியம்; பரிகாரம் உதவும்", weight: -1 });
+        chips.push({ label: "⚠ ராகு-கேது 1-7 அச்சு", tone: "bad" });
+      } else if (axis === "2-8") {
+        score -= 1;
+        factors.push({ text: "ராகு-கேது அச்சு 2-8 (குடும்ப-மாங்கல்ய அச்சில்) — குடும்ப ஒற்றுமையில் எதிர்பாராத தடைகள் சாத்தியம்", weight: -1 });
+        chips.push({ label: "⚠ ராகு-கேது 2-8 அச்சு", tone: "bad" });
+      }
+    }
+  }
+
+  // FACTOR 9: புனர்ப்பு தோஷம் — சனி + சந்திரன் சேர்க்கை அல்லது பார்வைத்
+  // தொடர்பு → நிச்சயம் தடைபடுதல்/திருமணத் தயக்கம்-தாமதம் (classical தமிழ் விதி)
+  {
+    const sat = find("சனி"), moonP = find("சந்திரன்");
+    if (sat && moonP) {
+      const conj = sat.rashiIdx === moonP.rashiIdx;
+      const satAspMoon = !conj && [3,7,10].includes(((moonP.rashiIdx - sat.rashiIdx + 12) % 12) + 1);
+      const moonAspSat = !conj && ((sat.rashiIdx - moonP.rashiIdx + 12) % 12) + 1 === 7;
+      if (conj) {
+        score -= 1;
+        factors.push({ text: "புனர்ப்பு தோஷம் (சனி+சந்திரன் சேர்க்கை) — நிச்சயம் நின்று மீள்தல்/தாமதம் சாத்தியம்; சிவ வழிபாடு பரிகாரம்", weight: -1 });
+        chips.push({ label: "⚠ புனர்ப்பு தோஷம் (சேர்க்கை)", tone: "bad" });
+      } else if (satAspMoon || moonAspSat) {
+        factors.push({ text: "புனர்ப்புச் சாயை (சனி↔சந்திரன் பார்வைத் தொடர்பு) — முடிவுகளில் தயக்கம்/சிறு தாமதம் சாத்தியம்", weight: 0 });
+        chips.push({ label: "புனர்ப்புச் சாயை (பார்வை)", tone: "warn" });
+      }
+    }
+  }
+
+  // FACTOR 10: மாங்கல்ய தோஷம் — பெண் ஜாதகத்தில் 8ஆம் பாவம் (மாங்கல்ய
+  // ஸ்தானம்) கடும் பாதிப்பு. பாலினம் "பெண்" எனத் தெரிந்தால் மட்டும்.
+  if (gender === "பெண்") {
+    const h8Rashi = (lagnaIdx + 7) % 12;
+    const mal8 = placements.filter(p => p.rashiIdx === h8Rashi && NATURAL_MALEFICS.includes(p.ta));
+    const h8LordName = RASHI_LORD[h8Rashi];
+    const h8Lord = find(h8LordName);
+    const h8LordHouse = h8Lord ? ((h8Lord.rashiIdx - lagnaIdx + 12) % 12) + 1 : null;
+    const jupAsp8 = jupiter && jupiter.rashiIdx !== h8Rashi && planetAspectsHouse(jupiter, lagnaIdx, 8);
+    if (mal8.length >= 2 || (mal8.length >= 1 && h8LordHouse && DUSTHANA.includes(h8LordHouse))) {
+      if (jupAsp8) {
+        factors.push({ text: `மாங்கல்ய ஸ்தானத்தில் (8) பாபர் (${mal8.map(p=>p.ta).join(", ")}) — ஆனால் குரு பார்வையால் பெருமளவு நிவர்த்தி`, weight: 0 });
+        chips.push({ label: "மாங்கல்ய தோஷம் — குரு நிவர்த்தி", tone: "warn" });
+      } else {
+        score -= 1;
+        factors.push({ text: `மாங்கல்ய தோஷக் குறியீடு — 8ஆம் பாவத்தில் ${mal8.map(p=>p.ta).join(", ")}${h8LordHouse && DUSTHANA.includes(h8LordHouse) ? ` + 8ஆம் அதிபதி துஸ்தானத்தில்` : ""} — பொருத்தத்தில் இரு-தோஷ சமநிலை (பாப சாம்யம்) கட்டாயம்; மாங்கல்ய பரிகாரம் உதவும்`, weight: -1 });
+        chips.push({ label: "⚠ மாங்கல்ய தோஷக் குறியீடு", tone: "bad" });
+      }
+    }
+  }
+
+  // FACTOR 11: காதல் / நிச்சய திருமணச் சாய்வு — 5 (காதல்) ↔ 7 (திருமணம்)
+  // அதிபதிகளின் தொடர்பு, அல்லது சுக்கிரன்↔சந்திரன்/ராகு சேர்க்கை → காதல் சாய்வு
+  {
+    const h5Rashi = (lagnaIdx + 4) % 12;
+    const l5Name = RASHI_LORD[h5Rashi];
+    const l5 = find(l5Name), l7 = h7Lord;
+    let loveWhy = null;
+    if (l5 && l7 && l5Name !== h7LordName) {
+      const l5House = ((l5.rashiIdx - lagnaIdx + 12) % 12) + 1;
+      if (l5.rashiIdx === l7.rashiIdx) loveWhy = "5-7 அதிபதிகள் சேர்க்கை";
+      else if (l5House === 7) loveWhy = "5ஆம் அதிபதி 7-இல்";
+      else if (h7LordHouse === 5) loveWhy = "7ஆம் அதிபதி 5-இல்";
+      else if (RASHI_LORD[l5.rashiIdx] === h7LordName && RASHI_LORD[l7.rashiIdx] === l5Name) loveWhy = "5↔7 பரிவர்த்தனை";
+    }
+    if (!loveWhy) {
+      const venusP = find("சுக்கிரன்"), moonP = find("சந்திரன்"), rahu = find("ராகு");
+      if (venusP && moonP && venusP.rashiIdx === moonP.rashiIdx) loveWhy = "சுக்கிரன்+சந்திரன் சேர்க்கை";
+      else if (venusP && rahu && venusP.rashiIdx === rahu.rashiIdx) loveWhy = "சுக்கிரன்+ராகு சேர்க்கை";
+    }
+    if (loveWhy) {
+      factors.push({ text: `💕 காதல்-திருமணச் சாய்வு (${loveWhy}) — சுய-தேர்வு இணைப்பின் சாத்தியம் மிகுதி`, weight: 0 });
+      chips.push({ label: "💕 காதல் சாய்வு", tone: "info" });
+    } else {
+      chips.push({ label: "🤝 நிச்சயத் திருமணச் சாய்வு", tone: "info" });
+    }
+  }
+
+  // ── வாழ்க்கைத் துணை விவரம் (spouse profile) — 7-இல் அமர்ந்தோர் >
+  // 7-ஐப் பார்ப்போர் > 7ஆம் அதிபதி என்ற முன்னுரிமையில் குண-தோற்றக் குறியீடு;
+  // திசை = 7ஆம் அதிபதி நிற்கும் ராசியின் திக்கு; தூரம் = அதிபதியின் வீடு ──
+  const SPOUSE_TRAITS = {
+    "சூரியன்": "நிர்வாகத் திறன், கம்பீரமான தோற்றம், சுயமரியாதை (சற்று அகந்தை சாத்தியம்)",
+    "சந்திரன்": "அழகிய தோற்றம், இரக்க குணம், சாந்தம் (மாறும் மனநிலை சாத்தியம்)",
+    "செவ்வாய்": "சுறுசுறுப்பு, தைரியம் (அவசரம்/கோபம் சாத்தியம்)",
+    "புதன்": "புத்திசாலி, இளமையான தோற்றம், நகைச்சுவை, திறமையான பேச்சு",
+    "குரு": "நேர்மை, ஆன்மிக ஈடுபாடு, பண்பு, குடும்பப் பிடிப்பு",
+    "சுக்கிரன்": "மிகுந்த அழகு, கலை ஆர்வம், அன்பு, சொகுசு விருப்பம்",
+    "சனி": "முதிர்ச்சியான சிந்தனை, அமைதி, உழைப்பு (வயதில்/தோற்றத்தில் மூப்பு சாயல்)",
+    "ராகு": "வேறுபட்ட கலாச்சாரம்/இனம், புதுமையான சிந்தனை",
+    "கேது": "ஆன்மிக நாட்டம், எளிமை, தனித்துவச் சிந்தனை",
+  };
+  const DIK = ["கிழக்கு", "தெற்கு", "மேற்கு", "வடக்கு"]; // ராசி idx % 4
+  let spouseProfile = null;
+  {
+    const aspectors7 = placements.filter(p => p.rashiIdx !== h7Rashi && planetAspectsHouse(p, lagnaIdx, 7));
+    const influencers = occupants7.length ? occupants7 : (aspectors7.length ? aspectors7 : (h7Lord ? [h7Lord] : []));
+    const src = occupants7.length ? "7-இல் அமர்வு" : aspectors7.length ? "7-இன் மீது பார்வை" : "7ஆம் அதிபதி";
+    const traits = influencers.map(p => ({ planet: p.ta, trait: SPOUSE_TRAITS[p.ta] || "" })).filter(t => t.trait);
+    const distance = h7LordHouse == null ? "" :
+      [3, 9, 12].includes(h7LordHouse) ? "தொலைதூரம்/வெளியூர்-வெளிநாட்டுத் தொடர்பு சாத்தியம் (அதிபதி " + h7LordHouse + "-இல்)" :
+      [1, 2, 4].includes(h7LordHouse) ? "அருகாமை/சொந்த ஊர்ப் பக்கம் சாத்தியம் (அதிபதி " + h7LordHouse + "-இல்)" :
+      "நடுத்தர தூரம்";
+    spouseProfile = {
+      source: src,
+      traits,
+      direction: h7Lord ? DIK[h7Lord.rashiIdx % 4] : null,
+      distance,
+      d9Note: (navamsaStrength || []).find(n => n.ta === h7LordName)?.d9Status || null,
+    };
+  }
+
   // VERDICT
   let verdict, verdictColor, summary;
   if (score >= 3) {
@@ -200,7 +361,7 @@ export function analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStre
   }
 
   return { area: "திருமணம்", icon: "💍", score, verdict, verdictColor, summary, factors,
-           h7Rashi: horoscope.placements.length ? null : null,
+           chips, spouseProfile,
            details: { h7LordName, h7LordHouse, occupants: occupants7.map(p=>p.ta) } };
 }
 
@@ -286,6 +447,105 @@ export function analyzeHealth(horoscope, grahaBala, ctx) {
   score += savFactor(ctx, lagnaIdx, "லக்ன", factors);
   score += shadbalaFactor(ctx, lagnaLordName, "லக்னாதிபதி", factors);
 
+  // FACTOR 8: சூரியன் — ஆரோக்கிய/உயிர்ச்சக்தி காரகன் (நோய் எதிர்ப்பு, எலும்பு,
+  // இதயம்). பாதிப்பு → அடிக்கடி காய்ச்சல்/சோர்வு (classical).
+  const sunP = find("சூரியன்");
+  if (sunP) {
+    const sunHouse = ((sunP.rashiIdx - lagnaIdx + 12) % 12) + 1;
+    const sunStr = strengthLevel("சூரியன்", grahaBala);
+    if (DUSTHANA.includes(sunHouse) || sunStr.level === "weak") {
+      score -= 1;
+      factors.push({ text: `ஆரோக்கிய காரகன் சூரியன் ${DUSTHANA.includes(sunHouse) ? sunHouse+"ஆம் வீட்டில்" : "பலவீனம்"} — நோய் எதிர்ப்புச் சக்தி குறைவு, அடிக்கடி காய்ச்சல்/சோர்வு சாத்தியம்`, weight: -1 });
+    } else if (sunStr.level === "strong") {
+      score += 1;
+      factors.push({ text: `ஆரோக்கிய காரகன் சூரியன் பலம் — நல்ல உயிர்ச்சக்தி/நோய் எதிர்ப்பு`, weight: +1 });
+    }
+  }
+
+  // FACTOR 9: 6-இல் அமர்ந்த கிரகங்கள் → நோயின் பிறப்பிடம்/வகை (காரக-உடல் map)
+  const occupants6 = placements.filter(p => ((p.rashiIdx - lagnaIdx + 12) % 12) + 1 === 6);
+  if (occupants6.length > 0) {
+    const kinds = occupants6.map(p => DISEASE_SIGNIFICATOR[p.ta] ? `${p.ta}: ${DISEASE_SIGNIFICATOR[p.ta]}` : p.ta);
+    factors.push({ text: `6ஆம் வீட்டில் ${occupants6.map(p=>p.ta).join(", ")} — சாத்தியமான நோய்ப் பகுதி: ${kinds.join(" • ")}`, weight: 0 });
+  }
+
+  // FACTOR 10: 8ஆம் அதிபதி ↔ லக்ன தொடர்பு — நாள்பட்ட (chronic) தன்மை/அறுவை
+  const h8LordName = RASHI_LORD[h8Rashi];
+  const h8LordP = find(h8LordName);
+  let chronicLink = false;
+  if (h8LordP) {
+    const h8LordHouse = ((h8LordP.rashiIdx - lagnaIdx + 12) % 12) + 1;
+    const lagnaLordIn8 = lagnaLord && ((lagnaLord.rashiIdx - lagnaIdx + 12) % 12) + 1 === 8;
+    if (h8LordHouse === 1 || lagnaLordIn8 || planetAspectsHouse(h8LordP, lagnaIdx, 1)) {
+      chronicLink = true;
+      score -= 1;
+      factors.push({ text: `8ஆம் அதிபதி (${h8LordName}) ↔ லக்ன தொடர்பு — நோய் நீடிக்கும்/மீளும் தன்மை; முழு சிகிச்சை + பொறுமை தேவை`, weight: -1 });
+    }
+  }
+
+  // FACTOR 11: 12ஆம் பாவம் — மருத்துவமனை/படுக்கை/செலவு; 6↔12 அதிபதி
+  // தொடர்பு = நோய்க்காக அதிக மருத்துவச் செலவு (classical விதி)
+  {
+    const h12Rashi = (lagnaIdx + 11) % 12;
+    const mal12 = placements.filter(p => p.rashiIdx === h12Rashi && NATURAL_MALEFICS.includes(p.ta));
+    if (mal12.length > 0) {
+      factors.push({ text: `12ஆம் வீட்டில் ${mal12.map(p=>p.ta).join(", ")} — மருத்துவமனை/படுக்கை ஓய்வு வாய்ப்பு; தூக்கம்-ஓய்வில் கவனம்`, weight: 0 });
+    }
+    const h12LordName = RASHI_LORD[h12Rashi];
+    const l6p = find(h6LordName), l12p = find(h12LordName);
+    if (l6p && l12p && h6LordName !== h12LordName) {
+      const conj = l6p.rashiIdx === l12p.rashiIdx;
+      const mutual = planetAspectsHouse(l6p, lagnaIdx, ((l12p.rashiIdx - lagnaIdx + 12) % 12) + 1) &&
+                     planetAspectsHouse(l12p, lagnaIdx, ((l6p.rashiIdx - lagnaIdx + 12) % 12) + 1);
+      if (conj || mutual) {
+        score -= 1;
+        factors.push({ text: `6ஆம் அதிபதி (${h6LordName}) ↔ 12ஆம் அதிபதி (${h12LordName}) ${conj ? "சேர்க்கை" : "பரஸ்பரத் தொடர்பு"} — நோய்க்கான மருத்துவச் செலவு மிகுதி சாத்தியம்; காப்பீடு/முன்னெச்சரிக்கை நல்லது`, weight: -1 });
+      }
+    }
+  }
+
+  // ── திரிதோஷக் கணிப்பு (வாதம்/பித்தம்/கபம்) — பாதிக்கப்பட்ட கிரகங்களின்
+  // இயல்பு + அவை நிற்கும் ராசியின் பூத இயல்பு + லக்ன/6ஆம் ராசி இயல்பு ──
+  // கிரக-தோஷம்: சனி/ராகு/கேது=வாதம் • சூரியன்/செவ்வாய்=பித்தம் •
+  // சந்திரன்/சுக்கிரன்/குரு=கபம் • புதன்=வாத-சாய்வு (திரிதோஷக் கலப்பு)
+  // ராசி-தோஷம்: நெருப்பு=பித்தம், காற்று=வாதம், நீர்=கபம், மண்=கலப்பு
+  const PLANET_DOSHA = { "சனி":"வாதம்", "ராகு":"வாதம்", "கேது":"வாதம்", "புதன்":"வாதம்",
+    "சூரியன்":"பித்தம்", "செவ்வாய்":"பித்தம்", "சந்திரன்":"கபம்", "சுக்கிரன்":"கபம்", "குரு":"கபம்" };
+  const SIGN_DOSHA = ["பித்தம்", null, "வாதம்", "கபம்"]; // idx%4: நெருப்பு,மண்(கலப்பு),காற்று,நீர்
+  const DOSHA_EFFECTS = {
+    "வாதம்": "நரம்புத் தளர்ச்சி, மூட்டு வலி, வாயுத் தொல்லை, தூக்கமின்மை",
+    "பித்தம்": "உஷ்ண நோய்கள், அமிலத்தன்மை/வயிற்றுப் புண், தோல் அலர்ஜி, ரத்தக் கொதிப்பு",
+    "கபம்": "சளி, ஆஸ்துமா/சைனஸ், நுரையீரல், உடல் பருமன், நீர்க்கோவை",
+  };
+  const doshaPts = { "வாதம்": 0, "பித்தம்": 0, "கபம்": 0 };
+  const addDosha = (d, w) => { if (d) doshaPts[d] += w; };
+  const gbOf = (n) => grahaBala?.find(g => g.ta === n);
+  const afflicted = (n) => { const g = gbOf(n); const p = find(n); if (!p) return false;
+    const hh = ((p.rashiIdx - lagnaIdx + 12) % 12) + 1;
+    return (g && (g.score < 4 || g.status === "நீசம்" || g.status === "எதிரி வீடு")) || DUSTHANA.includes(hh) || p.isCombust; };
+  placements.forEach(p => {
+    if (afflicted(p.ta)) { addDosha(PLANET_DOSHA[p.ta], 2); addDosha(SIGN_DOSHA[p.rashiIdx % 4], 1); }
+  });
+  occupants6.forEach(p => addDosha(PLANET_DOSHA[p.ta], 2));
+  addDosha(SIGN_DOSHA[lagnaIdx % 4], 1);
+  addDosha(SIGN_DOSHA[h6Rashi % 4], 1.5);
+  const doshaSorted = Object.entries(doshaPts).sort((a, b) => b[1] - a[1]);
+  const tridosha = doshaSorted[0][1] > 0 ? {
+    dominant: doshaSorted[0][0],
+    points: doshaPts,
+    close: doshaSorted[1][1] > 0 && (doshaSorted[0][1] - doshaSorted[1][1]) < 1.5 ? doshaSorted[1][0] : null,
+    effects: DOSHA_EFFECTS[doshaSorted[0][0]],
+  } : null;
+
+  // ── நோயின் மூலம் (உடல்/மனம்) + காலத் தன்மை ──
+  const moonAff = afflicted("சந்திரன்"), mercAff = afflicted("புதன்");
+  const origin = moonAff && mercAff ? "மனம்-சார்ந்த (psychosomatic) சாய்வு வலு — மன அழுத்தமே உடல் நோயாக வெளிப்படலாம்"
+    : moonAff || mercAff ? "உடல் + மனம் கலப்பு — மன அமைதி சிகிச்சையின் பாதி"
+    : "பெரும்பாலும் உடல்-சார்ந்தது (physical)";
+  const chronicity = chronicLink || maleficsIn8.length > 0
+    ? "நீடிக்கும்/மீளும் தன்மை (chronic சாய்வு) — 8ஆம் பாவத் தொடர்பு"
+    : "பெரும்பாலும் தற்காலிகம் — சரியான சிகிச்சையில் விரைவு மீட்சி";
+
   let verdict, verdictColor, summary;
   if (score >= 3) {
     verdict = "மிகச் சிறந்த ஆரோக்கியம்"; verdictColor = "#0d7a30";
@@ -301,7 +561,13 @@ export function analyzeHealth(horoscope, grahaBala, ctx) {
     summary = "பல factors உடல்நலத்தில் கவனம் தேவை என்று காட்டுகின்றன. வழக்கமான மருத்துவ பரிசோதனை, பரிகாரம், ஆரோக்கிய பழக்கம் அவசியம்.";
   }
 
+  const chips = [];
+  if (tridosha) chips.push({ label: `${tridosha.dominant === "வாதம்" ? "🌬" : tridosha.dominant === "பித்தம்" ? "🔥" : "💧"} ${tridosha.dominant} மிகுதி${tridosha.close ? ` (+${tridosha.close})` : ""}`, tone: "warn" });
+  chips.push({ label: origin.startsWith("மனம்") ? "🧠 மனம்-சார்ந்த சாய்வு" : origin.startsWith("உடல் + மனம்") ? "🧠+💪 கலப்பு மூலம்" : "💪 உடல்-சார்ந்தது", tone: "info" });
+  chips.push({ label: chronicity.startsWith("நீடிக்கும்") ? "⏳ நீடிக்கும் சாய்வு" : "⚡ தற்காலிகச் சாய்வு", tone: chronicity.startsWith("நீடிக்கும்") ? "warn" : "good" });
+
   return { area: "ஆரோக்கியம்", icon: "🏥", score, verdict, verdictColor, summary, factors,
+           chips, tridosha, healthMeta: { origin, chronicity },
            details: { lagnaLordName, lagnaLordHouse } };
 }
 
@@ -406,6 +672,70 @@ export function analyzeCareer(horoscope, grahaBala, dashaData, ctx) {
   score += shadbalaFactor(ctx, h10LordName, "10ஆம் அதிபதி", factors);
   score += functionalFactor(ctx, h10LordName, "10ஆம் அதிபதி", factors);
 
+  const chips = [];
+
+  // FACTOR 8: உத்தியோகமா / சொந்தத் தொழிலா — classical விதி:
+  // 10 ↔ 6 தொடர்பு (சேவை/சம்பளம்) = வேலை; 10 ↔ 7 தொடர்பு (வாடிக்கையாளர்/
+  // கூட்டாண்மை) = வியாபாரம். புதன்-தொடர்பு வியாபாரத்திற்கு கூடுதல் சாய்வு.
+  {
+    const h6Rashi = (lagnaIdx + 5) % 12, h7Rashi = (lagnaIdx + 6) % 12;
+    const l6Name = RASHI_LORD[h6Rashi], l7Name = RASHI_LORD[h7Rashi];
+    const l6 = find(l6Name), l7 = find(l7Name);
+    let jobPts = 0, bizPts = 0; const jobWhy = [], bizWhy = [];
+    if (h10LordHouse === 6) { jobPts += 2; jobWhy.push("10ஆம் அதிபதி 6-இல்"); }
+    if (h10LordHouse === 7) { bizPts += 2; bizWhy.push("10ஆம் அதிபதி 7-இல்"); }
+    if (l6 && ((l6.rashiIdx - lagnaIdx + 12) % 12) + 1 === 10) { jobPts += 2; jobWhy.push("6ஆம் அதிபதி 10-இல்"); }
+    if (l7 && ((l7.rashiIdx - lagnaIdx + 12) % 12) + 1 === 10) { bizPts += 2; bizWhy.push("7ஆம் அதிபதி 10-இல்"); }
+    if (l6 && h10Lord && l6Name !== h10LordName && l6.rashiIdx === h10Lord.rashiIdx) { jobPts += 1.5; jobWhy.push("6-10 அதிபதிகள் சேர்க்கை"); }
+    if (l7 && h10Lord && l7Name !== h10LordName && l7.rashiIdx === h10Lord.rashiIdx) { bizPts += 1.5; bizWhy.push("7-10 அதிபதிகள் சேர்க்கை"); }
+    occupants10.forEach(p => {
+      if (p.ta === l6Name) { jobPts += 1; jobWhy.push(`${p.ta} (6ஆம் அதிபதி) 10-இல்`); }
+      if (p.ta === l7Name) { bizPts += 1; bizWhy.push(`${p.ta} (7ஆம் அதிபதி) 10-இல்`); }
+    });
+    // வியாபார காரகன் புதன் 10/7-இல் அல்லது 10ஆம் அதிபதியுடன்
+    if (mercury) {
+      const mercHouse = ((mercury.rashiIdx - lagnaIdx + 12) % 12) + 1;
+      if (mercHouse === 7 || (h10Lord && mercury.ta !== h10LordName && mercury.rashiIdx === h10Lord.rashiIdx)) { bizPts += 1; bizWhy.push("புதன் (வியாபார காரகன்) தொடர்பு"); }
+    }
+    // சனி (சேவை காரகன்) 10-இல்/10ஆம் அதிபதியாக = உத்தியோக சாய்வு கூடுதல்
+    if (saturn && (((saturn.rashiIdx - lagnaIdx + 12) % 12) + 1 === 10 || h10LordName === "சனி")) { jobPts += 1; jobWhy.push("சனி (சேவை காரகன்) 10-தொடர்பு"); }
+    const lean = jobPts - bizPts >= 1.5 ? "job" : bizPts - jobPts >= 1.5 ? "biz" : "mixed";
+    if (lean === "job") {
+      chips.push({ label: "🏢 உத்தியோக (வேலை) சாய்வு", tone: "info" });
+      factors.push({ text: `உத்தியோக சாய்வு — ${jobWhy.join(", ")} (10↔6 சேவைத் தொடர்பு). நிலையான சம்பள வேலை/சேவைத் துறை பொருத்தம்`, weight: 0 });
+    } else if (lean === "biz") {
+      chips.push({ label: "🛍 சொந்தத் தொழில்/வியாபாரச் சாய்வு", tone: "info" });
+      factors.push({ text: `வியாபாரச் சாய்வு — ${bizWhy.join(", ")} (10↔7 வாடிக்கையாளர்/கூட்டாண்மைத் தொடர்பு). சொந்தத் தொழில்/கூட்டு முயற்சி பொருத்தம்`, weight: 0 });
+    } else {
+      chips.push({ label: "🏢+🛍 வேலை-தொழில் கலப்பு", tone: "info" });
+      factors.push({ text: `வேலை/தொழில் இரு சாய்வும் உள்ளன${jobWhy.length||bizWhy.length ? ` (${[...jobWhy,...bizWhy].join(", ")})` : ""} — வேலையுடன் பக்கத் தொழில், அல்லது வேலைக்குப் பின் சுயதொழில் மாற்றம் சாத்தியம்`, weight: 0 });
+    }
+  }
+
+  // FACTOR 9: சனி — ஜீவன காரகன் (நாடி விதி): சனி நின்ற வீடு + சனிக்கு
+  // 2,5,9,10-இல் அமர்ந்த கிரகங்கள் தொழிலின் தன்மையை வடிவமைக்கும்
+  if (saturn) {
+    const satHouse = ((saturn.rashiIdx - lagnaIdx + 12) % 12) + 1;
+    const nadiPlanets = placements.filter(p => p.ta !== "சனி" && [2,5,9,10].includes(((p.rashiIdx - saturn.rashiIdx + 12) % 12) + 1));
+    const nadiFields = [...new Set(nadiPlanets.map(p => CAREER_FIELDS[p.ta]).filter(Boolean))];
+    factors.push({ text: `ஜீவன காரகன் சனி ${satHouse}ஆம் வீட்டில்${nadiPlanets.length ? `; சனிக்கு 2/5/9/10-இல் ${nadiPlanets.map(p=>p.ta).join(", ")} — நாடி-விதிப்படி கூடுதல் துறைச் சாய்வு: ${nadiFields.join(" / ")}` : " — சனிக்கு 2/5/9/10-இல் கிரகம் இல்லை; 10ஆம் பாவ விதியே முதன்மை"}`, weight: 0 });
+  }
+
+  // FACTOR 10: D10 தசாம்ச உறுதிப்பாடு — 10ஆம் அதிபதியின் D10 ராசி நிலை
+  // (BPHS: ஒற்றை ராசி → அதே ராசியிலிருந்து, இரட்டை → 9ஆவதிலிருந்து; பகுதி = 3°)
+  if (h10Lord) {
+    const dEx = h10Lord.degExact ?? h10Lord.degree ?? 0;
+    const part = Math.min(9, Math.floor(dEx / 3));
+    const d10Start = h10Lord.rashiIdx % 2 === 0 ? h10Lord.rashiIdx : (h10Lord.rashiIdx + 8) % 12;
+    const d10Rashi = (d10Start + part) % 12;
+    const EXALT = {"சூரியன்":0,"சந்திரன்":1,"செவ்வாய்":9,"புதன்":5,"குரு":3,"சுக்கிரன்":11,"சனி":6};
+    const DEBIL = {"சூரியன்":6,"சந்திரன்":7,"செவ்வாய்":3,"புதன்":11,"குரு":9,"சுக்கிரன்":5,"சனி":0};
+    const OWN = {"சூரியன்":[4],"சந்திரன்":[3],"செவ்வாய்":[0,7],"புதன்":[2,5],"குரு":[8,11],"சுக்கிரன்":[1,6],"சனி":[9,10]};
+    if (d10Rashi === EXALT[h10LordName]) { score += 1; factors.push({ text: `D10 தசாம்சத்தில் 10ஆம் அதிபதி உச்சம் — தொழில் உயர்வு/பதவி D10 உறுதிப்பாடு`, weight: +1 }); }
+    else if (OWN[h10LordName]?.includes(d10Rashi)) { score += 1; factors.push({ text: `D10 தசாம்சத்தில் 10ஆம் அதிபதி சொந்த ராசி — தொழில் நிலைப்பாடு D10 உறுதிப்பாடு`, weight: +1 }); }
+    else if (d10Rashi === DEBIL[h10LordName]) { score -= 1; factors.push({ text: `D10 தசாம்சத்தில் 10ஆம் அதிபதி நீசம் — தொழிலில் மேடு-பள்ளம்; முயற்சி/பரிகாரம் தேவை`, weight: -1 }); }
+  }
+
   let verdict, verdictColor, summary;
   if (score >= 3) {
     verdict = "மிகச் சிறந்த தொழில் யோகம்"; verdictColor = "#0d7a30";
@@ -434,7 +764,7 @@ export function analyzeCareer(horoscope, grahaBala, dashaData, ctx) {
   if (suggestedFields) summary = `🎯 பொருத்தமான துறை (குறியீடு): ${suggestedFields}.\n${summary}`;
 
   return { area: "தொழில்", icon: "💼", score, verdict, verdictColor, summary, factors,
-           suggestedFields,
+           suggestedFields, chips,
            details: { h10LordName, h10LordHouse, occupants: occupants10.map(p=>p.ta) } };
 }
 

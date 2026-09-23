@@ -19,7 +19,8 @@ export { generateHoroscope, calculateDasha, calculateAshtottariDasha, calculateY
   calculate10Porutham, detectKalaSarpa, calcD30Trimsamsa, calcGhatiLagna, calcHoraLagna,
   calcShadbala, calcMuhurtha, getTodayTranist, calcGulikaPosition, calcNavamsaStrength,
   calcFunctionalNature, buildActivationWeights, calcBacktest, calcEventTiming,
-  AYANAMSA_SYSTEMS };
+  calcGrahaBala, calcAshtakavarga, AYANAMSA_SYSTEMS, EVENT_TOPICS };
+export { analyzeKeyLifeAreas, analyzeMarriage } from "./deep-analysis.js";
 `;
 const entry = join(root, "src", "_test_engine_entry.jsx");
 writeFileSync(entry, appSrc + exportsBlock);
@@ -210,6 +211,42 @@ const eq = (name, got, want) => ok(`${name}: got ${JSON.stringify(got)}, want ${
   const et = m.calcEventTiming("marriage", deps);
   ok("timing windows have subWindows arrays", et.windows.length > 0 && et.windows.every(x => Array.isArray(x.subWindows)));
   ok("some subWindow exists in top window", et.windows[0].subWindows.length > 0);
+}
+
+// ── 18. ஆரோக்கிய topic + deep-analysis v2 அடுக்குகள் (2026-09 விரிவாக்கம்) ──
+{
+  ok("health topic exists with caution mood", m.EVENT_TOPICS.health?.primary === 6 && m.EVENT_TOPICS.health?.mood === "caution");
+  const h = m.generateHoroscope("1981-01-29", "10:51", 10.7905, 78.7047);
+  const gb = m.calcGrahaBala(h.placements);
+  const fn = m.calcFunctionalNature(h.lagna);
+  const av = m.calcAshtakavarga(h.placements, h.lagna);
+  const dd = m.calculateDasha(h.placements[1].fullLong, new Date(1981, 0, 29, 10, 51));
+  const mk = (g) => m.analyzeKeyLifeAreas(h, gb, null, null, dd, { sav: av.sav, functionalNat: fn, gender: g });
+  const kaM = mk("ஆண்"), kaF = mk("பெண்"), kaN = mk(null);
+  // (a) பாலின காரக வேறுபாடு
+  ok("male chart flags Venus karaka", kaM.marriage.chips.some(c => c.label.includes("சுக்கிரன்") && c.label.includes("ஆண்")));
+  ok("female chart flags Jupiter karaka", kaF.marriage.chips.some(c => c.label.includes("குரு") && c.label.includes("பெண்")));
+  ok("unknown gender = no gender chip", !kaN.marriage.chips.some(c => c.label.includes("ஜாதகம்)")));
+  // (b) துணை-profile — 7-இல் குரு+சனி; 7ஆம் அதிபதி 12-இல் → தொலைதூரக் குறியீடு
+  ok("spouse profile from 7th occupants", kaM.marriage.spouseProfile?.traits.map(t => t.planet).join() === "குரு,சனி");
+  ok("spouse distance notes far-connection (lord in 12)", kaM.marriage.spouseProfile?.distance.includes("தொலை"));
+  // (c) திரிதோஷம் + மூலம்/காலம்
+  ok("tridosha computed with dominant", !!kaM.health.tridosha?.dominant && kaM.health.tridosha.points["வாதம்"] >= 0);
+  ok("health meta origin/chronicity present", !!kaM.health.healthMeta?.origin && !!kaM.health.healthMeta?.chronicity);
+  // (d) தொழில்: வேலை/வியாபார chip — இந்த chart-இல் 10ஆம் அதிபதி(குரு) 7-இல் → வியாபாரச் சாய்வு
+  ok("career chip business-lean for this chart", kaM.career.chips.some(c => c.label.includes("வியாபார")));
+  ok("career nadi-rule factor present", kaM.career.factors.some(f => f.text.includes("ஜீவன காரகன் சனி")));
+  // (e) புனர்ப்பு தோஷம் — synthetic: சனி+சந்திரன் ஒரே ராசி
+  const synth = ["சூரியன்","சந்திரன்","செவ்வாய்","புதன்","குரு","சுக்கிரன்","சனி","ராகு","கேது"].map((ta, i) => ({
+    ta, rashiIdx: ta === "சனி" || ta === "சந்திரன்" ? 2 : (i + 3) % 12, degExact: 10, isCombust: false }));
+  const synMar = m.analyzeMarriage({ lagna: 0, placements: synth }, null, null, null, null);
+  ok("punarphoo detected on Saturn+Moon conjunction", synMar.chips.some(c => c.label.includes("புனர்ப்பு")));
+  // (f) ஆரோக்கிய timing + backtest இயங்குகின்றன
+  const deps = { horoscope: h, dashaData: dd, functionalNat: fn, geo: { lat: 10.7905, lon: 78.7047 }, ayanamsaKey: "lahiri", dobISO: "1981-01-29" };
+  const et = m.calcEventTiming("health", deps);
+  ok("health caution windows produced", et.windows.length > 0 && et.windows.every(w => Array.isArray(w.subWindows)));
+  const bt = m.calcBacktest("health", new Date(2015, 5, 15), deps);
+  ok("health backtest runs with windows from-to", !!bt && !!bt.windows?.md?.start);
 }
 
 rmSync(outfile, { force: true });

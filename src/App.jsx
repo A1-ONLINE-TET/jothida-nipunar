@@ -3862,6 +3862,10 @@ function calcBirthTimeSensitivity(horoscope) {
 // ═══════════════════════════════════════════════════════════════════
 const EVENT_TOPICS = {
   marriage:  { ta:"திருமணம்", icon:"💒", primary:7,  support:[2,11], karakas:["சுக்கிரன்","குரு"], minAge:17 },
+  // mood:"caution" → இத்தலைப்பின் "windows" = நோய்/சவால் activation காலங்கள்;
+  // UI அவற்றை "கூடுதல் கவனம் தேவை" என்று (சாதகம் அல்ல!) காட்ட வேண்டும், மேலும்
+  // சுப-நிகழ்வு விதியான குரு-பெயர்ச்சி bonus இங்கு பொருந்தாது.
+  health:    { ta:"ஆரோக்கியம்", icon:"🏥", primary:6, support:[8,12], karakas:["சூரியன்","சந்திரன்"], minAge:1, mood:"caution" },
   career:    { ta:"தொழில்/வேலை", icon:"💼", primary:10, support:[6,2,11], karakas:["சனி","சூரியன்","புதன்"], minAge:16 },
   children:  { ta:"குழந்தை", icon:"👶", primary:5,  support:[2,11], karakas:["குரு"], minAge:17 },
   property:  { ta:"வீடு/வாகனம்", icon:"🏠", primary:4,  support:[2,11], karakas:["செவ்வாய்","சந்திரன்"], minAge:18 },
@@ -4074,8 +4078,9 @@ function calcBacktest(topicKey, eventDate, deps) {
       else if (collect) reasons.push("அன்று குரு/சனி இருவரும் நேரடித் தொடர்பில் இல்லை");
       // குரு பெயர்ச்சி விதி — ஜன்ம ராசியிலிருந்து குரு சுப வீட்டில் (2/5/7/9/11)
       // இருந்தானா. calcEventTiming மாத-scan-இன் அதே விதி (இரு திசையும் ஒரே scoring).
+      // caution topics (நோய்) — சுப-நிகழ்வு விதி பொருந்தாது.
       const moonR = horoscope.placements.find(x => x.ta === "சந்திரன்")?.rashiIdx;
-      if (tJup && moonR != null) {
+      if (topic.mood !== "caution" && tJup && moonR != null) {
         const gh = ((tJup.rashiIdx - moonR + 12) % 12) + 1;
         if (GOCHARA_RULES["குரு"].good.includes(gh)) {
           tScore += 0.5;
@@ -4246,7 +4251,9 @@ function calcEventTiming(topicKey, deps) {
       if (anyBoth) { w.score += 2; w.reasons.push(`குரு + சனி இருவரும் ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடும் மாதங்கள் இவ்வீச்சில் உள்ளன — இரட்டை transit ஆதரவு`); }
       else if (anyJup) { w.score += 1; w.reasons.push(`குரு ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடும் மாதங்கள் இவ்வீச்சில் உள்ளன — transit ஆதரவு`); }
       else if (anySat) { w.score += 0.5; w.reasons.push(`சனி ${topic.primary}ஆம் வீடு/அதிபதி தொடர்பில் வரும் மாதங்கள் உள்ளன`); }
-      if (months.some(x => x.guruFav)) {
+      // குரு பெயர்ச்சி bonus சுப-நிகழ்வு topics-க்கு மட்டும் (caution topics —
+      // நோய் போன்றவற்றில் — "சுபம்" bonus அபத்தமாகும்)
+      if (topic.mood !== "caution" && months.some(x => x.guruFav)) {
         w.score += 0.5;
         w.reasons.push(`ஜன்ம ராசியிலிருந்து குரு சுப வீட்டில் (2/5/7/9/11 — குரு பெயர்ச்சி விதி) வரும் மாதங்கள் இவ்வீச்சில் உள்ளன`);
       }
@@ -4283,8 +4290,8 @@ function calcEventTiming(topicKey, deps) {
       const inSub = (x) => x.t >= new Date(s.getFullYear(), s.getMonth() - 1, 1) && x.t <= e;
       const gochara = (w.transitMonths || []).some(x => (x.jup || x.sat) && inSub(x));
       // குரு பெயர்ச்சி விதி — ஜன்ம ராசியிலிருந்து குரு சுப வீட்டில் உள்ள
-      // மாதங்களுடன் இப்பிரத்யந்தரம் மேற்பொருந்துகிறதா
-      const guruFav = (w.transitMonths || []).some(x => x.guruFav && inSub(x));
+      // மாதங்களுடன் இப்பிரத்யந்தரம் மேற்பொருந்துகிறதா (caution topics-இல் பொருந்தாது)
+      const guruFav = topic.mood !== "caution" && (w.transitMonths || []).some(x => x.guruFav && inSub(x));
       subs.push({ name: pd.name, start: s, end: e, w: Math.round(pdW * 10) / 10, gochara, guruFav,
         why: weights[pd.name].why.join(", ") });
     });
@@ -6275,7 +6282,7 @@ export default function AstrologyApp() {
   const [screen, setScreen] = useState(SCREEN.SPLASH);
   const [authMode, setAuthMode] = useState("login");
   const [user, setUser] = useState(null);
-  const [formData, setFormData] = useState({ name:"", dob:"", tob:"", pob:"", ampm:"AM", pobLat:null, pobLon:null, pobSource:null });
+  const [formData, setFormData] = useState({ name:"", dob:"", tob:"", pob:"", ampm:"AM", gender:"", pobLat:null, pobLon:null, pobSource:null });
   // சேமித்த ஜாதகங்கள் — lazy initializer: localStorage read ஒருமுறை மட்டும்
   const [profiles, setProfiles] = useState(loadProfiles);
 
@@ -6288,6 +6295,7 @@ export default function AstrologyApp() {
       const next = [{
         id: Date.now(),
         name: formData.name, dob: formData.dob, tob: formData.tob, ampm: formData.ampm,
+        gender: formData.gender || "",
         pob: formData.pob, pobLat: formData.pobLat, pobLon: formData.pobLon, pobSource: formData.pobSource,
         savedAt: new Date().toISOString()
       }, ...rest].slice(0, 20);
@@ -6298,7 +6306,7 @@ export default function AstrologyApp() {
 
   const loadProfile = (p) => {
     setFormData({ name:p.name||"", dob:p.dob||"", tob:p.tob||"", pob:p.pob||"", ampm:p.ampm||"AM",
-      pobLat:p.pobLat ?? null, pobLon:p.pobLon ?? null, pobSource:p.pobSource ?? null });
+      gender:p.gender||"", pobLat:p.pobLat ?? null, pobLon:p.pobLon ?? null, pobSource:p.pobSource ?? null });
     setPlaceResults([]); setPlaceDropdownOpen(false);
   };
 
@@ -6743,7 +6751,8 @@ export default function AstrologyApp() {
                   marakaBadhaka: marakaBadhakaR, functionalNat: functionalNatR };
     setBhavaPhalam(calcBhavaPhalam(h, grahaBalaR, chevvaiR, dashaR, classicalYogasR, ctx));
     setKeyAreas(analyzeKeyLifeAreas(h, grahaBalaR, chevvaiR, navStrengthR, dashaR,
-      { sav: ashtakavargaR.sav, shadBala: shadBalaR, functionalNat: functionalNatR }));
+      // gender: ஆண்→சுக்கிரன்/பெண்→குரு காரக வேறுபாடு + மாங்கல்ய தோஷக் கணிப்புக்கு
+      { sav: ashtakavargaR.sav, shadBala: shadBalaR, functionalNat: functionalNatR, gender: formData.gender || null }));
     setFamilyHealthData(analyzeFamilyHealthIndications(h, grahaBalaR));
     setPlanetContext(calcPlanetContext(placements, lagnaIdx, functionalNatR, unifiedR));
     setSequenceLinks(calcSequenceLinkages(placements, lagnaIdx, functionalNatR, dashaR));
@@ -7246,6 +7255,21 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
             <div style={{fontSize:10,color:"#555555",marginTop:5}}>
               {formData.ampm==="AM"?"காலை 12:00 — பிற்பகல் 11:59":"பிற்பகல் 12:00 — இரவு 11:59"}
             </div>
+            </div>
+            {/* பாலினம் — ஆண்→சுக்கிரன் / பெண்→குரு காரக வேறுபாடு + மாங்கல்யக் கணிப்புக்கு */}
+            <div>
+              <label style={labelStyle}>பாலினம் <span style={{fontSize:10,color:"#555555",fontWeight:400}}>(திருமணக் காரக விதிக்கு — விருப்பம்)</span></label>
+              <div style={{display:"flex",gap:8}}>
+                {["ஆண்","பெண்"].map(g=>(
+                  <button key={g} type="button" onClick={()=>setFormData(d=>({...d,gender:d.gender===g?"":g}))} style={{
+                    flex:1,padding:"11px 0",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",
+                    border:`1.5px solid ${formData.gender===g?"#7b1c1c":"#e0d8c8"}`,
+                    background:formData.gender===g?"linear-gradient(135deg,#7b1c1c15,#b8860b15)":"transparent",
+                    color:formData.gender===g?"#7b1c1c":"#777"}}>
+                    {g==="ஆண்"?"👨 ஆண்":"👩 பெண்"}
+                  </button>
+                ))}
+              </div>
             </div>
             <div style={{position:"relative"}}>
               <label style={labelStyle}>பிறந்த இடம் <span style={{fontSize:10,color:"#555555",fontWeight:400}}>(துல்லியமான ஊரைத் தேடி தேர்ந்தெடுக்கவும்)</span></label>
@@ -8074,6 +8098,18 @@ ${aiPart}
                           <span style={{fontSize:12,fontWeight:700,color:"#7b1c1c"}}>🔮 மொத்த முடிவு</span>
                           <span style={{fontSize:12,fontWeight:700,color:ka.verdictColor,textAlign:"right"}}>{ka.verdict}</span>
                         </div>
+                        {/* வகை/தோஷ chips — காதல்/நிச்சயம், வேலை/தொழில், தோஷ மிகுதி... */}
+                        {ka.chips && ka.chips.length > 0 && (
+                          <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:6}}>
+                            {ka.chips.map((c,ci)=>(
+                              <span key={ci} style={{fontSize:9,fontWeight:700,padding:"2px 9px",borderRadius:10,
+                                background:c.tone==="bad"?"#fee2e2":c.tone==="warn"?"#fef3c7":c.tone==="good"?"#dcfce7":"#e8eef8",
+                                color:c.tone==="bad"?"#b91c1c":c.tone==="warn"?"#8a5a00":c.tone==="good"?"#166534":"#3b5aa0"}}>
+                                {c.label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <div style={{fontSize:10.5,color:"#444",marginTop:4,lineHeight:1.5,whiteSpace:"pre-line"}}>{ka.summary}</div>
                       </div>
                       <div style={{padding:"7px 11px"}}>
@@ -8083,6 +8119,35 @@ ${aiPart}
                             <span>{f.text}</span>
                           </div>
                         ))}
+                        {/* வாழ்க்கைத் துணை விவரம் (திருமண area மட்டும்) */}
+                        {ka.spouseProfile && (
+                          <div style={{marginTop:6,padding:"7px 9px",background:"#fdf8ec",border:"1px dashed #d4a85360",borderRadius:8}}>
+                            <div style={{fontSize:10,fontWeight:700,color:"#8b4500",marginBottom:3}}>💑 வாழ்க்கைத் துணை விவரம் (குறியீடு — {ka.spouseProfile.source} அடிப்படையில்)</div>
+                            {ka.spouseProfile.traits.map((t,ti)=>(
+                              <div key={ti} style={{fontSize:9.5,color:"#4a3a20",lineHeight:1.6}}>• <b>{t.planet}</b>: {t.trait}</div>
+                            ))}
+                            <div style={{fontSize:9.5,color:"#4a3a20",lineHeight:1.6,marginTop:2}}>
+                              🧭 திசைக் குறியீடு: <b>{ka.spouseProfile.direction||"—"}</b>{ka.spouseProfile.distance ? ` • ${ka.spouseProfile.distance}` : ""}
+                              {ka.spouseProfile.d9Note ? ` • D9-இல் 7ஆம் அதிபதி: ${ka.spouseProfile.d9Note}` : ""}
+                            </div>
+                            <div style={{fontSize:8.5,color:"#999",marginTop:2}}>இவை classical குறியீடுகள் — உறுதியான விவரணை அல்ல</div>
+                          </div>
+                        )}
+                        {/* திரிதோஷம் (ஆரோக்கிய area மட்டும்) */}
+                        {ka.tridosha && (
+                          <div style={{marginTop:6,padding:"7px 9px",background:"#fdf8ec",border:"1px dashed #d4a85360",borderRadius:8}}>
+                            <div style={{fontSize:10,fontWeight:700,color:"#8b4500",marginBottom:3}}>
+                              🌿 உடலியல் தோஷக் கணிப்பு: <span style={{color:"#b91c1c"}}>{ka.tridosha.dominant} மிகுதி</span>{ka.tridosha.close ? ` (இணை: ${ka.tridosha.close})` : ""}
+                            </div>
+                            <div style={{fontSize:9.5,color:"#4a3a20",lineHeight:1.6}}>சாத்தியப் பாதிப்புகள்: {ka.tridosha.effects}</div>
+                            {ka.healthMeta && (
+                              <div style={{fontSize:9.5,color:"#4a3a20",lineHeight:1.6,marginTop:2}}>
+                                மூலம்: {ka.healthMeta.origin}<br/>காலத் தன்மை: {ka.healthMeta.chronicity}
+                              </div>
+                            )}
+                            <div style={{fontSize:8.5,color:"#999",marginTop:2}}>இது ஜோதிடக் குறியீடு — மருத்துவ ஆலோசனைக்கு மாற்று அல்ல</div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -9073,15 +9138,16 @@ ${aiPart}
                     மேலே ஒரு கேள்வியைத் தேர்ந்தெடுக்கவும் — தசா × கோசாரம் × வாக்குறுதி மூன்றையும் இணைத்து கணிக்கப்படும்
                   </div>
                 );
+                const isCaution = EVENT_TOPICS[eventTopic]?.mood === "caution";
                 return (
                   <div>
-                    {/* 1. வாக்குறுதி */}
+                    {/* 1. வாக்குறுதி — caution topic-இல் இது "பாதிப்பு-சாத்திய அளவு" */}
                     <div style={{marginBottom:10,padding:"10px 12px",borderRadius:8,
                       background:et.promise>=65?"#f1f8e9":et.promise<45?"#fdf0f0":"#fff8e1",
                       border:`1px solid ${et.promise>=65?"#c5e1a5":et.promise<45?"#f0c8c8":"#ffe082"}`}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                        <span style={{fontSize:12,fontWeight:700,color:"#333"}}>{et.icon} ஜாதக வாக்குறுதி (Promise)</span>
-                        <span style={{fontSize:12,fontWeight:800,color:et.promise>=65?"#1b5e20":et.promise<45?"#cc1a1a":"#7a5200"}}>{et.promise}% — {et.promiseVerdict}</span>
+                        <span style={{fontSize:12,fontWeight:700,color:"#333"}}>{et.icon} {isCaution ? "6/8/12 பாவ செயல்பாட்டு அளவு (நோய்-சாத்தியம்)" : "ஜாதக வாக்குறுதி (Promise)"}</span>
+                        <span style={{fontSize:12,fontWeight:800,color:et.promise>=65?"#1b5e20":et.promise<45?"#cc1a1a":"#7a5200"}}>{et.promise}%{isCaution ? "" : ` — ${et.promiseVerdict}`}</span>
                       </div>
                       <div style={{height:8,background:"#eee",borderRadius:4,overflow:"hidden",marginBottom:6}}>
                         <div style={{width:`${et.promise}%`,height:"100%",borderRadius:4,
@@ -9091,23 +9157,34 @@ ${aiPart}
                         <div key={i} style={{fontSize:9.5,lineHeight:1.6,color:r.startsWith("+")?"#2e7d32":"#a03a00"}}>{r}</div>
                       ))}
                     </div>
-                    {/* 2. தேதி-வரம்புகள் */}
-                    <div style={{fontSize:11.5,fontWeight:700,color:"#7b1c1c",marginBottom:6}}>📅 சாதகமான காலக்கட்டங்கள் (தசா × கோசாரம்)</div>
+                    {/* 2. தேதி-வரம்புகள் — caution topic-இல் இவை எச்சரிக்கைக் காலங்கள்! */}
+                    <div style={{fontSize:11.5,fontWeight:700,color:isCaution?"#cc1a1a":"#7b1c1c",marginBottom:6}}>
+                      {isCaution ? "⚠ கூடுதல் கவனம் தேவை காலக்கட்டங்கள் (6/8/12 தசா × கோசாரம்)" : "📅 சாதகமான காலக்கட்டங்கள் (தசா × கோசாரம்)"}
+                    </div>
+                    {isCaution && (
+                      <div style={{fontSize:9.5,color:"#8b4500",background:"#fff8ee",border:"1px dashed #d4a85360",borderRadius:6,padding:"5px 8px",marginBottom:6,lineHeight:1.5}}>
+                        இக்காலங்களில் உணவு/ஓய்வு/மருத்துவ பரிசோதனையில் கூடுதல் கவனம்; இவற்றுக்கு <b>இடைப்பட்ட காலங்களே</b> சிகிச்சை/அறுவை/மீட்சிக்கு சாதகமானவை.
+                      </div>
+                    )}
                     {et.windows.length === 0 && (
-                      <div style={{fontSize:10.5,color:"#8b6914",padding:"8px"}}>அடுத்த 12 ஆண்டுகளில் வலுவான தசா activation இல்லை — நீண்ட கால தசா பட்டியலைப் பார்க்கவும்</div>
+                      <div style={{fontSize:10.5,color:"#8b6914",padding:"8px"}}>{isCaution ? "அடுத்த 12 ஆண்டுகளில் 6/8/12 வலு-activation இல்லை — ஆரோக்கியத்திற்கு நல்ல அறிகுறி" : "அடுத்த 12 ஆண்டுகளில் வலுவான தசா activation இல்லை — நீண்ட கால தசா பட்டியலைப் பார்க்கவும்"}</div>
                     )}
                     {et.windows.map((w,i)=>(
                       <div key={i} style={{marginBottom:8,padding:"8px 10px",borderRadius:8,
-                        background:i===0?"#f1f8e9":"#faf9f5",
-                        border:`1.5px solid ${i===0?"#7cb342":"#e6dcc9"}`}}>
+                        background:i===0?(isCaution?"#fdf0f0":"#f1f8e9"):"#faf9f5",
+                        border:`1.5px solid ${i===0?(isCaution?"#e57373":"#7cb342"):"#e6dcc9"}`}}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
                           <span style={{fontSize:11.5,fontWeight:700,color:"#1a1a1a"}}>
-                            {i===0 && "⭐ "}{w.start.toLocaleDateString('ta-IN',{year:'numeric',month:'short'})} — {w.end.toLocaleDateString('ta-IN',{year:'numeric',month:'short'})}
+                            {i===0 && (isCaution?"⚠ ":"⭐ ")}{w.start.toLocaleDateString('ta-IN',{year:'numeric',month:'short'})} — {w.end.toLocaleDateString('ta-IN',{year:'numeric',month:'short'})}
                           </span>
                           <span style={{fontSize:9.5,fontWeight:800,padding:"2px 8px",borderRadius:10,
-                            background:w.confidence==="உயர்"?"#dcfce7":w.confidence==="நடுத்தரம்"?"#fef9c3":"#fee2e2",
-                            color:w.confidence==="உயர்"?"#1b5e20":w.confidence==="நடுத்தரம்"?"#7a5200":"#cc1a1a"}}>
-                            நம்பிக்கை: {w.confidence}
+                            background:isCaution
+                              ? (w.confidence==="உயர்"?"#fee2e2":w.confidence==="நடுத்தரம்"?"#fef9c3":"#f0f0e8")
+                              : (w.confidence==="உயர்"?"#dcfce7":w.confidence==="நடுத்தரம்"?"#fef9c3":"#fee2e2"),
+                            color:isCaution
+                              ? (w.confidence==="உயர்"?"#cc1a1a":w.confidence==="நடுத்தரம்"?"#7a5200":"#666")
+                              : (w.confidence==="உயர்"?"#1b5e20":w.confidence==="நடுத்தரம்"?"#7a5200":"#cc1a1a")}}>
+                            {isCaution?"தீவிரம்":"நம்பிக்கை"}: {w.confidence}
                           </span>
                         </div>
                         <div style={{fontSize:10,color:"#7b1c1c",fontWeight:600,marginBottom:2}}>{w.md} தசை / {w.ad} புக்தி</div>
@@ -10033,7 +10110,36 @@ ${aiPart}
       const nak2 = NAKSHATRAS.indexOf(h2.nakshatra);
       const rashi1 = RASHIS.indexOf(h1.moonRashi);
       const rashi2 = RASHIS.indexOf(h2.moonRashi);
-      setPoruthResult({ ...calculate10Porutham(nak1>=0?nak1:0, nak2>=0?nak2:0, rashi1>=0?rashi1:0, rashi2>=0?rashi2:0), bride:h1, groom:h2, brideName:poruthBride.name, groomName:poruthGroom.name });
+      // தசா-பொருத்தம் (கூடுதல் — 10-பொருத்த மதிப்பெண்ணில் சேராது):
+      // இருவரின் நடப்பு மகா தசாதிபதிகள் நண்பர்களா என்ற ஒப்பீடு
+      let dashaCompat = null;
+      try {
+        const moonLong = (hh) => { const mp = hh.placements.find(p=>p.ta==="சந்திரன்"); return mp ? (mp.fullLong ?? mp.rashiIdx*30 + (mp.degExact||0)) : null; };
+        const bd1 = parseDDMMYYYY(poruthBride.dob).split('-').map(Number);
+        const bd2 = parseDDMMYYYY(poruthGroom.dob).split('-').map(Number);
+        const ml1 = moonLong(h1), ml2 = moonLong(h2);
+        if (ml1 != null && ml2 != null) {
+          const now = new Date();
+          const d1 = calculateDasha(ml1, new Date(bd1[0], bd1[1]-1, bd1[2], brideTob.hour, brideTob.minute));
+          const d2 = calculateDasha(ml2, new Date(bd2[0], bd2[1]-1, bd2[2], groomTob.hour, groomTob.minute));
+          const md1 = d1.dashas.find(d=>now>=d.startDate&&now<d.endDate);
+          const md2 = d2.dashas.find(d=>now>=d.startDate&&now<d.endDate);
+          if (md1 && md2) {
+            const f12 = GRAHA_FRIENDSHIP[md1.name]?.friends.includes(md2.name) ?? false;
+            const f21 = GRAHA_FRIENDSHIP[md2.name]?.friends.includes(md1.name) ?? false;
+            const e12 = GRAHA_FRIENDSHIP[md1.name]?.enemies.includes(md2.name) ?? false;
+            const e21 = GRAHA_FRIENDSHIP[md2.name]?.enemies.includes(md1.name) ?? false;
+            const ok = md1.name === md2.name || ((f12 || f21) && !e12 && !e21);
+            const neutral = !ok && !e12 && !e21;
+            dashaCompat = { bride: md1.name, groom: md2.name, ok, neutral,
+              text: md1.name === md2.name ? "இருவரும் ஒரே தசாதிபதி — காலப்போக்கு ஒத்திசைவு"
+                : ok ? "தசாதிபதிகள் நண்பர்கள் — வாழ்க்கைக் காலகட்டங்கள் இணக்கம்"
+                : neutral ? "தசாதிபதிகள் சம நிலை — நடுத்தர இணக்கம்"
+                : "தசாதிபதிகள் பகை நிலை — காலகட்டங்களில் இழுபறி சாத்தியம்; பரிகாரம்/பொறுமை உதவும்" };
+          }
+        }
+      } catch (e) { /* dasha compat optional */ }
+      setPoruthResult({ ...calculate10Porutham(nak1>=0?nak1:0, nak2>=0?nak2:0, rashi1>=0?rashi1:0, rashi2>=0?rashi2:0), bride:h1, groom:h2, brideName:poruthBride.name, groomName:poruthGroom.name, dashaCompat });
       setPoruthLoading(false);
     };
 
@@ -10136,6 +10242,24 @@ ${aiPart}
                   </div>
                 </div>
               ))}
+              {/* தசா-பொருத்தம் — கூடுதல் தகவல் (10-பொருத்த மதிப்பெண்ணில் சேராது) */}
+              {poruthResult.dashaCompat && (
+                <div style={{...card,padding:"12px 16px",marginBottom:6,display:"flex",alignItems:"center",gap:12,
+                  borderLeft:`3px solid ${poruthResult.dashaCompat.ok?"#4ade80":poruthResult.dashaCompat.neutral?"#d4a853":"#dc2626"}`,
+                  background:"#fdf8ec"}}>
+                  <div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",
+                    background:poruthResult.dashaCompat.ok?"#4ade8020":poruthResult.dashaCompat.neutral?"#d4a85320":"#ff6b8a20"}}>⏳</div>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",justifyContent:"space-between"}}>
+                      <span style={{fontSize:13,fontWeight:600,color:"#1a1a1a"}}>தசா-பொருத்தம்</span>
+                      <span style={{fontSize:9,color:"#8b6914"}}>கூடுதல் (மதிப்பெண்ணில் சேராது)</span>
+                    </div>
+                    <div style={{fontSize:11,color:"#b8860b",marginTop:3,lineHeight:1.5}}>
+                      பெண்: {poruthResult.dashaCompat.bride} தசை • ஆண்: {poruthResult.dashaCompat.groom} தசை — {poruthResult.dashaCompat.text}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
