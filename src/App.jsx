@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { MURUGAN_IMG } from "./murugan-b64.js";
-// முனிவர் ராசி-சக்கர splash — 3 அடுக்குப் படங்கள்:
-// ring = ஓலை-நுனிகள் நீக்கப்பட்ட முழு சக்கரம் (சுழலும்);
-// center = முனிவர்+நுனிகள் alpha-mask பிரதி (அசையாதது).
-import wheelRingImg from "./assets/rishi-ring.webp";
-import wheelCenterImg from "./assets/rishi-center.webp";
+// முனிவர் ராசி-சக்கர splash — 2 அடுக்குப் படங்கள்:
+// ring   = முழு சக்கரம் (பாய்/ஓலை-நுனிகள் நீக்கியது) — வெளி நீல வளையம் சுழலும்;
+// center = நடு தங்க வட்டம் முழுவதும் (முனிவர்+கதிர்+நூல்+விளக்கு) alpha-mask
+//          பிரதி — அசையாமல் மேலே. வெளி வளையம் மட்டும் சுழல்வது தெரியும்.
+import wheelRingImg from "./assets/rishi2-ring.webp";
+import wheelCenterImg from "./assets/rishi2-center.webp";
 import { PLANET_IN_HOUSE, HOUSE_THEMES, LIFE_AREAS } from "./bhava-phalam.js";
 import { NAK_SPAN, subLordOf, drishtiVirupa, virupaGrade } from "./precision.js";
 import { analyzeKeyLifeAreas, analyzeFamilyHealthIndications } from "./deep-analysis.js";
@@ -7251,20 +7252,12 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
       <div onClick={()=>{ const ok = playOmSound(); if(ok) setOmPlayed(true); }}
         style={{position:"relative", width:"min(88vw, 52vh, 460px)", aspectRatio:"1/1", cursor:"pointer",
           animation:"splashIn 1.1s ease-out", filter:"drop-shadow(0 10px 40px #b8860b40)"}}>
-        {/* 1. முழு சக்கரம் (நுனிகள் நீக்கிய பிரதி) — கடிகார திசை */}
+        {/* 1. முழு சக்கரம் (நுனிகள் நீக்கிய பிரதி) — வெளி நீல வளையம் சுழல்கிறது */}
         <img src={wheelRingImg} alt="ராசி சக்கரம்" className="jn-wheel-spin-cw"
           style={{position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain"}}/>
-        {/* 2. நடு — முனிவர் + ஓலை-நுனிகள் (alpha-mask, அசையாதது) */}
+        {/* 2. நடு தங்க வட்டம் முழுவதும் (முனிவர்+கதிர்+நூல்+விளக்கு) — அசையாமல் */}
         <img src={wheelCenterImg} alt="" aria-hidden="true"
           style={{position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain"}}/>
-        {/* 3. உள் ஒளிக்கதிர்கள் — எதிர் திசை (வலம்→இடம்) */}
-        <div className="jn-wheel-spin-ccw" style={{position:"absolute", inset:0,
-          clipPath:"circle(26% at 50% 50%)", mixBlendMode:"screen", opacity:0.32, pointerEvents:"none",
-          background:"repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,225,140,0.9) 0deg 5deg, rgba(255,225,140,0) 5deg 17deg)"}}/>
-        {/* 4. முனிவர் பின்-ஒளி blink */}
-        <div className="jn-wheel-blink" style={{position:"absolute", left:"29%", top:"20%", width:"42%", height:"42%",
-          borderRadius:"50%", mixBlendMode:"screen", pointerEvents:"none",
-          background:"radial-gradient(circle at 50% 50%, rgba(255,240,180,0.95), rgba(255,200,90,0.45) 45%, transparent 72%)"}}/>
       </div>
       <div style={{textAlign:"center", zIndex:3, marginTop:26, animation:"splashIn 1.4s ease-out"}}>
         <h1 className="jn-serif" style={{fontSize:34, fontWeight:700, margin:"0 0 8px", letterSpacing:2,
@@ -7281,15 +7274,8 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
       <style>{`
         @keyframes splashIn{from{opacity:0;transform:scale(0.92) translateY(16px);}to{opacity:1;transform:scale(1) translateY(0);}}
         @keyframes jnSpinCW{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
-        @keyframes jnSpinCCW{from{transform:rotate(0deg);}to{transform:rotate(-360deg);}}
-        @keyframes jnBlink{0%,100%{opacity:0.25;transform:scale(0.96);}50%{opacity:0.95;transform:scale(1.05);}}
-        .jn-wheel-spin-cw{animation:jnSpinCW 60s linear infinite;}
-        .jn-wheel-spin-ccw{animation:jnSpinCCW 36s linear infinite;}
-        .jn-wheel-blink{animation:jnBlink 2.4s ease-in-out infinite;}
-        @media (prefers-reduced-motion: reduce){
-          .jn-wheel-spin-cw,.jn-wheel-spin-ccw{animation:none;}
-          .jn-wheel-blink{animation:jnBlink 4s ease-in-out infinite;}
-        }
+        .jn-wheel-spin-cw{animation:jnSpinCW 48s linear infinite;transform-origin:50% 50%;}
+        @media (prefers-reduced-motion: reduce){ .jn-wheel-spin-cw{animation:none;} }
         @keyframes pulse{0%,100%{opacity:0.3;}50%{opacity:1;}}
       `}</style>
     </div>
