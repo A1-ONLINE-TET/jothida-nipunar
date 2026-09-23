@@ -3901,6 +3901,36 @@ function buildActivationWeights(topicKey, placements, lagnaIdx, functionalNat) {
   aspectorsOnHouse(placements, lagnaIdx, pRashiIdx).forEach(a => addW(a.planet, 1.2, `${topic.primary}ஐ பார்வை`));
   // அதிபதியின் நட்சத்திராதிபதி வழியாகவும் activation (KP அடிப்படை)
   if (pLord && pLord.nakIdx >= 0) addW(getNakshatraLord(pLord.nakIdx).name, 1.2, `அதிபதியின் நட்சத்திராதிபதி`);
+  // ── ராகு/கேது பிரதிநிதித்துவம் (NODE AGENCY) — KP + பராசர விதி:
+  // நிழல் கிரகங்கள் தமக்கெனப் பலன் தராமல், (1) தம் நட்சத்திராதிபதி
+  // (முதன்மை — KP), (2) தம் ராசிநாதன் (இரண்டாம்), (3) தம்முடன் கூடிய
+  // கிரகம் — இவர்களின் பலன்களைத் தருகின்றன. அந்த அதிபதிகள் இக்கேள்வியில்
+  // activation பெற்றிருந்தால் அப்பங்கு ராகு/கேதுவுக்கும் சேர வேண்டும்.
+  // உண்மை-தரவு உதாரணம் (29.01.1981 ஜாதகம்): ராகு ஆயில்யத்தில் —
+  // நட்சத்திராதிபதி புதன் = 7ஆம் அதிபதி; திருமணம் நடந்ததும் சரியாக
+  // சனி-குரு-ராகு பிரத்யந்தரத்தில். இவ்விதி இல்லாமல் ராகு எடை 0 ஆக
+  // இருந்து அந்நுண்-window அடையாளம் காணப்படவில்லை.
+  ["ராகு", "கேது"].forEach(nodeTa => {
+    const node = placements.find(x => x.ta === nodeTa);
+    if (!node || node.nakIdx == null || node.nakIdx < 0) return;
+    const starLord = getNakshatraLord(node.nakIdx).name;
+    const signLord = RASHI_LORD_NAME[node.rashiIdx];
+    const conj = placements.find(x => x.ta !== nodeTa && CLASSICAL_7.includes(x.ta) && x.rashiIdx === node.rashiIdx);
+    const starW = weights[starLord]?.w || 0;
+    const signW = weights[signLord]?.w || 0;
+    const conjW = conj ? (weights[conj.ta]?.w || 0) : 0;
+    // KP dictum: "நிழல் கிரகம் தன் நட்சத்திராதிபதியின் பலனை அவரை விடவும்
+    // வலுவாகத் தரும்" — எனவே நட்சத்திராதிபதி எடை முழுமையாக (×1.0) கடத்தப்படும்;
+    // ராசிநாதன்/சேர்க்கை இரண்டாம்-நிலை (×0.4/×0.5).
+    const inherited = starW * 1.0 + signW * 0.4 + conjW * 0.5;
+    if (inherited >= 0.6) {
+      const why = [];
+      if (starW > 0) why.push(`${starLord} நட்சத்திரத்தில்`);
+      if (signW > 0) why.push(`${signLord} ராசியில்`);
+      if (conjW > 0) why.push(`${conj.ta} சேர்க்கை`);
+      addW(nodeTa, Math.round(inherited * 10) / 10, `பிரதிநிதி (${why.join(", ")})`);
+    }
+  });
   Object.keys(weights).forEach(ta => { if (natureOf(ta) === "யோககாரகன்") weights[ta].w += 0.5; });
   return { topic, weights, pRashiIdx, pLordName, pLord };
 }
@@ -4013,9 +4043,13 @@ function calcBacktest(topicKey, eventDate, deps) {
     const reasons = collect ? [] : null;
     const md = dashaData.dashas.find(x => d >= x.startDate && d < x.endDate);
     const ad = md?.antardashas?.find(x => d >= x.startDate && d < x.endDate);
+    // பிரத்யந்தர் (3ஆம் நிலை) — புக்திக்குள் நுண்-கால activation. calcEventTiming-இன்
+    // subWindows-உம் இதே விதி — இரு திசையும் ஒரே scoring என்ற கொள்கை.
+    const pad = ad?.pratyantardashas?.find(x => d >= x.startDate && d < x.endDate);
     const mdW = md ? (weights[md.name]?.w || 0) : 0;
     const adW = ad ? (weights[ad.name]?.w || 0) : 0;
-    let dScore = mdW + adW * 1.6;
+    const pdW = pad ? (weights[pad.name]?.w || 0) : 0;
+    let dScore = mdW + adW * 1.6 + Math.min(1.5, pdW * 0.35);
     if (collect) {
       if (md) reasons.push(mdW > 0
         ? `நிகழ்வு நாளில் ${md.name} தசை — activation எடை ${Math.round(mdW*10)/10} (${weights[md.name].why.join(", ")})`
@@ -4023,6 +4057,7 @@ function calcBacktest(topicKey, eventDate, deps) {
       if (ad) reasons.push(adW > 0
         ? `${ad.name} புக்தி — எடை ${Math.round(adW*10)/10} (${weights[ad.name].why.join(", ")})`
         : `${ad.name} புக்தி — தொடர்பில்லை`);
+      if (pad && pdW > 0) reasons.push(`${pad.name} பிரத்யந்தரம் (${pad.startDate.toLocaleDateString("ta-IN")} → ${pad.endDate.toLocaleDateString("ta-IN")}) — நுண்-நிலை activation ✓`);
     }
     if (mdW > 0 && adW > 0) { dScore += 1; if (collect) reasons.push("தசை + புக்தி இரண்டும் தொடர்புடையவை — engine இதை வலுவான window ஆகக் கொடுத்திருக்கும்"); }
     let tScore = 0;
@@ -4037,6 +4072,16 @@ function calcBacktest(topicKey, eventDate, deps) {
       else if (jupHit) { tScore = 1; if (collect) reasons.push(`அன்று குரு (${tJup.rashi}) ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடுகிறார் ✓`); }
       else if (satHit) { tScore = 0.5; if (collect) reasons.push(`அன்று சனி (${tSat.rashi}) ${topic.primary}ஆம் வீடு/அதிபதி தொடர்பில்`); }
       else if (collect) reasons.push("அன்று குரு/சனி இருவரும் நேரடித் தொடர்பில் இல்லை");
+      // குரு பெயர்ச்சி விதி — ஜன்ம ராசியிலிருந்து குரு சுப வீட்டில் (2/5/7/9/11)
+      // இருந்தானா. calcEventTiming மாத-scan-இன் அதே விதி (இரு திசையும் ஒரே scoring).
+      const moonR = horoscope.placements.find(x => x.ta === "சந்திரன்")?.rashiIdx;
+      if (tJup && moonR != null) {
+        const gh = ((tJup.rashiIdx - moonR + 12) % 12) + 1;
+        if (GOCHARA_RULES["குரு"].good.includes(gh)) {
+          tScore += 0.5;
+          if (collect) reasons.push(`அன்று குரு ஜன்ம ராசியிலிருந்து ${gh}ஆம் வீட்டில் — குரு பெயர்ச்சி சுபம் ✓`);
+        }
+      }
     } catch (e) { /* transit கணிப்பு தோல்வி — தசை score மட்டும் */ }
     return { score: Math.round((dScore + tScore) * 10) / 10, dScore: Math.round(dScore*10)/10, tScore, reasons,
       md: md?.name || "—", ad: ad?.name || "—" };
@@ -4150,35 +4195,100 @@ function calcEventTiming(topicKey, deps) {
       if (score <= 0.5) return;
       windows.push({
         start: ad.startDate < now ? now : ad.startDate, end: ad.endDate > horizon ? horizon : ad.endDate,
-        md: md.name, ad: ad.name, score, reasons
+        md: md.name, ad: ad.name, score, reasons,
+        adObj: ad // பிரத்யந்தர drill-down-க்கு (return-க்கு முன் நீக்கப்படும்)
       });
     });
   });
   windows.sort((a, b) => b.score - a.score);
 
-  // ═══ 4. கோசார filter — top windows-க்கு குரு+சனி இரட்டை transit ═══
+  // ═══ 4. கோசார scan — top windows-க்கு குரு+சனி transit, மாதவாரியாக ═══
+  // (முன்பு window-இன் நடுப்புள்ளியில் மட்டும் சோதித்தது — 2-3 ஆண்டு window-இல்
+  // குரு 2-3 ராசி நகர்ந்துவிடும்; இப்போது ஒவ்வொரு மாதமும் சோதித்து, ஆதரவு
+  // உள்ள மாத-வீச்சுகளையும் (transitRanges) தனியே தருகிறோம்.)
   const top = windows.slice(0, 8);
+  const targets = [pRashiIdx, pLord ? pLord.rashiIdx : pRashiIdx];
+  // குரு பெயர்ச்சி விதி — ஜன்ம (சந்திர) ராசியிலிருந்து குரு 2/5/7/9/11-இல்
+  // இருக்கும் மாதங்களே சுப-நிகழ்வு மாதங்கள் (classical தமிழ் மரபு; app-இன்
+  // GOCHARA_RULES குரு வரிசையே). உண்மை-தரவு சான்று (29.01.1981 ஜாதகம்):
+  // சனி-குரு புக்தி 2005-2007 முழுதும் ஓடினும், குரு சந்திரனுக்கு 2ஆம்
+  // வீட்டுக்கு (விருச்சிகம்) வந்த நவ2006-2007 வீச்சிலேயே திருமணம் (ஏப் 2007).
+  const natalMoonRashi = placements.find(x => x.ta === "சந்திரன்")?.rashiIdx;
   top.forEach(w => {
     try {
-      const mid = new Date((w.start.getTime() + w.end.getTime()) / 2);
-      const midISO = `${mid.getFullYear()}-${String(mid.getMonth()+1).padStart(2,'0')}-${String(mid.getDate()).padStart(2,'0')}`;
-      const th = generateHoroscope(midISO, "12:00", geo.lat, geo.lon, true, ayanamsaKey);
-      const tJup = th.placements.find(p => p.ta === "குரு");
-      const tSat = th.placements.find(p => p.ta === "சனி");
-      const targets = [pRashiIdx, pLord ? pLord.rashiIdx : pRashiIdx];
-      const jupHit = tJup && targets.some(t => planetHitsRashi("குரு", tJup.rashiIdx, t));
-      const satHit = tSat && targets.some(t => planetHitsRashi("சனி", tSat.rashiIdx, t));
-      if (jupHit && satHit) { w.score += 2; w.reasons.push(`குரு (${tJup.rashi}) + சனி (${tSat.rashi}) இருவரும் ${topic.primary}ஆம் வீடு/அதிபதியை தொடுகின்றனர் — இரட்டை transit ஆதரவு`); }
-      else if (jupHit) { w.score += 1; w.reasons.push(`குரு (${tJup.rashi}) ${topic.primary}ஆம் வீடு/அதிபதியை பார்க்கிறார் — transit ஆதரவு`); }
-      else if (satHit) { w.score += 0.5; w.reasons.push(`சனி (${tSat.rashi}) ${topic.primary}ஆம் வீடு/அதிபதி தொடர்பில்`); }
+      const months = [];
+      const cur = new Date(w.start.getFullYear(), w.start.getMonth(), 15);
+      let guard = 0;
+      while (cur <= w.end && guard++ < 60) {
+        const iso = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-15`;
+        const th = generateHoroscope(iso, "12:00", geo.lat, geo.lon, true, ayanamsaKey);
+        const tJup = th.placements.find(p => p.ta === "குரு");
+        const tSat = th.placements.find(p => p.ta === "சனி");
+        months.push({
+          t: new Date(cur),
+          jup: tJup && targets.some(t => planetHitsRashi("குரு", tJup.rashiIdx, t)),
+          sat: tSat && targets.some(t => planetHitsRashi("சனி", tSat.rashiIdx, t)),
+          guruFav: tJup && natalMoonRashi != null &&
+            GOCHARA_RULES["குரு"].good.includes(((tJup.rashiIdx - natalMoonRashi + 12) % 12) + 1),
+        });
+        cur.setMonth(cur.getMonth() + 1);
+      }
+      const anyBoth = months.some(x => x.jup && x.sat);
+      const anyJup = months.some(x => x.jup);
+      const anySat = months.some(x => x.sat);
+      if (anyBoth) { w.score += 2; w.reasons.push(`குரு + சனி இருவரும் ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடும் மாதங்கள் இவ்வீச்சில் உள்ளன — இரட்டை transit ஆதரவு`); }
+      else if (anyJup) { w.score += 1; w.reasons.push(`குரு ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடும் மாதங்கள் இவ்வீச்சில் உள்ளன — transit ஆதரவு`); }
+      else if (anySat) { w.score += 0.5; w.reasons.push(`சனி ${topic.primary}ஆம் வீடு/அதிபதி தொடர்பில் வரும் மாதங்கள் உள்ளன`); }
+      if (months.some(x => x.guruFav)) {
+        w.score += 0.5;
+        w.reasons.push(`ஜன்ம ராசியிலிருந்து குரு சுப வீட்டில் (2/5/7/9/11 — குரு பெயர்ச்சி விதி) வரும் மாதங்கள் இவ்வீச்சில் உள்ளன`);
+      }
+      // தொடர்ச்சியான ஆதரவு-வீச்சுகள் — நுண்-கால சுட்டிக்கு
+      const ranges = [];
+      let run = null;
+      months.forEach(x => {
+        const on = x.jup || x.sat;
+        if (on && !run) run = { start: x.t, end: x.t, both: x.jup && x.sat };
+        else if (on && run) { run.end = x.t; run.both = run.both || (x.jup && x.sat); }
+        else if (!on && run) { ranges.push(run); run = null; }
+      });
+      if (run) ranges.push(run);
+      w.transitRanges = ranges;
+      w.transitMonths = months; // subWindow overlap சோதனைக்கு
       w.gocharaChecked = true;
     } catch (e) { /* transit calc தோல்வி — தசா score மட்டும் */ }
   });
   top.sort((a, b) => b.score - a.score);
-  const results = top.slice(0, 5).map(w => ({
-    ...w,
-    confidence: w.score >= 7 ? "உயர்" : w.score >= 4.5 ? "நடுத்தரம்" : "குறைவு"
-  }));
+
+  // ═══ 5. பிரத்யந்தர் நுண்-windows — top window-க்குள் 3ஆம் நிலை drill-down.
+  // உண்மை-தரவு பாடம் (29.01.1981 ஜாதகம்): திருமணம் சனி-குரு புக்தியின்
+  // ராகு பிரத்யந்தரம் தொடங்கி 5 நாட்களில் — பிரத்யந்தர நிலை 2.5-ஆண்டு
+  // window-ஐ சில-வார/மாத அளவுக்குக் குறுக்குகிறது. ═══
+  top.forEach(w => {
+    const subs = [];
+    (w.adObj?.pratyantardashas || []).forEach(pd => {
+      if (pd.endDate < w.start || pd.startDate > w.end) return;
+      const pdW = weights[pd.name]?.w || 0;
+      if (pdW <= 0) return;
+      const s = pd.startDate < w.start ? w.start : pd.startDate;
+      const e = pd.endDate > w.end ? w.end : pd.endDate;
+      // இந்த நுண்-window-இல் கோசார ஆதரவு உள்ளதா (மாத grid overlap)
+      const inSub = (x) => x.t >= new Date(s.getFullYear(), s.getMonth() - 1, 1) && x.t <= e;
+      const gochara = (w.transitMonths || []).some(x => (x.jup || x.sat) && inSub(x));
+      // குரு பெயர்ச்சி விதி — ஜன்ம ராசியிலிருந்து குரு சுப வீட்டில் உள்ள
+      // மாதங்களுடன் இப்பிரத்யந்தரம் மேற்பொருந்துகிறதா
+      const guruFav = (w.transitMonths || []).some(x => x.guruFav && inSub(x));
+      subs.push({ name: pd.name, start: s, end: e, w: Math.round(pdW * 10) / 10, gochara, guruFav,
+        why: weights[pd.name].why.join(", ") });
+    });
+    subs.sort((a, b) => (b.w + (b.gochara ? 1 : 0) + (b.guruFav ? 1 : 0)) - (a.w + (a.gochara ? 1 : 0) + (a.guruFav ? 1 : 0)));
+    w.subWindows = subs.slice(0, 3).sort((a, b) => a.start - b.start);
+  });
+
+  const results = top.slice(0, 5).map(w => {
+    const { adObj, transitMonths, ...rest } = w; // உள்-தரவு நீக்கம்
+    return { ...rest, confidence: w.score >= 7 ? "உயர்" : w.score >= 4.5 ? "நடுத்தரம்" : "குறைவு" };
+  });
 
   return { topic: topic.ta, icon: topic.icon, promise, promiseVerdict, pReasons, windows: results,
     activation: Object.entries(weights).sort((a,b)=>b[1].w-a[1].w).map(([ta,v])=>({ta,w:Math.round(v.w*10)/10,why:v.why.join(", ")})) };
@@ -8997,6 +9107,26 @@ ${aiPart}
                         {w.reasons.map((r,ri)=>(
                           <div key={ri} style={{fontSize:9.5,color:"#555",lineHeight:1.6}}>• {r}</div>
                         ))}
+                        {/* பிரத்யந்தர நுண்-windows — புக்திக்குள் மிகச் சாதகமான குறுகிய காலம் */}
+                        {w.subWindows && w.subWindows.length > 0 && (
+                          <div style={{marginTop:5,padding:"6px 8px",background:"#fffdf5",borderRadius:6,border:"1px dashed #b8860b60"}}>
+                            <div style={{fontSize:9.5,fontWeight:700,color:"#8b4500",marginBottom:2}}>🎯 நுண்-காலம் (பிரத்யந்தர தசை):</div>
+                            {w.subWindows.map((s,si)=>(
+                              <div key={si} style={{fontSize:9.5,color:"#4a3a20",lineHeight:1.7}}>
+                                {(s.gochara || s.guruFav) ? "★ " : "• "}{s.start.toLocaleDateString('ta-IN',{year:'numeric',month:'short',day:'numeric'})} → {s.end.toLocaleDateString('ta-IN',{year:'numeric',month:'short',day:'numeric'})}
+                                {" "}<b style={{color:"#7b1c1c"}}>{s.name}</b> ({s.why}){s.gochara && <span style={{color:"#0d7a30"}}> + கோசார ஆதரவு</span>}{s.guruFav && <span style={{color:"#0d7a30"}}> + குரு பெயர்ச்சி சுபம்</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {/* கோசார ஆதரவு மாத-வீச்சுகள் */}
+                        {w.transitRanges && w.transitRanges.length > 0 && (
+                          <div style={{fontSize:9,color:"#0d7a30",marginTop:3}}>
+                            🪐 கோசார ஆதரவு: {w.transitRanges.map(r =>
+                              `${r.start.toLocaleDateString('ta-IN',{year:'numeric',month:'short'})}–${r.end.toLocaleDateString('ta-IN',{year:'numeric',month:'short'})}${r.both?" (குரு+சனி)":""}`
+                            ).join(", ")}
+                          </div>
+                        )}
                       </div>
                     ))}
                     {/* இக்கேள்வியுடன் பிணைந்த வரிசை-நிபந்தனைகள் */}

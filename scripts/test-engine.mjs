@@ -18,6 +18,7 @@ export { generateHoroscope, calculateDasha, calculateAshtottariDasha, calculateY
   calcSunriseSunset, calcMuhurtham, calcInauspiciousTimes, calculateGochara, calcTaraBala,
   calculate10Porutham, detectKalaSarpa, calcD30Trimsamsa, calcGhatiLagna, calcHoraLagna,
   calcShadbala, calcMuhurtha, getTodayTranist, calcGulikaPosition, calcNavamsaStrength,
+  calcFunctionalNature, buildActivationWeights, calcBacktest, calcEventTiming,
   AYANAMSA_SYSTEMS };
 `;
 const entry = join(root, "src", "_test_engine_entry.jsx");
@@ -182,6 +183,29 @@ const eq = (name, got, want) => ok(`${name}: got ${JSON.stringify(got)}, want ${
   ok("Aries part6 pushkara", m.calcNavamsaStrength(mk(0, 21))[0].pushkara === true);
   // Aries part 3 (10°-13°20') not pushkara for fire
   ok("Aries part3 not pushkara", m.calcNavamsaStrength(mk(0, 11))[0].pushkara === false);
+}
+
+// ── 17. நுண்-கால துல்லிய விதிகள் — உண்மை-தரவு golden (29.01.1981 ஜாதகம்,
+//        உண்மைத் திருமணம் 29.04.2007 = சனி-குரு-ராகு பிரத்யந்தரம்) ──
+{
+  const h = m.generateHoroscope("1981-01-29", "10:51", 10.7905, 78.7047);
+  const fn = m.calcFunctionalNature(h.lagna);
+  // (a) node agency: ராகு ஆயில்யத்தில் (அதிபதி புதன் = 7ஆம் அதிபதி) → எடை ≥ 2.5
+  const w = m.buildActivationWeights("marriage", h.placements, h.lagna, fn).weights;
+  ok("node agency: Rahu inherits 7th-lord star weight", (w["ராகு"]?.w || 0) >= 2.5);
+  // (b) backtest: உண்மைத் தேதி — பிரத்யந்தர + குரு பெயர்ச்சி விதிகள் இயங்குகின்றன
+  const dd = m.calculateDasha(h.placements[1].fullLong, new Date(1981, 0, 29, 10, 51));
+  const deps = { horoscope: h, dashaData: dd, functionalNat: fn,
+    geo: { lat: 10.7905, lon: 78.7047 }, ayanamsaKey: "lahiri", dobISO: "1981-01-29" };
+  const bt = m.calcBacktest("marriage", new Date(2007, 3, 29), deps);
+  ok("backtest 29.04.2007 = உயர்", bt.hit === "உயர்");
+  ok("backtest score >= 13 (pratyantar + guru-peyarchi bonuses)", bt.score >= 13);
+  ok("backtest cites Rahu pratyantar", bt.reasons.some(r => r.includes("ராகு பிரத்யந்தரம்")));
+  ok("backtest cites guru-peyarchi rule", bt.reasons.some(r => r.includes("குரு பெயர்ச்சி")));
+  // (c) event timing: windows carry pratyantar subWindows
+  const et = m.calcEventTiming("marriage", deps);
+  ok("timing windows have subWindows arrays", et.windows.length > 0 && et.windows.every(x => Array.isArray(x.subWindows)));
+  ok("some subWindow exists in top window", et.windows[0].subWindows.length > 0);
 }
 
 rmSync(outfile, { force: true });
