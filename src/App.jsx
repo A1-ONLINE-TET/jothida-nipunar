@@ -6281,7 +6281,17 @@ function persistBacktests(list) {
   try { localStorage.setItem(BACKTESTS_KEY, JSON.stringify(list)); } catch (e) { /* skip */ }
 }
 
-const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8 };
+const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8, HOME:9 };
+
+// முகப்பு கேள்வி அட்டைகள் — தட்டினால் FORM → ஜாதகம் → அந்தப் பகுதிக்கு நேரடி
+const HOME_QUESTIONS = [
+  { key:"marriage",  icon:"💒", q:"திருமணம் எப்போது?",  sub:"காலம் · துணை · வாழ்க்கை", topic:"marriage" },
+  { key:"career",    icon:"💼", q:"தொழில் / வேலை?",       sub:"உயர்வு · துறை · காலம்",   topic:"career" },
+  { key:"health",    icon:"🏥", q:"ஆரோக்கியம்?",          sub:"நோய் · தோஷம் · கவனம்",   topic:"health" },
+  { key:"wealth",    icon:"💰", q:"செல்வ வளர்ச்சி?",       sub:"லாபம் · சேமிப்பு · யோகம்", topic:"wealth" },
+  { key:"porutham",  icon:"💍", q:"திருமணப் பொருத்தம்",   sub:"10 பொருத்தம் · தசை",     nav:"PORUTHAM" },
+  { key:"full",      icon:"📜", q:"முழு ஜாதகம்",           sub:"சக்கரம் · தசை · பலன்கள்", nav:"FORM" },
+];
 
 export default function AstrologyApp() {
   const [screen, setScreen] = useState(SCREEN.SPLASH);
@@ -6423,6 +6433,22 @@ export default function AstrologyApp() {
   const [remediesData, setRemediesData] = useState(null);
   const [bhavaPhalam, setBhavaPhalam] = useState(null);
   const [keyAreas, setKeyAreas] = useState(null);
+  // முகப்பில் தேர்ந்த கேள்வி — ஜாதகம் உருவானதும் அந்தப் பகுதிக்கு நேரடி
+  const [homeQuestion, setHomeQuestion] = useState(null);
+  // முகப்பு "இன்று" strip — Chennai default, தினமும் ஒருமுறை (dateKey) கணி
+  const homeToday = useMemo(() => {
+    try {
+      const now = new Date();
+      const iso = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+      const h = generateHoroscope(iso, "06:00", 13.0827, 80.2707, true);
+      const inaus = calcInauspiciousTimes(now, 13.0827, 80.2707);
+      let tamil = null; try { tamil = calcTamilDate(iso, "06:00", 13.0827, 80.2707); } catch(e){}
+      const wd = ["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"][now.getDay()];
+      return { h, inaus, tamil, wd, now,
+        greg: now.toLocaleDateString("ta-IN",{day:"numeric",month:"long",year:"numeric"}) };
+    } catch(e) { return null; }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [new Date().toDateString()]);
   const [tamilDate, setTamilDate] = useState(null);
   const [showTamilDate, setShowTamilDate] = useState(false);
   const [expandedDasha, setExpandedDasha] = useState(null);
@@ -6489,7 +6515,7 @@ export default function AstrologyApp() {
   }, []);
 
   useEffect(() => {
-    if(screen===SCREEN.SPLASH){ const t=setTimeout(()=>goTo(SCREEN.AUTH),3200); return()=>clearTimeout(t); }
+    if(screen===SCREEN.SPLASH){ const t=setTimeout(()=>goTo(SCREEN.HOME),2600); return()=>clearTimeout(t); }
   }, [screen, goTo]);
 
   // ── Backend warm-up ping — Render free tier sleeps after 15min inactivity.
@@ -6866,6 +6892,24 @@ export default function AstrologyApp() {
     setEventTiming(prev => ({ ...prev, [topicKey]: res }));
   };
 
+  // முகப்பு கேள்வியிலிருந்து RESULT-க்கு வந்ததும் — அந்தத் தலைப்பின்
+  // காலக்கணிப்பைத் திறந்து, அப்பகுதிக்கு scroll செய்து, banner காட்டு
+  useEffect(() => {
+    if (screen === SCREEN.RESULT && homeQuestion?.topic && horoscope && dashaData) {
+      const topic = homeQuestion.topic;
+      setActiveTab("chart");
+      setAdvancedView("eventtiming");
+      setEventTopic(topic);
+      if (!eventTiming[topic]) runEventTiming(topic);
+      const timer = setTimeout(() => {
+        const el = document.getElementById("jn-eventtiming");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen, homeQuestion, horoscope, dashaData]);
+
   const getCurrentDashaInfo = () => {
     if (!dashaData) return "";
     // Fixed: never rely on .isCurrent — it's a snapshot frozen at the moment the horoscope
@@ -7081,6 +7125,120 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
     backdropFilter:"blur(4px)"
   };
 
+  // ─── முகப்பு கேள்வி → அந்தப் பகுதிக்கு அழைத்துச் செல் ───
+  const openQuestion = (item) => {
+    if (item.nav === "PORUTHAM") { setHomeQuestion(null); goTo(SCREEN.PORUTHAM); return; }
+    setHomeQuestion(item.nav === "FORM" ? null : item);
+    // ஏற்கனவே ஜாதகம் உருவாக்கப்பட்டிருந்தால் நேரடி முடிவுக்கு; இல்லையேல் FORM
+    goTo(horoscope ? SCREEN.RESULT : SCREEN.FORM);
+  };
+
+  // ─── கீழ் Tab Bar (Flutter-style) — எல்லா முதன்மைத் திரைகளிலும் ───
+  const TABS = [
+    { key:"home",  icon:"🏠", label:"முகப்பு",  screen:SCREEN.HOME },
+    { key:"chart", icon:"📊", label:"ஜாதகம்",   screen: horoscope ? SCREEN.RESULT : SCREEN.FORM },
+    { key:"today", icon:"🌞", label:"இன்று",    screen: horoscope ? SCREEN.DAILY : SCREEN.CALENDAR },
+    { key:"me",    icon:"👤", label:"நான்",      screen:SCREEN.FORM },
+  ];
+  const BottomTabs = ({ active }) => (
+    <div style={{position:"fixed", left:0, right:0, bottom:0, zIndex:40,
+      background:"rgba(255,253,248,0.94)", backdropFilter:"blur(12px)",
+      borderTop:"1px solid #ecdfce", boxShadow:"0 -6px 24px -12px rgba(90,40,10,0.18)",
+      paddingBottom:"env(safe-area-inset-bottom, 0px)"}}>
+      <div style={{maxWidth:430, margin:"0 auto", display:"flex"}}>
+        {TABS.map(t=>{
+          const on = active===t.key;
+          return (
+            <button key={t.key} onClick={()=>{ setActiveTab(t.key); goTo(t.screen); }} style={{
+              flex:1, background:"none", border:"none", cursor:"pointer",
+              padding:"9px 0 8px", display:"flex", flexDirection:"column", alignItems:"center", gap:2}}>
+              <span style={{fontSize:20, filter:on?"none":"grayscale(0.5) opacity(0.55)",
+                transform:on?"translateY(-1px) scale(1.08)":"none", transition:"all 0.2s"}}>{t.icon}</span>
+              <span style={{fontSize:9.5, fontWeight:on?700:500, color:on?"#7b1c1c":"#9a8a7a",
+                letterSpacing:0.2}}>{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // ═══════ HOME — "இன்று + உங்கள் கேள்வி" முகப்பு (login-க்கு பதில்) ═══════
+  if(screen===SCREEN.HOME) {
+    const savedName = profiles[0]?.name || (formData.name || "");
+    const t = homeToday;
+    return (
+      <div style={base}>
+        <div style={{...container, paddingTop:20, paddingBottom:96}}>
+          {/* header */}
+          <div style={{display:"flex", alignItems:"center", gap:11, marginBottom:16}}>
+            <img src={wheelCenterImg} alt="" style={{width:44, height:44, objectFit:"contain",
+              borderRadius:"50%", filter:"drop-shadow(0 2px 6px #b8860b40)"}}/>
+            <div style={{lineHeight:1.2}}>
+              <div className="jn-serif" style={{fontSize:19, fontWeight:700, color:"#7b1c1c"}}>ஜோதிட நிபுணர்</div>
+              <div style={{fontSize:10.5, color:"#a8710a", letterSpacing:0.5}}>
+                {savedName ? `வணக்கம், ${savedName} 🙏` : "வேத ஜோதிட வழிகாட்டி"}
+              </div>
+            </div>
+          </div>
+
+          {/* இன்று strip */}
+          {t && (
+            <div style={{...card, padding:"13px 15px", marginBottom:18,
+              background:"linear-gradient(135deg, #fff8ec, #fdf3e0)", border:"1px solid #ecdcc0"}}>
+              <div style={{display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:6}}>
+                <span style={{fontSize:12.5, fontWeight:700, color:"#7b1c1c"}}>📅 இன்று · {t.wd}</span>
+                <span style={{fontSize:10.5, color:"#8b6914"}}>{t.greg}</span>
+              </div>
+              <div style={{display:"flex", flexWrap:"wrap", gap:"5px 14px", fontSize:11, color:"#5a4a3a"}}>
+                {t.tamil && <span>🗓 {t.tamil.month} {t.tamil.day}</span>}
+                <span>🌙 {t.h.tithi}</span>
+                <span>⭐ {t.h.nakshatra}</span>
+                <span>♌ {t.h.moonRashi}</span>
+              </div>
+              {t.inaus && (
+                <div style={{marginTop:8, paddingTop:8, borderTop:"1px dashed #e0cfae",
+                  display:"flex", flexWrap:"wrap", gap:"4px 14px", fontSize:10.5}}>
+                  <span style={{color:"#cc1a1a", fontWeight:600}}>⚠ ராகு காலம்: {t.inaus.rahuKalam.start}–{t.inaus.rahuKalam.end}</span>
+                  <span style={{color:"#a8710a"}}>எமகண்டம்: {t.inaus.yamaGandam.start}–{t.inaus.yamaGandam.end}</span>
+                </div>
+              )}
+              <button onClick={()=>goTo(horoscope?SCREEN.DAILY:SCREEN.CALENDAR)} style={{
+                marginTop:10, width:"100%", background:"rgba(123,28,28,0.06)", border:"1px solid #e6cf9a",
+                borderRadius:10, color:"#7b1c1c", fontSize:11.5, fontWeight:600, cursor:"pointer", padding:"8px 0"}}>
+                📿 முழு பஞ்சாங்கம் / தினப்பலன் →
+              </button>
+            </div>
+          )}
+
+          {/* கேள்வி அட்டைகள் */}
+          <div style={{fontSize:13.5, fontWeight:700, color:"#7b1c1c", marginBottom:3, textAlign:"center"}}>உங்கள் கேள்வி என்ன? 🙏</div>
+          <div style={{fontSize:10.5, color:"#a8710a", marginBottom:14, textAlign:"center"}}>ஒரு கேள்வியைத் தேர்ந்தெடுங்கள் — ஜோதிடம் பதில் தரும்</div>
+          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:11}}>
+            {HOME_QUESTIONS.map(item=>(
+              <button key={item.key} onClick={()=>openQuestion(item)} style={{
+                background:"linear-gradient(180deg,#ffffff,#fffaf0)", border:"1px solid #ecdfce",
+                borderRadius:16, padding:"18px 12px 14px", cursor:"pointer", textAlign:"center",
+                boxShadow:"0 6px 18px -10px rgba(90,40,10,0.18)", transition:"transform 0.15s",
+                WebkitTapHighlightColor:"transparent"}}
+                onTouchStart={e=>e.currentTarget.style.transform="scale(0.96)"}
+                onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}>
+                <div style={{fontSize:34, marginBottom:8, lineHeight:1}}>{item.icon}</div>
+                <div style={{fontSize:13.5, fontWeight:700, color:"#241a15", marginBottom:3}}>{item.q}</div>
+                <div style={{fontSize:9.5, color:"#9a8a7a"}}>{item.sub}</div>
+              </button>
+            ))}
+          </div>
+
+          <div style={{textAlign:"center", marginTop:18, fontSize:9.5, color:"#b0a090"}}>
+            ✦ Swiss Ephemeris · BPHS classical engine · backtest-verified ✦
+          </div>
+        </div>
+        <BottomTabs active="home"/>
+      </div>
+    );
+  }
+
   // ═══════ SPLASH ═══════
   // ═══════ SPLASH — முனிவர் ராசி-சக்கரம்: வெளி வட்டம் கடிகார திசை (இடம்→வலம்),
   // உள் மஞ்சள் வட்ட ஒளிக்கதிர்கள் எதிர் திசை (வலம்→இடம்), முனிவர் அசையாமல்,
@@ -7190,8 +7348,21 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
   // ═══════ FORM ═══════
   if(screen===SCREEN.FORM) return (
     <div style={base}>
-      <div style={{...container, paddingTop:24}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:28}}>
+      <div style={{...container, paddingTop:18, paddingBottom:90}}>
+        <button onClick={()=>goTo(SCREEN.HOME)} style={{background:"none",border:"none",color:T.accent,fontSize:13,cursor:"pointer",padding:0,marginBottom:12,fontWeight:600}}>← முகப்பு</button>
+        {/* தேர்ந்த கேள்வி banner — முகப்பிலிருந்து வந்தால் */}
+        {homeQuestion && (
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"10px 14px",
+            background:"linear-gradient(135deg,#fff3e0,#fde8cf)",border:"1px solid #e6cf9a",borderRadius:12}}>
+            <span style={{fontSize:22}}>{homeQuestion.icon}</span>
+            <div style={{lineHeight:1.3}}>
+              <div style={{fontSize:9.5,color:"#a8710a",fontWeight:600}}>உங்கள் கேள்வி</div>
+              <div style={{fontSize:13.5,fontWeight:700,color:"#7b1c1c"}}>{homeQuestion.q}</div>
+            </div>
+            <span style={{marginLeft:"auto",fontSize:9.5,color:"#8b6914",textAlign:"right",maxWidth:110}}>விவரம் நிரப்பினால் பதில் கிடைக்கும்</span>
+          </div>
+        )}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>
           <div>
             <h2 style={{fontSize:20,fontWeight:700,margin:"0 0 2px",color:T.gold,letterSpacing:0.5}}>ஜாதகம் பார்க்க</h2>
             <p style={{fontSize:12,color:T.accent,margin:0,fontWeight:500}}>பிறப்பு விவரங்களை உள்ளிடுக</p>
@@ -9144,7 +9315,7 @@ ${aiPart}
 
           {/* ═══ வாழ்க்கை நிகழ்வு காலக்கணிப்பு ═══ */}
           {advancedView==="eventtiming" && (
-            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
+            <div id="jn-eventtiming" style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:8,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
                 🎯 வாழ்க்கை நிகழ்வு காலக்கணிப்பு — "எப்போது?"
               </div>
