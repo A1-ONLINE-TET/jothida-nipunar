@@ -54,6 +54,15 @@ PLANETS = [
     ("Saturn", "சனி",       "♄", swe.SATURN),
 ]
 
+def _dms(deg):
+    """Format a longitude as D:MM:SS (same format the local JS engine emits)."""
+    d = int(deg)
+    mf = (deg - d) * 60
+    m = int(mf)
+    s = int((mf - m) * 60)
+    return f"{d}:{m:02d}:{s:02d}"
+
+
 def compute_horoscope(year, month, day, hour, minute, lat, lon, tz_offset=5.5):
     """Compute full Vedic horoscope using Swiss Ephemeris."""
     swe.set_ephe_path(None)
@@ -73,7 +82,7 @@ def compute_horoscope(year, month, day, hour, minute, lat, lon, tz_offset=5.5):
         adj_day += 1
 
     jd = swe.julday(year, month, adj_day, hour_utc)
-    ayanamsa = swe.get_ayanamsa(jd)
+    ayanamsa = swe.get_ayanamsa_ut(jd)  # UT variant — jd here is UT, not ET
 
     # ── Ascendant (Lagna) ──
     houses = swe.houses(jd, lat, lon, b'P')
@@ -110,7 +119,7 @@ def compute_horoscope(year, month, day, hour, minute, lat, lon, tz_offset=5.5):
 
     # ── Planets ──
     for en, ta, symbol, pid in PLANETS:
-        pos, ret = swe.calc_ut(jd, pid)
+        pos, ret = swe.calc_ut(jd, pid, swe.FLG_SWIEPH | swe.FLG_SPEED)
         speed = pos[3] if len(pos) > 3 else 0
         is_retro = speed < 0
         sid_long = (pos[0] - ayanamsa) % 360
@@ -122,6 +131,9 @@ def compute_horoscope(year, month, day, hour, minute, lat, lon, tz_offset=5.5):
 
         result["planets"].append({
             "name_en": en, "name_ta": ta, "symbol": symbol,
+            # Frontend-parser (parseBackendResponse) compatibility fields:
+            "ta": ta, "fullLong": round(sid_long, 2), "dms": _dms(sid_long),
+            "speed": round(speed, 5),
             "longitude": round(sid_long, 2),
             "rashi": rashi,
             "rashi_ta": RASHIS_TA[rashi],
@@ -151,6 +163,8 @@ def compute_horoscope(year, month, day, hour, minute, lat, lon, tz_offset=5.5):
         house = ((rashi - lagna_rashi + 12) % 12) + 1
         result["planets"].append({
             "name_en": name_en, "name_ta": name_ta, "symbol": symbol,
+            "ta": name_ta, "fullLong": round(sid_long, 2), "dms": _dms(sid_long),
+            "speed": -1.0,  # nodes are always retrograde
             "longitude": round(sid_long, 2),
             "rashi": rashi,
             "rashi_ta": RASHIS_TA[rashi],
@@ -177,6 +191,44 @@ def compute_horoscope(year, month, day, hour, minute, lat, lon, tz_offset=5.5):
         "sun_rashi": result["planets"][0]["rashi_ta"],
         "sun_rashi_en": result["planets"][0]["rashi_en"]
     }
+
+    # ── Frontend-parser (parseBackendResponse in src/App.jsx) compatibility ──
+    # The parser reads data.lagna / root-level moon_rashi_ta, tithi, etc.
+    # (The old "ascendant"/"summary" shapes are kept above for backward compat.)
+    lagna_pada = int((asc_sidereal % (360 / 27)) / (360 / 108)) + 1
+    result["lagna"] = {
+        "rashi": lagna_rashi,
+        "degree": lagna_deg,
+        "dms": _dms(asc_sidereal),
+        "fullLong": round(asc_sidereal, 2),
+        "nakshatra_ta": NAKSHATRAS_TA[lagna_nak] if lagna_nak < 27 else "",
+        "pada": lagna_pada,
+    }
+    result["moon_rashi_ta"] = moon["rashi_ta"]
+    result["sun_rashi_ta"] = result["planets"][0]["rashi_ta"]
+    result["nakshatra_ta"] = moon["nakshatra_ta"]
+    result["nakshatra_pada"] = moon["nakshatra_pada"]
+
+    # Panchangam (tithi / paksham / yogam / karanam) from sidereal Sun & Moon
+    sun_long = result["planets"][0]["fullLong"]
+    moon_long = moon["fullLong"]
+    elong = (moon_long - sun_long) % 360
+    tithi_idx = int(elong / 12)  # 0..29
+    TITHIS_TA = ["பிரதமை","த்விதியை","திருதியை","சதுர்த்தி","பஞ்சமி","ஷஷ்டி","சப்தமி",
+                 "அஷ்டமி","நவமி","தசமி","ஏகாதசி","த்வாதசி","திரயோதசி","சதுர்தசி","பௌர்ணமி/அமாவாசை"]
+    result["tithi"] = TITHIS_TA[tithi_idx % 15]
+    result["paksham"] = "சுக்லபக்ஷம் (வளர்பிறை)" if tithi_idx < 15 else "கிருஷ்ணபக்ஷம் (தேய்பிறை)"
+    YOGAMS_TA = ["விஷ்கம்பம்","பிரீதி","ஆயுஷ்மான்","சௌபாக்யம்","சோபனம்","அதிகண்டம்","சுகர்மம்",
+                 "திருதி","சூலம்","கண்டம்","விருத்தி","துருவம்","வ்யாகாதம்","ஹர்ஷணம்","வஜ்ரம்",
+                 "சித்தி","வ்யதீபாதம்","வரீயான்","பரிகம்","சிவம்","சித்தம்","சாத்தியம்","சுபம்",
+                 "சுப்ரம்","பிராம்யம்","ஐந்திரம்","வைத்ருதி"]
+    result["yogam"] = YOGAMS_TA[int(((sun_long + moon_long) % 360) / (360 / 27)) % 27]
+    # Karanam — classical 60-half-tithi scheme (k=0 Kimstughna; 57-59 fixed; else movable)
+    KARANAMS_TA = ["பவம்","பாலவம்","கௌலவம்","தைதுலம்","கரம்","வணிசை","விஷ்டி",
+                   "சகுனி","சதுஷ்பாதம்","நாகம்","கிம்ஸ்துக்னம்"]
+    k = int(elong / 6)
+    karana_idx = 10 if k == 0 else (7 + (k - 57)) if k >= 57 else (k - 1) % 7
+    result["karanam"] = KARANAMS_TA[karana_idx]
 
     return result
 

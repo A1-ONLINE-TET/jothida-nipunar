@@ -497,7 +497,8 @@ function analyzeFamilyHealthIndications(horoscope, grahaBala) {
   const houseRashi = (h) => (lagnaIdx + h - 1) % 12;
   const occupants = (rIdx) => placements.filter(p => p.ta !== "லக்னம்" && p.rashiIdx === rIdx);
   const strengthOf = (n) => grahaBala?.find(g => g.ta === n);
-  const isAfflicted = (n) => { const g = strengthOf(n); const p = find(n); if (!p) return false; const house = ((p.rashiIdx - lagnaIdx + 12) % 12) + 1; return (g && g.score < 4) || (g && (g.status === "நீசம்" || g.status === "பகை")) || DUSTHANA.includes(house) || p.isCombust; };
+  // "எதிரி வீடு" = calcGrahaBala-இன் status string ("பகை" D9 vocabulary — இரண்டையும் ஏற்கிறோம்)
+  const isAfflicted = (n) => { const g = strengthOf(n); const p = find(n); if (!p) return false; const house = ((p.rashiIdx - lagnaIdx + 12) % 12) + 1; return (g && g.score < 4) || (g && (g.status === "நீசம்" || g.status === "பகை" || g.status === "எதிரி வீடு")) || DUSTHANA.includes(house) || p.isCombust; };
 
   // ── Siblings v2: multi-factor classical gender vote ──
   // Classical விதிகள் (Prasna Marga / Saravali):
