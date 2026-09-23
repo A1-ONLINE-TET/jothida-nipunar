@@ -4084,7 +4084,14 @@ function calcBacktest(topicKey, eventDate, deps) {
       }
     } catch (e) { /* transit கணிப்பு தோல்வி — தசை score மட்டும் */ }
     return { score: Math.round((dScore + tScore) * 10) / 10, dScore: Math.round(dScore*10)/10, tScore, reasons,
-      md: md?.name || "—", ad: ad?.name || "—" };
+      md: md?.name || "—", ad: ad?.name || "—",
+      // நிகழ்வு விழுந்த தசை/புக்தி/பிரத்யந்தர from→to வீச்சுகள் — UI-இல்
+      // "இந்தக் காலத்துக்குள் நிகழ்வு" என்று தெளிவாகக் காட்ட
+      windows: collect ? {
+        md: md ? { name: md.name, start: md.startDate, end: md.endDate } : null,
+        ad: ad ? { name: ad.name, start: ad.startDate, end: ad.endDate } : null,
+        pad: pad ? { name: pad.name, start: pad.startDate, end: pad.endDate, weighted: pdW > 0 } : null,
+      } : null };
   };
 
   const ev = scoreDate(eventDate, true);
@@ -4143,7 +4150,7 @@ function calcBacktest(topicKey, eventDate, deps) {
   if (percentile && percentile.topPct <= 10 && hit === "உயர்") verdict += ` — வாழ்நாள் ஒப்பீட்டில் top ${percentile.topPct}% நாள் ★`;
 
   return { topic: topic.ta, icon: topic.icon, score: ev.score, dScore: ev.dScore, tScore: ev.tScore,
-    hit, verdict, discNote, reasons: ev.reasons, md: ev.md, ad: ev.ad, percentile,
+    hit, verdict, discNote, reasons: ev.reasons, md: ev.md, ad: ev.ad, windows: ev.windows, percentile,
     promise: promiseR.promise, promiseVerdict: promiseR.promiseVerdict,
     promiseNote: hit === "குறை" && promiseR.promise < 45
       ? `குறிப்பு: இக்கேள்விக்கு ஜாதக வாக்குறுதியே ${promiseR.promise}/100 (பலவீனம்) — miss என்பது காலவிதி-தவறு மட்டுமல்ல, வாக்குறுதிச் சூழலும் சேர்ந்த முடிவு`
@@ -9342,6 +9349,31 @@ ${aiPart}
                     {btResult.icon} {btResult.topic} • {btDateStr} • {btResult.md} தசை / {btResult.ad} புக்தி • மதிப்பெண்: <b>{btResult.score}</b> ({btResult.hit})
                     <span style={{color:"#888"}}> — தசைப் பங்கு {btResult.dScore} + transit பங்கு {btResult.tScore}</span>
                   </div>
+                  {/* நிகழ்வு விழுந்த காலவீச்சுகள் — from → to */}
+                  {btResult.windows && (
+                    <div style={{marginBottom:6,padding:"7px 10px",background:"#fffdf5",borderRadius:8,border:"1px dashed #b8860b60"}}>
+                      <div style={{fontSize:10,fontWeight:700,color:"#8b4500",marginBottom:3}}>📅 நிகழ்வு விழுந்த காலவீச்சுகள்:</div>
+                      {btResult.windows.md && (
+                        <div style={{fontSize:9.5,color:"#4a3a20",lineHeight:1.7}}>
+                          • மகா தசை: <b style={{color:"#7b1c1c"}}>{btResult.windows.md.name}</b>{" "}
+                          {btResult.windows.md.start.toLocaleDateString('ta-IN',{year:'numeric',month:'short',day:'numeric'})} → {btResult.windows.md.end.toLocaleDateString('ta-IN',{year:'numeric',month:'short',day:'numeric'})}
+                        </div>
+                      )}
+                      {btResult.windows.ad && (
+                        <div style={{fontSize:9.5,color:"#4a3a20",lineHeight:1.7}}>
+                          • புக்தி: <b style={{color:"#7b1c1c"}}>{btResult.windows.ad.name}</b>{" "}
+                          {btResult.windows.ad.start.toLocaleDateString('ta-IN',{year:'numeric',month:'short',day:'numeric'})} → {btResult.windows.ad.end.toLocaleDateString('ta-IN',{year:'numeric',month:'short',day:'numeric'})}
+                        </div>
+                      )}
+                      {btResult.windows.pad && (
+                        <div style={{fontSize:9.5,color:"#4a3a20",lineHeight:1.7}}>
+                          {btResult.windows.pad.weighted ? "★" : "•"} பிரத்யந்தரம் (நுண்-காலம்): <b style={{color:"#7b1c1c"}}>{btResult.windows.pad.name}</b>{" "}
+                          {btResult.windows.pad.start.toLocaleDateString('ta-IN',{year:'numeric',month:'short',day:'numeric'})} → {btResult.windows.pad.end.toLocaleDateString('ta-IN',{year:'numeric',month:'short',day:'numeric'})}
+                          {btResult.windows.pad.weighted && <span style={{color:"#0d7a30"}}> — இக்கேள்வியுடன் தொடர்புள்ள நுண்-window ✓</span>}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {/* Percentile — அறிவியல் ஒப்பீடு: நிகழ்வு நாள் vs வாழ்நாள் சீரிடை நாட்கள் */}
                   {btResult.percentile && (
                     <div style={{fontSize:10,fontWeight:700,marginBottom:4,padding:"5px 8px",borderRadius:6,

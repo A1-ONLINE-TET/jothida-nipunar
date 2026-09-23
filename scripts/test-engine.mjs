@@ -202,6 +202,10 @@ const eq = (name, got, want) => ok(`${name}: got ${JSON.stringify(got)}, want ${
   ok("backtest score >= 13 (pratyantar + guru-peyarchi bonuses)", bt.score >= 13);
   ok("backtest cites Rahu pratyantar", bt.reasons.some(r => r.includes("ராகு பிரத்யந்தரம்")));
   ok("backtest cites guru-peyarchi rule", bt.reasons.some(r => r.includes("குரு பெயர்ச்சி")));
+  // from→to windows — நிகழ்வு விழுந்த தசை/புக்தி/பிரத்யந்தர வீச்சுகள்
+  ok("backtest exposes md window from-to", bt.windows?.md?.name === "சனி" && bt.windows.md.start instanceof Date && bt.windows.md.end instanceof Date);
+  ok("backtest exposes ad window from-to", bt.windows?.ad?.name === "குரு" && bt.windows.ad.start < new Date(2007, 3, 29) && bt.windows.ad.end > new Date(2007, 3, 29));
+  ok("backtest exposes pad micro-window (Rahu, weighted)", bt.windows?.pad?.name === "ராகு" && bt.windows.pad.weighted === true);
   // (c) event timing: windows carry pratyantar subWindows
   const et = m.calcEventTiming("marriage", deps);
   ok("timing windows have subWindows arrays", et.windows.length > 0 && et.windows.every(x => Array.isArray(x.subWindows)));
