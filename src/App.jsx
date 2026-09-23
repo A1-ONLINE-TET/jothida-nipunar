@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { MURUGAN_IMG } from "./murugan-b64.js";
+// முனிவர் ராசி-சக்கர splash — 3 அடுக்குப் படங்கள்:
+// ring = ஓலை-நுனிகள் நீக்கப்பட்ட முழு சக்கரம் (சுழலும்);
+// center = முனிவர்+நுனிகள் alpha-mask பிரதி (அசையாதது).
+import wheelRingImg from "./assets/rishi-ring.webp";
+import wheelCenterImg from "./assets/rishi-center.webp";
 import { PLANET_IN_HOUSE, HOUSE_THEMES, LIFE_AREAS } from "./bhava-phalam.js";
 import { NAK_SPAN, subLordOf, drishtiVirupa, virupaGrade } from "./precision.js";
 import { analyzeKeyLifeAreas, analyzeFamilyHealthIndications } from "./deep-analysis.js";
@@ -7077,23 +7082,38 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
   };
 
   // ═══════ SPLASH ═══════
+  // ═══════ SPLASH — முனிவர் ராசி-சக்கரம்: வெளி வட்டம் கடிகார திசை (இடம்→வலம்),
+  // உள் மஞ்சள் வட்ட ஒளிக்கதிர்கள் எதிர் திசை (வலம்→இடம்), முனிவர் அசையாமல்,
+  // பின்னொளி blink. நுட்பம்: (1) முழு படம் சுழல்கிறது → வெளி ராசி வளையம்
+  // சுழல்வது தெரியும்; (2) அதே படத்தின் நடு-வட்டப் பிரதி clip-path circle-உடன்
+  // அசையாமல் மேலே → முனிவர் நிமிர்ந்தே; (3) golden conic கதிர்கள் screen-blend
+  // உடன் எதிர்-சுழற்சி; (4) radial glow, blink animation. ═══════
   if(screen===SCREEN.SPLASH) return (
-    <div style={{...base, display:"flex", alignItems:"center", justifyContent:"center"}}>
-      <MantraChakra speed={70} size={620} opacity={0.18}/>
-      <div style={{textAlign:"center", zIndex:3, animation:"splashIn 1.2s ease-out"}}>
-        <div onClick={()=>{ const ok = playOmSound(); if(ok) setOmPlayed(true); }} style={{
-          width:168, height:168, margin:"0 auto 30px", borderRadius:"50%",
-          background:"radial-gradient(circle at 50% 45%, #f7e2a640, #d4a85322, transparent 72%)",
-          boxShadow:"0 0 80px #d4a85370, 0 0 160px #d4a85330, 0 0 240px #d4a85315",
-          display:"flex", alignItems:"center", justifyContent:"center",
-          animation:"sunPulse 3s ease-in-out infinite, jnFloat 5s ease-in-out infinite", cursor:"pointer",
-          overflow:"hidden", border:"3px solid #d4a85380"
-        }}><img src="/murugan.png" alt="முருகன்" style={{width:144,height:144,objectFit:"contain",borderRadius:"50%",filter:"drop-shadow(0 0 12px #d4a85360)"}}/></div>
-        <h1 className="jn-serif" style={{fontSize:36, fontWeight:700, margin:"0 0 10px", letterSpacing:2,
+    <div style={{...base, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", overflow:"hidden"}}>
+      <div onClick={()=>{ const ok = playOmSound(); if(ok) setOmPlayed(true); }}
+        style={{position:"relative", width:"min(88vw, 52vh, 460px)", aspectRatio:"1/1", cursor:"pointer",
+          animation:"splashIn 1.1s ease-out", filter:"drop-shadow(0 10px 40px #b8860b40)"}}>
+        {/* 1. முழு சக்கரம் (நுனிகள் நீக்கிய பிரதி) — கடிகார திசை */}
+        <img src={wheelRingImg} alt="ராசி சக்கரம்" className="jn-wheel-spin-cw"
+          style={{position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain"}}/>
+        {/* 2. நடு — முனிவர் + ஓலை-நுனிகள் (alpha-mask, அசையாதது) */}
+        <img src={wheelCenterImg} alt="" aria-hidden="true"
+          style={{position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain"}}/>
+        {/* 3. உள் ஒளிக்கதிர்கள் — எதிர் திசை (வலம்→இடம்) */}
+        <div className="jn-wheel-spin-ccw" style={{position:"absolute", inset:0,
+          clipPath:"circle(26% at 50% 50%)", mixBlendMode:"screen", opacity:0.32, pointerEvents:"none",
+          background:"repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,225,140,0.9) 0deg 5deg, rgba(255,225,140,0) 5deg 17deg)"}}/>
+        {/* 4. முனிவர் பின்-ஒளி blink */}
+        <div className="jn-wheel-blink" style={{position:"absolute", left:"29%", top:"20%", width:"42%", height:"42%",
+          borderRadius:"50%", mixBlendMode:"screen", pointerEvents:"none",
+          background:"radial-gradient(circle at 50% 50%, rgba(255,240,180,0.95), rgba(255,200,90,0.45) 45%, transparent 72%)"}}/>
+      </div>
+      <div style={{textAlign:"center", zIndex:3, marginTop:26, animation:"splashIn 1.4s ease-out"}}>
+        <h1 className="jn-serif" style={{fontSize:34, fontWeight:700, margin:"0 0 8px", letterSpacing:2,
           background:"linear-gradient(180deg,#9b2c2c,#7b1c1c 60%,#5f1414)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text"}}>ஜோதிட நிபுணர்</h1>
-        <p className="jn-latin" style={{fontSize:15, color:"#a8710a", letterSpacing:7, fontWeight:600}}>JOTHIDA NIPUNAR</p>
-        <p style={{fontSize:11, color:"#b8860b", marginTop:14, letterSpacing:1.5}}>✦ Swiss Ephemeris · Classical Vedic Astrology ✦</p>
-        <div style={{marginTop:40, display:"flex", gap:7, justifyContent:"center", alignItems:"center"}}>
+        <p className="jn-latin" style={{fontSize:14, color:"#a8710a", letterSpacing:7, fontWeight:600, margin:0}}>JOTHIDA NIPUNAR</p>
+        <p style={{fontSize:11, color:"#b8860b", marginTop:12, letterSpacing:1.5}}>✦ Swiss Ephemeris · Classical Vedic Astrology ✦</p>
+        <div style={{marginTop:24, display:"flex", gap:7, justifyContent:"center", alignItems:"center"}}>
           {[0,1,2].map(i=>(
             <div key={i} style={{width:7,height:7,borderRadius:"50%",background:"#b8860b",
               animation:`jnGlowPulse 1.4s ease-in-out ${i*0.2}s infinite`}}/>
@@ -7101,8 +7121,17 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
         </div>
       </div>
       <style>{`
-        @keyframes splashIn{from{opacity:0;transform:scale(0.9) translateY(20px);}to{opacity:1;transform:scale(1) translateY(0);}}
-        @keyframes sunPulse{0%,100%{box-shadow:0 0 80px #d4a85370,0 0 160px #d4a85330;}50%{box-shadow:0 0 100px #d4a85390,0 0 200px #d4a85340,0 0 300px #d4a85318;}}
+        @keyframes splashIn{from{opacity:0;transform:scale(0.92) translateY(16px);}to{opacity:1;transform:scale(1) translateY(0);}}
+        @keyframes jnSpinCW{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+        @keyframes jnSpinCCW{from{transform:rotate(0deg);}to{transform:rotate(-360deg);}}
+        @keyframes jnBlink{0%,100%{opacity:0.25;transform:scale(0.96);}50%{opacity:0.95;transform:scale(1.05);}}
+        .jn-wheel-spin-cw{animation:jnSpinCW 60s linear infinite;}
+        .jn-wheel-spin-ccw{animation:jnSpinCCW 36s linear infinite;}
+        .jn-wheel-blink{animation:jnBlink 2.4s ease-in-out infinite;}
+        @media (prefers-reduced-motion: reduce){
+          .jn-wheel-spin-cw,.jn-wheel-spin-ccw{animation:none;}
+          .jn-wheel-blink{animation:jnBlink 4s ease-in-out infinite;}
+        }
         @keyframes pulse{0%,100%{opacity:0.3;}50%{opacity:1;}}
       `}</style>
     </div>

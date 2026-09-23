@@ -26,7 +26,8 @@ const entry = join(root, "src", "_test_engine_entry.jsx");
 writeFileSync(entry, appSrc + exportsBlock);
 const outfile = join(tmpdir(), `jn-engine-${Date.now()}.mjs`);
 try {
-  await build({ entryPoints: [entry], bundle: true, format: "esm", platform: "browser", outfile, jsx: "automatic", logLevel: "silent" });
+  await build({ entryPoints: [entry], bundle: true, format: "esm", platform: "browser", outfile, jsx: "automatic", logLevel: "silent",
+    loader: { ".webp": "dataurl" } }); // splash படங்கள் — test bundle-இல் inline
 } finally {
   rmSync(entry, { force: true });
 }
