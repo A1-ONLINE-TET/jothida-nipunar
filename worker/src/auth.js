@@ -23,12 +23,20 @@ function decodeJson(b64url) {
   return JSON.parse(new TextDecoder().decode(b64urlToBytes(b64url)));
 }
 
-// Fetch Google's current signing keys, cached in KV until they expire.
+// Module-level fallback cache (per-isolate) used when KV is not configured.
+let memKeys = null;
+let memExp = 0;
+
+// Fetch Google's current signing keys, cached (KV if available, else memory).
 async function getKeys(env) {
-  try {
-    const cached = await env.RL.get(JWKS_CACHE_KEY, "json");
-    if (cached && cached.exp > Date.now() && cached.keys) return cached.keys;
-  } catch (_) { /* KV miss — fetch fresh */ }
+  if (env.RL) {
+    try {
+      const cached = await env.RL.get(JWKS_CACHE_KEY, "json");
+      if (cached && cached.exp > Date.now() && cached.keys) return cached.keys;
+    } catch (_) { /* KV miss — fetch fresh */ }
+  } else if (memKeys && memExp > Date.now()) {
+    return memKeys;
+  }
 
   const res = await fetch(JWK_URL);
   if (!res.ok) throw new Error("jwks fetch failed");
@@ -40,13 +48,18 @@ async function getKeys(env) {
   if (m) ttl = Math.max(300, parseInt(m[1], 10));
   const byKid = {};
   for (const k of keys) byKid[k.kid] = k;
-  try {
-    await env.RL.put(
-      JWKS_CACHE_KEY,
-      JSON.stringify({ keys: byKid, exp: Date.now() + ttl * 1000 }),
-      { expirationTtl: ttl }
-    );
-  } catch (_) { /* KV write best-effort */ }
+  if (env.RL) {
+    try {
+      await env.RL.put(
+        JWKS_CACHE_KEY,
+        JSON.stringify({ keys: byKid, exp: Date.now() + ttl * 1000 }),
+        { expirationTtl: ttl }
+      );
+    } catch (_) { /* KV write best-effort */ }
+  } else {
+    memKeys = byKid;
+    memExp = Date.now() + ttl * 1000;
+  }
   return byKid;
 }
 

@@ -7,6 +7,7 @@
 // applies, so this is a throttle, not the primary defence.
 // ═══════════════════════════════════════════════════════════════════
 export async function rateLimit(env, key, max, windowSec) {
+  if (!env.RL) return true; // KV not configured — rely on Cloudflare's edge limits
   const now = Math.floor(Date.now() / 1000);
   const window = Math.floor(now / windowSec);
   const k = `rl:${key}:${window}`;

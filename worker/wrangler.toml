@@ -27,12 +27,14 @@ ALLOWED_ORIGINS = "https://jothidanipunar.com,https://jothida-nipunar.pages.dev,
 # or "swiss" (proxy the high-precision Python backend, requires SWISS_BACKEND_URL).
 EPHEMERIS_MODE = "meeus"
 
-# KV namespace for rate-limit counters + JWKS cache.
-# Create it: wrangler kv namespace create RL
-# then paste the id below.
-[[kv_namespaces]]
-binding = "RL"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+# KV is OPTIONAL. The Worker runs fine without it (JWKS cached in memory,
+# rate-limiting falls back to Cloudflare's edge). To enable per-user rate
+# limiting + shared JWKS cache later, create a namespace
+#   (Dashboard → Storage & Databases → KV → Create, name it RL)
+# then uncomment the two lines below and paste its id:
+# [[kv_namespaces]]
+# binding = "RL"
+# id = "PASTE_KV_NAMESPACE_ID"
 
 [limits]
 cpu_ms = 200
