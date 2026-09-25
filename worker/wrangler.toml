@@ -1,4 +1,4 @@
-name = "jothida-nipunar-api"
+name = "jothidarjothi"
 main = "src/index.js"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
@@ -35,6 +35,3 @@ EPHEMERIS_MODE = "meeus"
 # [[kv_namespaces]]
 # binding = "RL"
 # id = "PASTE_KV_NAMESPACE_ID"
-
-[limits]
-cpu_ms = 200
