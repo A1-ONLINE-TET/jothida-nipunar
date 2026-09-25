@@ -1,0 +1,12 @@
+# Cloudflare Pages security headers for ஜோதிட நிபுணர்.
+# These are safe defaults that do not break Firebase Auth / reCAPTCHA.
+# A Content-Security-Policy is intentionally left out here because it must
+# be tuned to your exact Firebase project + Worker domain and TESTED with
+# phone-auth/reCAPTCHA before enabling — see docs/SECURITY-DEPLOY.md.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Cross-Origin-Opener-Policy: same-origin-allow-popups

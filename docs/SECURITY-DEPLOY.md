@@ -24,17 +24,21 @@ Browser (thin client)  ──idToken──▶  Cloudflare Worker (எல்ல�
 | Phase | நிலை | என்ன |
 |-------|------|------|
 | **1. Engine extraction** | ✅ | `src/engine.js` — 200 pure functions, App.jsx-லிருந்து பிரிக்கப்பட்டது. எல்லா golden test-ம் pass. |
-| **2. Worker gateway** | ✅ | `worker/` — `/api/compute`, `/api/predict`, `/api/geocode` + auth/CORS/rate-limit. |
+| **2. Worker gateway** | ✅ | `worker/` — `/api/compute`, `/api/predict`, `/api/daily`, `/api/backtest`, `/api/event-timing`, `/api/nak-bhava`, `/api/porutham`, `/api/engine`, `/api/geocode` + auth/CORS/rate-limit. |
 | **2b. Python backend lock** | ✅ | `horoscope_api.py` — internal token, CORS நீக்கம், open-proxy hole அடைப்பு. |
-| **3. Firestore rules** | ✅ | `firestore.rules` — default-deny, owner-only. |
+| **3. Firestore rules + Firebase Auth (client)** | ✅ | `firestore.rules` default-deny; `src/firebase.js` idToken ஒவ்வொரு அழைப்பிலும். |
+| **4. Thin client** | ✅ | App.jsx-லிருந்து proprietary engine முழுவதும் நீக்கப்பட்டது. Bundle-ல் deep-analysis/backtest/porutham/shadbala/event-timing = **0**. பொது panchangam மட்டும் `almanac.js`-ல் client-side. |
+| **5. Safe headers** | ✅ | `public/_headers`. |
 
 ## 🚧 மீதமுள்ளவை (deploy பிறகு)
 
-| Phase | என்ன |
-|-------|------|
-| **3b. Firebase Auth (client)** | Login UI + idToken-ஐ ஒவ்வொரு Worker அழைப்பிலும் அனுப்புதல். |
-| **4. Thin client** | App.jsx-லிருந்து engine import நீக்கம் → எல்லா கணக்கும் Worker வழியாக (கீழே பார்க்கவும்). |
-| **5. Hardening** | CSP headers, PDF watermark, obfuscation. |
+| பணி | என்ன |
+|-----|------|
+| **Deploy** | கீழே STEP 1-4 — Firebase, Worker, Python backend, Pages. |
+| **CSP** | Firebase/reCAPTCHA உடன் test செய்து enable (கீழே Appendix). |
+| **Watermark (optional)** | PDF-ல் user-id watermark. |
+
+> ⚠️ **முக்கியம்:** Client இப்போது **முழுவதும் Worker-ஐ சார்ந்தது** — deploy + `VITE_API_URL`/`VITE_FIREBASE_*` set செய்யும் வரை ஜாதகம்/பலன் வேலை செய்யாது (இதுவே "logic browser-ல் இல்லை" என்பதன் விளைவு). Deploy பிறகுதான் முழுமையாக இயங்கும்.
 
 ---
 
@@ -96,62 +100,56 @@ curl -X POST https://jothida-nipunar-api.<you>.workers.dev/api/compute -d '{}'
 
 ### STEP 4 — Client (Cloudflare Pages)
 
-- `wrangler.toml`-ல் Worker URL-ஐ `ALLOWED_ORIGINS`-ல் இணைத்தபடி, client build-ல் Worker URL-ஐ `VITE_API_URL` env-ஆக set செய் (Phase 4-ல் wire ஆகும்).
-- Pages build: `npm run build`, output `dist`.
+Pages project → **Settings → Environment variables** (Production), இவற்றை set செய்:
+
+```
+VITE_API_URL              = https://jothida-nipunar-api.<you>.workers.dev
+VITE_FIREBASE_API_KEY     = <firebaseConfig.apiKey>
+VITE_FIREBASE_AUTH_DOMAIN = <projectId>.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID  = <projectId>
+VITE_FIREBASE_APP_ID      = <firebaseConfig.appId>
+```
+
+- உங்கள் Pages domain-ஐ Worker-ன் `ALLOWED_ORIGINS`-ல் சேர்த்திருப்பதை உறுதிசெய்.
+- Build: `npm run build`, output `dist`. `public/_headers` தானாக deploy ஆகும்.
+- **சோதனை:** login செய்து ஜாதகம் பார்க்கவும் → DevTools → Network-ல் `/api/compute` அழைப்பு தெரிய வேண்டும்; Sources-ல் engine code (dasha/deep-analysis) **தெரியக் கூடாது**.
 
 ---
 
-## 🔧 Phase 4 — Thin Client Migration (remaining work)
+## ✅ Phase 4 — Thin Client (DONE)
 
-இலக்கு: App.jsx-லிருந்து `import ... from "./engine.js"` முழுவதையும் நீக்குதல். அப்போதுதான் bundle-ல் logic இருக்காது.
+App.jsx இனி engine-ஐ import செய்யவில்லை. அனைத்து personalized கணக்கும் Worker வழியாக (`src/api.js`): `apiCompute`, `apiPredict`, `apiDaily`, `apiBacktest`, `apiEventTiming`, `apiNakBhava`, `apiPorutham`, `apiEngine`. பொது panchangam/ephemeris (calendar, home strip, horai clock) மட்டும் `src/almanac.js`-ல் client-side (tree-shaken subset — proprietary functions bundle-லிருந்து விடுபடும்).
 
-### 4.1 — Worker-க்கு சேர்க்க வேண்டிய endpoints
-`/api/compute` + `/api/predict` ஏற்கனவே உள்ளன. கீழ்க்கண்டவை UI-ன் மற்ற பகுதிகளுக்குத் தேவை (compute.js-ல் engine functions ஏற்கனவே உள்ளன — wrapper மட்டும்):
-
-| Endpoint | Engine function | UI பயன்பாடு |
-|----------|-----------------|-------------|
-| `/api/daily` | daily bundle (getTodayTranist, calcSadeSati, calcGuruPeyarchi, calcTaraBala, getPersonalizedRemedy) + `buildDailyPrompt` | தினப்பலன் screen |
-| `/api/event-timing` | `calcEventTiming` | வாழ்க்கை நிகழ்வு காலக்கணிப்பு |
-| `/api/porutham` | `generateHoroscope` ×2 + `calculate10Porutham` | திருமண பொருத்தம் |
-| `/api/calendar-day` | `generateHoroscope` | பஞ்சாங்க calendar |
-| `/api/nak-bhava` | `calcNakshatraBhavaLinks` | நட்சத்திர-பாவ பகுப்பு |
-
-### 4.2 — Client மாற்றங்கள்
-1. `handleSubmit` → local compute-க்கு பதில் `fetch(VITE_API_URL + "/api/compute", { headers:{Authorization:"Bearer "+idToken}, body: birthDetails })`.
-2. திரும்பிய `report`-ஐ **date-reviver** வழியே Date-ஆக மாற்று (Worker JSON-ல் Date → ISO string ஆகிவிடும்):
-   ```js
-   const ISO = /^\d{4}-\d{2}-\d{2}T/;
-   const revive = (v) => typeof v === "string" && ISO.test(v) ? new Date(v)
-     : Array.isArray(v) ? v.map(revive)
-     : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k,x])=>[k,revive(x)])) : v;
-   ```
-3. `runAllEngines`-ஐ `applyReport(report)`-ஆக மாற்று — ஒவ்வொரு `setX(report.key)` மட்டும் (compute.js-ன் key பெயர்கள் state setter-களுடன் ஒத்தவை).
-4. மற்ற எல்லா `generateHoroscope`/`calc*` inline அழைப்புகளையும் (porutham, calendar, event-timing, nak-bhava) மேலுள்ள endpoints-க்கு மாற்று.
-5. இறுதியாக `import { ... } from "./engine.js"`-ஐ **நீக்கு**. `npm run build` பிறகு bundle-ல் engine இருக்காது — இதை உறுதிசெய்ய:
-   ```bash
-   grep -c "generateHoroscope" dist/assets/*.js   # → 0 வர வேண்டும்
-   ```
-6. Client-side-ல் தங்கக்கூடியவை (pure UI, logic அல்ல): `chartSVGString`, `MantraChakra`, `TraditionalChart`, `generateJathagamPDF`, `formatDateInput/parseDDMMYYYY` (dateHelpers).
-
-### 4.3 — Firebase Auth wiring
-```js
-import { initializeApp } from "firebase/app";
-import { getAuth, onAuthStateChanged, signInWithPhoneNumber } from "firebase/auth";
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-// அழைப்புக்கு முன்: const idToken = await auth.currentUser.getIdToken();
+**உறுதிசெய்ய** (build பிறகு):
+```bash
+npm run build
+f=$(ls dist/assets/index-*.js)
+grep -c "புனர்ப்பு" "$f"              # deep-analysis → 0
+grep -c "தசாதிபதிகள் நண்பர்கள்" "$f"   # porutham     → 0
 ```
 
 ---
 
-## 🛡️ Phase 5 — Hardening checklist
+## 🛡️ Hardening checklist
 
 - [ ] GitHub repo **private** ஆக்கு.
-- [ ] `index.html`-ல் CSP + `X-Frame-Options`, `Referrer-Policy` meta.
-- [ ] Prod build-ல் source maps off (✅ ஏற்கனவே `vite.config.js`).
-- [ ] PDF output-ல் user-id watermark (திருட்டு தடம் காண).
+- [x] Prod build-ல் source maps off (`vite.config.js`).
+- [x] Safe security headers (`public/_headers`).
+- [ ] CSP enable (கீழே Appendix — Firebase/reCAPTCHA உடன் test).
+- [ ] PDF output-ல் user-id watermark (optional, திருட்டு தடம் காண).
 - [ ] Worker rate-limit values tune (தற்போது: user 60/மணி, IP 120/மணி).
-- [ ] `/api/compute` response (~1.3MB) — தேவையற்ற field களை UI-க்கு மட்டும் சுருக்கு.
+
+---
+
+## Appendix — Content-Security-Policy (deploy பிறகு test செய்து enable)
+
+`public/_headers`-ன் `/*` block-ல் இந்த வரியைச் சேர்த்து, `<WORKER>` + `<PROJECT>` மாற்றி, **phone-auth/reCAPTCHA வேலை செய்கிறதா என test செய்து** commit செய்யவும்:
+
+```
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://www.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://<WORKER>.workers.dev https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://nominatim.openstreetmap.org; frame-src https://<PROJECT>.firebaseapp.com https://www.google.com;
+```
+
+CSP-ஐ மிக இறுக்கமாக்கினால் Firebase phone-auth உடையும் — ஒவ்வொரு directive-ஐயும் நிஜ login flow-உடன் சோதித்த பிறகே இறுக்கவும்.
 
 ---
 
