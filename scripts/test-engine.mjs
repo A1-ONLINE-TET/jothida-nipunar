@@ -3,35 +3,11 @@
 // node-இல் ஓட்டி, 2026-09 முழு-audit-இல் சரிசெய்யப்பட்ட பிழைகள் மீண்டும்
 // வராமல் காக்கும் golden tests. `npm test` இதையும் ஓட்டும்.
 // ═══════════════════════════════════════════════════════════════════
-import { build } from "esbuild";
-import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "fs";
-import { tmpdir } from "os";
-import { join, dirname } from "path";
-import { fileURLToPath, pathToFileURL } from "url";
-
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-
-// 1. App.jsx + export block → bundle (tmp dir; src/-ஐ மாசுபடுத்தாது)
-const appSrc = readFileSync(join(root, "src", "App.jsx"), "utf8");
-const exportsBlock = `
-export { generateHoroscope, calculateDasha, calculateAshtottariDasha, calculateYoginiDasha,
-  calcSunriseSunset, calcMuhurtham, calcInauspiciousTimes, calculateGochara, calcTaraBala,
-  calculate10Porutham, detectKalaSarpa, calcD30Trimsamsa, calcGhatiLagna, calcHoraLagna,
-  calcShadbala, calcMuhurtha, getTodayTranist, calcGulikaPosition, calcNavamsaStrength,
-  calcFunctionalNature, buildActivationWeights, calcBacktest, calcEventTiming,
-  calcGrahaBala, calcAshtakavarga, AYANAMSA_SYSTEMS, EVENT_TOPICS };
-export { analyzeKeyLifeAreas, analyzeMarriage } from "./deep-analysis.js";
-`;
-const entry = join(root, "src", "_test_engine_entry.jsx");
-writeFileSync(entry, appSrc + exportsBlock);
-const outfile = join(tmpdir(), `jn-engine-${Date.now()}.mjs`);
-try {
-  await build({ entryPoints: [entry], bundle: true, format: "esm", platform: "browser", outfile, jsx: "automatic", logLevel: "silent",
-    loader: { ".webp": "dataurl" } }); // splash படங்கள் — test bundle-இல் inline
-} finally {
-  rmSync(entry, { force: true });
-}
-const m = await import(pathToFileURL(outfile).href);
+// ENGINE now lives in its own pure module (src/engine.js) — no esbuild/JSX
+// bundling needed. Importing it directly IS the extraction parity check:
+// if these golden tests still pass, the engine behaves identically to when
+// it lived inside App.jsx.
+import * as m from "../src/engine.js";
 
 let pass = 0, fail = 0;
 const ok = (name, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${name}`); } };
@@ -250,6 +226,5 @@ const eq = (name, got, want) => ok(`${name}: got ${JSON.stringify(got)}, want ${
   ok("health backtest runs with windows from-to", !!bt && !!bt.windows?.md?.start);
 }
 
-rmSync(outfile, { force: true });
 if (fail === 0) console.log(`✓ ALL ${pass} ENGINE REGRESSION TESTS PASSED`);
 else { console.error(`${fail} FAILED, ${pass} passed`); process.exit(1); }
