@@ -6,217 +6,23 @@ import { MURUGAN_IMG } from "./murugan-b64.js";
 //          பிரதி — அசையாமல் மேலே. வெளி வளையம் மட்டும் சுழல்வது தெரியும்.
 import wheelRingImg from "./assets/rishi2-ring.webp";
 import wheelCenterImg from "./assets/rishi2-center.webp";
-import { PLANET_IN_HOUSE, HOUSE_THEMES, LIFE_AREAS } from "./bhava-phalam.js";
-import { NAK_SPAN, subLordOf, drishtiVirupa, virupaGrade } from "./precision.js";
-import { analyzeKeyLifeAreas, analyzeFamilyHealthIndications } from "./deep-analysis.js";
-// Server-side engine bridge. When VITE_API_URL is configured the heavy
-// calculations + AI readings run in the Cloudflare Worker (engine hidden);
-// otherwise the app falls back to the local engine so it still works
-// standalone during migration.
-import { apiCompute, apiPredict, apiDaily } from "./api.js";
-const USE_API = !!import.meta.env.VITE_API_URL;
+// ── The proprietary interpretive engine runs ONLY in the Cloudflare
+// Worker. The browser talks to it through api.js and never imports the
+// engine. Public panchangam/ephemeris + trivial display helpers come from
+// almanac.js (a tree-shaken client subset — see that file).
 import {
-  NAKSHATRAS,
-  RASHIS,
-  RASHI_EN,
-  PLANETS,
-  CITIES,
-  geocodeCity,
-  geocodeCityAsync,
-  searchPlacesOSM,
-  resolveBirthGeo,
-  escapeHtml,
-  parseBackendResponse,
-  enrichPlacementsWithStates,
-  generateHoroscope,
-  DASHA_LORDS,
-  NAK_DASHA_MAP,
-  getNakshatraLord,
-  RASHI_LUCKY,
-  calcDailyLuckyNumbers,
-  calculateDasha,
-  AYANAMSA_SYSTEMS,
-  ASHTOTTARI_LORDS,
-  ASHTOTTARI_NAK_LORD,
-  ASHTOTTARI_NAK_POS,
-  ASHTOTTARI_GROUP_SIZE,
-  calculateAshtottariDasha,
-  YOGINI_LORDS,
-  calculateYoginiDasha,
-  calcHoraLagna,
-  calcGhatiLagna,
-  ARUDHA_PADA_NAMES,
-  calcAllArudhaPadas,
-  calcArudhaLagna,
-  _MOVABLE_SIGNS,
-  calcRashiDrishti,
-  planetsAspectingSign,
-  calcArgala,
-  calcJaiminiAnalysis,
-  calcCharaDasha,
-  calcVarshaphala,
-  calcPrashnaChart,
-  calcUpapadaLagna,
-  KARAKA_NAMES,
-  calcCharaKarakas,
-  getAshtakavargaTransitScore,
-  calcDoubleTransit,
-  TYAJYA_GHATIS,
-  calcTyajyaKalam,
-  PANCHAKA_NAKSHATRAS,
-  PANCHAKA_TYPES,
-  checkPanchaka,
-  MALEFICS,
-  calcPapaSamyam,
-  SHAD_VARGA_WEIGHTS,
-  calcVimshopakaBala,
-  PUSHKARA_BHAGA,
-  MRITYU_BHAGA,
-  PLANET_MRITYU_IDX,
-  checkPushkaraMrityu,
-  calculateNavamsa,
-  GANAM,
-  GANAM_NAMES,
-  YONI,
-  YONI_NAMES,
-  YONI_ENEMY_PAIRS,
-  NADI_MAP,
-  NADI_NAMES,
-  RAJJU_MAP,
-  RAJJU_NAMES,
-  VEDHA_PAIRS,
-  calculate10Porutham,
-  GOCHARA_RULES,
-  calculateGochara,
-  getTodayTranist,
-  RASHI_REMEDIES,
-  DAY_REMEDIES,
-  TITHI_GUIDANCE,
-  getPersonalizedRemedy,
-  calcSunriseSunset,
-  RAHU_KALAM_SEG,
-  YAMAGANDAM_SEG,
-  KULIGAI_SEG,
-  calcMuhurtham,
-  HORA_CYCLE,
-  HORA_SYMBOLS,
-  DAY_LORD_BY_WEEKDAY,
-  calcCurrentHorai,
-  calcSadeSati,
-  calcGuruPeyarchi,
-  TARA_TYPES,
-  calcTaraBala,
-  EXALT_RASHI,
-  EXALT_DEGREE,
-  DEBIL_RASHI,
-  OWN_RASHI,
-  MOOLA_TRIKONA,
-  COMBUSTION_LIMITS,
-  RASHI_LORD_NAME,
-  GRAHA_FRIENDSHIP,
-  isMoolaTrikona,
-  isCombust,
-  calcGrahaBala,
-  MAHAPURUSHA_INFO,
-  detectMahapurushaYogas,
-  KENDRA_HOUSES,
-  TRIKONA_HOUSES,
-  DUSTHANA_HOUSES,
-  getHouseLord,
-  detectClassicalYogas,
-  BAV_RULES,
-  BAV_TOTALS,
-  calcAshtakavarga,
-  DRISHTI_RULES,
-  CLASSICAL_7,
-  DRISHTI_EFFECT,
-  aspectorsOnHouse,
-  calcGrahaDrishti,
-  calcD10Dasamsa,
-  calcD2Hora,
-  calcD3Drekkana,
-  calcD12Dwadasamsa,
-  D30_ODD_RULERS,
-  D30_EVEN_RULERS,
-  D30_ODD_SIGN,
-  D30_EVEN_SIGN,
-  calcD30Trimsamsa,
-  calcSaptavargajaBala,
-  D60_NAMES,
-  D60_NATURE,
-  calcD60Shashtiamsa,
-  KALA_SARPA_TYPES,
-  detectKalaSarpa,
-  detectChevvaiDosham,
-  calcBhavaChart,
-  calcNavamsaStrength,
-  calcD4Chaturthamsa,
-  calcD7Saptamsa,
-  calcD16Shodasamsa,
-  calcD20Vimsamsa,
-  calcD24Siddhamsa,
-  calcD27Bhamsa,
-  calcD40Khavedamsa,
-  calcD45Akshavedamsa,
-  DIG_BALA_HOUSES,
-  NAISARGIKA_BALA,
-  NATURAL_BENEFICS,
-  NATURAL_MALEFICS,
-  housesOwnedBy,
-  calcFunctionalNature,
-  calcMarakaBadhaka,
-  GOCHARA_VEDHA,
-  VEDHA_EXEMPT_PAIRS,
-  isVedhaExempt,
-  signDignity,
-  BALADI_SEQ,
-  calcAvasthas,
-  NARA_RASHIS,
-  JALA_RASHIS,
-  KEETA_RASHIS,
-  calcBhavaBala,
-  buildUnifiedStrength,
-  calcNakshatraBhavaLinks,
-  calcDashaSandhi,
-  calcGulikaPosition,
-  calcBirthTimeSensitivity,
-  EVENT_TOPICS,
-  planetHitsRashi,
-  buildActivationWeights,
-  calcEventPromise,
-  calcBacktest,
-  calcEventTiming,
-  SEQUENCE_RULES,
-  calcSequenceLinkages,
-  calcConditionalBenefics,
-  calcPlanetContext,
-  MEAN_DAILY_MOTION,
-  SUN_MEAN_DAILY_MOTION,
-  findSankrantiDate,
-  TAMIL_SOLAR_MONTHS,
-  calcTamilDate,
-  ORBITAL_ELEMENTS,
-  keplerHeliocentric,
-  YUDDHA_PLANET_KEY,
-  calcEclipticLatitude,
-  calcActualDailyMotion,
-  calcShadbala,
-  calcTransitOverlay,
-  RAHU_KALAM_ORDER,
-  YAMA_GANDAM_ORDER,
-  GULIKAI_ORDER,
-  calcInauspiciousTimes,
-  SUBA_NAKSHATRAS,
-  SUBA_TITHIS,
-  ASUBA_YOGAS,
-  calcMuhurtha,
-  SANI_TRANSIT_EFFECTS,
-  GURU_TRANSIT_EFFECTS,
-  calcPlanetTransitAnalysis,
-  PLANET_REMEDIES,
-  calcBhavaPhalam,
-  getRemedies
-} from "./engine.js";
+  apiCompute, apiPredict, apiDaily, apiBacktest, apiEventTiming,
+  apiNakBhava, apiPorutham, apiEngine,
+} from "./api.js";
+import {
+  generateHoroscope, calcMuhurtham, calcInauspiciousTimes, calcTamilDate,
+  calcCurrentHorai, getNakshatraLord, geocodeCity, geocodeCityAsync,
+  searchPlacesOSM, resolveBirthGeo, escapeHtml,
+  NAKSHATRAS, RASHIS, RASHI_EN, PLANETS, RASHI_LUCKY, AYANAMSA_SYSTEMS,
+  GRAHA_FRIENDSHIP, CLASSICAL_7, EVENT_TOPICS,
+} from "./almanac.js";
+// The engine is server-side only; the client always talks to the Worker.
+const USE_API = true;
 
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1096,20 +902,15 @@ export default function AstrologyApp() {
   const [btResult, setBtResult] = useState(null);
   const [backtests, setBacktests] = useState(loadBacktests);
 
-  const runBacktest = () => {
+  const runBacktest = async () => {
     if (!horoscope || !dashaData || !isValidDDMMYYYY(btDateStr)) return;
     const [dd, mm, yy] = btDateStr.split('.').map(Number);
-    const eventDate = new Date(yy, mm - 1, dd);
-    // chartMeta snapshot — chart உருவான போதைய geo/ayanamsa/dob (form-ஐ பின்னர்
-    // மாற்றியிருந்தாலும் பழைய chart-உடன் ஒத்த அடிப்படை)
+    const eventISO = `${yy}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
     const geoB = chartMeta?.geo || resolveBirthGeo(formData);
-    const res = calcBacktest(btTopic, eventDate, {
-      horoscope, dashaData, functionalNat: functionalNature, geo: geoB, ayanamsaKey: chartMeta?.ayanamsaKey || ayanamsaKey,
-      // வாக்குறுதி கணிப்புக்கான முழு deps — எதிர்கால engine-உடன் ஒரே விதி
-      shadBala, planetCtx: planetContext, navStrength: navamsaStrength, chevvai: chevvaiDosham,
-      ashtakavarga: ashtakavargaData, avasthas: avasthasData,
-      dobISO: chartMeta?.dobISO || parseDDMMYYYY(formData.dob)
-    });
+    let res;
+    try {
+      res = await apiBacktest(buildBirth(chartMeta?.dobISO || parseDDMMYYYY(formData.dob), chartMeta?.finalTime || "06:00", geoB), btTopic, eventISO);
+    } catch (e) { return; }
     if (!res) return;
     setBtResult(res);
     setBacktests(prev => {
@@ -1129,6 +930,7 @@ export default function AstrologyApp() {
   const [bhavaBalaData, setBhavaBalaData] = useState(null);
   const [gulikaData, setGulikaData] = useState(null);
   const [btSensitivity, setBtSensitivity] = useState(null);
+  const [dashaSandhi, setDashaSandhi] = useState(null);
   const [planetContext, setPlanetContext] = useState(null);
   const [eventTiming, setEventTiming] = useState({});
   const [sequenceLinks, setSequenceLinks] = useState(null);
@@ -1190,29 +992,14 @@ export default function AstrologyApp() {
   // the local approximation with the accurate value per day. Any day whose request
   // fails or times out (fetchTransitFromBackend has its own 8s cap) simply keeps
   // showing its local value — this is a pure enhancement, never a blocker.
+  // The Panchangam calendar renders entirely from the local almanac
+  // (public ephemeris). High-precision per-day refinement is not fetched
+  // here anymore — the engine lives server-side and the calendar is a
+  // public almanac view, so the instant local values are used directly.
   useEffect(() => {
     if (screen !== SCREEN.CALENDAR) return;
-    let cancelled = false;
     setCalBackendData({});
-    (async () => {
-      setCalFetching(true);
-      const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
-      const results = await Promise.allSettled(
-        Array.from({length: daysInMonth}, (_, i) => i+1).map(d =>
-          // பயனர் இடம் geocode ஆகியிருந்தால் அதையே — இல்லையேல் Chennai default
-          fetchTransitFromBackend(new Date(calYear, calMonth, d, 6, 0), resolveBirthGeo(formData).lat, resolveBirthGeo(formData).lon)
-            .then(result => ({ d, result }))
-        )
-      );
-      if (cancelled) return;
-      const newData = {};
-      results.forEach(r => {
-        if (r.status === "fulfilled" && r.value.result) newData[r.value.d] = r.value.result;
-      });
-      setCalBackendData(newData);
-      setCalFetching(false);
-    })();
-    return () => { cancelled = true; };
+    setCalFetching(false);
   }, [screen, calMonth, calYear]);
 
   const goTo = useCallback((s) => {
@@ -1224,13 +1011,6 @@ export default function AstrologyApp() {
     if(screen===SCREEN.SPLASH){ const t=setTimeout(()=>goTo(SCREEN.HOME),2600); return()=>clearTimeout(t); }
   }, [screen, goTo]);
 
-  // ── Backend warm-up ping — Render free tier sleeps after 15min inactivity.
-  // Send a lightweight ping during Splash screen so the server wakes up while
-  // the user fills the form (~20-30s). By submit time, backend will be ready.
-  useEffect(() => {
-    fetch("https://jothida-api.onrender.com/api/horoscope?year=2000&month=1&day=1&hour=6&minute=0&lat=13&lon=80&tz=5.5")
-      .catch(() => {}); // silent — failure is fine, local engine is the fallback
-  }, []);
 
   // ── ஓம் ஒலி (Om Sound) — synthesized, free, plays once on app open ──
   const playOmSound = useCallback(() => {
@@ -1327,180 +1107,6 @@ export default function AstrologyApp() {
   const [ayanamsaKey, setAyanamsaKey] = useState("lahiri");
   const [apiSource, setApiSource] = useState("");
 
-  const fetchFromBackend = async (dob, hour, minute, city, geoOverride) => {
-    try {
-      const [y, m, d] = dob.split('-').map(Number);
-      // Use the precisely-resolved birth geo (OSM/manual lat-lon) when the caller
-      // supplies it, so the Swiss-Ephemeris lagna/house chart is computed at the
-      // SAME coordinates as shadbala/gochara. Falls back to the fuzzy city DB
-      // (Porutham callers pass no override — Chennai default, as before).
-      const geo = geoOverride || geocodeCity(city);
-      const url = `${backendUrl}/api/horoscope?year=${y}&month=${m}&day=${d}&hour=${hour}&minute=${minute}&lat=${geo.lat}&lon=${geo.lon}&tz=5.5`;
-      // Backend-only policy: this is the ONLY source for Lahiri results, so give
-      // the Render cold start a real chance (25s) before declaring failure. The
-      // Splash-screen warm-up ping usually makes responses take ~1-2s anyway.
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (!res.ok) return null;
-      const data = await res.json();
-      if (!data || !data.success) return null;
-
-      return {
-        ...parseBackendResponse(data),
-        birthTime:`${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`,
-        apiSource:"Swiss Ephemeris (NASA JPL DE431)"
-      };
-    } catch (e) {
-      console.log("Backend error, using local:", e);
-      return null;
-    }
-  };
-
-  // Fetches TODAY's (or any target date's) planetary transit positions from the live
-  // backend, for the Daily Prediction screen. Uses the exact same /api/horoscope
-  // endpoint and parseBackendResponse() as the birth-chart fetch above — this endpoint
-  // doesn't distinguish "natal" vs "transit", it just computes positions for whatever
-  // date/time/location it's given, so today's date works exactly like a birth date does.
-  // Falls back to null on any failure (network, cold-start timeout, bad response) so the
-  // caller can drop back to the instant local Jean Meeus engine rather than block the UI.
-  const fetchTransitFromBackend = async (dateObj, lat, lon) => {
-    try {
-      const year = dateObj.getFullYear(), month = dateObj.getMonth()+1, day = dateObj.getDate();
-      const hour = dateObj.getHours(), minute = dateObj.getMinutes();
-      const url = `${backendUrl}/api/horoscope?year=${year}&month=${month}&day=${day}&hour=${hour}&minute=${minute}&lat=${lat}&lon=${lon}&tz=5.5`;
-      // Render's free tier sleeps after inactivity and can take 30-60s to wake up —
-      // that's too long for what should feel like an instant "today's panchangam"
-      // screen, so cap the wait at 8s and fall back to the local engine past that.
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (!res.ok) return null;
-      const data = await res.json();
-      if (!data || !data.success) return null;
-
-      const dayNames = ["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"];
-      const realNow = new Date();
-      const isOtherDate = dateObj.toDateString() !== realNow.toDateString();
-      return {
-        ...parseBackendResponse(data),
-        dateStr: dateObj.toLocaleDateString("ta-IN",{year:"numeric",month:"long",day:"numeric"}),
-        dayName: dayNames[dateObj.getDay()],
-        dateObj, isOtherDate,
-        isFuture: isOtherDate && dateObj > realNow,
-        isPast: isOtherDate && dateObj < realNow,
-        apiSource: "Swiss Ephemeris (NASA JPL DE431)"
-      };
-    } catch (e) {
-      console.log("Backend transit fetch error, using local:", e);
-      return null;
-    }
-  };
-
-  // ═══════════════════════════════════════════════════════════════════
-  // மைய engine pipeline — backend (API) / local இரு வழிகளுக்கும் ஒரே கணிப்பு.
-  // எல்லா engine-களும் இங்கே ஒரே வரிசையில், ஒருமுறை மட்டும் கணிக்கப்பட்டு,
-  // ஒன்றன் முடிவு அடுத்ததற்கு உள்ளீடாகச் செல்கிறது:
-  //   அடிப்படை (placements) → பல-அளவுகோல்கள் (கிரகபலம், ஷட்பலம், விம்ஷோபகம்,
-  //   D9, அவஸ்தை) → ஒருங்கிணைந்த பலம் → verdict engines (பாவ பலன்,
-  //   ஆழ்பகுப்பாய்வு, சூழல், வரிசை-இணைப்பு, பரிகாரம்) — அனைத்தும் ctx வழி இணைந்தவை.
-  // ═══════════════════════════════════════════════════════════════════
-  const runAllEngines = (h, { dobISO, finalTime, geo, transitH, moonLong }) => {
-    // இந்த chart-இன் நிரந்தர அடையாளம் — பிற்கால கணக்குகள் இதையே பயன்படுத்தும்
-    setChartMeta({ dobISO, finalTime, geo, ayanamsaKey, name: formData.name, dob: formData.dob });
-    const placements = h.placements, lagnaIdx = h.lagna;
-    setHoroscope(h);
-    // ── 1. அடிப்படை வர்க்கங்கள் / சக்கரங்கள் ──
-    setNavamsaData(calculateNavamsa(placements));
-    setDrishtiData(calcGrahaDrishti(placements));
-    setD10Data(calcD10Dasamsa(placements));
-    setD2Data(calcD2Hora(placements));
-    setD3Data(calcD3Drekkana(placements));
-    setD12Data(calcD12Dwadasamsa(placements));
-    setD60Data(calcD60Shashtiamsa(placements));
-    setD4Data(calcD4Chaturthamsa(placements));
-    setD7Data(calcD7Saptamsa(placements));
-    setD16Data(calcD16Shodasamsa(placements));
-    setD20Data(calcD20Vimsamsa(placements));
-    setD24Data(calcD24Siddhamsa(placements));
-    setD27Data(calcD27Bhamsa(placements));
-    setD40Data(calcD40Khavedamsa(placements));
-    setD45Data(calcD45Akshavedamsa(placements));
-    setJaiminiData(calcJaiminiAnalysis(h));
-    setArudhaPadasData(calcAllArudhaPadas(lagnaIdx, placements));
-    { const [cY,cM,cD]=dobISO.split('-').map(Number); setCharaDashaData(calcCharaDasha(lagnaIdx, placements, new Date(cY,cM-1,cD))); }
-    { const nowY=new Date().getFullYear(); let vp=calcVarshaphala(h,dobISO,geo.lat,geo.lon,nowY,ayanamsaKey); if(vp && vp.praveshDate>new Date()) vp=calcVarshaphala(h,dobISO,geo.lat,geo.lon,nowY-1,ayanamsaKey); setVarshaphalaData(vp); }
-    // Bhava (Chalit) cusps need the EXACT ascendant longitude (0–360), not the sign boundary.
-    const lagnaFullDeg = (h.lagnaFullLong != null) ? h.lagnaFullLong : (lagnaIdx * 30);
-    setBhavaChart(calcBhavaChart(placements, lagnaFullDeg));
-    // ── 2. பல-அளவுகோல் engines (ஒவ்வொன்றும் ஒருமுறை மட்டும்) ──
-    const grahaBalaR = calcGrahaBala(placements);
-    setGrahaBala(grahaBalaR);
-    const shadBalaR = calcShadbala(placements, lagnaIdx, dobISO, finalTime, geo.lat, geo.lon);
-    setShadBala(shadBalaR);
-    const vimshopakaR = placements.filter(p=>CLASSICAL_7.includes(p.ta)).map(p=>({ta:p.ta,symbol:p.symbol,...calcVimshopakaBala(p,lagnaIdx,placements)}));
-    setVimshopakaData(vimshopakaR);
-    const navStrengthR = calcNavamsaStrength(placements);
-    setNavamsaStrength(navStrengthR);
-    const avasthasR = calcAvasthas(placements);
-    setAvasthasData(avasthasR);
-    const functionalNatR = calcFunctionalNature(lagnaIdx);
-    setFunctionalNature(functionalNatR);
-    const marakaBadhakaR = calcMarakaBadhaka(lagnaIdx, placements);
-    setMarakaBadhaka(marakaBadhakaR);
-    const ashtakavargaR = calcAshtakavarga(placements, lagnaIdx);
-    setAshtakavargaData(ashtakavargaR);
-    const bhavaBalaR = calcBhavaBala(placements, lagnaIdx, shadBalaR);
-    setBhavaBalaData(bhavaBalaR);
-    // ── 3. ஒருங்கிணைந்த கிரக பலம் — மேலுள்ள எல்லா அளவுகோல்களின் இணைப்பு மையம் ──
-    const unifiedR = buildUnifiedStrength({
-      placements, lagnaIdx, grahaBala: grahaBalaR, shadBala: shadBalaR,
-      vimshopaka: vimshopakaR, navamsaStrength: navStrengthR, avasthas: avasthasR,
-      functionalNat: functionalNatR, marakaBadhaka: marakaBadhakaR
-    });
-    setUnifiedStrength(unifiedR);
-    // ── 4. யோகங்கள் / தோஷங்கள் ──
-    setMahapurushaYogas(detectMahapurushaYogas(placements, lagnaIdx));
-    const classicalYogasR = detectClassicalYogas(placements, lagnaIdx);
-    setClassicalYogas(classicalYogasR);
-    setKalaSarpa(detectKalaSarpa(placements, lagnaIdx));
-    const chevvaiR = detectChevvaiDosham(placements, lagnaIdx);
-    setChevvaiDosham(chevvaiR);
-    // ── 5. தசை — பிறந்த நேரத்திலேயே anchor (தேதி-மட்டும் anchor ~18h வரை
-    // தசை எல்லைகளை நகர்த்தியது) ──
-    const [dY, dM, dD] = dobISO.split('-').map(Number);
-    const [dH, dMin] = (finalTime || "06:00").split(':').map(Number);
-    const dashaR = calculateDasha(moonLong, new Date(dY, dM - 1, dD, Number.isFinite(dH) ? dH : 6, Number.isFinite(dMin) ? dMin : 0));
-    setDashaData(dashaR);
-    // ── 6. இன்றைய transit / நேரங்கள் ──
-    const birthMoon = placements.find(p => p.ta === "சந்திரன்");
-    if (transitH) {
-      setTransitOverlay(calcTransitOverlay(placements, transitH.placements, birthMoon?.rashiIdx || 0));
-      setPlanetTransitAnalysis(calcPlanetTransitAnalysis(birthMoon?.rashiIdx || 0, transitH.placements, (birthMoon && birthMoon.nakIdx >= 0) ? birthMoon.nakIdx : -1));
-    }
-    setInauspiciousTimes(calcInauspiciousTimes(new Date(), geo.lat, geo.lon));
-    // Guard: nakIdx via indexOf → -1 on spelling mismatch; clamp to valid 0–26.
-    setMuhurthaData(calcMuhurtha(new Date(), (birthMoon && birthMoon.nakIdx >= 0) ? birthMoon.nakIdx : 0, geo.lat, geo.lon));
-    // ── 7. verdict engines — ctx வழி எல்லா logic-உம் இணைந்த நிலையில் ──
-    const ctx = { ashtakavarga: ashtakavargaR, bhavaBala: bhavaBalaR, unified: unifiedR,
-                  marakaBadhaka: marakaBadhakaR, functionalNat: functionalNatR };
-    setBhavaPhalam(calcBhavaPhalam(h, grahaBalaR, chevvaiR, dashaR, classicalYogasR, ctx));
-    setKeyAreas(analyzeKeyLifeAreas(h, grahaBalaR, chevvaiR, navStrengthR, dashaR,
-      // gender: ஆண்→சுக்கிரன்/பெண்→குரு காரக வேறுபாடு + மாங்கல்ய தோஷக் கணிப்புக்கு
-      { sav: ashtakavargaR.sav, shadBala: shadBalaR, functionalNat: functionalNatR, gender: formData.gender || null }));
-    setFamilyHealthData(analyzeFamilyHealthIndications(h, grahaBalaR));
-    setPlanetContext(calcPlanetContext(placements, lagnaIdx, functionalNatR, unifiedR));
-    setSequenceLinks(calcSequenceLinkages(placements, lagnaIdx, functionalNatR, dashaR));
-    setRemediesData(getRemedies(placements, grahaBalaR, unifiedR));
-    setGulikaData(calcGulikaPosition(dobISO, finalTime, geo.lat, geo.lon, ayanamsaKey));
-    setBtSensitivity(calcBirthTimeSensitivity(h));
-    // புதிய ஜாதகம் — பழைய நட்சத்திர-பாவக கணிப்பு செல்லாது; அடுத்த view-தேர்வில் மீண்டும் கணிக்கும்
-    setNakBhavaData(null);
-    // புதிய ஜாதகம் — பார்த்த பகுதிகள் பட்டியலும் புதிதாக ஆரம்பம்
-    setViewedViews(new Set());
-  };
 
   // Assemble the birth payload the Worker expects from the form.
   const buildBirth = (dobISO, finalTime, geo) => ({
@@ -1537,6 +1143,7 @@ export default function AstrologyApp() {
     setFamilyHealthData(r.familyHealthData); setPlanetContext(r.planetContext);
     setSequenceLinks(r.sequenceLinks); setRemediesData(r.remediesData);
     setGulikaData(r.gulikaData); setBtSensitivity(r.btSensitivity);
+    setDashaSandhi(r.dashaSandhi || null);
     setTamilDate(r.tamilDate || null);
     setNakBhavaData(null); setViewedViews(new Set());
   };
@@ -1590,68 +1197,16 @@ export default function AstrologyApp() {
       }
       return;
     }
-
-    // Try API first, fallback to local
-    // The Swiss-Ephemeris backend computes Lahiri only. When the user picks a
-    // different ayanamsa, skip the backend and use the local engine (which honours
-    // the selection) so the chosen ayanamsa actually takes effect.
-    let result = ayanamsaKey === "lahiri" ? await fetchFromBackend(dobISO, h24, min24, formData.pob, geoT) : null;
-    if (result) {
-      setApiSource("api");
-      // இன்றைய transit — backend first (பிறப்பு chart-க்கு இணையான source), local fallback.
-      // Fixed: toISOString() is UTC-based and shows YESTERDAY for IST users 12:00–5:29 AM —
-      // local date components used instead.
-      const _now1 = new Date();
-      let transitH = await fetchTransitFromBackend(_now1, geoT.lat, geoT.lon);
-      if (!transitH) {
-        const todayISO = `${_now1.getFullYear()}-${String(_now1.getMonth()+1).padStart(2,'0')}-${String(_now1.getDate()).padStart(2,'0')}`;
-        transitH = generateHoroscope(todayISO, `${_now1.getHours()}:${_now1.getMinutes()}`, geoT.lat, geoT.lon);
-      }
-      // Moon longitude for Vimshottari — backend placements (rashiIdx*30 + degExact)
-      const moonP = result.placements.find(p => p.ta === "சந்திரன்");
-      const moonLong = moonP ? (moonP.rashiIdx * 30 + moonP.degExact) : 0;
-      runAllEngines(result, { dobISO, finalTime, geo: geoT, transitH, moonLong });
-    } else if (ayanamsaKey === "lahiri") {
-      // Backend-only policy: the user wants results ONLY from the Swiss Ephemeris
-      // backend. If it did not respond (cold start / network), show an error and
-      // let them retry — never silently show local-engine results for Lahiri.
-      setApiSource("");
-      alert("⚠ Swiss Ephemeris server இப்போது பதிலளிக்கவில்லை.\n\nServer எழுந்து கொண்டிருக்கலாம் (30-60 வினாடிகள் ஆகும்).\n\nசில வினாடிகள் காத்திருந்து மீண்டும்『ஜாதகம் பார்க்க』அழுத்தவும்.");
-      goTo(SCREEN.FORM);
-      return;
-    } else {
-      setApiSource("local");
-      const geo = resolveBirthGeo(formData);
-      const h = generateHoroscope(dobISO, finalTime, geo.lat, geo.lon, false, ayanamsaKey);
-      // இன்றைய transit — local engine (same UTC/IST date-bug guard as backend path)
-      const _now2 = new Date();
-      const todayISO2 = `${_now2.getFullYear()}-${String(_now2.getMonth()+1).padStart(2,'0')}-${String(_now2.getDate()).padStart(2,'0')}`;
-      // தேர்ந்த ayanamsa-வையே transit-க்கும் — natal/transit கலப்பு-ஒப்பீடு தவிர்க்க
-      const transitH2 = generateHoroscope(todayISO2, `${_now2.getHours()}:${_now2.getMinutes()}`, geo.lat, geo.lon, false, ayanamsaKey);
-      // Moon for Vimshottari — h.placements Moon fullLong (SELECTED ayanamsa honoured;
-      // a hardcoded-Lahiri recompute here previously broke dasha for KP/Raman)
-      const moonForDasha = h.placements.find(p => p.ta === "சந்திரன்");
-      runAllEngines(h, { dobISO, finalTime, geo, transitH: transitH2, moonLong: moonForDasha ? moonForDasha.fullLong : 0 });
-    }
-    // ஜாதகம் வெற்றிகரமாக உருவானது — பிறப்பு விவரங்களை localStorage-இல் சேமி
-    saveCurrentProfile();
-    goTo(SCREEN.RESULT);
   };
 
   // வாழ்க்கை நிகழ்வு காலக்கணிப்பு — கேட்கும்போது (on-demand) கணக்கிடு
-  const runEventTiming = (topicKey) => {
+  const runEventTiming = async (topicKey) => {
     if (!horoscope || !dashaData) return;
-    // chartMeta snapshot — chart உருவான போதைய geo/ayanamsa/dobISO
     const geo = chartMeta?.geo || resolveBirthGeo(formData);
-    const dobISO = chartMeta?.dobISO || parseDDMMYYYY(formData.dob) || "2000-01-01";
-    const res = calcEventTiming(topicKey, {
-      horoscope, dashaData, shadBala, functionalNat: functionalNature,
-      planetCtx: planetContext, chevvai: chevvaiDosham, navStrength: navamsaStrength,
-      geo, ayanamsaKey: chartMeta?.ayanamsaKey || ayanamsaKey, dobISO,
-      // இணைப்பு அடுக்கு — SAV பிந்து + அவஸ்தை factors வாக்குறுதி கணிப்பில் சேரும்
-      ashtakavarga: ashtakavargaData, avasthas: avasthasData
-    });
-    setEventTiming(prev => ({ ...prev, [topicKey]: res }));
+    try {
+      const res = await apiEventTiming(buildBirth(chartMeta?.dobISO || parseDDMMYYYY(formData.dob), chartMeta?.finalTime || "06:00", geo), topicKey);
+      setEventTiming(prev => ({ ...prev, [topicKey]: res }));
+    } catch (e) { /* leave unset — UI shows retry */ }
   };
 
   // முகப்பு கேள்வியிலிருந்து RESULT-க்கு வந்ததும் — அந்தத் தலைப்பின்
@@ -1672,23 +1227,6 @@ export default function AstrologyApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen, homeQuestion, horoscope, dashaData]);
 
-  const getCurrentDashaInfo = () => {
-    if (!dashaData) return "";
-    // Fixed: never rely on .isCurrent — it's a snapshot frozen at the moment the horoscope
-    // was first generated and never updates again. Always recompute fresh against live "now".
-    const now = new Date();
-    const md = dashaData.dashas.find(d => now >= d.startDate && now < d.endDate);
-    if (!md) return "";
-    const ad = md.antardashas?.find(a => now >= a.startDate && now < a.endDate);
-    const pad = ad?.pratyantardashas?.find(p => now >= p.startDate && now < p.endDate);
-    const sd = pad?.sookshmaDashas?.find(s => now >= s.startDate && now < s.endDate);
-    let info = `நடப்பு மகா தசை: ${md.name} (${md.startDate.toLocaleDateString("ta-IN")} — ${md.endDate.toLocaleDateString("ta-IN")})`;
-    if (ad) info += `\nநடப்பு புக்தி (அந்தர் தசை): ${md.name}-${ad.name} (${ad.duration})`;
-    if (pad) info += `\nநடப்பு பிரத்யந்தர் தசை: ${md.name}-${ad.name}-${pad.name} (${pad.duration})`;
-    if (sd) info += `\nநடப்பு சூட்சும தசை: ${md.name}-${ad.name}-${pad.name}-${sd.name} (${sd.duration})`;
-    return info;
-  };
-
   const fetchAIPrediction = async () => {
     if(!horoscope)return;
     setPredictionLoading(true); setPrediction("");
@@ -1703,22 +1241,6 @@ export default function AstrologyApp() {
       setPredictionLoading(false);
       return;
     }
-    try {
-      const dashaInfo = getCurrentDashaInfo();
-      const prompt = `You are a world-class Vedic astrologer. Based on these birth chart details, give a personalized prediction in Tamil (with some English terms).
-Name: ${formData.name}, DOB: ${formData.dob}, TOB: ${formData.tob ? `${formData.tob} ${formData.ampm}` : "Unknown"}, POB: ${formData.pob||"Unknown"}
-Lagna: ${horoscope.lagnaName} (${horoscope.lagnaEn}), Moon: ${horoscope.moonRashi}, Nakshatra: ${horoscope.nakshatra}
-Planets: ${horoscope.placements.map(p=>`${p.ta}:${p.rashi} H${p.house} ${p.degree}°`).join(", ")}
-${dashaInfo ? `Dasha periods:\n${dashaInfo}` : ""}
-Predict: பொது பலன், தொழில், திருமணம், ஆரோக்கியம், நிதி. Consider the current Mahadasha-Antardasha-Pratyantardasha lords and their combined effects on each life area. 200 words. Warm tone.`;
-      const r = await fetch(`${backendUrl}/api/predict`,{
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({prompt, max_tokens:1000})
-      });
-      const data = await r.json();
-      setPrediction(data.text||"பலன் கிடைக்கவில்லை.");
-    } catch(e){ setPrediction("AI பலன் பெற இணைய இணைப்பு தேவை."); }
-    setPredictionLoading(false);
   };
 
   // ── DAILY PREDICTION (தினப்பலன்) ── targetDate: null = "இப்போது" (live now), or a Date object for a future/past date
@@ -1748,64 +1270,6 @@ Predict: பொது பலன், தொழில், திருமணம்
       }
       return;
     }
-
-    // Try the live Swiss Ephemeris backend first (same accuracy source and same
-    // /api/horoscope endpoint as the main birth chart), fall back to the instant local
-    // Jean Meeus engine on any failure — network error, cold-start timeout, bad response.
-    // ஒரு குறிப்பிட்ட தேதி என்றால் backend-க்கும் 06:00 அனுப்புகிறோம் — local
-    // fallback (getTodayTranist) 06:00 பயன்படுத்துவதோடு ஒத்துப்போக (முன்பு
-    // backend நள்ளிரவு 00:00-இல் கணக்கிட்டு, fallback-உடன் திதி/நட்சத்திரம்
-    // மாறுபட்டது).
-    const backendRef = targetDate
-      ? new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 6, 0)
-      : refDate;
-    // Backend Lahiri-only — வேறு ayanamsa தேர்வில் local engine-ஐயே பயன்படுத்து
-    let today = ayanamsaKey === "lahiri" ? await fetchTransitFromBackend(backendRef, geo.lat, geo.lon) : null;
-    if (!today) {
-      today = getTodayTranist(geo.lat, geo.lon, targetDate, ayanamsaKey);
-    }
-
-    const birthMoonRashiRaw = RASHIS.indexOf(horoscope.moonRashi);
-    const birthMoonRashi = birthMoonRashiRaw >= 0 ? birthMoonRashiRaw : 0; // -1 guard
-    const gochara = calculateGochara(birthMoonRashi, today.placements);
-    const remedy = getPersonalizedRemedy(birthMoonRashi, today.dateObj.getDay(), gochara.isChandrashtama, today.tithi);
-    const muhurtham = calcMuhurtham(today.dateObj, geo.lat, geo.lon);
-
-    // Sade Sati (Saturn transit) & Guru Peyarchi (Jupiter transit)
-    const saturnToday = today.placements.find(p => p.ta === "சனி");
-    const jupiterToday = today.placements.find(p => p.ta === "குரு");
-    const sadeSati = saturnToday ? calcSadeSati(birthMoonRashi, RASHIS.indexOf(saturnToday.rashi)) : null;
-    const guruPeyarchi = jupiterToday ? calcGuruPeyarchi(birthMoonRashi, RASHIS.indexOf(jupiterToday.rashi)) : null;
-
-    // Tara Bala (birth nakshatra vs this date's transiting moon nakshatra)
-    const birthNakIdx = NAKSHATRAS.indexOf(horoscope.nakshatra);
-    const todayNakIdx = NAKSHATRAS.indexOf(today.nakshatra);
-    const taraBala = (birthNakIdx>=0 && todayNakIdx>=0) ? calcTaraBala(birthNakIdx, todayNakIdx) : null;
-
-    // Running Dasha (Mahadasha) + Antardasha (Bhukti) + Pratyantardasha + Sookshma Dasha
-    // as of the SELECTED date — key classical factor. Uses `refDate` (computed once at the
-    // top of this function — the target date if one was picked, else the moment the screen
-    // was opened) so that browsing to a future date correctly shows the dasha that will
-    // actually be running then, not today's dasha.
-    // IMPORTANT: never rely on dashaData.dashas[i].isCurrent — that's a snapshot frozen at
-    // the moment the horoscope was first generated and never updates again.
-    let currentDasha = null;
-    if (dashaData) {
-      const mahadasha = dashaData.dashas.find(d => refDate >= d.startDate && refDate < d.endDate);
-      if (mahadasha) {
-        const bhukti = mahadasha.antardashas.find(ad => refDate >= ad.startDate && refDate < ad.endDate) || mahadasha.antardashas[0];
-        const pratyantar = bhukti?.pratyantardashas?.find(p => refDate >= p.startDate && refDate < p.endDate);
-        const sookshma = pratyantar?.sookshmaDashas?.find(s => refDate >= s.startDate && refDate < s.endDate);
-        const msLeftInBhukti = bhukti ? bhukti.endDate.getTime() - refDate.getTime() : 0;
-        const daysLeftInBhukti = Math.max(0, Math.round(msLeftInBhukti / (24*3600000)));
-        const daysLeftInSookshma = sookshma ? Math.max(0, Math.round((sookshma.endDate.getTime() - refDate.getTime()) / (24*3600000))) : 0;
-        currentDasha = { mahadasha, bhukti, pratyantar, sookshma, daysLeftInBhukti, daysLeftInSookshma };
-      }
-    }
-
-    setDailyData({ today, gochara, remedy, muhurtham, sadeSati, guruPeyarchi, taraBala, currentDasha });
-    setDailyPrediction("");
-    goTo(SCREEN.DAILY);
   };
 
   const fetchDailyPrediction = async () => {
@@ -1823,36 +1287,6 @@ Predict: பொது பலன், தொழில், திருமணம்
       setDailyLoading(false);
       return;
     }
-    try {
-      const { today, gochara, remedy, sadeSati, guruPeyarchi, taraBala, currentDasha } = dailyData;
-      const transitSummary = gochara.results.map(p =>
-        `${p.ta}: ${p.rashi} (birth moon-க்கு ${p.houseFromMoon}ஆம் வீடு, ${p.effect==="good"?"சுபம்":p.effect==="bad"?"அசுபம்":"நடுநிலை"})`
-      ).join(", ");
-      const timeframe = today.isFuture ? `on the future date ${today.dateStr}` : today.isPast ? `on the past date ${today.dateStr}` : "today";
-      const dashaLine = currentDasha
-        ? `The full dasha chain running ${timeframe}: ${currentDasha.mahadasha.name} Mahadasha (main period) → ${currentDasha.bhukti?.name || currentDasha.mahadasha.name} Bhukti (sub-period)${currentDasha.pratyantar ? ` → ${currentDasha.pratyantar.name} Pratyantardasha (sub-sub-period)` : ""}${currentDasha.sookshma ? ` → ${currentDasha.sookshma.name} Sookshma Dasha (finest-grained period, ${currentDasha.daysLeftInSookshma} days left)` : ""}. This is the person's most important long-term astrological influence for that date — the Mahadasha and Bhukti set the broad theme, while the Pratyantardasha and Sookshma Dasha fine-tune what's emphasized right now. Consider what all these planets govern together.`
-        : "Dasha data not available.";
-      const prompt = `You are a Tamil Vedic astrologer giving a ${today.isOtherDate ? "specific-date" : "daily"} horoscope reading. Respond ONLY in Tamil.
-Person: ${formData.name}
-Birth chart: Lagna ${horoscope.lagnaName}, Moon sign (Rashi) ${horoscope.moonRashi}, Nakshatra ${horoscope.nakshatra}
-${today.isOtherDate ? "Target date" : "Today's date"}: ${today.dateStr} (${today.dayName}கிழமை)${today.isFuture ? " — this is a FUTURE date, not today. Phrase the reading as 'அன்று' (on that day) not 'இன்று' (today)." : today.isPast ? " — this is a PAST date. Phrase the reading in past tense as 'அன்று' (on that day)." : ""}
-Panchangam for that date: திதி ${today.tithi} ${today.paksham}, யோகம் ${today.yogam}, கரணம் ${today.karanam}, நட்சத்திரம் ${today.nakshatra}
-Planetary transits relative to birth moon sign, as of that date: ${transitSummary}
-${dashaLine}
-${gochara.isChandrashtama ? `${today.isOtherDate ? "அன்று" : "இன்று"} சந்திராஷ்டமம் — கவனமாக இருக்க வேண்டிய நாள்.` : ""}
-${sadeSati?.active ? `Sade Sati status on that date: ${sadeSati.phase} — ${sadeSati.desc}` : "No Sade Sati on that date."}
-Guru Peyarchi (Jupiter transit) effect on that date: ${guruPeyarchi?.desc || "N/A"}
-Tara Bala on that date: ${taraBala?.name} (${taraBala?.mood === "good" ? "favorable" : "use caution"})
-Recommended remedy for this rashi: worship ${remedy?.dayInfo?.deity}, ${remedy?.dayInfo?.remedy}
-Give a short, warm, practical ${today.isFuture ? "prediction for that future date" : "daily prediction"} (170 words max) covering: general mood, favorable/unfavorable timing, one practical tip. The Dasha-Bhukti is the most important personalization factor — ground the reading in what the Mahadasha and Bhukti lords represent, then layer in the transits and panchangam on top. Do not repeat the raw planetary data back — synthesize it into natural guidance.`;
-      const r = await fetch(`${backendUrl}/api/predict`,{
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({prompt, max_tokens:600})
-      });
-      const data = await r.json();
-      setDailyPrediction(data.text||"இன்றைய பலன் கிடைக்கவில்லை.");
-    } catch(e){ setDailyPrediction("இணைய இணைப்பு தேவை."); }
-    setDailyLoading(false);
   };
 
 
@@ -2604,7 +2038,7 @@ Give a short, warm, practical ${today.isFuture ? "prediction for that future dat
         `</tbody></table><div class="olainote">கிரக பலம் 30% + ஷட்பலம் 25% + விம்ஷோபகம் 15% + நவாம்சம் 15% + அவஸ்தை 15%</div>`, "cTeal") : "";
 
       // 17. நட்சத்திர-பாவக இணைப்பு — view-இல் பார்த்திருந்தால் (4 உட்பிரிவுகளும் நிறம் பிரிந்து)
-      const nakBhavaPart = nakBhavaData ? sec("⭐","நட்சத்திர-பாவக இணைப்பு • பார்வை • கோசார காலம் • பரிகாரம்",
+      const nakBhavaPart = (nakBhavaData && nakBhavaData!=="loading") ? sec("⭐","நட்சத்திர-பாவக இணைப்பு • பார்வை • கோசார காலம் • பரிகாரம்",
         nakBhavaData.houses.filter(hs=>!hs.isEmpty).map(hs=>
           `<div class="olabox" style="border-left-color:#303f9f;background:#fbfaf3">
             <b style="color:#303f9f">${hs.houseNum}ஆம் வீடு (${hs.houseRashi}) — ${hs.theme}</b>` +
@@ -2938,41 +2372,16 @@ ${aiPart}
                 // PDF-க்காக பதிவு — திறந்து பார்த்த பகுதிகள் மட்டுமே PDF-இல் சேரும்
                 if (v) setViewedViews(prev => { const n = new Set(prev); n.add(v); return n; });
                 // நட்சத்திர-பாவக இணைப்பு — முதல் தேர்விலேயே கணி (12 ஆண்டு transit sampling)
-                if (v === "nakbhava" && !nakBhavaData && horoscope && functionalNature) {
-                  // chartMeta snapshot — chart உருவான போதைய geo/ayanamsa
-                  const geoNB = chartMeta?.geo || resolveBirthGeo(formData);
-                  const nb = calcNakshatraBhavaLinks(horoscope.placements, horoscope.lagna, functionalNature, geoNB, chartMeta?.ayanamsaKey || ayanamsaKey,
-                    // துல்லிய அடுக்குகள்: தசை×கோசாரம், இணைப்புப் பலம், BAV/கக்ஷ்யா, பாவ சந்தி
-                    { dashaData, unified: unifiedStrength, ashtakavarga: ashtakavargaData, lagnaFullLong: horoscope.lagnaFullLong });
-                  setNakBhavaData(nb);
-                  // டிகிரி-தொடுகை (±1°) தேதிகளை Swiss Ephemeris backend-ஆல் மறு-உறுதி —
-                  // local engine-இல் குரு/சனிக்கு ~0.05-0.1° பிழை சாத்தியம் → சனிக்கு ~3 நாள்
-                  // நகரலாம்; சில புள்ளிகள் மட்டுமே என்பதால் backend-ஐ இங்கு மட்டும் அழைக்கிறோம்
+                if (v === "nakbhava" && !nakBhavaData && horoscope && chartMeta) {
+                  // Computed server-side (Swiss-precise) — the browser only
+                  // receives the finished linkage analysis.
+                  setNakBhavaData("loading");
                   (async () => {
-                    let changed = false;
-                    for (const hs of nb.houses) {
-                      if (hs.isEmpty) continue;
-                      for (const oc of hs.occupants) {
-                        for (const tc of (oc.touches || [])) {
-                          if (tc.type !== "டிகிரி" || !tc.from) continue;
-                          try {
-                            const midD = new Date((tc.from.getTime() + tc.to.getTime()) / 2);
-                            const sw = await fetchTransitFromBackend(midD, geoNB.lat, geoNB.lon);
-                            const swp = sw?.placements?.find(x => x.ta === tc.planet);
-                            if (!swp) continue;
-                            const swLong = swp.fullLong != null ? swp.fullLong : swp.rashiIdx * 30 + (swp.degExact || 0);
-                            const isoM = `${midD.getFullYear()}-${String(midD.getMonth()+1).padStart(2,'0')}-${String(midD.getDate()).padStart(2,'0')}`;
-                            const lp = generateHoroscope(isoM, "12:00", geoNB.lat, geoNB.lon, true, ayanamsaKey).placements.find(x => x.ta === tc.planet);
-                            if (!lp) continue;
-                            const dDeg = ((swLong - lp.fullLong + 540) % 360) - 180;
-                            const shift = Math.round(dDeg / (tc.planet === "குரு" ? 0.083 : 0.034));
-                            tc.swissNote = Math.abs(shift) <= 1 ? "Swiss Ephemeris ✓ சரிபார்க்கப்பட்டது" : `Swiss சரிபார்ப்பு: ~${shift > 0 ? "+" : ""}${shift} நாள் திருத்தம்`;
-                            changed = true;
-                          } catch (e) { /* backend தூங்கினால் — local மதிப்பே நிற்கும் */ }
-                        }
-                      }
-                    }
-                    if (changed) setNakBhavaData(prev => prev === nb ? { ...nb, houses: [...nb.houses] } : prev);
+                    try {
+                      const geoNB = chartMeta?.geo || resolveBirthGeo(formData);
+                      const nb = await apiNakBhava(buildBirth(chartMeta?.dobISO || parseDDMMYYYY(formData.dob), chartMeta?.finalTime || "06:00", geoNB));
+                      setNakBhavaData(nb);
+                    } catch (e) { setNakBhavaData(null); }
                   })();
                 }
               }}
@@ -3275,7 +2684,7 @@ ${aiPart}
                   })()}
                   {/* தசா சந்தி எச்சரிக்கை */}
                   {dashaData && (() => {
-                    const sandhi = calcDashaSandhi(dashaData, new Date());
+                    const sandhi = dashaSandhi;
                     return sandhi ? sandhi.map((sa, si) => (
                       <div key={si} style={{fontSize:10,marginTop:4,padding:"5px 8px",borderRadius:6,
                         background:sa.level==="high"?"#fde8e8":"#fff8e1",
@@ -3746,7 +3155,7 @@ ${aiPart}
               <div style={{fontSize:10.5,color:"#555",lineHeight:1.6,marginBottom:10}}>
                 மனதில் ஒரு கேள்வியை நினைத்து, <b>இப்போது</b> கீழே பொத்தானை அழுத்துங்கள். அந்த தருணத்துக்கான லக்னம் அமைத்து பலன் பார்க்கப்படும் (தத்கால பிரஸ்ன முறை).
               </div>
-              <button onClick={()=>{ const geo=resolveBirthGeo(formData); setPrashnaData(calcPrashnaChart(geo.lat, geo.lon)); }}
+              <button onClick={async ()=>{ const geo=resolveBirthGeo(formData); try{ setPrashnaData(await apiEngine("calcPrashnaChart",[geo.lat, geo.lon])); }catch(e){} }}
                 className="jn-shine" style={{...btnGold, marginBottom:12}}>
                 🔮 இப்போது பிரஸ்னம் போடு
               </button>
@@ -4229,7 +3638,12 @@ ${aiPart}
 
           {/* ═══ நட்சத்திர-பாவக இணைப்பு — நட்சத்திராதிபதி வழி பாவத் தொடர்பு,
                பார்வைப் பலன், கோசார காலக்கட்டம், பரிகாரம் ═══ */}
-          {advancedView==="nakbhava" && nakBhavaData && (
+          {advancedView==="nakbhava" && nakBhavaData==="loading" && (
+            <div style={{...card,marginBottom:10,padding:"20px 14px",textAlign:"center",color:"#8b6914",fontSize:12}}>
+              ⭐ நட்சத்திர-பாவக இணைப்பு கணிக்கப்படுகிறது…
+            </div>
+          )}
+          {advancedView==="nakbhava" && nakBhavaData && nakBhavaData!=="loading" && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#7b1c1c",marginBottom:4,borderBottom:"2px solid #b8860b30",borderLeft:"3px solid #7b1c1c",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
                 ⭐ நட்சத்திர-பாவக இணைப்பு — கிரகன் யாருடைய நட்சத்திரத்தில்? எந்தப் பாவப் பலன்? எப்போது?
@@ -4785,7 +4199,8 @@ ${aiPart}
                 🕉 முஹூர்த்தம் — இன்றைய சுப நேரம்
               </div>
               {(() => {
-                const m = muhurthaData || calcMuhurtha(new Date(), 0);
+                const m = muhurthaData;
+                if (!m) return null;
                 return (
                   <div>
                     <div style={{padding:"12px",background:m.score>=60?"#e6f4ea":"#fff3e0",borderRadius:8,border:`1px solid ${m.score>=60?"#b7e1c7":"#ffe0b2"}`,marginBottom:10}}>
@@ -5079,54 +4494,14 @@ ${aiPart}
       const groomTob = parseTob(poruthGroom.tob, poruthGroom.ampm);
       const tob24Str = (t) => `${String(t.hour).padStart(2,'0')}:${String(t.minute).padStart(2,'0')}`;
 
-      // Try the live Swiss Ephemeris backend for both charts (same accuracy source as
-      // the main horoscope), in parallel since they're independent — fall back to the
-      // local engine for whichever one fails, rather than only ever using local as before.
-      // Porutham has no birth-place field, so "" city falls through to the same Chennai
-      // default geocodeCity() and generateHoroscope() already both use.
-      // Backend Lahiri-only — வேறு ayanamsa தேர்வில் local engine (selected key உடன்)
-      const [brideResult, groomResult] = ayanamsaKey === "lahiri" ? await Promise.all([
-        fetchFromBackend(parseDDMMYYYY(poruthBride.dob), brideTob.hour, brideTob.minute, ""),
-        fetchFromBackend(parseDDMMYYYY(poruthGroom.dob), groomTob.hour, groomTob.minute, "")
-      ]) : [null, null];
-      // fallback-க்கும் அதே 24h நேரம் (முன்பு raw 12h string சென்று PM பிறப்புகள் AM ஆகின)
-      const h1 = brideResult || generateHoroscope(parseDDMMYYYY(poruthBride.dob), tob24Str(brideTob), 13.0827, 80.2707, false, ayanamsaKey);
-      const h2 = groomResult || generateHoroscope(parseDDMMYYYY(poruthGroom.dob), tob24Str(groomTob), 13.0827, 80.2707, false, ayanamsaKey);
-
-      const nak1 = NAKSHATRAS.indexOf(h1.nakshatra);
-      const nak2 = NAKSHATRAS.indexOf(h2.nakshatra);
-      const rashi1 = RASHIS.indexOf(h1.moonRashi);
-      const rashi2 = RASHIS.indexOf(h2.moonRashi);
-      // தசா-பொருத்தம் (கூடுதல் — 10-பொருத்த மதிப்பெண்ணில் சேராது):
-      // இருவரின் நடப்பு மகா தசாதிபதிகள் நண்பர்களா என்ற ஒப்பீடு
-      let dashaCompat = null;
+      // Both charts + 10-porutham + dasha compatibility are computed in the
+      // Worker (Chennai default geo, as before). Only the result returns.
       try {
-        const moonLong = (hh) => { const mp = hh.placements.find(p=>p.ta==="சந்திரன்"); return mp ? (mp.fullLong ?? mp.rashiIdx*30 + (mp.degExact||0)) : null; };
-        const bd1 = parseDDMMYYYY(poruthBride.dob).split('-').map(Number);
-        const bd2 = parseDDMMYYYY(poruthGroom.dob).split('-').map(Number);
-        const ml1 = moonLong(h1), ml2 = moonLong(h2);
-        if (ml1 != null && ml2 != null) {
-          const now = new Date();
-          const d1 = calculateDasha(ml1, new Date(bd1[0], bd1[1]-1, bd1[2], brideTob.hour, brideTob.minute));
-          const d2 = calculateDasha(ml2, new Date(bd2[0], bd2[1]-1, bd2[2], groomTob.hour, groomTob.minute));
-          const md1 = d1.dashas.find(d=>now>=d.startDate&&now<d.endDate);
-          const md2 = d2.dashas.find(d=>now>=d.startDate&&now<d.endDate);
-          if (md1 && md2) {
-            const f12 = GRAHA_FRIENDSHIP[md1.name]?.friends.includes(md2.name) ?? false;
-            const f21 = GRAHA_FRIENDSHIP[md2.name]?.friends.includes(md1.name) ?? false;
-            const e12 = GRAHA_FRIENDSHIP[md1.name]?.enemies.includes(md2.name) ?? false;
-            const e21 = GRAHA_FRIENDSHIP[md2.name]?.enemies.includes(md1.name) ?? false;
-            const ok = md1.name === md2.name || ((f12 || f21) && !e12 && !e21);
-            const neutral = !ok && !e12 && !e21;
-            dashaCompat = { bride: md1.name, groom: md2.name, ok, neutral,
-              text: md1.name === md2.name ? "இருவரும் ஒரே தசாதிபதி — காலப்போக்கு ஒத்திசைவு"
-                : ok ? "தசாதிபதிகள் நண்பர்கள் — வாழ்க்கைக் காலகட்டங்கள் இணக்கம்"
-                : neutral ? "தசாதிபதிகள் சம நிலை — நடுத்தர இணக்கம்"
-                : "தசாதிபதிகள் பகை நிலை — காலகட்டங்களில் இழுபறி சாத்தியம்; பரிகாரம்/பொறுமை உதவும்" };
-          }
-        }
-      } catch (e) { /* dasha compat optional */ }
-      setPoruthResult({ ...calculate10Porutham(nak1>=0?nak1:0, nak2>=0?nak2:0, rashi1>=0?rashi1:0, rashi2>=0?rashi2:0), bride:h1, groom:h2, brideName:poruthBride.name, groomName:poruthGroom.name, dashaCompat });
+        const bride = { dobISO: parseDDMMYYYY(poruthBride.dob), time24: tob24Str(brideTob), name: poruthBride.name };
+        const groom = { dobISO: parseDDMMYYYY(poruthGroom.dob), time24: tob24Str(groomTob), name: poruthGroom.name };
+        const res = await apiPorutham(bride, groom, ayanamsaKey);
+        setPoruthResult(res);
+      } catch (e) { /* leave previous result */ }
       setPoruthLoading(false);
     };
 
@@ -5496,7 +4871,7 @@ ${aiPart}
           {(()=>{
             const moonRashiIdx = RASHIS.indexOf(horoscope.moonRashi);
             const todayNakIdx = NAKSHATRAS.indexOf(today.nakshatra);
-            const dailyNums = calcDailyLuckyNumbers(moonRashiIdx >= 0 ? moonRashiIdx : 0, today.tithi, todayNakIdx >= 0 ? todayNakIdx : 0, today.dateObj.getDay());
+            const dailyNums = dailyData?.luckyNums || {};
             const birthLucky = RASHI_LUCKY[moonRashiIdx >= 0 ? moonRashiIdx : 0];
             const todayNakLord = getNakshatraLord(todayNakIdx);
             return (

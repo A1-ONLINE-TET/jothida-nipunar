@@ -23,6 +23,8 @@ import {
   calcBirthTimeSensitivity, calcTamilDate, CLASSICAL_7,
   getTodayTranist, calculateGochara, getPersonalizedRemedy, calcMuhurtham,
   calcSadeSati, calcGuruPeyarchi, calcTaraBala, RASHIS, NAKSHATRAS,
+  calcDashaSandhi, calcNakshatraBhavaLinks, calcBacktest, calcEventTiming,
+  calculate10Porutham, calcDailyLuckyNumbers, GRAHA_FRIENDSHIP,
 } from "../../src/engine.js";
 
 // Vimshottari dasha for this birth (needed by the daily bundle + prompts).
@@ -68,7 +70,9 @@ export function computeDailyBundle(h, dashaData, birth, targetDateISO) {
       currentDasha = { mahadasha, bhukti, pratyantar, sookshma, daysLeftInBhukti, daysLeftInSookshma };
     }
   }
-  return { today, gochara, remedy, muhurtham, sadeSati, guruPeyarchi, taraBala, currentDasha };
+  const luckyNums = calcDailyLuckyNumbers(birthMoonRashi, today.tithi, todayNakIdx >= 0 ? todayNakIdx : 0, today.dateObj.getDay());
+
+  return { today, gochara, remedy, muhurtham, sadeSati, guruPeyarchi, taraBala, currentDasha, luckyNums };
 }
 
 // Build the base horoscope `h`. If `swissJson` (Python Swiss-Ephemeris
@@ -190,7 +194,75 @@ export function computeFullReport(h, birth) {
   R.remediesData = getRemedies(placements, grahaBalaR, unifiedR);
   R.gulikaData = calcGulikaPosition(dobISO, finalTime, lat, lon, ayanamsaKey);
   R.btSensitivity = calcBirthTimeSensitivity(h);
+  R.dashaSandhi = calcDashaSandhi(dashaR, new Date());
   try { R.tamilDate = calcTamilDate(dobISO, finalTime, lat, lon); } catch (_) { R.tamilDate = null; }
 
   return R;
+}
+
+// Deps bundle shared by backtest + event-timing (recomputed server-side so
+// Date objects are real, never client-serialized strings).
+function reportDeps(r, h, birth) {
+  return {
+    horoscope: h, dashaData: r.dashaData, functionalNat: r.functionalNature,
+    geo: { lat: birth.lat, lon: birth.lon }, ayanamsaKey: birth.ayanamsaKey,
+    shadBala: r.shadBala, planetCtx: r.planetContext, navStrength: r.navamsaStrength,
+    chevvai: r.chevvaiDosham, ashtakavarga: r.ashtakavargaData, avasthas: r.avasthasData,
+    dobISO: birth.dobISO,
+  };
+}
+
+export function computeBacktest(h, birth, topic, eventDateISO) {
+  const r = computeFullReport(h, birth);
+  const [y, m, d] = eventDateISO.split("-").map(Number);
+  return calcBacktest(topic, new Date(y, m - 1, d), reportDeps(r, h, birth));
+}
+
+export function computeEventTiming(h, birth, topic) {
+  const r = computeFullReport(h, birth);
+  return calcEventTiming(topic, reportDeps(r, h, birth));
+}
+
+export function computeNakBhava(h, birth) {
+  const r = computeFullReport(h, birth);
+  return calcNakshatraBhavaLinks(
+    h.placements, h.lagna, r.functionalNature, { lat: birth.lat, lon: birth.lon }, birth.ayanamsaKey,
+    { dashaData: r.dashaData, unified: r.unifiedStrength, ashtakavarga: r.ashtakavargaData, lagnaFullLong: h.lagnaFullLong }
+  );
+}
+
+// Marriage matching — mirrors the client's runPorutham (Chennai default geo).
+export function computePorutham(bride, groom, ayanamsaKey) {
+  const h1 = generateHoroscope(bride.dobISO, bride.time24, 13.0827, 80.2707, false, ayanamsaKey);
+  const h2 = generateHoroscope(groom.dobISO, groom.time24, 13.0827, 80.2707, false, ayanamsaKey);
+  const nak1 = NAKSHATRAS.indexOf(h1.nakshatra), nak2 = NAKSHATRAS.indexOf(h2.nakshatra);
+  const rashi1 = RASHIS.indexOf(h1.moonRashi), rashi2 = RASHIS.indexOf(h2.moonRashi);
+  let dashaCompat = null;
+  try {
+    const moonLong = (hh) => { const mp = hh.placements.find((p) => p.ta === "சந்திரன்"); return mp ? (mp.fullLong ?? mp.rashiIdx * 30 + (mp.degExact || 0)) : null; };
+    const bd1 = bride.dobISO.split("-").map(Number), bd2 = groom.dobISO.split("-").map(Number);
+    const [bh1, bm1] = bride.time24.split(":").map(Number), [bh2, bm2] = groom.time24.split(":").map(Number);
+    const ml1 = moonLong(h1), ml2 = moonLong(h2);
+    if (ml1 != null && ml2 != null) {
+      const now = new Date();
+      const d1 = calculateDasha(ml1, new Date(bd1[0], bd1[1] - 1, bd1[2], bh1 || 6, bm1 || 0));
+      const d2 = calculateDasha(ml2, new Date(bd2[0], bd2[1] - 1, bd2[2], bh2 || 6, bm2 || 0));
+      const md1 = d1.dashas.find((d) => now >= d.startDate && now < d.endDate);
+      const md2 = d2.dashas.find((d) => now >= d.startDate && now < d.endDate);
+      if (md1 && md2) {
+        const f12 = GRAHA_FRIENDSHIP[md1.name]?.friends.includes(md2.name) ?? false;
+        const f21 = GRAHA_FRIENDSHIP[md2.name]?.friends.includes(md1.name) ?? false;
+        const e12 = GRAHA_FRIENDSHIP[md1.name]?.enemies.includes(md2.name) ?? false;
+        const e21 = GRAHA_FRIENDSHIP[md2.name]?.enemies.includes(md1.name) ?? false;
+        const ok = md1.name === md2.name || ((f12 || f21) && !e12 && !e21);
+        const neutral = !ok && !e12 && !e21;
+        dashaCompat = { bride: md1.name, groom: md2.name, ok, neutral,
+          text: md1.name === md2.name ? "இருவரும் ஒரே தசாதிபதி — காலப்போக்கு ஒத்திசைவு"
+            : ok ? "தசாதிபதிகள் நண்பர்கள் — வாழ்க்கைக் காலகட்டங்கள் இணக்கம்"
+            : neutral ? "தசாதிபதிகள் சம நிலை — நடுத்தர இணக்கம்"
+            : "தசாதிபதிகள் பகை நிலை — காலகட்டங்களில் இழுபறி சாத்தியம்; பரிகாரம்/பொறுமை உதவும்" };
+      }
+    }
+  } catch (_) { /* optional */ }
+  return { ...calculate10Porutham(nak1 >= 0 ? nak1 : 0, nak2 >= 0 ? nak2 : 0, rashi1 >= 0 ? rashi1 : 0, rashi2 >= 0 ? rashi2 : 0), bride: h1, groom: h2, brideName: bride.name, groomName: groom.name, dashaCompat };
 }

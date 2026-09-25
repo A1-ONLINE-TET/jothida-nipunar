@@ -66,7 +66,26 @@ export async function apiDaily(birth, targetDateISO = null, withText = true) {
   return { daily: reviveDates(daily), text };
 }
 
-// Generic on-demand engine call (porutham, event-timing, backtest, …).
+// On-demand proprietary analyses (deps recomputed server-side).
+export async function apiBacktest(birth, topic, eventDateISO) {
+  const { result } = await post("/api/backtest", { ...birth, topic, eventDateISO });
+  return reviveDates(result);
+}
+export async function apiEventTiming(birth, topic) {
+  const { result } = await post("/api/event-timing", { ...birth, topic });
+  return reviveDates(result);
+}
+export async function apiNakBhava(birth) {
+  const { result } = await post("/api/nak-bhava", birth);
+  return reviveDates(result);
+}
+export async function apiPorutham(bride, groom, ayanamsaKey) {
+  const { result } = await post("/api/porutham", { bride, groom, ayanamsaKey });
+  return reviveDates(result);
+}
+
+// Generic on-demand engine call (prashna, etc. — args must be JSON-safe,
+// no Date objects).
 export async function apiEngine(fn, args = []) {
   const { result } = await post("/api/engine", { fn, args });
   return reviveDates(result);

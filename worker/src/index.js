@@ -9,7 +9,10 @@
 // ═══════════════════════════════════════════════════════════════════
 import { verifyIdToken } from "./auth.js";
 import { rateLimit } from "./ratelimit.js";
-import { buildHoroscope, computeFullReport, computeDasha, computeDailyBundle } from "./compute.js";
+import {
+  buildHoroscope, computeFullReport, computeDasha, computeDailyBundle,
+  computeBacktest, computeEventTiming, computeNakBhava, computePorutham,
+} from "./compute.js";
 import { buildBirthPrompt, buildDailyPrompt, currentDashaInfo } from "./prompt.js";
 import { callClaude } from "./claude.js";
 import { searchPlacesOSM } from "../../src/engine.js";
@@ -176,6 +179,43 @@ export default {
           text = await callClaude(env, prompt, 600);
         }
         return json(env, origin, { daily, text });
+      }
+
+      // ── /api/backtest — verify a past event against engine rules ──
+      if (url.pathname === "/api/backtest") {
+        const birth = normalizeBirth(body);
+        const topic = clampStr(body?.topic, 30) || "marriage";
+        const eventDateISO = clampStr(body?.eventDateISO, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDateISO)) return json(env, origin, { error: "bad eventDateISO" }, 400);
+        const h = buildHoroscope(birth, await fetchSwiss(env, birth));
+        return json(env, origin, { result: computeBacktest(h, birth, topic, eventDateISO) });
+      }
+
+      // ── /api/event-timing — life-event timing windows for a topic ──
+      if (url.pathname === "/api/event-timing") {
+        const birth = normalizeBirth(body);
+        const topic = clampStr(body?.topic, 30) || "marriage";
+        const h = buildHoroscope(birth, await fetchSwiss(env, birth));
+        return json(env, origin, { result: computeEventTiming(h, birth, topic) });
+      }
+
+      // ── /api/nak-bhava — nakshatra-bhava linkage analysis ──
+      if (url.pathname === "/api/nak-bhava") {
+        const birth = normalizeBirth(body);
+        const h = buildHoroscope(birth, await fetchSwiss(env, birth));
+        return json(env, origin, { result: computeNakBhava(h, birth) });
+      }
+
+      // ── /api/porutham — marriage matching (10 porutham + dasha compat) ──
+      if (url.pathname === "/api/porutham") {
+        const norm = (o) => {
+          const b = normalizeBirth({ ...o, lat: 13.0827, lon: 80.2707 });
+          return b;
+        };
+        const bride = norm(body?.bride || {});
+        const groom = norm(body?.groom || {});
+        const ayanamsaKey = AYANAMSAS.has(body?.ayanamsaKey) ? body.ayanamsaKey : "lahiri";
+        return json(env, origin, { result: computePorutham(bride, groom, ayanamsaKey) });
       }
 
       // ── /api/engine — generic allow-listed engine RPC {fn, args} ──
