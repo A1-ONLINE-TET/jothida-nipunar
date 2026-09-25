@@ -19,6 +19,9 @@ compatibility_flags = ["nodejs_compat"]
 # ═══════════════════════════════════════════════════════════════════
 
 [vars]
+# Firebase project that mints the ID tokens (public, not a secret).
+FIREBASE_PROJECT_ID = "jothidar-d1c8c"
+
 # Comma-separated list of allowed browser origins (NO trailing slash).
 # Only these sites may call the API. Add your production domain(s).
 ALLOWED_ORIGINS = "https://jothidanipunar.com,https://jothida-nipunar.pages.dev,http://localhost:5173"
