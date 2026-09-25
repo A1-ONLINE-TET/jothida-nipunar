@@ -9,10 +9,20 @@
 // ═══════════════════════════════════════════════════════════════════
 import { verifyIdToken } from "./auth.js";
 import { rateLimit } from "./ratelimit.js";
-import { buildHoroscope, computeFullReport } from "./compute.js";
-import { buildBirthPrompt, currentDashaInfo } from "./prompt.js";
+import { buildHoroscope, computeFullReport, computeDasha, computeDailyBundle } from "./compute.js";
+import { buildBirthPrompt, buildDailyPrompt, currentDashaInfo } from "./prompt.js";
 import { callClaude } from "./claude.js";
 import { searchPlacesOSM } from "../../src/engine.js";
+import * as engine from "../../src/engine.js";
+
+// Generic engine RPC allow-list: every EXPORTED function is callable by
+// name via /api/engine. This lets the thin client invoke any on-demand
+// calculation (porutham, event-timing, calendar day, backtest, horai…)
+// without shipping the engine. Only functions are exposed; data tables
+// and anything non-function are rejected. Auth + rate-limit still apply.
+const ENGINE_FNS = new Set(
+  Object.keys(engine).filter((k) => typeof engine[k] === "function")
+);
 
 const SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",
@@ -149,6 +159,35 @@ export default {
         });
         const text = await callClaude(env, prompt, 1000);
         return json(env, origin, { text });
+      }
+
+      // ── /api/daily — daily/specific-date bundle + AI reading ──
+      if (url.pathname === "/api/daily") {
+        const birth = normalizeBirth(body);
+        const targetDateISO = /^\d{4}-\d{2}-\d{2}$/.test(body?.targetDateISO || "") ? body.targetDateISO : null;
+        const withText = body?.withText !== false;
+        const swiss = await fetchSwiss(env, birth);
+        const h = buildHoroscope(birth, swiss);
+        const dashaData = computeDasha(h, birth);
+        const daily = computeDailyBundle(h, dashaData, birth, targetDateISO);
+        let text = "";
+        if (withText) {
+          const prompt = buildDailyPrompt({ person: { name: birth.name }, horoscope: h, daily });
+          text = await callClaude(env, prompt, 600);
+        }
+        return json(env, origin, { daily, text });
+      }
+
+      // ── /api/engine — generic allow-listed engine RPC {fn, args} ──
+      // Lets the thin client run any on-demand calculation without the
+      // engine ever being in the browser bundle.
+      if (url.pathname === "/api/engine") {
+        const fn = clampStr(body?.fn, 60);
+        const args = Array.isArray(body?.args) ? body.args : [];
+        if (!ENGINE_FNS.has(fn)) return json(env, origin, { error: "unknown fn" }, 400);
+        if (args.length > 12) return json(env, origin, { error: "too many args" }, 400);
+        const result = await engine[fn](...args);
+        return json(env, origin, { result });
       }
 
       return json(env, origin, { error: "not found" }, 404);

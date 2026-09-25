@@ -21,7 +21,55 @@ import {
   calcMuhurtha, calcBhavaPhalam, analyzeKeyLifeAreas, analyzeFamilyHealthIndications,
   calcPlanetContext, calcSequenceLinkages, getRemedies, calcGulikaPosition,
   calcBirthTimeSensitivity, calcTamilDate, CLASSICAL_7,
+  getTodayTranist, calculateGochara, getPersonalizedRemedy, calcMuhurtham,
+  calcSadeSati, calcGuruPeyarchi, calcTaraBala, RASHIS, NAKSHATRAS,
 } from "../../src/engine.js";
+
+// Vimshottari dasha for this birth (needed by the daily bundle + prompts).
+export function computeDasha(h, birth) {
+  const [dY, dM, dD] = birth.dobISO.split("-").map(Number);
+  const [dH, dMin] = (birth.time24 || "06:00").split(":").map(Number);
+  const moonP = h.placements.find((p) => p.ta === "சந்திரன்");
+  const moonLong = moonP ? (moonP.fullLong != null ? moonP.fullLong : moonP.rashiIdx * 30 + (moonP.degExact || 0)) : 0;
+  return calculateDasha(moonLong, new Date(dY, dM - 1, dD, Number.isFinite(dH) ? dH : 6, Number.isFinite(dMin) ? dMin : 0));
+}
+
+// Daily / specific-date bundle — mirrors the client's openDailyScreen assembly.
+export function computeDailyBundle(h, dashaData, birth, targetDateISO) {
+  const { lat, lon, ayanamsaKey } = birth;
+  const targetDate = targetDateISO ? new Date(targetDateISO + "T06:00:00") : null;
+  const refDate = targetDate || new Date();
+  const today = getTodayTranist(lat, lon, targetDate, ayanamsaKey);
+
+  const bmRaw = RASHIS.indexOf(h.moonRashi);
+  const birthMoonRashi = bmRaw >= 0 ? bmRaw : 0;
+  const gochara = calculateGochara(birthMoonRashi, today.placements);
+  const remedy = getPersonalizedRemedy(birthMoonRashi, today.dateObj.getDay(), gochara.isChandrashtama, today.tithi);
+  const muhurtham = calcMuhurtham(today.dateObj, lat, lon);
+
+  const saturnToday = today.placements.find((p) => p.ta === "சனி");
+  const jupiterToday = today.placements.find((p) => p.ta === "குரு");
+  const sadeSati = saturnToday ? calcSadeSati(birthMoonRashi, RASHIS.indexOf(saturnToday.rashi)) : null;
+  const guruPeyarchi = jupiterToday ? calcGuruPeyarchi(birthMoonRashi, RASHIS.indexOf(jupiterToday.rashi)) : null;
+
+  const birthNakIdx = NAKSHATRAS.indexOf(h.nakshatra);
+  const todayNakIdx = NAKSHATRAS.indexOf(today.nakshatra);
+  const taraBala = birthNakIdx >= 0 && todayNakIdx >= 0 ? calcTaraBala(birthNakIdx, todayNakIdx) : null;
+
+  let currentDasha = null;
+  if (dashaData) {
+    const mahadasha = dashaData.dashas.find((d) => refDate >= d.startDate && refDate < d.endDate);
+    if (mahadasha) {
+      const bhukti = mahadasha.antardashas.find((ad) => refDate >= ad.startDate && refDate < ad.endDate) || mahadasha.antardashas[0];
+      const pratyantar = bhukti?.pratyantardashas?.find((p) => refDate >= p.startDate && refDate < p.endDate);
+      const sookshma = pratyantar?.sookshmaDashas?.find((s) => refDate >= s.startDate && refDate < s.endDate);
+      const daysLeftInBhukti = bhukti ? Math.max(0, Math.round((bhukti.endDate.getTime() - refDate.getTime()) / 86400000)) : 0;
+      const daysLeftInSookshma = sookshma ? Math.max(0, Math.round((sookshma.endDate.getTime() - refDate.getTime()) / 86400000)) : 0;
+      currentDasha = { mahadasha, bhukti, pratyantar, sookshma, daysLeftInBhukti, daysLeftInSookshma };
+    }
+  }
+  return { today, gochara, remedy, muhurtham, sadeSati, guruPeyarchi, taraBala, currentDasha };
+}
 
 // Build the base horoscope `h`. If `swissJson` (Python Swiss-Ephemeris
 // response) is supplied, parse it into engine shape; otherwise compute

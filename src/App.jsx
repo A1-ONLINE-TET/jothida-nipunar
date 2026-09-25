@@ -9,6 +9,12 @@ import wheelCenterImg from "./assets/rishi2-center.webp";
 import { PLANET_IN_HOUSE, HOUSE_THEMES, LIFE_AREAS } from "./bhava-phalam.js";
 import { NAK_SPAN, subLordOf, drishtiVirupa, virupaGrade } from "./precision.js";
 import { analyzeKeyLifeAreas, analyzeFamilyHealthIndications } from "./deep-analysis.js";
+// Server-side engine bridge. When VITE_API_URL is configured the heavy
+// calculations + AI readings run in the Cloudflare Worker (engine hidden);
+// otherwise the app falls back to the local engine so it still works
+// standalone during migration.
+import { apiCompute, apiPredict, apiDaily } from "./api.js";
+const USE_API = !!import.meta.env.VITE_API_URL;
 import {
   NAKSHATRAS,
   RASHIS,
@@ -1496,6 +1502,45 @@ export default function AstrologyApp() {
     setViewedViews(new Set());
   };
 
+  // Assemble the birth payload the Worker expects from the form.
+  const buildBirth = (dobISO, finalTime, geo) => ({
+    dobISO, time24: finalTime, lat: geo.lat, lon: geo.lon,
+    ayanamsaKey, gender: formData.gender || null,
+    name: formData.name, dob: formData.dob, tob: formData.tob || "",
+    ampm: formData.ampm || "", pob: formData.pob || "",
+  });
+
+  // Apply a full report returned by /api/compute to state — the server-side
+  // equivalent of runAllEngines (which sets the same values from the local
+  // engine). Keys mirror computeFullReport() in the Worker.
+  const applyReport = (r) => {
+    setChartMeta(r.chartMeta); setHoroscope(r.horoscope);
+    setNavamsaData(r.navamsaData); setDrishtiData(r.drishtiData);
+    setD10Data(r.d10Data); setD2Data(r.d2Data); setD3Data(r.d3Data);
+    setD12Data(r.d12Data); setD60Data(r.d60Data); setD4Data(r.d4Data);
+    setD7Data(r.d7Data); setD16Data(r.d16Data); setD20Data(r.d20Data);
+    setD24Data(r.d24Data); setD27Data(r.d27Data); setD40Data(r.d40Data);
+    setD45Data(r.d45Data); setJaiminiData(r.jaiminiData);
+    setArudhaPadasData(r.arudhaPadasData); setCharaDashaData(r.charaDashaData);
+    setVarshaphalaData(r.varshaphalaData); setBhavaChart(r.bhavaChart);
+    setGrahaBala(r.grahaBala); setShadBala(r.shadBala);
+    setVimshopakaData(r.vimshopakaData); setNavamsaStrength(r.navamsaStrength);
+    setAvasthasData(r.avasthasData); setFunctionalNature(r.functionalNature);
+    setMarakaBadhaka(r.marakaBadhaka); setAshtakavargaData(r.ashtakavargaData);
+    setBhavaBalaData(r.bhavaBalaData); setUnifiedStrength(r.unifiedStrength);
+    setMahapurushaYogas(r.mahapurushaYogas); setClassicalYogas(r.classicalYogas);
+    setKalaSarpa(r.kalaSarpa); setChevvaiDosham(r.chevvaiDosham);
+    setDashaData(r.dashaData); setTransitOverlay(r.transitOverlay);
+    setPlanetTransitAnalysis(r.planetTransitAnalysis);
+    setInauspiciousTimes(r.inauspiciousTimes); setMuhurthaData(r.muhurthaData);
+    setBhavaPhalam(r.bhavaPhalam); setKeyAreas(r.keyAreas);
+    setFamilyHealthData(r.familyHealthData); setPlanetContext(r.planetContext);
+    setSequenceLinks(r.sequenceLinks); setRemediesData(r.remediesData);
+    setGulikaData(r.gulikaData); setBtSensitivity(r.btSensitivity);
+    setTamilDate(r.tamilDate || null);
+    setNakBhavaData(null); setViewedViews(new Set());
+  };
+
   const handleSubmit = async () => {
     if(!formData.dob||!formData.name||!isValidDDMMYYYY(formData.dob))return;
     // Prevent a rapid double-click from firing this twice: goTo()'s screen switch is
@@ -1529,6 +1574,23 @@ export default function AstrologyApp() {
     try {
       setTamilDate(calcTamilDate(dobISO, finalTime, geoT.lat, geoT.lon));
     } catch (e) { setTamilDate(null); }
+
+    // ── Server-side path: engine runs in the Worker, only output returns ──
+    if (USE_API) {
+      try {
+        const { report, source } = await apiCompute(buildBirth(dobISO, finalTime, geoT));
+        setApiSource(source === "swiss" ? "api" : "local");
+        applyReport(report);
+        saveCurrentProfile();
+        goTo(SCREEN.RESULT);
+      } catch (e) {
+        setApiSource("");
+        alert("⚠ சர்வர் இப்போது பதிலளிக்கவில்லை. சில வினாடிகள் கழித்து மீண்டும் முயற்சிக்கவும்.");
+        goTo(SCREEN.FORM);
+      }
+      return;
+    }
+
     // Try API first, fallback to local
     // The Swiss-Ephemeris backend computes Lahiri only. When the user picks a
     // different ayanamsa, skip the backend and use the local engine (which honours
@@ -1630,6 +1692,17 @@ export default function AstrologyApp() {
   const fetchAIPrediction = async () => {
     if(!horoscope)return;
     setPredictionLoading(true); setPrediction("");
+    // Server-side path: prompt is built inside the Worker (no prompt leaves
+    // the browser), the Claude key stays on the server.
+    if (USE_API) {
+      try {
+        const geo = chartMeta?.geo || resolveBirthGeo(formData);
+        const birth = buildBirth(chartMeta?.dobISO || parseDDMMYYYY(formData.dob), chartMeta?.finalTime || "06:00", geo);
+        setPrediction(await apiPredict(birth) || "பலன் கிடைக்கவில்லை.");
+      } catch (e) { setPrediction("AI பலன் பெற இணைய இணைப்பு தேவை."); }
+      setPredictionLoading(false);
+      return;
+    }
     try {
       const dashaInfo = getCurrentDashaInfo();
       const prompt = `You are a world-class Vedic astrologer. Based on these birth chart details, give a personalized prediction in Tamil (with some English terms).
@@ -1658,6 +1731,23 @@ Predict: பொது பலன், தொழில், திருமணம்
     // live backend — Render's free tier can take a few seconds (or up to ~8s on a
     // cold start) to respond, so this avoids an ambiguous "did my click register?" pause.
     goTo(SCREEN.LOADING);
+
+    // Server-side path: the daily bundle is computed in the Worker.
+    if (USE_API) {
+      try {
+        const birth = buildBirth(chartMeta?.dobISO || parseDDMMYYYY(formData.dob), chartMeta?.finalTime || "06:00", geo);
+        const targetISO = targetDate
+          ? `${targetDate.getFullYear()}-${String(targetDate.getMonth()+1).padStart(2,'0')}-${String(targetDate.getDate()).padStart(2,'0')}`
+          : null;
+        const { daily } = await apiDaily(birth, targetISO, false);
+        setDailyData(daily); setDailyPrediction("");
+        goTo(SCREEN.DAILY);
+      } catch (e) {
+        alert("⚠ தினப்பலன் சர்வர் பதிலளிக்கவில்லை. மீண்டும் முயற்சிக்கவும்.");
+        goTo(SCREEN.RESULT);
+      }
+      return;
+    }
 
     // Try the live Swiss Ephemeris backend first (same accuracy source and same
     // /api/horoscope endpoint as the main birth chart), fall back to the instant local
@@ -1721,6 +1811,18 @@ Predict: பொது பலன், தொழில், திருமணம்
   const fetchDailyPrediction = async () => {
     if (!horoscope || !dailyData) return;
     setDailyLoading(true); setDailyPrediction("");
+    if (USE_API) {
+      try {
+        const geo = chartMeta?.geo || resolveBirthGeo(formData);
+        const birth = buildBirth(chartMeta?.dobISO || parseDDMMYYYY(formData.dob), chartMeta?.finalTime || "06:00", geo);
+        const dObj = dailyData.today?.dateObj ? new Date(dailyData.today.dateObj) : null;
+        const targetISO = dObj ? `${dObj.getFullYear()}-${String(dObj.getMonth()+1).padStart(2,'0')}-${String(dObj.getDate()).padStart(2,'0')}` : null;
+        const { text } = await apiDaily(birth, targetISO, true);
+        setDailyPrediction(text || "இன்றைய பலன் கிடைக்கவில்லை.");
+      } catch (e) { setDailyPrediction("இணைய இணைப்பு தேவை."); }
+      setDailyLoading(false);
+      return;
+    }
     try {
       const { today, gochara, remedy, sadeSati, guruPeyarchi, taraBala, currentDasha } = dailyData;
       const transitSummary = gochara.results.map(p =>
