@@ -1,0 +1,82 @@
+rules_version = '2';
+
+// ═══════════════════════════════════════════════════════════════════
+// ஜோதிட நிபுணர் — Firestore Security Rules
+// ═══════════════════════════════════════════════════════════════════
+// Design principles (fail-closed, least-privilege):
+//   • DEFAULT DENY. Nothing is readable or writable unless a rule below
+//     explicitly allows it.
+//   • A user can only ever touch their OWN documents (owner == auth.uid).
+//   • The astrology ENGINE never runs here and no computed results are
+//     trusted from the client. Results are produced by the Cloudflare
+//     Worker; anything the client stores is treated as personal notes,
+//     never as authoritative logic.
+//   • Admin-only / worker-only collections are writable solely via the
+//     Firebase Admin SDK (Cloudflare Worker with a service account),
+//     which bypasses these rules — so we deny ALL client writes to them.
+// ═══════════════════════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- helpers -------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    // Field-level guard: the document must belong to the caller and the
+    // owner field must never be changed to someone else.
+    function ownsIncoming() {
+      return isSignedIn() && request.resource.data.owner == request.auth.uid;
+    }
+
+    // ---- users/{uid} : one profile document per account ----------
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && request.resource.data.owner == uid;
+      allow update: if isOwner(uid)
+                    && request.resource.data.owner == resource.data.owner; // owner immutable
+      allow delete: if isOwner(uid);
+
+      // Saved birth charts (ஜாதகம்) — private to the owner.
+      // Only birth INPUT + Worker-returned output are stored; no engine code.
+      match /profiles/{profileId} {
+        allow read, delete: if isOwner(uid);
+        allow create: if isOwner(uid) && ownsIncoming();
+        allow update: if isOwner(uid) && ownsIncoming()
+                      && request.resource.data.owner == resource.data.owner;
+      }
+
+      // Backtests the user saved — private to the owner.
+      match /backtests/{backtestId} {
+        allow read, delete: if isOwner(uid);
+        allow create: if isOwner(uid) && ownsIncoming();
+        allow update: if isOwner(uid) && ownsIncoming()
+                      && request.resource.data.owner == resource.data.owner;
+      }
+    }
+
+    // ---- subscriptions / access grants ---------------------------
+    // The user may READ their own access status, but may NEVER write it —
+    // access/entitlements are granted only by the Worker (Admin SDK) after
+    // a verified payment or admin action.
+    match /entitlements/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false; // Admin SDK only
+    }
+
+    // ---- server-owned collections (Worker / Admin SDK only) ------
+    // Rate-limit counters, audit logs, cached results, config, pricing.
+    // The Admin SDK bypasses rules; every CLIENT access is denied.
+    match /ratelimits/{doc}   { allow read, write: if false; }
+    match /audit/{doc}        { allow read, write: if false; }
+    match /config/{doc}       { allow read: if false; allow write: if false; }
+
+    // ---- catch-all : DEFAULT DENY --------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

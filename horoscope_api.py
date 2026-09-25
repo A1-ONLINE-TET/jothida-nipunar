@@ -18,10 +18,30 @@ import swisseph as swe
 import json
 import sys
 import os
+import hmac
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, urlopen
 from urllib.error import URLError
+
+# ═══════════════════════════════════════════════════════════════════
+# SECURITY — this backend is NOT public. Only the Cloudflare Worker
+# gateway may call it, using a shared secret in the X-Internal-Token
+# header (set INTERNAL_TOKEN in the environment on both sides).
+#   • No wildcard CORS — the browser must never reach this service.
+#   • Every request is rejected unless the internal token matches.
+#   • Input is bounds-checked before it touches the ephemeris.
+# If INTERNAL_TOKEN is unset the service refuses to start — fail closed.
+# ═══════════════════════════════════════════════════════════════════
+INTERNAL_TOKEN = os.environ.get("INTERNAL_TOKEN", "")
+
+
+def _token_ok(handler):
+    """Timing-safe check of the shared secret sent by the Worker gateway."""
+    if not INTERNAL_TOKEN:
+        return False
+    sent = handler.headers.get("X-Internal-Token", "")
+    return hmac.compare_digest(sent, INTERNAL_TOKEN)
 
 # ── Constants ──
 RASHIS_TA = ["மேஷம்","ரிஷபம்","மிதுனம்","கடகம்","சிம்மம்","கன்னி",
@@ -236,7 +256,14 @@ def compute_horoscope(year, month, day, hour, minute, lat, lon, tz_offset=5.5):
 class HoroscopeHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
+        # Unauthenticated health check only — reveals nothing sensitive.
+        if parsed.path == "/" or parsed.path == "":
+            self._send_json(200, {"service": "internal", "status": "running"})
+            return
         if parsed.path == "/api/horoscope":
+            if not _token_ok(self):
+                self._send_json(401, {"success": False, "error": "unauthorized"})
+                return
             params = parse_qs(parsed.query)
             try:
                 year = int(params.get("year", [2000])[0])
@@ -248,30 +275,47 @@ class HoroscopeHandler(BaseHTTPRequestHandler):
                 lon = float(params.get("lon", [80.2707])[0])
                 tz = float(params.get("tz", [5.5])[0])         # Default: IST
 
+                # ── Bounds validation — reject nonsense before it hits the ephemeris ──
+                if not (1900 <= year <= 2100): raise ValueError("year out of range")
+                if not (1 <= month <= 12): raise ValueError("month out of range")
+                if not (1 <= day <= 31): raise ValueError("day out of range")
+                if not (0 <= hour <= 23): raise ValueError("hour out of range")
+                if not (0 <= minute <= 59): raise ValueError("minute out of range")
+                if not (-90.0 <= lat <= 90.0): raise ValueError("lat out of range")
+                if not (-180.0 <= lon <= 180.0): raise ValueError("lon out of range")
+                if not (-12.0 <= tz <= 14.0): raise ValueError("tz out of range")
+
                 result = compute_horoscope(year, month, day, hour, minute, lat, lon, tz)
                 self._send_json(200, result)
-            except Exception as e:
-                self._send_json(500, {"success": False, "error": str(e)})
+            except ValueError as e:
+                self._send_json(400, {"success": False, "error": str(e)})
+            except Exception:
+                # Never leak internal error details to the caller.
+                self._send_json(500, {"success": False, "error": "internal error"})
         else:
-            self._send_json(200, {
-                "service": "Jothida Nipunar — Horoscope API",
-                "engine": "Swiss Ephemeris (pyswisseph)",
-                "endpoints": ["/api/horoscope?year=1981&month=1&day=29&hour=10&minute=51&lat=8.76&lon=78.13&tz=5.5"],
-                "status": "running"
-            })
+            self._send_json(404, {"success": False, "error": "not found"})
 
     def _send_json(self, code, data):
+        # No CORS headers on purpose: this service is called server-to-server
+        # by the Cloudflare Worker only. Browsers must never reach it directly.
         response = json.dumps(data, ensure_ascii=False, indent=2)
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(response.encode("utf-8"))
 
     def do_POST(self):
         parsed = urlparse(self.path)
         if parsed.path == "/api/predict":
+            # Gated: only the Worker (with the internal token) may reach this.
+            # NOTE: the Cloudflare Worker now owns Claude calls directly and
+            # builds prompts server-side. This endpoint is kept token-gated
+            # only for backward compatibility and should be considered
+            # deprecated — do NOT expose it to the browser.
+            if not _token_ok(self):
+                self._send_json(401, {"success": False, "error": "unauthorized"})
+                return
             api_key = os.environ.get("ANTHROPIC_API_KEY", "")
             if not api_key:
                 self._send_json(500, {"success": False, "error": "ANTHROPIC_API_KEY not configured"})
@@ -302,18 +346,16 @@ class HoroscopeHandler(BaseHTTPRequestHandler):
                     data = json.loads(resp.read())
                 text = "".join(b.get("text", "") for b in data.get("content", []))
                 self._send_json(200, {"success": True, "text": text})
-            except URLError as e:
-                self._send_json(502, {"success": False, "error": f"AI service error: {e.reason}"})
-            except Exception as e:
-                self._send_json(500, {"success": False, "error": str(e)})
+            except URLError:
+                self._send_json(502, {"success": False, "error": "AI service error"})
+            except Exception:
+                self._send_json(500, {"success": False, "error": "internal error"})
         else:
             self._send_json(404, {"success": False, "error": "Not found"})
 
     def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        # No cross-origin preflight is granted — server-to-server only.
+        self.send_response(204)
         self.end_headers()
 
     def log_message(self, format, *args):
@@ -321,6 +363,13 @@ class HoroscopeHandler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    # Fail closed: refuse to run without the shared secret, so the service
+    # is never accidentally deployed wide open.
+    if not INTERNAL_TOKEN:
+        print("FATAL: INTERNAL_TOKEN environment variable is not set. "
+              "This backend must not run without it. Aborting.", file=sys.stderr)
+        sys.exit(1)
+
     port = 8080
     if "--port" in sys.argv:
         port = int(sys.argv[sys.argv.index("--port") + 1])
