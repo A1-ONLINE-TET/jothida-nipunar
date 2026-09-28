@@ -1484,9 +1484,13 @@ export default function AstrologyApp() {
   // உடன் எதிர்-சுழற்சி; (4) radial glow, blink animation. ═══════
   if(screen===SCREEN.SPLASH) return (
     <div style={{...base, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", overflow:"hidden"}}>
+      {/* premium ambient glow — நிலையான, மென்மையான (heavy graphics அல்ல) */}
+      <div aria-hidden="true" style={{position:"absolute", top:"32%", left:"50%", width:"min(120vw,620px)", height:"min(120vw,620px)",
+        transform:"translate(-50%,-50%)", pointerEvents:"none",
+        background:"radial-gradient(circle, rgba(212,168,83,0.16) 0%, rgba(212,168,83,0.06) 38%, transparent 66%)"}}/>
       <div onClick={()=>{ const ok = playOmSound(); if(ok) setOmPlayed(true); }}
-        style={{position:"relative", width:"min(88vw, 52vh, 460px)", aspectRatio:"1/1", cursor:"pointer",
-          animation:"splashIn 1.1s ease-out", filter:"drop-shadow(0 10px 40px #b8860b40)"}}>
+        style={{position:"relative", width:"min(84vw, 50vh, 440px)", aspectRatio:"1/1", cursor:"pointer",
+          animation:"splashIn 1.1s ease-out", filter:"drop-shadow(0 12px 44px rgba(184,134,11,0.28))"}}>
         {/* 1. முழு சக்கரம் (நுனிகள் நீக்கிய பிரதி) — வெளி நீல வளையம் சுழல்கிறது */}
         <img src={wheelRingImg} alt="ராசி சக்கரம்" className="jn-wheel-spin-cw"
           style={{position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain"}}/>
@@ -1494,11 +1498,16 @@ export default function AstrologyApp() {
         <img src={wheelCenterImg} alt="" aria-hidden="true"
           style={{position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain"}}/>
       </div>
-      <div style={{textAlign:"center", zIndex:3, marginTop:26, animation:"splashIn 1.4s ease-out"}}>
+      <div style={{textAlign:"center", zIndex:3, marginTop:28, animation:"splashIn 1.4s ease-out"}}>
         <h1 className="jn-serif" style={{fontSize:34, fontWeight:700, margin:"0 0 8px", letterSpacing:2,
           background:"linear-gradient(180deg,#9b2c2c,#7b1c1c 60%,#5f1414)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text"}}>ஜோதிட நிபுணர்</h1>
-        <p className="jn-latin" style={{fontSize:14, color:"#a8710a", letterSpacing:7, fontWeight:600, margin:0}}>JOTHIDA NIPUNAR</p>
-        <p style={{fontSize:11, color:"#b8860b", marginTop:12, letterSpacing:1.5}}>✦ Swiss Ephemeris · Classical Vedic Astrology ✦</p>
+        {/* premium double-hairline + latin */}
+        <div style={{display:"flex", alignItems:"center", justifyContent:"center", gap:12, margin:"2px 0 10px"}}>
+          <span style={{width:26, height:1, background:"linear-gradient(90deg,transparent,#c9a44e)"}}/>
+          <p className="jn-latin" style={{fontSize:13.5, color:"#a8710a", letterSpacing:7, fontWeight:600, margin:0}}>JOTHIDA NIPUNAR</p>
+          <span style={{width:26, height:1, background:"linear-gradient(90deg,#c9a44e,transparent)"}}/>
+        </div>
+        <p style={{fontSize:11, color:"#b8860b", letterSpacing:1.2}}>✦ Swiss Ephemeris · Classical Vedic Astrology ✦</p>
         <div style={{marginTop:24, display:"flex", gap:7, justifyContent:"center", alignItems:"center"}}>
           {[0,1,2].map(i=>(
             <div key={i} style={{width:7,height:7,borderRadius:"50%",background:"#b8860b",
@@ -1510,6 +1519,7 @@ export default function AstrologyApp() {
         @keyframes splashIn{from{opacity:0;transform:scale(0.92) translateY(16px);}to{opacity:1;transform:scale(1) translateY(0);}}
         @keyframes jnSpinCW{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
         .jn-wheel-spin-cw{animation:jnSpinCW 48s linear infinite;transform-origin:50% 50%;}
+        @keyframes jnGlowPulse{0%,100%{opacity:0.3;transform:scale(0.85);}50%{opacity:1;transform:scale(1);}}
         @media (prefers-reduced-motion: reduce){ .jn-wheel-spin-cw{animation:none;} }
         @keyframes pulse{0%,100%{opacity:0.3;}50%{opacity:1;}}
       `}</style>
