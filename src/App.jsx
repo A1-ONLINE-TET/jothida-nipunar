@@ -793,7 +793,17 @@ function persistBacktests(list) {
   try { localStorage.setItem(BACKTESTS_KEY, JSON.stringify(list)); } catch (e) { /* skip */ }
 }
 
-const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8, HOME:9 };
+// முதல்-முறை onboarding flag — first-time user-க்கு மட்டும் Welcome காட்ட.
+// localStorage private-mode/blocked நிலைகளில் throw ஆகலாம் → try/catch.
+const ONBOARD_KEY = "jn_onboarded_v1";
+function isOnboarded() {
+  try { return localStorage.getItem(ONBOARD_KEY) === "1"; } catch (e) { return false; }
+}
+function markOnboarded() {
+  try { localStorage.setItem(ONBOARD_KEY, "1"); } catch (e) { /* storage unavailable — skip */ }
+}
+
+const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8, HOME:9, WELCOME:10 };
 
 // முகப்பு கேள்வி அட்டைகள் — தட்டினால் FORM → ஜாதகம் → அந்தப் பகுதிக்கு நேரடி
 const HOME_QUESTIONS = [
@@ -1008,7 +1018,8 @@ export default function AstrologyApp() {
   }, []);
 
   useEffect(() => {
-    if(screen===SCREEN.SPLASH){ const t=setTimeout(()=>goTo(SCREEN.HOME),2600); return()=>clearTimeout(t); }
+    // முதல்-முறை → Welcome; திரும்பும் user → நேரடி HOME (onboarding மீண்டும் காட்டாது)
+    if(screen===SCREEN.SPLASH){ const t=setTimeout(()=>goTo(isOnboarded()?SCREEN.HOME:SCREEN.WELCOME),2600); return()=>clearTimeout(t); }
   }, [screen, goTo]);
 
 
@@ -1482,6 +1493,60 @@ export default function AstrologyApp() {
   // சுழல்வது தெரியும்; (2) அதே படத்தின் நடு-வட்டப் பிரதி clip-path circle-உடன்
   // அசையாமல் மேலே → முனிவர் நிமிர்ந்தே; (3) golden conic கதிர்கள் screen-blend
   // உடன் எதிர்-சுழற்சி; (4) radial glow, blink animation. ═══════
+  // ═══════ WELCOME (first-time onboarding) — premium introduction ═══════
+  // முதல்-முறை user-க்கு மட்டும். "தொடங்குங்கள்" → onboarded flag + HOME.
+  // (Auth silent-anonymous — தனி sign-in தேவையில்லை; auth logic தொடாதது.)
+  if(screen===SCREEN.WELCOME) {
+    const POINTS = [
+      { icon:"🔭", t:"NASA-தர துல்லியம்", s:"Swiss Ephemeris கிரக நிலைகள்" },
+      { icon:"📜", t:"பாரம்பரிய கணிதம்", s:"BPHS · சாராவளி classical விதிகள்" },
+      { icon:"✓", t:"நிரூபிக்கப்பட்ட கணிப்பு", s:"கடந்த நிகழ்வுகளில் backtest சரிபார்ப்பு" },
+    ];
+    return (
+      <div style={base}>
+        <div style={{...container, paddingTop:36, paddingBottom:40, textAlign:"center",
+          display:"flex", flexDirection:"column", alignItems:"center"}}>
+          {/* logo/brand — existing rishi wheel, soft glow */}
+          <div style={{position:"relative", marginTop:12, marginBottom:22}}>
+            <div aria-hidden="true" style={{position:"absolute", inset:"-30%",
+              background:"radial-gradient(circle, rgba(212,168,83,0.18), transparent 68%)", pointerEvents:"none"}}/>
+            <img src={wheelCenterImg} alt="ஜோதிட நிபுணர்" style={{position:"relative", width:150, height:150,
+              objectFit:"contain", filter:"drop-shadow(0 8px 26px rgba(184,134,11,0.32))"}}/>
+          </div>
+          <h1 className="jn-serif" style={{fontSize:30, fontWeight:700, margin:"0 0 6px", letterSpacing:1,
+            background:"linear-gradient(180deg,#9b2c2c,#7b1c1c 60%,#5f1414)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text"}}>ஜோதிட நிபுணர்</h1>
+          <p style={{fontSize:13, color:T.accent, margin:"0 0 4px", lineHeight:1.6, maxWidth:320}}>
+            வேத ஜோதிடத்தின் ஆழமும், நவீன துல்லியமும் இணைந்த உங்கள் சொந்த ஜோதிட வழிகாட்டி.
+          </p>
+
+          {/* short value points */}
+          <div style={{display:"flex", flexDirection:"column", gap:11, width:"100%", maxWidth:340, margin:"26px 0 30px"}}>
+            {POINTS.map((p,i)=>(
+              <div key={i} style={{display:"flex", alignItems:"center", gap:13, textAlign:"left",
+                background:"linear-gradient(180deg,#ffffff,#fffaf0)", border:"1px solid #ecdfce",
+                borderRadius:14, padding:"13px 15px", boxShadow:"0 4px 14px -8px rgba(90,40,10,0.14)"}}>
+                <div style={{width:40, height:40, flexShrink:0, borderRadius:11, fontSize:19,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  background:"radial-gradient(circle at 35% 30%, #fbeecb, #f2dca6)"}}>{p.icon}</div>
+                <div style={{lineHeight:1.35}}>
+                  <div style={{fontSize:13.5, fontWeight:700, color:"#241a15"}}>{p.t}</div>
+                  <div style={{fontSize:11, color:"#8b7a68"}}>{p.s}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{width:"100%", maxWidth:340}}>
+            <button style={btnGold} onClick={()=>{ markOnboarded(); goTo(SCREEN.HOME); }}>
+              தொடங்குங்கள் &nbsp;→
+            </button>
+            <p style={{fontSize:10, color:"#b0a090", marginTop:12}}>✦ Swiss Ephemeris · Classical Vedic Astrology ✦</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if(screen===SCREEN.SPLASH) return (
     <div style={{...base, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", overflow:"hidden"}}>
       {/* premium ambient glow — நிலையான, மென்மையான (heavy graphics அல்ல) */}
