@@ -72,6 +72,17 @@ export async function apiAsk(birth, question) {
   return { category, label, answer };
 }
 
+// Create a Razorpay order (amount in paise). Returns {orderId, amount, keyId}.
+export async function apiOrder(amount) {
+  return post("/api/order", { amount });
+}
+
+// Premium AI answer — only returned after the Worker verifies the payment.
+export async function apiAskPremium(birth, question, pay) {
+  const { answer } = await post("/api/ask-premium", { ...birth, question, ...pay });
+  return { answer };
+}
+
 // On-demand proprietary analyses (deps recomputed server-side).
 export async function apiBacktest(birth, topic, eventDateISO) {
   const { result } = await post("/api/backtest", { ...birth, topic, eventDateISO });

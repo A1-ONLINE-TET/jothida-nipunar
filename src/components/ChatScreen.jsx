@@ -30,7 +30,7 @@ const SUGGESTIONS = [
   "ஆரோக்கியம் பற்றி சொல்லுங்கள்",
 ];
 
-export default function ChatScreen({ ask, onBack, personName }) {
+export default function ChatScreen({ ask, askPremium, onBack, personName, premiumLabel = "⭐ ஆழமான AI பதில் · ₹49" }) {
   const [messages, setMessages] = useState([
     { role: "astro", text: `வணக்கம்${personName ? " " + personName : ""} 🙏 நான் உங்கள் ஜோதிட வழிகாட்டி. உங்கள் ஜாதகத்தை ஆராய்ந்து பதிலளிக்கிறேன். உங்கள் கேள்வியைக் கேளுங்கள் — திருமணம், தொழில், பணம், ஆரோக்கியம், கல்வி...`, done: true },
   ]);
@@ -58,6 +58,25 @@ export default function ChatScreen({ ask, onBack, personName }) {
     }
   };
 
+  const sendPremium = async () => {
+    const question = input.trim();
+    if (!question || busy || !askPremium) return;
+    setInput("");
+    setMessages((m) => [...m, { role: "user", text: question, done: true }]);
+    setBusy(true);
+    try {
+      const { answer } = await askPremium(question);
+      setMessages((m) => [...m, { role: "astro", text: answer || "மன்னிக்கவும், பதிலளிக்க முடியவில்லை.", done: false, premium: true }]);
+    } catch (e) {
+      const msg = String(e?.message || "");
+      if (msg !== "cancelled") {
+        setMessages((m) => [...m, { role: "astro", text: "⚠ பணம் செலுத்துதல்/பதில் தோல்வி. மீண்டும் முயற்சிக்கவும்.", done: true }]);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const markDone = (idx) =>
     setMessages((m) => m.map((msg, i) => (i === idx ? { ...msg, done: true } : msg)));
 
@@ -77,7 +96,8 @@ export default function ChatScreen({ ask, onBack, personName }) {
       <div className="chat-scroll" ref={scrollRef}>
         {messages.map((m, i) => (
           <div key={i} className={`chat-row ${m.role}`}>
-            <div className={`chat-bubble ${m.role}`}>
+            <div className={`chat-bubble ${m.role} ${m.premium ? "premium" : ""}`}>
+              {m.premium && <div className="chat-premium-tag">⭐ AI ஆழ்ந்த பதில்</div>}
               {m.role === "astro" && !m.done
                 ? <TypingText text={m.text} onDone={() => markDone(i)} />
                 : <span style={{ whiteSpace: "pre-wrap" }}>{m.text}</span>}
@@ -99,6 +119,15 @@ export default function ChatScreen({ ask, onBack, personName }) {
           </div>
         )}
       </div>
+
+      {askPremium && (
+        <div className="chat-premium-row">
+          <button className="chat-premium-btn" onClick={sendPremium} disabled={busy || !input.trim()}>
+            {premiumLabel}
+          </button>
+          <span className="chat-premium-hint">சிக்கலான கேள்விகளுக்கு விரிவான AI பதில்</span>
+        </div>
+      )}
 
       <div className="chat-input">
         <input

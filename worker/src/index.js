@@ -13,9 +13,10 @@ import {
   buildHoroscope, computeFullReport, computeDasha, computeDailyBundle,
   computeBacktest, computeEventTiming, computeNakBhava, computePorutham,
 } from "./compute.js";
-import { buildBirthPrompt, buildDailyPrompt, currentDashaInfo } from "./prompt.js";
+import { buildBirthPrompt, buildDailyPrompt, buildAskPrompt, currentDashaInfo } from "./prompt.js";
 import { callClaude } from "./claude.js";
 import { buildAskAnswer } from "./ask.js";
+import { createOrder, verifyPayment } from "./pay.js";
 import { searchPlacesOSM } from "../../src/engine.js";
 import * as engine from "../../src/engine.js";
 
@@ -176,6 +177,36 @@ export default {
         const dashaData = computeDasha(h, birth);
         const { category, label, answer } = buildAskAnswer(h, dashaData, question);
         return json(env, origin, { category, label, answer });
+      }
+
+      // ── /api/order — create a Razorpay order (amount in paise) ──
+      if (url.pathname === "/api/order") {
+        const amount = Math.max(100, Math.min(500000, parseInt(body?.amount, 10) || 4900));
+        try {
+          const order = await createOrder(env, amount);
+          return json(env, origin, { orderId: order.id, amount: order.amount, keyId: env.RAZORPAY_KEY_ID });
+        } catch (e) {
+          return json(env, origin, { error: "payment not available" }, 503);
+        }
+      }
+
+      // ── /api/ask-premium — verified payment → LLM answer to the question ──
+      if (url.pathname === "/api/ask-premium") {
+        const birth = normalizeBirth(body);
+        const question = clampStr(body?.question, 500);
+        if (!question.trim()) return json(env, origin, { error: "empty question" }, 400);
+        const ok = await verifyPayment(env, body?.razorpay_order_id, body?.razorpay_payment_id, body?.razorpay_signature);
+        if (!ok) return json(env, origin, { error: "payment verification failed" }, 402);
+        const swiss = await fetchSwiss(env, birth);
+        const h = buildHoroscope(birth, swiss);
+        const dashaData = computeDasha(h, birth);
+        const dashaInfo = currentDashaInfo(dashaData);
+        const prompt = buildAskPrompt({
+          person: { name: birth.name, dob: birth.dob, tob: birth.tob, ampm: birth.ampm, pob: birth.pob },
+          horoscope: h, dashaInfo, question,
+        });
+        const answer = await callClaude(env, prompt, 900);
+        return json(env, origin, { answer, premium: true });
       }
 
       // ── /api/daily — daily/specific-date bundle + AI reading ──

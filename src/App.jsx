@@ -10,6 +10,7 @@ const logoFullImg = "/logo/logo-full.webp"; // static composite — welcome/head
 import HomeScreen from "./components/HomeScreen";
 import ChatScreen from "./components/ChatScreen";
 import { apiAsk } from "./api.js";
+import { payThenAskPremium } from "./components/razorpay.js";
 // ── The proprietary interpretive engine runs ONLY in the Cloudflare
 // Worker. The browser talks to it through api.js and never imports the
 // engine. Public panchangam/ephemeris + trivial display helpers come from
@@ -1474,7 +1475,21 @@ export default function AstrologyApp() {
       const geo = chartMeta?.geo || resolveBirthGeo(p);
       return apiAsk(buildBirth(dobISO, finalTime, geo), question);
     };
-    return <ChatScreen ask={askAstrologer} personName={formData.name || ""} onBack={()=>goTo(SCREEN.HOME)} />;
+    const askPremiumAstrologer = async (question) => {
+      const p = formData;
+      const dobISO = chartMeta?.dobISO || parseDDMMYYYY(p.dob);
+      let h24 = 6, min = 0;
+      if (p.tob) {
+        const [hh, mm] = p.tob.split(":").map(Number);
+        h24 = hh || 6; min = mm || 0;
+        if (p.ampm === "PM" && h24 < 12) h24 += 12;
+        if (p.ampm === "AM" && h24 === 12) h24 = 0;
+      }
+      const finalTime = chartMeta?.finalTime || `${String(h24).padStart(2,"0")}:${String(min).padStart(2,"0")}`;
+      const geo = chartMeta?.geo || resolveBirthGeo(p);
+      return payThenAskPremium({ birth: buildBirth(dobISO, finalTime, geo), question, name: p.name, amountPaise: 4900 });
+    };
+    return <ChatScreen ask={askAstrologer} askPremium={askPremiumAstrologer} personName={formData.name || ""} onBack={()=>goTo(SCREEN.HOME)} />;
   }
 
   // ═══════ SPLASH ═══════
