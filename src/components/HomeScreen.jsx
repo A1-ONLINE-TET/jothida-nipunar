@@ -28,6 +28,10 @@ export default function HomeScreen({ handle = () => {} }) {
 
   return (
     <main className="app-shell">
+      <div className="sky-stars" aria-hidden="true" />
+      <div className="sky-moon" aria-hidden="true" />
+      <div className="sky-glow sky-glow-gold" aria-hidden="true" />
+      <div className="sky-glow sky-glow-blue" aria-hidden="true" />
       <div className="ambient ambient-left" />
       <div className="ambient ambient-right" />
 
@@ -74,6 +78,7 @@ export default function HomeScreen({ handle = () => {} }) {
           <div className="zodiac-glow" />
           <img className="zodiac-wheel-img" src="/logo/compass.webp" alt="ராசி சக்கரம்" />
           <div className="zodiac-pedestal" />
+          <div className="zodiac-pedestal-top" />
         </div>
       </section>
 
