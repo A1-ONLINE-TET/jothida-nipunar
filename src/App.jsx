@@ -1,17 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { MURUGAN_IMG } from "./murugan-b64.js";
-// முனிவர் ராசி-சக்கர splash — 2 அடுக்குப் படங்கள்:
-// ring   = முழு சக்கரம் (பாய்/ஓலை-நுனிகள் நீக்கியது) — வெளி நீல வளையம் சுழலும்;
-// center = நடு தங்க வட்டம் முழுவதும் (முனிவர்+கதிர்+நூல்+விளக்கு) alpha-mask
-//          பிரதி — அசையாமல் மேலே. வெளி வளையம் மட்டும் சுழல்வது தெரியும்.
-import wheelRingImg from "./assets/rishi2-ring.webp";
-import wheelCenterImg from "./assets/rishi2-center.webp";
 // TOPPER ASTRO logo — splash 3-layer composite (background removed, separate
 // layers in public/logo/): zodiac ring + compass counter-rotate behind the
 // fixed TOPPER text. Public assets → referenced by URL, not import.
 const zodiacRingImg = "/logo/zodiac-ring.webp";
 const compassImg = "/logo/compass.webp";
 const topperTextImg = "/logo/topper-text.webp";
+const logoFullImg = "/logo/logo-full.webp"; // static composite — welcome/header
 // ── The proprietary interpretive engine runs ONLY in the Cloudflare
 // Worker. The browser talks to it through api.js and never imports the
 // engine. Public panchangam/ephemeris + trivial display helpers come from
@@ -1425,8 +1420,8 @@ export default function AstrologyApp() {
         <div style={{...container, paddingTop:20, paddingBottom:96}}>
           {/* header */}
           <div style={{display:"flex", alignItems:"center", gap:11, marginBottom:16}}>
-            <img src={wheelCenterImg} alt="" style={{width:44, height:44, objectFit:"contain",
-              borderRadius:"50%", filter:"drop-shadow(0 2px 6px #b8860b40)"}}/>
+            <img src={compassImg} alt="" style={{width:44, height:44, objectFit:"contain",
+              filter:"drop-shadow(0 2px 6px #b8860b40)"}}/>
             <div style={{lineHeight:1.2}}>
               <div className="jn-serif" style={{fontSize:19, fontWeight:700, color:"#7b1c1c"}}>ஜோதிட நிபுணர்</div>
               <div style={{fontSize:10.5, color:"#a8710a", letterSpacing:0.5}}>
@@ -1512,12 +1507,12 @@ export default function AstrologyApp() {
       <div style={base}>
         <div style={{...container, paddingTop:36, paddingBottom:40, textAlign:"center",
           display:"flex", flexDirection:"column", alignItems:"center"}}>
-          {/* logo/brand — existing rishi wheel, soft glow */}
-          <div style={{position:"relative", marginTop:12, marginBottom:22}}>
+          {/* logo/brand — TOPPER ASTRO full logo, soft glow */}
+          <div style={{position:"relative", marginTop:12, marginBottom:18}}>
             <div aria-hidden="true" style={{position:"absolute", inset:"-30%",
               background:"radial-gradient(circle, rgba(212,168,83,0.18), transparent 68%)", pointerEvents:"none"}}/>
-            <img src={wheelCenterImg} alt="ஜோதிட நிபுணர்" style={{position:"relative", width:150, height:150,
-              objectFit:"contain", filter:"drop-shadow(0 8px 26px rgba(184,134,11,0.32))"}}/>
+            <img src={logoFullImg} alt="TOPPER ASTRO — ஜோதிட நிபுணர்" style={{position:"relative", width:220, maxWidth:"72vw",
+              height:"auto", objectFit:"contain", filter:"drop-shadow(0 8px 26px rgba(184,134,11,0.32))"}}/>
           </div>
           <h1 className="jn-serif" style={{fontSize:30, fontWeight:700, margin:"0 0 6px", letterSpacing:1,
             background:"linear-gradient(180deg,#9b2c2c,#7b1c1c 60%,#5f1414)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text"}}>ஜோதிட நிபுணர்</h1>
