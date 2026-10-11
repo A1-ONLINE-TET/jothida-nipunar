@@ -7,11 +7,15 @@ import { initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 
+// Firebase WEB config is NOT secret (Firebase security rests on Firestore
+// rules + the Worker verifying the ID token). Env vars override; the public
+// fallback below guarantees the client is always configured even if the
+// build-time VITE_FIREBASE_* vars don't reach the bundle.
 const cfg = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyC4CfHyRAICyDu8ZtoEH4bM86lp4Vh8RsE",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "jothidar-d1c8c.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "jothidar-d1c8c",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:120041380116:web:31d9f926683fd37bd40a01",
 };
 
 // Only initialise when configured, so the app still builds/runs in dev
