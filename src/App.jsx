@@ -6,6 +6,12 @@ import { MURUGAN_IMG } from "./murugan-b64.js";
 //          பிரதி — அசையாமல் மேலே. வெளி வளையம் மட்டும் சுழல்வது தெரியும்.
 import wheelRingImg from "./assets/rishi2-ring.webp";
 import wheelCenterImg from "./assets/rishi2-center.webp";
+// TOPPER ASTRO logo — splash 3-layer composite (background removed, separate
+// layers in public/logo/): zodiac ring + compass counter-rotate behind the
+// fixed TOPPER text. Public assets → referenced by URL, not import.
+const zodiacRingImg = "/logo/zodiac-ring.webp";
+const compassImg = "/logo/compass.webp";
+const topperTextImg = "/logo/topper-text.webp";
 // ── The proprietary interpretive engine runs ONLY in the Cloudflare
 // Worker. The browser talks to it through api.js and never imports the
 // engine. Public panchangam/ephemeris + trivial display helpers come from
@@ -1550,30 +1556,44 @@ export default function AstrologyApp() {
   if(screen===SCREEN.SPLASH) return (
     <div style={{...base, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", overflow:"hidden"}}>
       {/* premium ambient glow — நிலையான, மென்மையான (heavy graphics அல்ல) */}
-      <div aria-hidden="true" style={{position:"absolute", top:"32%", left:"50%", width:"min(120vw,620px)", height:"min(120vw,620px)",
+      <div aria-hidden="true" style={{position:"absolute", top:"40%", left:"50%", width:"min(128vw,660px)", height:"min(128vw,660px)",
         transform:"translate(-50%,-50%)", pointerEvents:"none",
-        background:"radial-gradient(circle, rgba(212,168,83,0.16) 0%, rgba(212,168,83,0.06) 38%, transparent 66%)"}}/>
+        background:"radial-gradient(circle, rgba(212,168,83,0.18) 0%, rgba(212,168,83,0.06) 40%, transparent 68%)"}}/>
+
+      {/* TOPPER ASTRO logo — 3 layers: zodiac ring (CW) + compass (CCW) rotate,
+          TOPPER text stays fixed on top. Tap = Om sound. */}
       <div onClick={()=>{ const ok = playOmSound(); if(ok) setOmPlayed(true); }}
-        style={{position:"relative", width:"min(84vw, 50vh, 440px)", aspectRatio:"1/1", cursor:"pointer",
-          animation:"splashIn 1.1s ease-out", filter:"drop-shadow(0 12px 44px rgba(184,134,11,0.28))"}}>
-        {/* 1. முழு சக்கரம் (நுனிகள் நீக்கிய பிரதி) — வெளி நீல வளையம் சுழல்கிறது */}
-        <img src={wheelRingImg} alt="ராசி சக்கரம்" className="jn-wheel-spin-cw"
-          style={{position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain"}}/>
-        {/* 2. நடு தங்க வட்டம் முழுவதும் (முனிவர்+கதிர்+நூல்+விளக்கு) — அசையாமல் */}
-        <img src={wheelCenterImg} alt="" aria-hidden="true"
-          style={{position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain"}}/>
+        style={{position:"relative", width:"min(88vw, 56vh, 460px)", aspectRatio:"1/1.18", cursor:"pointer",
+          animation:"splashIn 1.1s ease-out"}}>
+
+        {/* wheels zone — upper square area, ring + compass concentric */}
+        <div style={{position:"absolute", top:0, left:"50%", transform:"translateX(-50%)",
+          width:"86%", aspectRatio:"1/1", filter:"drop-shadow(0 10px 40px rgba(184,134,11,0.30))"}}>
+          {/* 1. பின்புற ராசி சக்கரம் — கடிகார திசை (CW) */}
+          <img src={zodiacRingImg} alt="ராசி சக்கரம்" className="jn-spin-cw"
+            style={{position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain"}}/>
+          {/* 2. நடு தங்க compass — எதிர் திசை (CCW) */}
+          <img src={compassImg} alt="" aria-hidden="true" className="jn-spin-ccw"
+            style={{position:"absolute", top:"50%", left:"50%", width:"60%", height:"60%",
+              transform:"translate(-50%,-50%)", objectFit:"contain"}}/>
+        </div>
+
+        {/* 3. TOPPER ASTRO எழுத்து — நிலையாக, முன்னே, சக்கரத்தின் கீழ் overlap */}
+        <img src={topperTextImg} alt="TOPPER ASTRO" className="jn-topper-in"
+          style={{position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)",
+            width:"96%", objectFit:"contain", zIndex:4,
+            filter:"drop-shadow(0 8px 24px rgba(0,0,0,0.32))"}}/>
       </div>
-      <div style={{textAlign:"center", zIndex:3, marginTop:28, animation:"splashIn 1.4s ease-out"}}>
-        <h1 className="jn-serif" style={{fontSize:34, fontWeight:700, margin:"0 0 8px", letterSpacing:2,
-          background:"linear-gradient(180deg,#9b2c2c,#7b1c1c 60%,#5f1414)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text"}}>ஜோதிட நிபுணர்</h1>
-        {/* premium double-hairline + latin */}
-        <div style={{display:"flex", alignItems:"center", justifyContent:"center", gap:12, margin:"2px 0 10px"}}>
+
+      {/* tagline + loading dots */}
+      <div style={{textAlign:"center", zIndex:3, marginTop:18, animation:"splashIn 1.5s ease-out"}}>
+        <div style={{display:"flex", alignItems:"center", justifyContent:"center", gap:12, margin:"2px 0 8px"}}>
           <span style={{width:26, height:1, background:"linear-gradient(90deg,transparent,#c9a44e)"}}/>
-          <p className="jn-latin" style={{fontSize:13.5, color:"#a8710a", letterSpacing:7, fontWeight:600, margin:0}}>JOTHIDA NIPUNAR</p>
+          <p className="jn-latin" style={{fontSize:12.5, color:"#a8710a", letterSpacing:5, fontWeight:600, margin:0}}>ஜோதிட நிபுணர்</p>
           <span style={{width:26, height:1, background:"linear-gradient(90deg,#c9a44e,transparent)"}}/>
         </div>
-        <p style={{fontSize:11, color:"#b8860b", letterSpacing:1.2}}>✦ Swiss Ephemeris · Classical Vedic Astrology ✦</p>
-        <div style={{marginTop:24, display:"flex", gap:7, justifyContent:"center", alignItems:"center"}}>
+        <p style={{fontSize:11, color:"#b8860b", letterSpacing:1.2, margin:0}}>✦ Swiss Ephemeris · Classical Vedic Astrology ✦</p>
+        <div style={{marginTop:20, display:"flex", gap:7, justifyContent:"center", alignItems:"center"}}>
           {[0,1,2].map(i=>(
             <div key={i} style={{width:7,height:7,borderRadius:"50%",background:"#b8860b",
               animation:`jnGlowPulse 1.4s ease-in-out ${i*0.2}s infinite`}}/>
@@ -1583,9 +1603,14 @@ export default function AstrologyApp() {
       <style>{`
         @keyframes splashIn{from{opacity:0;transform:scale(0.92) translateY(16px);}to{opacity:1;transform:scale(1) translateY(0);}}
         @keyframes jnSpinCW{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
-        .jn-wheel-spin-cw{animation:jnSpinCW 48s linear infinite;transform-origin:50% 50%;}
+        @keyframes jnSpinCCW{from{transform:rotate(0deg);}to{transform:rotate(-360deg);}}
+        .jn-spin-cw{animation:jnSpinCW 60s linear infinite;transform-origin:50% 50%;}
+        .jn-spin-ccw{transform-origin:50% 50%;animation:jnSpinCCWc 38s linear infinite;}
+        @keyframes jnSpinCCWc{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(-360deg);}}
+        @keyframes jnTopperIn{from{opacity:0;transform:translateX(-50%) translateY(14px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+        .jn-topper-in{animation:jnTopperIn 1.3s ease-out;}
         @keyframes jnGlowPulse{0%,100%{opacity:0.3;transform:scale(0.85);}50%{opacity:1;transform:scale(1);}}
-        @media (prefers-reduced-motion: reduce){ .jn-wheel-spin-cw{animation:none;} }
+        @media (prefers-reduced-motion: reduce){ .jn-spin-cw,.jn-spin-ccw{animation:none;} }
         @keyframes pulse{0%,100%{opacity:0.3;}50%{opacity:1;}}
       `}</style>
     </div>
