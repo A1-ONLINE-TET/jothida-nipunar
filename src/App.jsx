@@ -16,6 +16,7 @@ import {
   apiCompute, apiPredict, apiDaily, apiBacktest, apiEventTiming,
   apiNakBhava, apiPorutham, apiEngine,
 } from "./api.js";
+import { saveProfileCloud, loadProfileCloud } from "./firebase.js";
 import {
   generateHoroscope, calcMuhurtham, calcInauspiciousTimes, calcTamilDate,
   calcCurrentHorai, getNakshatraLord, geocodeCity, geocodeCityAsync,
@@ -821,7 +822,7 @@ export default function AstrologyApp() {
   const [screen, setScreen] = useState(SCREEN.SPLASH);
   const [authMode, setAuthMode] = useState("login");
   const [user, setUser] = useState(null);
-  const [formData, setFormData] = useState({ name:"", dob:"", tob:"", pob:"", ampm:"AM", gender:"", pobLat:null, pobLon:null, pobSource:null });
+  const [formData, setFormData] = useState({ name:"", dob:"", tob:"", sec:"", pob:"", ampm:"AM", gender:"", pobLat:null, pobLon:null, pobSource:null });
   // சேமித்த ஜாதகங்கள் — lazy initializer: localStorage read ஒருமுறை மட்டும்
   const [profiles, setProfiles] = useState(loadProfiles);
 
@@ -831,23 +832,43 @@ export default function AstrologyApp() {
     if (!formData.name || !formData.dob) return;
     setProfiles(prev => {
       const rest = prev.filter(p => !(p.name === formData.name && p.dob === formData.dob && p.tob === formData.tob && p.ampm === formData.ampm));
-      const next = [{
+      const entry = {
         id: Date.now(),
-        name: formData.name, dob: formData.dob, tob: formData.tob, ampm: formData.ampm,
+        name: formData.name, dob: formData.dob, tob: formData.tob, sec: formData.sec || "", ampm: formData.ampm,
         gender: formData.gender || "",
         pob: formData.pob, pobLat: formData.pobLat, pobLon: formData.pobLon, pobSource: formData.pobSource,
         savedAt: new Date().toISOString()
-      }, ...rest].slice(0, 20);
+      };
+      const next = [entry, ...rest].slice(0, 20);
       persistProfiles(next);
+      // Best-effort cloud save (Firestore) — free per-user record of the
+      // primary birth details. Never blocks the UI; failures are ignored.
+      saveProfileCloud(entry);
       return next;
     });
   };
 
   const loadProfile = (p) => {
-    setFormData({ name:p.name||"", dob:p.dob||"", tob:p.tob||"", pob:p.pob||"", ampm:p.ampm||"AM",
+    setFormData({ name:p.name||"", dob:p.dob||"", tob:p.tob||"", sec:p.sec||"", pob:p.pob||"", ampm:p.ampm||"AM",
       gender:p.gender||"", pobLat:p.pobLat ?? null, pobLon:p.pobLon ?? null, pobSource:p.pobSource ?? null });
     setPlaceResults([]); setPlaceDropdownOpen(false);
   };
+
+  // Returning user: if nothing is saved locally, pull the cloud profile
+  // (Firestore) once at startup and seed the saved-profiles list with it.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        if (loadProfiles().length > 0) return; // local already has data
+        const p = await loadProfileCloud();
+        if (alive && p && p.name) {
+          setProfiles(prev => (prev.length ? prev : [p]));
+        }
+      } catch (_) { /* ignore */ }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   const deleteProfile = (id) => {
     setProfiles(prev => { const next = prev.filter(p => p.id !== id); persistProfiles(next); return next; });
@@ -1717,6 +1738,15 @@ export default function AstrologyApp() {
                   </button>
                 ))}
               </div>
+            </div>
+            {/* optional seconds — saved if given, ignored otherwise */}
+            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
+              <input type="text" inputMode="numeric" maxLength={2}
+                style={{...inputStyle, width:"46%", textAlign:"center", padding:"11px 8px", fontFamily:"monospace", fontSize:15}}
+                placeholder="வினாடி"
+                value={formData.sec}
+                onChange={e=>setFormData(d=>({...d, sec: e.target.value.replace(/\D/g,'').slice(0,2)}))}/>
+              <span style={{fontSize:10,color:"#8b7a68"}}>வினாடி (சீ) — தெரிந்தால் மட்டும் (optional)</span>
             </div>
             <div style={{fontSize:10,color:"#555555",marginTop:5}}>
               {formData.ampm==="AM"?"காலை 12:00 — பிற்பகல் 11:59":"பிற்பகல் 12:00 — இரவு 11:59"}
