@@ -217,6 +217,26 @@
   animation: gentle-float 6s ease-in-out infinite;
 }
 
+.zodiac-wheel-img {
+  position: relative;
+  width: 90%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 26px rgba(16, 42, 80, 0.20));
+  animation: gentle-float 6s ease-in-out infinite;
+}
+
+.zodiac-pedestal {
+  position: absolute;
+  bottom: 6%;
+  width: 60%;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(120, 80, 20, 0.22), rgba(120, 80, 20, 0.06) 62%, transparent 78%);
+  filter: blur(4px);
+  z-index: -1;
+}
+
 @keyframes gentle-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }

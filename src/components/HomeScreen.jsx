@@ -4,7 +4,6 @@ import {
   BookOpen, Star, ChevronRight, Compass, Sparkles,
 } from "lucide-react";
 
-import ZodiacWheel from "./ZodiacWheel";
 import "./home.css";
 
 const services = [
@@ -73,7 +72,8 @@ export default function HomeScreen({ handle = () => {} }) {
 
         <div className="zodiac-stage">
           <div className="zodiac-glow" />
-          <ZodiacWheel />
+          <img className="zodiac-wheel-img" src="/logo/compass.webp" alt="ராசி சக்கரம்" />
+          <div className="zodiac-pedestal" />
         </div>
       </section>
 
