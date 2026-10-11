@@ -1507,10 +1507,8 @@ export default function AstrologyApp() {
       <div style={base}>
         <div style={{...container, paddingTop:36, paddingBottom:40, textAlign:"center",
           display:"flex", flexDirection:"column", alignItems:"center"}}>
-          {/* logo/brand — TOPPER ASTRO full logo, soft glow */}
+          {/* logo/brand — TOPPER ASTRO full logo */}
           <div style={{position:"relative", marginTop:12, marginBottom:18}}>
-            <div aria-hidden="true" style={{position:"absolute", inset:"-30%",
-              background:"radial-gradient(circle, rgba(212,168,83,0.18), transparent 68%)", pointerEvents:"none"}}/>
             <img src={logoFullImg} alt="TOPPER ASTRO — ஜோதிட நிபுணர்" style={{position:"relative", width:220, maxWidth:"72vw",
               height:"auto", objectFit:"contain", filter:"drop-shadow(0 8px 26px rgba(184,134,11,0.32))"}}/>
           </div>
@@ -1550,11 +1548,6 @@ export default function AstrologyApp() {
 
   if(screen===SCREEN.SPLASH) return (
     <div style={{...base, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", overflow:"hidden"}}>
-      {/* premium ambient glow — நிலையான, மென்மையான (heavy graphics அல்ல) */}
-      <div aria-hidden="true" style={{position:"absolute", top:"40%", left:"50%", width:"min(128vw,660px)", height:"min(128vw,660px)",
-        transform:"translate(-50%,-50%)", pointerEvents:"none",
-        background:"radial-gradient(circle, rgba(212,168,83,0.18) 0%, rgba(212,168,83,0.06) 40%, transparent 68%)"}}/>
-
       {/* TOPPER ASTRO logo — 3 layers: zodiac ring (CW) + compass (CCW) rotate,
           TOPPER text stays fixed on top. Tap = Om sound. */}
       <div onClick={()=>{ const ok = playOmSound(); if(ok) setOmPlayed(true); }}
