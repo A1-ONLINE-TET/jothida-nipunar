@@ -26,11 +26,10 @@ export const db = app ? getFirestore(app) : null;
 // API to real app loads (blocks direct scraping) and gives per-user rate
 // limiting. Upgrade to Email/Phone sign-in later if you need real accounts.
 if (auth) {
-  signInAnonymously(auth).catch((e) => {
-    // TEMP debug — surfaces the exact reason sign-in fails (anonymous disabled,
-    // API-key referrer block, etc.) so we can diagnose the 401 on the API.
-    console.error("JN ANON SIGN-IN FAILED:", e?.code, e?.message);
-  });
+  // TEMP debug — diagnose the API 401: is sign-in working, is a token issued?
+  signInAnonymously(auth)
+    .then((c) => console.log("JN ANON SIGN-IN OK uid=", c?.user?.uid))
+    .catch((e) => console.error("JN ANON SIGN-IN FAILED:", e?.code, e?.message));
 }
 
 export function onUser(cb) {
@@ -49,9 +48,13 @@ export async function getIdToken() {
       setTimeout(() => { unsub(); resolve(); }, 8000); // give up after 8s
     });
   }
-  if (!auth.currentUser) return null;
-  try { return await auth.currentUser.getIdToken(); }
-  catch (_) { return null; }
+  if (!auth.currentUser) { console.error("JN TOKEN: no currentUser (sign-in not ready)"); return null; }
+  try {
+    const t = await auth.currentUser.getIdToken();
+    console.log("JN TOKEN: obtained, length=", t ? t.length : 0);
+    return t;
+  }
+  catch (e) { console.error("JN TOKEN ERROR:", e?.code, e?.message); return null; }
 }
 
 // Wait briefly for the anonymous user to be ready, then return the uid.
