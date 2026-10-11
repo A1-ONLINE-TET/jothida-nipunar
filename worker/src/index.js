@@ -128,7 +128,7 @@ export default {
       // ── auth (all API routes require a valid Firebase user) ──
       let user;
       try { user = await authUser(request, env); }
-      catch (e) { return json(env, origin, { error: "unauthorized", reason: String(e?.message || e) }, 401); }
+      catch (_) { return json(env, origin, { error: "unauthorized" }, 401); }
 
       // ── rate limit per user ──
       const ip = request.headers.get("CF-Connecting-IP") || "0";

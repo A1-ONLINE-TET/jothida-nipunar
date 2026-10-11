@@ -34,10 +34,10 @@ export function getAuthError() { return _authError; }
 
 if (auth) {
   signInAnonymously(auth)
-    .then((c) => { _authError = ""; console.log("JN ANON SIGN-IN OK uid=", c?.user?.uid); })
-    .catch((e) => { _authError = `${e?.code || ""} — ${e?.message || e}`; console.error("JN ANON SIGN-IN FAILED:", _authError); });
+    .then(() => { _authError = ""; })
+    .catch((e) => { _authError = `${e?.code || ""} — ${e?.message || e}`; });
 } else {
-  _authError = "Firebase not configured (VITE_FIREBASE_* missing)";
+  _authError = "Firebase not configured";
 }
 
 export function onUser(cb) {
@@ -56,13 +56,9 @@ export async function getIdToken() {
       setTimeout(() => { unsub(); resolve(); }, 8000); // give up after 8s
     });
   }
-  if (!auth.currentUser) { console.error("JN TOKEN: no currentUser (sign-in not ready)"); return null; }
-  try {
-    const t = await auth.currentUser.getIdToken();
-    console.log("JN TOKEN: obtained, length=", t ? t.length : 0);
-    return t;
-  }
-  catch (e) { console.error("JN TOKEN ERROR:", e?.code, e?.message); return null; }
+  if (!auth.currentUser) return null;
+  try { return await auth.currentUser.getIdToken(); }
+  catch (_) { return null; }
 }
 
 // Wait briefly for the anonymous user to be ready, then return the uid.
