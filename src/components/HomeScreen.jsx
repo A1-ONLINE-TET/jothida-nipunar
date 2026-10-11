@@ -8,12 +8,12 @@ import ZodiacWheel from "./ZodiacWheel";
 import "./home.css";
 
 const services = [
-  { key: "chart",     title: "ஜாதகக் கட்டம்",  description: "உங்கள் ஜாதகம் பார்க்கவும்",     icon: Grid2X2,        theme: "peach" },
-  { key: "porutham",  title: "பொருத்தம் பார்க்க", description: "திருமணப் பொருத்தம்",            icon: Heart,          theme: "rose" },
-  { key: "calendar",  title: "ஜோதிட நாட்கள்",   description: "முக்கிய தினங்கள்",              icon: CalendarDays,   theme: "blue" },
-  { key: "consult",   title: "ஜோதிட ஆலோசனை",   description: "நிபுணர் ஆலோசனைகள்",            icon: UserRound,      theme: "green" },
-  { key: "books",     title: "ஜோதிட நூல்கள்",   description: "பயனுள்ள தகவல்கள்",              icon: BookOpen,       theme: "purple" },
-  { key: "more",      title: "மேலும் வசதிகள்",  description: "எல்லா சேவைகளும் ஒரே இடத்தில்",  icon: Star,           theme: "yellow" },
+  { key: "chart",     title: "ஜாதகக் கட்டம்",  description: "உங்கள் ஜாதகம் பார்க்கவும்",              icon: Grid2X2,        theme: "peach" },
+  { key: "porutham",  title: "பொருத்தம் பார்க்க", description: "திருமணம், நட்பு, குடும்ப பொருத்தம்",     icon: Heart,          theme: "rose" },
+  { key: "calendar",  title: "ஜோதிட நாட்கள்",   description: "முக்கிய தினங்கள் மற்றும் முகூர்த்தங்கள்", icon: CalendarDays,   theme: "blue" },
+  { key: "consult",   title: "ஜோதிட ஆலோசனை",   description: "நிபுணர் ஜோதிடர்கள் ஆலோசனை பெறுங்கள்",    icon: UserRound,      theme: "green" },
+  { key: "books",     title: "ஜோதிட நூல்கள்",   description: "பயனுள்ள ஜோதிட தகவல்கள்",                 icon: BookOpen,       theme: "purple" },
+  { key: "more",      title: "மேலும் வசதிகள்",  description: "எல்லா சேவைகளும் ஒரே இடத்தில்",           icon: Star,           theme: "yellow" },
 ];
 
 const navigation = [
@@ -37,9 +37,8 @@ export default function HomeScreen({ handle = () => {} }) {
           <Menu size={24} />
         </button>
 
-        <button className="brand" aria-label="Topper Astro home" onClick={() => handle("home")}>
-          <span className="brand-name">T<span className="brand-orbit">✦</span>PPER</span>
-          <span className="brand-subtitle">✦ A S T R O ✦</span>
+        <button className="brand brand-logo" aria-label="Topper Astro home" onClick={() => handle("home")}>
+          <img src="/logo/topper-text.webp" alt="TOPPER ASTRO" />
         </button>
 
         <button className="round-button" aria-label="Notifications" onClick={() => handle("notifications")}>
@@ -62,13 +61,8 @@ export default function HomeScreen({ handle = () => {} }) {
 
       <section className="hero">
         <div className="hero-copy">
-          <p className="eyebrow">
-            <Sparkles size={15} />
-            உங்கள் ஜோதிட உலகம்
-          </p>
-
           <h1>உங்கள் நாளை அறிய...</h1>
-          <p className="hero-description">உங்கள் வாழ்க்கையை வழிநடத்துங்கள்</p>
+          <h1>உங்கள் வாழ்க்கையை வழிநடத்த...</h1>
 
           <div className="gold-divider">
             <span />
