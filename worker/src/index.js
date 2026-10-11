@@ -15,6 +15,7 @@ import {
 } from "./compute.js";
 import { buildBirthPrompt, buildDailyPrompt, currentDashaInfo } from "./prompt.js";
 import { callClaude } from "./claude.js";
+import { buildAskAnswer } from "./ask.js";
 import { searchPlacesOSM } from "../../src/engine.js";
 import * as engine from "../../src/engine.js";
 
@@ -162,6 +163,19 @@ export default {
         });
         const text = await callClaude(env, prompt, 1000);
         return json(env, origin, { text });
+      }
+
+      // ── /api/ask — rule-based astrologer chat (no LLM; chart-grounded) ──
+      if (url.pathname === "/api/ask") {
+        const birth = normalizeBirth(body);
+        const question = clampStr(body?.question, 300);
+        if (!question.trim()) return json(env, origin, { error: "empty question" }, 400);
+        const swiss = await fetchSwiss(env, birth);
+        const h = buildHoroscope(birth, swiss);
+        h._name = birth.name || "";
+        const dashaData = computeDasha(h, birth);
+        const { category, label, answer } = buildAskAnswer(h, dashaData, question);
+        return json(env, origin, { category, label, answer });
       }
 
       // ── /api/daily — daily/specific-date bundle + AI reading ──

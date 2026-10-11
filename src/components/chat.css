@@ -1,0 +1,71 @@
+/* ஜோதிட ஆலோசனை chat — scoped under .chat-wrap */
+.chat-wrap {
+  position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column;
+  max-width: 520px; margin: 0 auto;
+  background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+  font-family: "Noto Sans Tamil", "Latha", system-ui, sans-serif;
+}
+.chat-wrap * { box-sizing: border-box; }
+
+.chat-top {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 10px;
+  padding: calc(8px + env(safe-area-inset-top)) 14px 10px;
+  background: #ffffff; border-bottom: 1px solid #eceefb; box-shadow: 0 2px 14px rgba(16,42,80,0.05);
+}
+.chat-back {
+  width: 38px; height: 38px; border: 0; border-radius: 50%; background: #eef1fb; color: #102a50;
+  font-size: 24px; line-height: 1; cursor: pointer; flex-shrink: 0;
+}
+.chat-astro { display: flex; align-items: center; gap: 10px; }
+.chat-ava {
+  width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-size: 22px;
+  background: radial-gradient(circle at 40% 35%, #8f7bff, #5b43c4); box-shadow: 0 4px 12px rgba(91,67,196,0.3);
+}
+.chat-ttl { font-size: 15px; font-weight: 800; color: #102a50; }
+.chat-sub { font-size: 11px; color: #8a8aa0; }
+
+.chat-scroll { flex: 1 1 auto; overflow-y: auto; padding: 16px 14px 8px; }
+.chat-row { display: flex; margin-bottom: 12px; }
+.chat-row.user { justify-content: flex-end; }
+.chat-row.astro { justify-content: flex-start; }
+.chat-bubble {
+  max-width: 82%; padding: 11px 14px; font-size: 14px; line-height: 1.6; border-radius: 18px;
+  box-shadow: 0 4px 14px rgba(16,42,80,0.06);
+}
+.chat-bubble.astro { background: #ffffff; color: #1e2a44; border: 1px solid #eceefb; border-top-left-radius: 6px; }
+.chat-bubble.user {
+  background: linear-gradient(135deg, #6b8cff, #5b43c4); color: #fff; border-top-right-radius: 6px;
+}
+.jn-caret { opacity: 0.6; animation: jn-blink 0.9s steps(1) infinite; }
+@keyframes jn-blink { 50% { opacity: 0; } }
+
+.chat-typing { display: flex; gap: 5px; align-items: center; }
+.chat-typing .dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #9aa0c0; animation: jn-bounce 1.2s infinite;
+}
+.chat-typing .dot:nth-child(2) { animation-delay: 0.2s; }
+.chat-typing .dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes jn-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-5px); opacity: 1; } }
+
+.chat-suggest { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 2px 12px; }
+.chat-suggest button {
+  padding: 9px 13px; font-size: 12.5px; border: 1px solid #d9def6; border-radius: 16px;
+  background: #ffffff; color: #4a4f74; cursor: pointer; font-family: inherit;
+}
+.chat-suggest button:hover { background: #f2f4fd; }
+
+.chat-input {
+  flex: 0 0 auto; display: flex; gap: 8px; align-items: center;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  background: #ffffff; border-top: 1px solid #eceefb;
+}
+.chat-input input {
+  flex: 1; padding: 12px 15px; font-size: 14px; border: 1px solid #dfe3f5; border-radius: 22px;
+  outline: none; font-family: inherit; background: #f8f9ff;
+}
+.chat-input input:focus { border-color: #8f7bff; background: #fff; }
+.chat-send {
+  width: 44px; height: 44px; flex-shrink: 0; border: 0; border-radius: 50%; cursor: pointer; color: #fff; font-size: 17px;
+  background: linear-gradient(135deg, #6b8cff, #5b43c4); box-shadow: 0 4px 12px rgba(91,67,196,0.3);
+}
+.chat-send:disabled { opacity: 0.45; cursor: default; }

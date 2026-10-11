@@ -8,6 +8,8 @@ const compassImg = "/logo/compass.webp";
 const topperTextImg = "/logo/topper-text.webp";
 const logoFullImg = "/logo/logo-full.webp"; // static composite — welcome/header
 import HomeScreen from "./components/HomeScreen";
+import ChatScreen from "./components/ChatScreen";
+import { apiAsk } from "./api.js";
 // ── The proprietary interpretive engine runs ONLY in the Cloudflare
 // Worker. The browser talks to it through api.js and never imports the
 // engine. Public panchangam/ephemeris + trivial display helpers come from
@@ -806,7 +808,7 @@ function markOnboarded() {
   try { localStorage.setItem(ONBOARD_KEY, "1"); } catch (e) { /* storage unavailable — skip */ }
 }
 
-const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8, HOME:9, WELCOME:10 };
+const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8, HOME:9, WELCOME:10, CHAT:11 };
 
 // முகப்பு கேள்வி அட்டைகள் — தட்டினால் FORM → ஜாதகம் → அந்தப் பகுதிக்கு நேரடி
 const HOME_QUESTIONS = [
@@ -1442,7 +1444,11 @@ export default function AstrologyApp() {
         case "chart":    goTo(horoscope ? SCREEN.RESULT : SCREEN.FORM); break;
         case "porutham": setHomeQuestion(null); goTo(SCREEN.PORUTHAM); break;
         case "calendar": goTo(SCREEN.CALENDAR); break;
-        case "consult":  goTo(horoscope ? SCREEN.PREMIUM : SCREEN.FORM); break;
+        case "consult":
+          if (formData.name && formData.dob) goTo(SCREEN.CHAT);
+          else if (profiles[0]) { loadProfile(profiles[0]); goTo(SCREEN.CHAT); }
+          else goTo(SCREEN.FORM);
+          break;
         case "books":    goTo(SCREEN.CALENDAR); break;
         case "more":     goTo(horoscope ? SCREEN.RESULT : SCREEN.FORM); break;
         case "account":  goTo(SCREEN.FORM); break;
@@ -1450,6 +1456,25 @@ export default function AstrologyApp() {
       }
     };
     return <HomeScreen handle={handleHome} />;
+  }
+
+  // ═══════ CHAT — rule-based ஜோதிடர் உரையாடல் (LLM இல்லை) ═══════
+  if(screen===SCREEN.CHAT) {
+    const askAstrologer = async (question) => {
+      const p = formData;
+      const dobISO = chartMeta?.dobISO || parseDDMMYYYY(p.dob);
+      let h24 = 6, min = 0;
+      if (p.tob) {
+        const [hh, mm] = p.tob.split(":").map(Number);
+        h24 = hh || 6; min = mm || 0;
+        if (p.ampm === "PM" && h24 < 12) h24 += 12;
+        if (p.ampm === "AM" && h24 === 12) h24 = 0;
+      }
+      const finalTime = chartMeta?.finalTime || `${String(h24).padStart(2,"0")}:${String(min).padStart(2,"0")}`;
+      const geo = chartMeta?.geo || resolveBirthGeo(p);
+      return apiAsk(buildBirth(dobISO, finalTime, geo), question);
+    };
+    return <ChatScreen ask={askAstrologer} personName={formData.name || ""} onBack={()=>goTo(SCREEN.HOME)} />;
   }
 
   // ═══════ SPLASH ═══════

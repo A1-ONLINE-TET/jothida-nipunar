@@ -66,6 +66,12 @@ export async function apiDaily(birth, targetDateISO = null, withText = true) {
   return { daily: reviveDates(daily), text };
 }
 
+// Rule-based astrologer chat — chart-grounded Tamil answer (no LLM).
+export async function apiAsk(birth, question) {
+  const { category, label, answer } = await post("/api/ask", { ...birth, question });
+  return { category, label, answer };
+}
+
 // On-demand proprietary analyses (deps recomputed server-side).
 export async function apiBacktest(birth, topic, eventDateISO) {
   const { result } = await post("/api/backtest", { ...birth, topic, eventDateISO });

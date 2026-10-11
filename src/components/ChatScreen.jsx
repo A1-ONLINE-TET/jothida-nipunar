@@ -1,0 +1,115 @@
+import { useState, useRef, useEffect } from "react";
+import "./chat.css";
+
+// Astrologer message that reveals itself character-by-character (typewriter).
+function TypingText({ text, onDone }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    setN(0);
+    let i = 0;
+    const id = setInterval(() => {
+      i += 2;
+      setN(i);
+      if (i >= text.length) { clearInterval(id); onDone && onDone(); }
+    }, 18);
+    return () => clearInterval(id);
+  }, [text]);
+  const shown = text.slice(0, n);
+  return (
+    <span style={{ whiteSpace: "pre-wrap" }}>
+      {shown}
+      {n < text.length && <span className="jn-caret">▋</span>}
+    </span>
+  );
+}
+
+const SUGGESTIONS = [
+  "என் திருமணம் எப்போது நடக்கும்?",
+  "தொழிலில் முன்னேற்றம் உண்டா?",
+  "பண வரவு எப்படி இருக்கும்?",
+  "ஆரோக்கியம் பற்றி சொல்லுங்கள்",
+];
+
+export default function ChatScreen({ ask, onBack, personName }) {
+  const [messages, setMessages] = useState([
+    { role: "astro", text: `வணக்கம்${personName ? " " + personName : ""} 🙏 நான் உங்கள் ஜோதிட வழிகாட்டி. உங்கள் ஜாதகத்தை ஆராய்ந்து பதிலளிக்கிறேன். உங்கள் கேள்வியைக் கேளுங்கள் — திருமணம், தொழில், பணம், ஆரோக்கியம், கல்வி...`, done: true },
+  ]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, busy]);
+
+  const send = async (q) => {
+    const question = (q ?? input).trim();
+    if (!question || busy) return;
+    setInput("");
+    setMessages((m) => [...m, { role: "user", text: question, done: true }]);
+    setBusy(true);
+    try {
+      const { answer } = await ask(question);
+      setMessages((m) => [...m, { role: "astro", text: answer || "மன்னிக்கவும், இப்போது பதிலளிக்க முடியவில்லை.", done: false }]);
+    } catch (e) {
+      setMessages((m) => [...m, { role: "astro", text: "⚠ சர்வர் இப்போது பதிலளிக்கவில்லை. சில வினாடிகள் கழித்து மீண்டும் முயற்சிக்கவும்.", done: true }]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const markDone = (idx) =>
+    setMessages((m) => m.map((msg, i) => (i === idx ? { ...msg, done: true } : msg)));
+
+  return (
+    <div className="chat-wrap">
+      <header className="chat-top">
+        <button className="chat-back" onClick={onBack} aria-label="பின்">‹</button>
+        <div className="chat-astro">
+          <div className="chat-ava">🔮</div>
+          <div>
+            <div className="chat-ttl">ஜோதிட ஆலோசனை</div>
+            <div className="chat-sub">உங்கள் ஜாதகம் சார்ந்த பதில்கள்</div>
+          </div>
+        </div>
+      </header>
+
+      <div className="chat-scroll" ref={scrollRef}>
+        {messages.map((m, i) => (
+          <div key={i} className={`chat-row ${m.role}`}>
+            <div className={`chat-bubble ${m.role}`}>
+              {m.role === "astro" && !m.done
+                ? <TypingText text={m.text} onDone={() => markDone(i)} />
+                : <span style={{ whiteSpace: "pre-wrap" }}>{m.text}</span>}
+            </div>
+          </div>
+        ))}
+        {busy && (
+          <div className="chat-row astro">
+            <div className="chat-bubble astro chat-typing">
+              <span className="dot" /><span className="dot" /><span className="dot" />
+            </div>
+          </div>
+        )}
+        {messages.length <= 1 && (
+          <div className="chat-suggest">
+            {SUGGESTIONS.map((s) => (
+              <button key={s} onClick={() => send(s)}>{s}</button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="chat-input">
+        <input
+          type="text"
+          value={input}
+          placeholder="உங்கள் கேள்வியை இங்கே எழுதுங்கள்..."
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+        />
+        <button className="chat-send" onClick={() => send()} disabled={busy || !input.trim()} aria-label="அனுப்பு">➤</button>
+      </div>
+    </div>
+  );
+}
