@@ -26,7 +26,11 @@ export const db = app ? getFirestore(app) : null;
 // API to real app loads (blocks direct scraping) and gives per-user rate
 // limiting. Upgrade to Email/Phone sign-in later if you need real accounts.
 if (auth) {
-  signInAnonymously(auth).catch(() => { /* Anonymous provider not enabled yet */ });
+  signInAnonymously(auth).catch((e) => {
+    // TEMP debug — surfaces the exact reason sign-in fails (anonymous disabled,
+    // API-key referrer block, etc.) so we can diagnose the 401 on the API.
+    console.error("JN ANON SIGN-IN FAILED:", e?.code, e?.message);
+  });
 }
 
 export function onUser(cb) {
