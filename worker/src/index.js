@@ -38,9 +38,16 @@ const SECURITY_HEADERS = {
 function allowedOrigins(env) {
   return (env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
 }
+// Cloudflare Pages preview deployments get URLs like
+// https://<hash>.jothida-nipunar.pages.dev — allow this project's previews too.
+const PREVIEW_ORIGIN_RE = /^https:\/\/[a-z0-9-]+\.jothida-nipunar\.pages\.dev$/;
+function isAllowedOrigin(env, origin) {
+  if (!origin) return false;
+  if (allowedOrigins(env).includes(origin)) return true;
+  return PREVIEW_ORIGIN_RE.test(origin);
+}
 function corsHeaders(env, origin) {
-  const list = allowedOrigins(env);
-  const allow = list.includes(origin) ? origin : "";
+  const allow = isAllowedOrigin(env, origin) ? origin : "";
   const h = {
     "Vary": "Origin",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
@@ -113,7 +120,7 @@ export default {
 
     // Reject browsers whose origin is not allow-listed (defence in depth;
     // CORS already blocks the response, this blocks the work too).
-    if (origin && !allowedOrigins(env).includes(origin)) {
+    if (origin && !isAllowedOrigin(env, origin)) {
       return json(env, origin, { error: "forbidden origin" }, 403);
     }
 
