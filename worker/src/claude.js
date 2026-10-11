@@ -14,7 +14,9 @@ export async function callClaude(env, prompt, maxTokens = 1000) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: env.CLAUDE_MODEL || "claude-sonnet-4-20250514",
+      // Haiku 5.5 — near-zero cost per answer ($0.10/$0.50 per 1M); set the
+      // CLAUDE_MODEL env var to "claude-sonnet-5-5" for higher quality.
+      model: env.CLAUDE_MODEL || "claude-haiku-5-5",
       max_tokens: Math.min(Math.max(maxTokens, 1), 1500),
       messages: [{ role: "user", content: prompt }],
     }),
