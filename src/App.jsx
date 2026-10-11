@@ -1020,7 +1020,7 @@ export default function AstrologyApp() {
 
   useEffect(() => {
     // முதல்-முறை → Welcome; திரும்பும் user → நேரடி HOME (onboarding மீண்டும் காட்டாது)
-    if(screen===SCREEN.SPLASH){ const t=setTimeout(()=>goTo(isOnboarded()?SCREEN.HOME:SCREEN.WELCOME),2600); return()=>clearTimeout(t); }
+    if(screen===SCREEN.SPLASH){ const t=setTimeout(()=>goTo(isOnboarded()?SCREEN.HOME:SCREEN.WELCOME),5600); return()=>clearTimeout(t); }
   }, [screen, goTo]);
 
 
@@ -1569,8 +1569,7 @@ export default function AstrologyApp() {
         {/* 3. TOPPER ASTRO எழுத்து — நிலையாக, முன்னே, சக்கரத்தின் கீழ் overlap */}
         <img src={topperTextImg} alt="TOPPER ASTRO" className="jn-topper-in"
           style={{position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)",
-            width:"96%", objectFit:"contain", zIndex:4,
-            filter:"drop-shadow(0 8px 24px rgba(0,0,0,0.32))"}}/>
+            width:"96%", objectFit:"contain", zIndex:4}}/>
       </div>
 
       {/* tagline + loading dots */}
