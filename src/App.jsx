@@ -1562,7 +1562,7 @@ export default function AstrologyApp() {
             style={{position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain"}}/>
           {/* 2. நடு தங்க compass — எதிர் திசை (CCW) */}
           <img src={compassImg} alt="" aria-hidden="true" className="jn-spin-ccw"
-            style={{position:"absolute", top:"50%", left:"50%", width:"60%", height:"60%",
+            style={{position:"absolute", top:"50%", left:"50%", width:"56%", height:"56%",
               transform:"translate(-50%,-50%)", objectFit:"contain"}}/>
         </div>
 
