@@ -7,6 +7,7 @@ const zodiacRingImg = "/logo/zodiac-ring.webp";
 const compassImg = "/logo/compass.webp";
 const topperTextImg = "/logo/topper-text.webp";
 const logoFullImg = "/logo/logo-full.webp"; // static composite — welcome/header
+import HomeScreen from "./components/HomeScreen";
 // ── The proprietary interpretive engine runs ONLY in the Cloudflare
 // Worker. The browser talks to it through api.js and never imports the
 // engine. Public panchangam/ephemeris + trivial display helpers come from
@@ -1411,80 +1412,23 @@ export default function AstrologyApp() {
     </div>
   );
 
-  // ═══════ HOME — "இன்று + உங்கள் கேள்வி" முகப்பு (login-க்கு பதில்) ═══════
+  // ═══════ HOME — TOPPER ASTRO முகப்பு (புதிய design) ═══════
   if(screen===SCREEN.HOME) {
-    const savedName = profiles[0]?.name || (formData.name || "");
-    const t = homeToday;
-    return (
-      <div style={base}>
-        <div style={{...container, paddingTop:20, paddingBottom:96}}>
-          {/* header */}
-          <div style={{display:"flex", alignItems:"center", gap:11, marginBottom:16}}>
-            <img src={compassImg} alt="" style={{width:44, height:44, objectFit:"contain",
-              filter:"drop-shadow(0 2px 6px #b8860b40)"}}/>
-            <div style={{lineHeight:1.2}}>
-              <div className="jn-serif" style={{fontSize:19, fontWeight:700, color:"#7b1c1c"}}>ஜோதிட நிபுணர்</div>
-              <div style={{fontSize:10.5, color:"#a8710a", letterSpacing:0.5}}>
-                {savedName ? `வணக்கம், ${savedName} 🙏` : "வேத ஜோதிட வழிகாட்டி"}
-              </div>
-            </div>
-          </div>
-
-          {/* இன்று strip */}
-          {t && (
-            <div style={{...card, padding:"13px 15px", marginBottom:18,
-              background:"linear-gradient(135deg, #fff8ec, #fdf3e0)", border:"1px solid #ecdcc0"}}>
-              <div style={{display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:6}}>
-                <span style={{fontSize:12.5, fontWeight:700, color:"#7b1c1c"}}>📅 இன்று · {t.wd}</span>
-                <span style={{fontSize:10.5, color:"#8b6914"}}>{t.greg}</span>
-              </div>
-              <div style={{display:"flex", flexWrap:"wrap", gap:"5px 14px", fontSize:11, color:"#5a4a3a"}}>
-                {t.tamil && <span>🗓 {t.tamil.month} {t.tamil.day}</span>}
-                <span>🌙 {t.h.tithi}</span>
-                <span>⭐ {t.h.nakshatra}</span>
-                <span>♌ {t.h.moonRashi}</span>
-              </div>
-              {t.inaus && (
-                <div style={{marginTop:8, paddingTop:8, borderTop:"1px dashed #e0cfae",
-                  display:"flex", flexWrap:"wrap", gap:"4px 14px", fontSize:10.5}}>
-                  <span style={{color:"#cc1a1a", fontWeight:600}}>⚠ ராகு காலம்: {t.inaus.rahuKalam.start}–{t.inaus.rahuKalam.end}</span>
-                  <span style={{color:"#a8710a"}}>எமகண்டம்: {t.inaus.yamaGandam.start}–{t.inaus.yamaGandam.end}</span>
-                </div>
-              )}
-              <button onClick={()=>goTo(horoscope?SCREEN.DAILY:SCREEN.CALENDAR)} style={{
-                marginTop:10, width:"100%", background:"rgba(123,28,28,0.06)", border:"1px solid #e6cf9a",
-                borderRadius:10, color:"#7b1c1c", fontSize:11.5, fontWeight:600, cursor:"pointer", padding:"8px 0"}}>
-                📿 முழு பஞ்சாங்கம் / தினப்பலன் →
-              </button>
-            </div>
-          )}
-
-          {/* கேள்வி அட்டைகள் */}
-          <div style={{fontSize:13.5, fontWeight:700, color:"#7b1c1c", marginBottom:3, textAlign:"center"}}>உங்கள் கேள்வி என்ன? 🙏</div>
-          <div style={{fontSize:10.5, color:"#a8710a", marginBottom:14, textAlign:"center"}}>ஒரு கேள்வியைத் தேர்ந்தெடுங்கள் — ஜோதிடம் பதில் தரும்</div>
-          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:11}}>
-            {HOME_QUESTIONS.map(item=>(
-              <button key={item.key} onClick={()=>openQuestion(item)} style={{
-                background:"linear-gradient(180deg,#ffffff,#fffaf0)", border:"1px solid #ecdfce",
-                borderRadius:16, padding:"18px 12px 14px", cursor:"pointer", textAlign:"center",
-                boxShadow:"0 6px 18px -10px rgba(90,40,10,0.18)", transition:"transform 0.15s",
-                WebkitTapHighlightColor:"transparent"}}
-                onTouchStart={e=>e.currentTarget.style.transform="scale(0.96)"}
-                onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}>
-                <div style={{fontSize:34, marginBottom:8, lineHeight:1}}>{item.icon}</div>
-                <div style={{fontSize:13.5, fontWeight:700, color:"#241a15", marginBottom:3}}>{item.q}</div>
-                <div style={{fontSize:9.5, color:"#9a8a7a"}}>{item.sub}</div>
-              </button>
-            ))}
-          </div>
-
-          <div style={{textAlign:"center", marginTop:18, fontSize:9.5, color:"#b0a090"}}>
-            ✦ Swiss Ephemeris · BPHS classical engine · backtest-verified ✦
-          </div>
-        </div>
-        <BottomTabs active="home"/>
-      </div>
-    );
+    const handleHome = (key) => {
+      switch (key) {
+        case "home":     goTo(SCREEN.HOME); break;
+        case "daily":    goTo(horoscope ? SCREEN.DAILY : SCREEN.CALENDAR); break;
+        case "chart":    goTo(horoscope ? SCREEN.RESULT : SCREEN.FORM); break;
+        case "porutham": setHomeQuestion(null); goTo(SCREEN.PORUTHAM); break;
+        case "calendar": goTo(SCREEN.CALENDAR); break;
+        case "consult":  goTo(horoscope ? SCREEN.PREMIUM : SCREEN.FORM); break;
+        case "books":    goTo(SCREEN.CALENDAR); break;
+        case "more":     goTo(horoscope ? SCREEN.RESULT : SCREEN.FORM); break;
+        case "account":  goTo(SCREEN.FORM); break;
+        default: break; // notifications etc. — no-op
+      }
+    };
+    return <HomeScreen handle={handleHome} />;
   }
 
   // ═══════ SPLASH ═══════
