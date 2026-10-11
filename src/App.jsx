@@ -19,7 +19,7 @@ import {
   apiCompute, apiPredict, apiDaily, apiBacktest, apiEventTiming,
   apiNakBhava, apiPorutham, apiEngine,
 } from "./api.js";
-import { saveProfileCloud, loadProfileCloud } from "./firebase.js";
+import { saveProfileCloud, loadProfileCloud, getAuthError } from "./firebase.js";
 import {
   generateHoroscope, calcMuhurtham, calcInauspiciousTimes, calcTamilDate,
   calcCurrentHorai, getNakshatraLord, geocodeCity, geocodeCityAsync,
@@ -1229,7 +1229,9 @@ export default function AstrologyApp() {
         goTo(SCREEN.RESULT);
       } catch (e) {
         setApiSource("");
-        alert("⚠ சர்வர் இப்போது பதிலளிக்கவில்லை. சில வினாடிகள் கழித்து மீண்டும் முயற்சிக்கவும்.");
+        const ae = getAuthError();
+        const detail = ae ? `\n\nFirebase sign-in பிழை:\n${ae}` : `\n\n(${String(e?.message || e)})`;
+        alert("⚠ சர்வர் இப்போது பதிலளிக்கவில்லை." + detail);
         goTo(SCREEN.FORM);
       }
       return;

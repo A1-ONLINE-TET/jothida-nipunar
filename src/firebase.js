@@ -25,11 +25,15 @@ export const db = app ? getFirestore(app) : null;
 // ID token to call the Worker with — no login screen needed. This gates the
 // API to real app loads (blocks direct scraping) and gives per-user rate
 // limiting. Upgrade to Email/Phone sign-in later if you need real accounts.
+let _authError = "";
+export function getAuthError() { return _authError; }
+
 if (auth) {
-  // TEMP debug — diagnose the API 401: is sign-in working, is a token issued?
   signInAnonymously(auth)
-    .then((c) => console.log("JN ANON SIGN-IN OK uid=", c?.user?.uid))
-    .catch((e) => console.error("JN ANON SIGN-IN FAILED:", e?.code, e?.message));
+    .then((c) => { _authError = ""; console.log("JN ANON SIGN-IN OK uid=", c?.user?.uid); })
+    .catch((e) => { _authError = `${e?.code || ""} — ${e?.message || e}`; console.error("JN ANON SIGN-IN FAILED:", _authError); });
+} else {
+  _authError = "Firebase not configured (VITE_FIREBASE_* missing)";
 }
 
 export function onUser(cb) {
