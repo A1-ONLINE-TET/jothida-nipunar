@@ -780,7 +780,7 @@ function isValidDDMMYYYY(str) {
 // localStorage private-mode/blocked நிலைகளில் throw ஆகலாம் — எல்லா
 // அணுகலும் try/catch-இல்; கிடைக்காவிட்டால் வசதி மட்டும் மறையும், app இயங்கும்.
 // ═══════════════════════════════════════════════════════════════════
-const PROFILES_KEY = "jn_profiles_v1";
+const PROFILES_KEY = "jn_profiles_v2";
 function loadProfiles() {
   try {
     const arr = JSON.parse(localStorage.getItem(PROFILES_KEY) || "[]");
@@ -803,7 +803,7 @@ function persistBacktests(list) {
 
 // முதல்-முறை onboarding flag — first-time user-க்கு மட்டும் Welcome காட்ட.
 // localStorage private-mode/blocked நிலைகளில் throw ஆகலாம் → try/catch.
-const ONBOARD_KEY = "jn_onboarded_v1";
+const ONBOARD_KEY = "jn_onboarded_v2";
 function isOnboarded() {
   try { return localStorage.getItem(ONBOARD_KEY) === "1"; } catch (e) { return false; }
 }
