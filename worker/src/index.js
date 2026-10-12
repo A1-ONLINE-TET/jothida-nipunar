@@ -12,13 +12,25 @@ import { rateLimit } from "./ratelimit.js";
 import {
   buildHoroscope, computeFullReport, computeDasha, computeDailyBundle,
   computeBacktest, computeEventTiming, computeNakBhava, computePorutham,
-  computeConsultation,
 } from "./compute.js";
-import { buildBirthPrompt, buildDailyPrompt, buildAskPrompt, currentDashaInfo } from "./prompt.js";
+import { buildBirthPrompt, buildDailyPrompt, currentDashaInfo } from "./prompt.js";
 import { callClaude } from "./claude.js";
-import { callGemini, buildGeminiAstrologerPrompt } from "./gemini.js";
-import { buildAskAnswer, classifyQuestion } from "./ask.js";
-import { createOrder, verifyPayment } from "./pay.js";
+import { callGemini } from "./gemini.js";
+
+// Route AI calls: set AI_PROVIDER="gemini" in wrangler.toml [vars] to use Gemini.
+// Default is Claude. Falls back to the other if the primary key is missing.
+async function callAI(env, prompt, maxTokens = 1000) {
+  const provider = (env.AI_PROVIDER || "claude").toLowerCase();
+  if (provider === "gemini") {
+    if (env.GEMINI_API_KEY) return callGemini(env, prompt, maxTokens);
+    if (env.ANTHROPIC_API_KEY) return callClaude(env, prompt, maxTokens);
+    throw new Error("No AI API key set");
+  }
+  // default: claude
+  if (env.ANTHROPIC_API_KEY) return callClaude(env, prompt, maxTokens);
+  if (env.GEMINI_API_KEY) return callGemini(env, prompt, maxTokens);
+  throw new Error("No AI API key set");
+}
 import { searchPlacesOSM } from "../../src/engine.js";
 import * as engine from "../../src/engine.js";
 
@@ -40,16 +52,9 @@ const SECURITY_HEADERS = {
 function allowedOrigins(env) {
   return (env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
 }
-// Cloudflare Pages preview deployments get URLs like
-// https://<hash>.jothida-nipunar.pages.dev — allow this project's previews too.
-const PREVIEW_ORIGIN_RE = /^https:\/\/[a-z0-9-]+\.jothida-nipunar\.pages\.dev$/;
-function isAllowedOrigin(env, origin) {
-  if (!origin) return false;
-  if (allowedOrigins(env).includes(origin)) return true;
-  return PREVIEW_ORIGIN_RE.test(origin);
-}
 function corsHeaders(env, origin) {
-  const allow = isAllowedOrigin(env, origin) ? origin : "";
+  const list = allowedOrigins(env);
+  const allow = list.includes(origin) ? origin : "";
   const h = {
     "Vary": "Origin",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
@@ -122,7 +127,7 @@ export default {
 
     // Reject browsers whose origin is not allow-listed (defence in depth;
     // CORS already blocks the response, this blocks the work too).
-    if (origin && !isAllowedOrigin(env, origin)) {
+    if (origin && !allowedOrigins(env).includes(origin)) {
       return json(env, origin, { error: "forbidden origin" }, 403);
     }
 
@@ -171,87 +176,8 @@ export default {
           person: { name: birth.name, dob: birth.dob, tob: birth.tob, ampm: birth.ampm, pob: birth.pob },
           horoscope: h, dashaInfo,
         });
-        const text = await callClaude(env, prompt, 1000);
+        const text = await callAI(env, prompt, 1000);
         return json(env, origin, { text });
-      }
-
-      // ── /api/ask — rule-based astrologer chat (no LLM; chart-grounded) ──
-      if (url.pathname === "/api/ask") {
-        const birth = normalizeBirth(body);
-        const question = clampStr(body?.question, 300);
-        if (!question.trim()) return json(env, origin, { error: "empty question" }, 400);
-        const lastTopic = clampStr(body?.lastTopic, 20);
-        const swiss = await fetchSwiss(env, birth);
-        const h = buildHoroscope(birth, swiss);
-        h._name = birth.name || "";
-        // follow-up நினைவு: keyword இல்லையேல் முந்தைய தலைப்பைத் தொடரு
-        const rawCat = classifyQuestion(question, "");
-        const cat0 = classifyQuestion(question, lastTopic);
-        const extras = computeConsultation(h, birth, cat0);
-        extras.category = cat0;
-        extras.followUp = rawCat === "general" && cat0 !== "general";
-        const { category, label, answer } = buildAskAnswer(h, extras.dashaData, question, extras);
-        return json(env, origin, { category, label, answer });
-      }
-
-      // ── /api/ask-ai — hybrid: engine துல்லியம் + Gemini இயல்பு மொழி ──
-      // key இல்லையேல் engine பதிலையே திருப்பும் (graceful fallback).
-      if (url.pathname === "/api/ask-ai") {
-        const birth = normalizeBirth(body);
-        const question = clampStr(body?.question, 400);
-        if (!question.trim()) return json(env, origin, { error: "empty question" }, 400);
-        const lastTopic = clampStr(body?.lastTopic, 20);
-        const swiss = await fetchSwiss(env, birth);
-        const h = buildHoroscope(birth, swiss);
-        h._name = birth.name || "";
-        const rawCat = classifyQuestion(question, "");
-        const cat0 = classifyQuestion(question, lastTopic);
-        const extras = computeConsultation(h, birth, cat0);
-        extras.category = cat0;
-        extras.followUp = rawCat === "general" && cat0 !== "general";
-        const eng = buildAskAnswer(h, extras.dashaData, question, extras);
-        if (!env.GEMINI_API_KEY) {
-          // key இல்லை — engine பதிலே (ai:false எனக் குறிக்கிறோம்)
-          return json(env, origin, { category: eng.category, label: eng.label, answer: eng.answer, ai: false });
-        }
-        try {
-          const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings: eng.answer });
-          const aiAnswer = await callGemini(env, prompt, 800);
-          return json(env, origin, { category: eng.category, label: eng.label, answer: aiAnswer || eng.answer, ai: !!aiAnswer });
-        } catch (e) {
-          // Gemini தோல்வி — engine பதிலுக்கு மாறு
-          return json(env, origin, { category: eng.category, label: eng.label, answer: eng.answer, ai: false });
-        }
-      }
-
-      // ── /api/order — create a Razorpay order (amount in paise) ──
-      if (url.pathname === "/api/order") {
-        const amount = Math.max(100, Math.min(500000, parseInt(body?.amount, 10) || 4900));
-        try {
-          const order = await createOrder(env, amount);
-          return json(env, origin, { orderId: order.id, amount: order.amount, keyId: env.RAZORPAY_KEY_ID });
-        } catch (e) {
-          return json(env, origin, { error: "payment not available" }, 503);
-        }
-      }
-
-      // ── /api/ask-premium — verified payment → LLM answer to the question ──
-      if (url.pathname === "/api/ask-premium") {
-        const birth = normalizeBirth(body);
-        const question = clampStr(body?.question, 500);
-        if (!question.trim()) return json(env, origin, { error: "empty question" }, 400);
-        const ok = await verifyPayment(env, body?.razorpay_order_id, body?.razorpay_payment_id, body?.razorpay_signature);
-        if (!ok) return json(env, origin, { error: "payment verification failed" }, 402);
-        const swiss = await fetchSwiss(env, birth);
-        const h = buildHoroscope(birth, swiss);
-        const dashaData = computeDasha(h, birth);
-        const dashaInfo = currentDashaInfo(dashaData);
-        const prompt = buildAskPrompt({
-          person: { name: birth.name, dob: birth.dob, tob: birth.tob, ampm: birth.ampm, pob: birth.pob },
-          horoscope: h, dashaInfo, question,
-        });
-        const answer = await callClaude(env, prompt, 900);
-        return json(env, origin, { answer, premium: true });
       }
 
       // ── /api/daily — daily/specific-date bundle + AI reading ──
@@ -266,7 +192,7 @@ export default {
         let text = "";
         if (withText) {
           const prompt = buildDailyPrompt({ person: { name: birth.name }, horoscope: h, daily });
-          text = await callClaude(env, prompt, 600);
+          text = await callAI(env, prompt, 600);
         }
         return json(env, origin, { daily, text });
       }
