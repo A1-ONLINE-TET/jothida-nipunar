@@ -264,17 +264,15 @@ export default {
         const dashaData = computeDasha(h, birth);
         const { category, label } = classifyQuestion(question, lastTopic);
         const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name }).answer;
-        let answer = engineFindings, ai = false, aiError = null;
+        let answer = engineFindings, ai = false;
         try {
           // The engine already did the astrology; Gemini only phrases its
           // findings as an astrologer would. Facts come from the engine.
           const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings });
           const text = await callAI(env, prompt, 1500);
           if (text && text.trim()) { answer = text.trim(); ai = true; }
-          else aiError = "empty AI response";
-        } catch (e) { aiError = String(e && e.message || e); }
-        const diag = { provider: env.AI_PROVIDER || null, hasAnthropic: !!env.ANTHROPIC_API_KEY, hasGemini: !!env.GEMINI_API_KEY };
-        return json(env, origin, { category, label, answer, ai, aiError, diag });
+        } catch (_) { /* fall back to engine findings */ }
+        return json(env, origin, { category, label, answer, ai });
       }
 
       // ── /api/ask-deep — FREE deep AI answer (no payment) ──
