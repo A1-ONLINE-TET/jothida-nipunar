@@ -10,6 +10,7 @@ const logoFullImg = "/logo/logo-full.webp"; // static composite — welcome/head
 const newZodiacWheelImg = "/logo/new-zodiac-wheel.webp";
 const newTopperLogoImg = "/logo/new-topper-logo.webp";
 import HomeScreen from "./components/HomeScreen";
+import AdvisoryScreen from "./components/AdvisoryScreen";
 import ChatScreen from "./components/ChatScreen";
 import { apiAsk } from "./api.js";
 import { payThenAskPremium } from "./components/razorpay.js";
@@ -811,7 +812,7 @@ function markOnboarded() {
   try { localStorage.setItem(ONBOARD_KEY, "1"); } catch (e) { /* storage unavailable — skip */ }
 }
 
-const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8, HOME:9, WELCOME:10, CHAT:11 };
+const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8, HOME:9, WELCOME:10, CHAT:11, ADVISORY:12 };
 
 // முகப்பு கேள்வி அட்டைகள் — தட்டினால் FORM → ஜாதகம் → அந்தப் பகுதிக்கு நேரடி
 const HOME_QUESTIONS = [
@@ -1441,48 +1442,56 @@ export default function AstrologyApp() {
   );
 
   // ═══════ HOME — TOPPER ASTRO முகப்பு (புதிய design) ═══════
+  // ஜாதக முடிவுப் பகுதிக்கு செல் — chart இல்லையேல் முதலில் auto-compute (returning user)
+  const openResultView = async (view) => {
+    const hasChart = !!(horoscope && dashaData);
+    if (hasChart) { setAdvancedView(view || ""); goTo(SCREEN.RESULT); return; }
+    if (!formData.dob || !formData.name) { goTo(SCREEN.FORM); return; }
+    goTo(SCREEN.LOADING);
+    try {
+      const dobISO = parseDDMMYYYY(formData.dob);
+      let h24=6, min24=0;
+      if(formData.tob){ const [hh,mm]=formData.tob.split(':').map(Number); h24=hh||6; min24=mm||0; if(formData.ampm==="PM"&&h24<12)h24+=12; if(formData.ampm==="AM"&&h24===12)h24=0; }
+      const finalTime=`${String(h24).padStart(2,'0')}:${String(min24).padStart(2,'0')}`;
+      const geoT=resolveBirthGeo(formData);
+      const {report}=await apiCompute(buildBirth(dobISO,finalTime,geoT));
+      applyReport(report);
+      setAdvancedView(view||""); goTo(SCREEN.RESULT);
+    } catch(e){ goTo(SCREEN.FORM); }
+  };
+
+  // Home + Advisory இரண்டிலும் பகிரப்படும் navigation handler
+  const handleNav = (key) => {
+    switch (key) {
+      case "home":        goTo(SCREEN.HOME); break;
+      case "advisory":    goTo(SCREEN.ADVISORY); break;
+      case "daily":       goTo(horoscope ? SCREEN.DAILY : SCREEN.CALENDAR); break;
+      case "chart":       openResultView(""); break;
+      case "dasha":       openResultView("dasha"); break;
+      case "yogas":       openResultView("yogas"); break;
+      case "nakbhava":    openResultView("nakbhava"); break;
+      case "backtest":    openResultView("backtest"); break;
+      case "eventtiming": openResultView("eventtiming"); break;
+      case "sadesati":    openResultView("saniguru"); break;
+      case "muhurtham":   goTo(SCREEN.CALENDAR); break;
+      case "porutham":    setHomeQuestion(null); goTo(SCREEN.PORUTHAM); break;
+      case "calendar":    goTo(SCREEN.CALENDAR); break;
+      case "consult":
+        if (formData.name && formData.dob) goTo(SCREEN.CHAT);
+        else if (profiles[0]) { loadProfile(profiles[0]); goTo(SCREEN.CHAT); }
+        else goTo(SCREEN.FORM);
+        break;
+      case "account":     goTo(SCREEN.FORM); break;
+      default: break;
+    }
+  };
+
   if(screen===SCREEN.HOME) {
-    const handleHome = (key) => {
-      const hasChart = !!(horoscope && dashaData);
-      const toResult = async (view) => {
-        if (hasChart) { setAdvancedView(view || ""); goTo(SCREEN.RESULT); return; }
-        if (!formData.dob || !formData.name) { goTo(SCREEN.FORM); return; }
-        // returning user: has profile but chart not computed yet — auto-compute
-        goTo(SCREEN.LOADING);
-        try {
-          const dobISO = parseDDMMYYYY(formData.dob);
-          let h24=6, min24=0;
-          if(formData.tob){ const [hh,mm]=formData.tob.split(':').map(Number); h24=hh||6; min24=mm||0; if(formData.ampm==="PM"&&h24<12)h24+=12; if(formData.ampm==="AM"&&h24===12)h24=0; }
-          const finalTime=`${String(h24).padStart(2,'0')}:${String(min24).padStart(2,'0')}`;
-          const geoT=resolveBirthGeo(formData);
-          const {report}=await apiCompute(buildBirth(dobISO,finalTime,geoT));
-          applyReport(report);
-          setAdvancedView(view||""); goTo(SCREEN.RESULT);
-        } catch(e){ goTo(SCREEN.FORM); }
-      };
-      switch (key) {
-        case "home":        goTo(SCREEN.HOME); break;
-        case "daily":       goTo(horoscope ? SCREEN.DAILY : SCREEN.CALENDAR); break;
-        case "chart":       toResult(""); break;
-        case "dasha":       toResult("dasha"); break;
-        case "yogas":       toResult("yogas"); break;
-        case "nakbhava":    toResult("nakbhava"); break;
-        case "backtest":    toResult("backtest"); break;
-        case "eventtiming": toResult("eventtiming"); break;
-        case "sadesati":    toResult("saniguru"); break;
-        case "muhurtham":   goTo(SCREEN.CALENDAR); break;
-        case "porutham":    setHomeQuestion(null); goTo(SCREEN.PORUTHAM); break;
-        case "calendar":    goTo(SCREEN.CALENDAR); break;
-        case "consult":
-          if (formData.name && formData.dob) goTo(SCREEN.CHAT);
-          else if (profiles[0]) { loadProfile(profiles[0]); goTo(SCREEN.CHAT); }
-          else goTo(SCREEN.FORM);
-          break;
-        case "account":     goTo(SCREEN.FORM); break;
-        default: break;
-      }
-    };
-    return <HomeScreen handle={handleHome} />;
+    return <HomeScreen handle={handleNav} />;
+  }
+
+  if(screen===SCREEN.ADVISORY) {
+    return <AdvisoryScreen handle={handleNav} onBack={()=>goTo(SCREEN.HOME)} />;
   }
 
   // ═══════ CHAT — rule-based ஜோதிடர் உரையாடல் (LLM இல்லை) ═══════

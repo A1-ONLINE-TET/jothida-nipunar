@@ -7,16 +7,11 @@ import {
 import "./home.css";
 
 const services = [
-  { key: "chart",       title: "ஜாதகக் கட்டம்",       description: "கிரக நிலைகள், லக்னம், ராசி முழு ஜாதகம்",      icon: Grid2X2,      theme: "peach" },
-  { key: "dasha",       title: "தசா அட்டவணை",          description: "விம்சோத்தரி தசா, அந்தர்தசா காலக்கணக்கு",      icon: Star,         theme: "yellow" },
-  { key: "yogas",       title: "யோகங்கள் & தோஷங்கள்",  description: "மகாபுருஷ யோகம், கால சர்ப்ப, செவ்வாய் தோஷம்",   icon: Sparkles,     theme: "purple" },
-  { key: "porutham",    title: "திருமண பொருத்தம்",     description: "10 பொருத்தம், நாடி, ரஜ்ஜு, வேதம்",            icon: Heart,        theme: "rose" },
-  { key: "nakbhava",    title: "நட்சத்திர-பாவக",       description: "நட்சத்திர-பாவக இணைப்பு, கோசார காலம்",         icon: Compass,      theme: "blue" },
-  { key: "backtest",    title: "Backtest சரிபார்ப்பு",  description: "கடந்த நிகழ்வுகளில் ஜோதிட துல்லியம் சோதனை",    icon: BookOpen,     theme: "green" },
-  { key: "eventtiming", title: "நிகழ்வு நேரம்",        description: "திருமணம், வேலை, பயணம் — சிறந்த நேரம்",        icon: CalendarDays, theme: "blue" },
-  { key: "sadesati",    title: "சாதே சாதி / குரு பெயர்ச்சி", description: "சனி, குரு கோசார தாக்கம் பார்க்கவும்",   icon: Star,         theme: "yellow" },
-  { key: "muhurtham",   title: "முகூர்த்தம்",           description: "சுப நேரம், ராகு காலம், யமகண்டம்",             icon: CalendarDays, theme: "peach" },
-  { key: "consult",     title: "ஜோதிடரிடம் கேளுங்கள்", description: "உங்கள் கேள்விக்கு நேரடி பதில் பெறுங்கள்",     icon: UserRound,    theme: "green" },
+  { key: "chart",    title: "ஜாதகக் கட்டம்",     description: "கிரக நிலைகள், லக்னம், ராசி முழு ஜாதகம்",   icon: Grid2X2,      theme: "peach" },
+  { key: "porutham", title: "திருமண பொருத்தம்",  description: "10 பொருத்தம், நாடி, ரஜ்ஜு, வேதம்",        icon: Heart,        theme: "rose" },
+  { key: "calendar", title: "ஜோதிட நாட்கள்",     description: "முகூர்த்தம், ராகு காலம், பஞ்சாங்கம்",      icon: CalendarDays, theme: "blue" },
+  { key: "consult",  title: "ஜோதிடரிடம் உரையாட", description: "உங்கள் கேள்விக்கு நேரடி பதில் பெறுங்கள்",  icon: UserRound,    theme: "green" },
+  { key: "advisory", title: "ஜோதிடரிடம் ஆலோசனை", description: "தசா, யோகம், பாவகம், முகூர்த்தம் — விரிவாக", icon: Sparkles,     theme: "purple" },
 ];
 
 const navigation = [
