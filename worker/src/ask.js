@@ -24,15 +24,36 @@ const TOPICS = {
   general:   { houses:[1],    karaka:"சந்திரன்",  label:"பொது வாழ்க்கை" },
 };
 
-// keyword → category (Tamil + English). First match wins, checked in order.
+// keyword → category (தமிழ் + English + Tanglish). First match wins, checked in order.
 const KEYWORDS = [
-  ["marriage", ["திருமண","கல்யாண","மண","வாழ்க்கைத் துணை","கணவ","மனைவ","வரன்","பொருத்த","marriage","wedding","spouse","partner","love","காதல்"]],
-  ["career",   ["தொழில","வேலை","உத்தியோக","பதவி","சம்பள","பிசினஸ","வியாபார","job","career","business","work","promotion","boss"]],
-  ["wealth",   ["பண","செல்வ","கட","நிதி","சொத்து","வருமான","லாப","நஷ்ட","money","wealth","finance","loan","income","rich"]],
-  ["health",   ["ஆரோக்கிய","உடல்","நோய","மருத்துவ","சுகாதார","பலம","health","disease","sick","body","medical"]],
-  ["education",["கல்வி","படிப்","பள்ளி","கல்லூரி","தேர்வு","பரீட்ச","education","study","exam","college","school","degree"]],
-  ["children", ["குழந்த","பிள்ள","சந்ததி","மகன","மகள","கர்ப்ப","child","children","baby","son","daughter","pregnan"]],
-  ["travel",   ["பயண","வெளிநா","வெளியூர","இடம் மாற்","visa","travel","abroad","foreign","migrat"]],
+  ["marriage", [
+    "திருமண","கல்யாண","மணம்","மண ","வாழ்க்கைத் துணை","வாழ்க்கை துணை","துணை","கணவ","மனைவ","வரன்","வர ","மாப்பிள்ள","பெண் பார்","பொருத்த","ஜோடி","சம்பந்த","நிச்சயதார்த்த","காதல்","லவ்",
+    "marriage","wedding","spouse","partner","love","match","fiance",
+    "thirumanam","thirumana","kalyanam","kalyana","manam","varan","pondatti","pondaatti","purushan","maapillai","kaadhal","jodi"]],
+  ["career",   [
+    "தொழில","வேலை","உத்தியோக","பதவி","சம்பள","ஊதிய","பிசினஸ","வியாபார","வணிக","முன்னேற்ற","பதவி உயர்","வேலை வாய்ப்","ராஜினாம","பணி",
+    "job","career","business","work","promotion","boss","salary","office","employment",
+    "velai","vேlai","thozhil","thozil","udhyogam","business","sambalam","oodhiyam","padavi","vேlai vaippu"]],
+  ["wealth",   [
+    "பண","செல்வ","கடன்","நிதி","சொத்து","வருமான","லாப","நஷ்ட","வறுமை","ஐஸ்வர்ய","லட்சுமி","சேமிப்","முதலீ","பங்கு","கடனில",
+    "money","wealth","finance","loan","income","rich","savings","debt","profit","investment",
+    "panam","panakkaran","selvam","kadan","sothu","varumanam","laabam","sேmippu","mudhaleedu"]],
+  ["health",   [
+    "ஆரோக்கிய","உடல்","உடம்","நோய","மருத்துவ","சுகாதார","சுகம்","ஆயுள்","பலம்","பலஹீன","மன அழுத்த","மனநல","அறுவை","சிகிச்ச","வியாதி",
+    "health","disease","sick","body","medical","surgery","stress","illness","fitness","life span","longevity",
+    "aarokiyam","aarogyam","udal","udambu","noi","sugam","maruthuvam","vyaadhi","aayul"]],
+  ["education",[
+    "கல்வி","படிப்","பள்ளி","கல்லூரி","தேர்வு","பரீட்ச","தேர்ச்சி","அறிவு","வித்தை","மாணவ","உயர்கல்வி","ஸ்காலர்","மதிப்பெண்",
+    "education","study","exam","college","school","degree","student","scholarship","marks","learning",
+    "kalvi","padippu","padipu","palli","kalloori","thervu","maanavan","vidhyai"]],
+  ["children", [
+    "குழந்த","பிள்ள","சந்ததி","மகன","மகள","கர்ப்ப","வாரிச","பாக்கிய","சிசு","புத்திர","கருத்தரி",
+    "child","children","baby","son","daughter","pregnan","kid","offspring","conceive",
+    "kuzhandhai","kuzhanthai","pillai","santhathi","magan","magal","varisu","garbam"]],
+  ["travel",   [
+    "பயண","வெளிநா","வெளியூர","இடம் மாற்","குடியேற்ற","சொந்த ஊர","ஊர் மாற்","வெளிமாநில","இடமாற்ற",
+    "visa","travel","abroad","foreign","migrat","relocat","settle",
+    "payanam","velinadu","veliyur","veliநாடு","kudiyettam","ur maatram","foreign trip"]],
 ];
 
 function classify(q) {
