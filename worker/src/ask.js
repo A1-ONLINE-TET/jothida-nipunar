@@ -64,6 +64,16 @@ function classify(q) {
   return "general";
 }
 const VALID_TOPICS = new Set(["marriage", "career", "wealth", "health", "education", "children", "travel"]);
+// follow-up கேள்வியின் நோக்கம் — எப்போது / பரிகாரம் / ஏன் / எப்படி
+function detectIntent(q) {
+  const s = (q || "").toLowerCase();
+  const has = (arr) => arr.some((k) => s.includes(k));
+  if (has(["எப்போது", "எப்பொழுது", "எப்போ", "when", "eppo", "எந்த வருட", "எந்த வருஷ", "எந்த காலம்", "எந்த நேர", "நேரம்", "சரியாகும்", "ஆகுமா", "ஆகும்", "நடக்கும்", "முடியும்", "aagum", "sariyaagum", "nadakum", "naal"])) return "timing";
+  if (has(["பரிகார", "பரிஹார", "remedy", "என்ன செய்ய", "தீர்வு", "parikaram", "seiya"])) return "remedy";
+  if (has(["ஏன்", "காரண", "why", "yen"])) return "cause";
+  if (has(["எப்படி", "how", "தன்மை", "eppadi"])) return "quality";
+  return null;
+}
 // follow-up கேள்வி — keyword இல்லை ஆனால் முந்தைய தலைப்பைத் தொடர்கிறது
 // ("எப்போது சரியாகும்?", "எப்படி?", "இன்னும் சொல்லுங்க", "அது பற்றி...")
 // index.js இதை வைத்து நிகழ்வு-காலக்கணிப்பு topic-ஐ தேர்வு செய்யும்.
@@ -135,10 +145,51 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
   // verdict summary-இல் உள்ள நீண்ட "(குறிப்பு: ▲▼...)" meta-note-ஐ நீக்கு
   const cleanTxt = (s) => (s || "").replace(/\s*\(குறிப்பு:[\s\S]*$/, "").trim();
 
+  const { md, ad } = currentLords(dashaData);
+  const et = extras.eventTiming;
+  const isCaution = cat === "health";
+
+  // ── follow-up: "எப்போது?/பரிகாரம்?" போன்ற தொடர் கேள்விக்கு — குவிந்த பதில்
+  // (முழு reading-ஐ மீண்டும் காட்டாமல், கேட்டதற்கு மட்டும்) ──
+  if (extras.followUp) {
+    const intent = detectIntent(question);
+    if (intent === "timing") {
+      const foc = [`${greet}${topic.label} — எப்போது என்பதைப் பார்ப்போம்.`];
+      if (md) foc.push(`தற்போது ${md}${ad ? `-${ad}` : ""} தசை நடைபெறுகிறது.`);
+      if (et && Array.isArray(et.windows) && et.windows.length) {
+        const w = et.windows[0];
+        foc.push(isCaution
+          ? `கவனம் தேவை காலம்: ${fmtMonthYear(w.start)} – ${fmtMonthYear(w.end)} (${w.md} தசை).`
+          : `சாதகமான காலம்: ${fmtMonthYear(w.start)} – ${fmtMonthYear(w.end)} (${w.md} தசை${w.ad ? `/${w.ad} புக்தி` : ""}, நம்பிக்கை ${w.confidence}).`);
+        if (et.windows[1] && !isCaution) foc.push(`பிறகு: ${fmtMonthYear(et.windows[1].start)} – ${fmtMonthYear(et.windows[1].end)} (${et.windows[1].md} தசை).`);
+        if (typeof et.promise === "number") foc.push(`ஜாதக வாக்குறுதி: ${et.promise}%${(!isCaution && et.promiseVerdict) ? ` — ${et.promiseVerdict}` : ""}.`);
+      } else {
+        foc.push("அடுத்த 12 ஆண்டுகளில் வலுவான தசா activation குறைவு — பொறுமையுடன் முயற்சி தேவை.");
+      }
+      foc.push("இந்தக் காலங்களில் முயற்சி செய்தால் பலன் கிடைக்கும். 🙏");
+      return { category: cat, label: topic.label, answer: foc.join("\n\n") };
+    }
+    if (intent === "remedy") {
+      const foc = [`${greet}${topic.label} — பரிகாரங்களைப் பார்ப்போம்.`];
+      const rr = [];
+      if (Array.isArray(extras.remedies)) {
+        const want = new Set([topic.karaka, RASHI_LORD[houseSign(lagnaIdx, topic.houses[0])]]);
+        for (const r of extras.remedies.filter((r) => r.needsRemedy && want.has(r.ta)).slice(0, 3)) {
+          rr.push(`• ${r.ta}: ரத்தினம் ${r.gem}${r.mantra ? `, மந்திரம் ${r.mantra}` : ""}${r.temple ? `, ${r.temple}` : ""}${r.donate ? `, தானம்: ${r.donate}` : ""}`);
+        }
+      }
+      if (extras.kalaSarpa && extras.kalaSarpa.present && extras.kalaSarpa.remedy) rr.push(`• கால சர்ப்பம்: ${extras.kalaSarpa.remedy}`);
+      if (cat === "marriage" && extras.chevvai && extras.chevvai.present && !extras.chevvai.cancelled) rr.push("• செவ்வாய் தோஷம்: செவ்வாய் பகவான் வழிபாடு, வைதீஸ்வரன் கோயில்; பொருத்தத்தில் சமன் பார்க்கவும்.");
+      if (rr.length) foc.push(rr.join("\n"));
+      else foc.push("உங்கள் ஜாதகத்தில் தனிப் பலவீனம் இல்லை — இஷ்ட தெய்வ வழிபாடு, நல்ல நாளில் காரியம் தொடங்கினால் போதும்.");
+      foc.push("பரிகாரம் முழு மனதுடன் செய்தால் பலன் உண்டு. 🙏");
+      return { category: cat, label: topic.label, answer: foc.join("\n\n") };
+    }
+  }
+
   // ── தொடக்கம் — ஜோதிடர் வரவேற்பு ──
   lines.push(`${greet}உங்கள் லக்னம் ${h.lagnaName}, சந்திர ராசி ${h.moonRashi}, நட்சத்திரம் ${h.nakshatra}. ${topic.label} குறித்து உங்கள் ஜாதகத்தை ஆராய்ந்து சொல்கிறேன்.`);
 
-  const { md, ad } = currentLords(dashaData);
   const ka = extras.keyAreas ? extras.keyAreas[cat] : null;
 
   if (ka) {
@@ -191,8 +242,6 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
   }
 
   // ── எப்போது — நிகழ்வு காலக்கணிப்பு (தசா × கோசாரம் × வாக்குறுதி) ──
-  const et = extras.eventTiming;
-  const isCaution = cat === "health";
   const timing = [];
   if (md) timing.push(`தற்போது ${md}${ad ? `-${ad}` : ""} தசை நடைபெறுகிறது.`);
   if (et && Array.isArray(et.windows) && et.windows.length) {

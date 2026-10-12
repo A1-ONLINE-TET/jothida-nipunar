@@ -184,9 +184,11 @@ export default {
         const h = buildHoroscope(birth, swiss);
         h._name = birth.name || "";
         // follow-up நினைவு: keyword இல்லையேல் முந்தைய தலைப்பைத் தொடரு
+        const rawCat = classifyQuestion(question, "");
         const cat0 = classifyQuestion(question, lastTopic);
         const extras = computeConsultation(h, birth, cat0);
         extras.category = cat0;
+        extras.followUp = rawCat === "general" && cat0 !== "general";
         const { category, label, answer } = buildAskAnswer(h, extras.dashaData, question, extras);
         return json(env, origin, { category, label, answer });
       }
