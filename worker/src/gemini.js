@@ -16,8 +16,14 @@ export async function callGemini(env, prompt, maxTokens = 1000) {
   const body = JSON.stringify({
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
-      maxOutputTokens: Math.min(Math.max(maxTokens, 1), 2048),
+      // Gemini 3.x flash models "think" by default, and those hidden
+      // thinking tokens count against maxOutputTokens — leaving almost
+      // nothing for the real answer (answers got cut to one line).
+      // thinkingBudget:0 turns thinking off so all tokens go to the reply,
+      // and a generous cap guarantees the Tamil answer completes.
+      maxOutputTokens: Math.min(Math.max(maxTokens, 1), 4096),
       temperature: 0.7,
+      thinkingConfig: { thinkingBudget: 0 },
     },
   });
 
