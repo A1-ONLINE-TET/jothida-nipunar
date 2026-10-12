@@ -1,21 +1,32 @@
 import {
-  ArrowLeft, Star, Sparkles, Compass, BookOpen,
-  CalendarDays, ChevronRight,
+  ArrowLeft, Heart, Briefcase, Coins, HeartPulse,
+  GraduationCap, Baby, Plane, MessageCircle, ChevronRight, Sparkles,
 } from "lucide-react";
 
 import "./home.css";
 
-const services = [
-  { key: "dasha",       title: "தசா அட்டவணை",          description: "விம்சோத்தரி தசா, அந்தர்தசா காலக்கணக்கு",     icon: Star,         theme: "yellow" },
-  { key: "yogas",       title: "யோகங்கள் & தோஷங்கள்",  description: "மகாபுருஷ யோகம், கால சர்ப்ப, செவ்வாய் தோஷம்",  icon: Sparkles,     theme: "purple" },
-  { key: "nakbhava",    title: "நட்சத்திர-பாவக",       description: "நட்சத்திர-பாவக இணைப்பு, கோசார காலம்",        icon: Compass,      theme: "blue" },
-  { key: "backtest",    title: "Backtest சரிபார்ப்பு",  description: "கடந்த நிகழ்வுகளில் ஜோதிட துல்லியம் சோதனை",   icon: BookOpen,     theme: "green" },
-  { key: "eventtiming", title: "நிகழ்வு நேரம்",        description: "திருமணம், வேலை, பயணம் — சிறந்த நேரம்",       icon: CalendarDays, theme: "blue" },
-  { key: "sadesati",    title: "சாதே சாதி / குரு பெயர்ச்சி", description: "சனி, குரு கோசார தாக்கம் பார்க்கவும்",  icon: Star,         theme: "yellow" },
-  { key: "muhurtham",   title: "முகூர்த்தம்",           description: "சுப நேரம், ராகு காலம், யமகண்டம்",            icon: CalendarDays, theme: "peach" },
+// நோக்கம் (purpose) அடிப்படை — ஒவ்வொரு தலைப்பும் ஒரு கேள்வியாக engine-க்கு செல்லும்.
+// worker/src/ask.js இந்தக் கேள்விகளை topic-ஆக classify செய்து chart படித்து பதிலளிக்கும்.
+const topics = [
+  { key: "marriage",  title: "திருமணம்",        description: "வாழ்க்கைத் துணை, காலம், பொருத்தம்",  icon: Heart,         theme: "rose",
+    question: "என் திருமணம் எப்போது நடக்கும்? வாழ்க்கைத் துணை எப்படி இருப்பார்?" },
+  { key: "career",    title: "தொழில் / வேலை",    description: "முன்னேற்றம், பதவி உயர்வு, துறை",     icon: Briefcase,     theme: "blue",
+    question: "என் தொழிலில் முன்னேற்றம் எப்போது? எந்தத் துறை சிறந்தது?" },
+  { key: "wealth",    title: "பணம் / செல்வம்",   description: "வருமானம், சேமிப்பு, செல்வ யோகம்",    icon: Coins,         theme: "yellow",
+    question: "என் பண வரவு, செல்வ வளர்ச்சி எப்படி இருக்கும்?" },
+  { key: "health",    title: "ஆரோக்கியம்",       description: "உடல்நலம், தோஷம், கவனம் தேவை காலம்",  icon: HeartPulse,    theme: "green",
+    question: "என் ஆரோக்கியம் பற்றி சொல்லுங்கள். கவனம் தேவை காலம் எது?" },
+  { key: "education", title: "கல்வி / படிப்பு",  description: "தேர்வு வெற்றி, உயர்கல்வி வாய்ப்பு",  icon: GraduationCap, theme: "purple",
+    question: "என் கல்வி, படிப்பில் வெற்றி உண்டா? உயர்கல்வி வாய்ப்பு?" },
+  { key: "children",  title: "குழந்தை பாக்கியம்", description: "சந்ததி, குழந்தை யோகம், காலம்",      icon: Baby,          theme: "peach",
+    question: "குழந்தை பாக்கியம் பற்றி சொல்லுங்கள்." },
+  { key: "travel",    title: "பயணம் / வெளிநாடு", description: "வெளிநாட்டு வாய்ப்பு, இட மாற்றம்",     icon: Plane,         theme: "blue",
+    question: "வெளிநாடு செல்லும் வாய்ப்பு உண்டா? எப்போது?" },
+  { key: "general",   title: "சொந்த கேள்வி",      description: "உங்கள் கேள்வியை நேரடியாகக் கேளுங்கள்", icon: MessageCircle, theme: "rose",
+    question: "" },
 ];
 
-export default function AdvisoryScreen({ handle = () => {}, onBack = () => {} }) {
+export default function AdvisoryScreen({ onBack = () => {}, onPick = () => {}, astrologerName = "ஜோதிட குரு" }) {
   return (
     <main className="app-shell">
       <div className="sky-stars" aria-hidden="true" />
@@ -29,19 +40,17 @@ export default function AdvisoryScreen({ handle = () => {}, onBack = () => {} })
         <button className="round-button" aria-label="பின் செல்" onClick={onBack}>
           <ArrowLeft size={24} />
         </button>
-
-        <button className="brand brand-logo" aria-label="Topper Astro home" onClick={() => handle("home")}>
+        <button className="brand brand-logo" aria-label="Topper Astro home" onClick={onBack}>
           <img src="/logo/topper-text.webp" alt="TOPPER ASTRO" />
         </button>
-
         <span className="round-button" aria-hidden="true" style={{ visibility: "hidden" }} />
       </header>
 
       <section className="hero" style={{ minHeight: "auto", paddingBottom: 8 }}>
         <div className="hero-copy">
-          <h1>ஜோதிடரிடம் ஆலோசனை</h1>
+          <h1>{astrologerName}</h1>
           <p style={{ color: "#c9a84a", fontSize: 13, marginTop: 6, fontWeight: 600 }}>
-            விரிவான ஜோதிட பகுப்பாய்வு
+            எந்தத் தலைப்பில் ஆலோசனை வேண்டும்?
           </p>
           <div className="gold-divider">
             <span />
@@ -51,16 +60,16 @@ export default function AdvisoryScreen({ handle = () => {}, onBack = () => {} })
         </div>
       </section>
 
-      <section className="services-grid" aria-label="Advanced astrology services">
-        {services.map((service) => {
-          const Icon = service.icon;
+      <section className="services-grid" aria-label="ஆலோசனை தலைப்புகள்">
+        {topics.map((t) => {
+          const Icon = t.icon;
           return (
-            <button className={`service-card ${service.theme}`} key={service.key} onClick={() => handle(service.key)}>
+            <button className={`service-card ${t.theme}`} key={t.key} onClick={() => onPick(t.question)}>
               <span className="service-icon">
                 <Icon size={31} strokeWidth={1.6} />
               </span>
-              <span className="service-title">{service.title}</span>
-              <span className="service-description">{service.description}</span>
+              <span className="service-title">{t.title}</span>
+              <span className="service-description">{t.description}</span>
               <span className="service-arrow">
                 <ChevronRight size={18} />
               </span>

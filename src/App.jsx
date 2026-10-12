@@ -831,6 +831,7 @@ export default function AstrologyApp() {
   const [formData, setFormData] = useState({ name:"", dob:"", tob:"", sec:"", pob:"", ampm:"AM", gender:"", pobLat:null, pobLon:null, pobSource:null });
   // சேமித்த ஜாதகங்கள் — lazy initializer: localStorage read ஒருமுறை மட்டும்
   const [profiles, setProfiles] = useState(loadProfiles);
+  const [chatInitialQ, setChatInitialQ] = useState(""); // ஆலோசனை தலைப்பிலிருந்து chat-க்கு auto கேள்வி
 
   // ஜாதகம் வெற்றிகரமாக உருவானதும் அழைக்கப்படும் — அதே நபர் (பெயர்+தேதி+நேரம்)
   // ஏற்கனவே இருந்தால் புதுப்பிக்கும்; இல்லையேல் பட்டியலின் முதலில் சேர்க்கும்.
@@ -1476,11 +1477,7 @@ export default function AstrologyApp() {
       case "muhurtham":   goTo(SCREEN.CALENDAR); break;
       case "porutham":    setHomeQuestion(null); goTo(SCREEN.PORUTHAM); break;
       case "calendar":    goTo(SCREEN.CALENDAR); break;
-      case "consult":
-        if (formData.name && formData.dob) goTo(SCREEN.CHAT);
-        else if (profiles[0]) { loadProfile(profiles[0]); goTo(SCREEN.CHAT); }
-        else goTo(SCREEN.FORM);
-        break;
+      case "consult":    goTo(SCREEN.ADVISORY); break;
       case "account":     goTo(SCREEN.FORM); break;
       default: break;
     }
@@ -1491,7 +1488,14 @@ export default function AstrologyApp() {
   }
 
   if(screen===SCREEN.ADVISORY) {
-    return <AdvisoryScreen handle={handleNav} onBack={()=>goTo(SCREEN.HOME)} />;
+    const pickTopic = (question) => {
+      const ready = formData.name && formData.dob;
+      const go = () => { setChatInitialQ(question || ""); goTo(SCREEN.CHAT); };
+      if (ready) go();
+      else if (profiles[0]) { loadProfile(profiles[0]); go(); }
+      else goTo(SCREEN.FORM);
+    };
+    return <AdvisoryScreen onBack={()=>goTo(SCREEN.HOME)} onPick={pickTopic} astrologerName="ஜோதிட குரு" />;
   }
 
   // ═══════ CHAT — rule-based ஜோதிடர் உரையாடல் (LLM இல்லை) ═══════
@@ -1524,7 +1528,9 @@ export default function AstrologyApp() {
       const geo = chartMeta?.geo || resolveBirthGeo(p);
       return payThenAskPremium({ birth: buildBirth(dobISO, finalTime, geo), question, name: p.name, amountPaise: 4900 });
     };
-    return <ChatScreen ask={askAstrologer} askPremium={askPremiumAstrologer} personName={formData.name || ""} onBack={()=>goTo(SCREEN.HOME)} />;
+    return <ChatScreen ask={askAstrologer} askPremium={askPremiumAstrologer} personName={formData.name || ""}
+      initialQuestion={chatInitialQ} astrologerName="ஜோதிட குரு"
+      onBack={()=>{ setChatInitialQ(""); goTo(SCREEN.ADVISORY); }} />;
   }
 
   // ═══════ SPLASH ═══════

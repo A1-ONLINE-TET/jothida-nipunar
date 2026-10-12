@@ -30,17 +30,27 @@ const SUGGESTIONS = [
   "ஆரோக்கியம் பற்றி சொல்லுங்கள்",
 ];
 
-export default function ChatScreen({ ask, askPremium, onBack, personName, premiumLabel = "⭐ ஆழமான AI பதில் · ₹49" }) {
+export default function ChatScreen({ ask, askPremium, onBack, personName, initialQuestion = "", astrologerName = "ஜோதிட குரு", astrologerTagline = "உங்கள் ஜாதகம் சார்ந்த பதில்கள்", premiumLabel = "⭐ ஆழமான AI பதில் · ₹49" }) {
   const [messages, setMessages] = useState([
-    { role: "astro", text: `வணக்கம்${personName ? " " + personName : ""} 🙏 நான் உங்கள் ஜோதிட வழிகாட்டி. உங்கள் ஜாதகத்தை ஆராய்ந்து பதிலளிக்கிறேன். உங்கள் கேள்வியைக் கேளுங்கள் — திருமணம், தொழில், பணம், ஆரோக்கியம், கல்வி...`, done: true },
+    { role: "astro", text: `வணக்கம்${personName ? " " + personName : ""} 🙏 நான் ${astrologerName}. உங்கள் ஜாதகத்தை ஆராய்ந்து பதிலளிக்கிறேன். உங்கள் கேள்வியைக் கேளுங்கள் — திருமணம், தொழில், பணம், ஆரோக்கியம், கல்வி...`, done: true },
   ]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef(null);
+  const autoSentRef = useRef(false);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, busy]);
+
+  // ஒரு நோக்கத் தலைப்பிலிருந்து வந்தால் — அந்தக் கேள்வியை தானாக அனுப்பு (ஒருமுறை)
+  useEffect(() => {
+    if (initialQuestion && !autoSentRef.current) {
+      autoSentRef.current = true;
+      send(initialQuestion);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuestion]);
 
   const send = async (q) => {
     const question = (q ?? input).trim();
@@ -87,8 +97,8 @@ export default function ChatScreen({ ask, askPremium, onBack, personName, premiu
         <div className="chat-astro">
           <div className="chat-ava">🔮</div>
           <div>
-            <div className="chat-ttl">ஜோதிட ஆலோசனை</div>
-            <div className="chat-sub">உங்கள் ஜாதகம் சார்ந்த பதில்கள்</div>
+            <div className="chat-ttl">{astrologerName}</div>
+            <div className="chat-sub">{astrologerTagline}</div>
           </div>
         </div>
       </header>

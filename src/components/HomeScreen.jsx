@@ -7,11 +7,10 @@ import {
 import "./home.css";
 
 const services = [
-  { key: "chart",    title: "ஜாதகக் கட்டம்",     description: "கிரக நிலைகள், லக்னம், ராசி முழு ஜாதகம்",   icon: Grid2X2,      theme: "peach" },
-  { key: "porutham", title: "திருமண பொருத்தம்",  description: "10 பொருத்தம், நாடி, ரஜ்ஜு, வேதம்",        icon: Heart,        theme: "rose" },
-  { key: "calendar", title: "ஜோதிட நாட்கள்",     description: "முகூர்த்தம், ராகு காலம், பஞ்சாங்கம்",      icon: CalendarDays, theme: "blue" },
-  { key: "consult",  title: "ஜோதிடரிடம் உரையாட", description: "உங்கள் கேள்விக்கு நேரடி பதில் பெறுங்கள்",  icon: UserRound,    theme: "green" },
-  { key: "advisory", title: "ஜோதிடரிடம் ஆலோசனை", description: "தசா, யோகம், பாவகம், முகூர்த்தம் — விரிவாக", icon: Sparkles,     theme: "purple" },
+  { key: "advisory", title: "ஜோதிடரிடம் ஆலோசனை", description: "திருமணம், தொழில், ஆரோக்கியம் — ஜோதிடர் பதில்", icon: Sparkles,     theme: "purple" },
+  { key: "chart",    title: "ஜாதகக் கட்டம்",     description: "கிரக நிலைகள், லக்னம், ராசி முழு ஜாதகம்",      icon: Grid2X2,      theme: "peach" },
+  { key: "porutham", title: "திருமண பொருத்தம்",  description: "10 பொருத்தம், நாடி, ரஜ்ஜு, வேதம்",           icon: Heart,        theme: "rose" },
+  { key: "calendar", title: "ஜோதிட நாட்கள்",     description: "முகூர்த்தம், ராகு காலம், பஞ்சாங்கம்",         icon: CalendarDays, theme: "blue" },
 ];
 
 const navigation = [
