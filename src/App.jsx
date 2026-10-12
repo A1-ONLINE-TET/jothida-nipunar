@@ -7,6 +7,8 @@ const zodiacRingImg = "/logo/zodiac-ring.webp";
 const compassImg = "/logo/compass.webp";
 const topperTextImg = "/logo/topper-text.webp";
 const logoFullImg = "/logo/logo-full.webp"; // static composite — welcome/header
+const newZodiacWheelImg = "/logo/new-zodiac-wheel.webp";
+const newTopperLogoImg = "/logo/new-topper-logo.webp";
 import HomeScreen from "./components/HomeScreen";
 import ChatScreen from "./components/ChatScreen";
 import { apiAsk } from "./api.js";
@@ -1555,70 +1557,62 @@ export default function AstrologyApp() {
 
   if(screen===SCREEN.SPLASH) return (
     <div style={{...base, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", overflow:"hidden"}}>
-      {/* premium backdrop — a single soft warm bloom behind the emblem gives
-          depth on white without reading as grey */}
-      <div aria-hidden="true" style={{position:"absolute", top:"39%", left:"50%",
-        width:"min(118vw,620px)", height:"min(118vw,620px)", transform:"translate(-50%,-50%)", pointerEvents:"none",
-        background:"radial-gradient(circle, rgba(201,164,78,0.10) 0%, rgba(201,164,78,0.035) 44%, transparent 70%)"}}/>
+      {/* radial glow backdrop */}
+      <div aria-hidden="true" style={{position:"absolute", top:"42%", left:"50%",
+        width:"min(130vw,640px)", height:"min(130vw,640px)", transform:"translate(-50%,-50%)", pointerEvents:"none",
+        background:"radial-gradient(circle, rgba(201,164,78,0.13) 0%, rgba(201,164,78,0.04) 48%, transparent 72%)"}}/>
 
-      {/* TOPPER ASTRO logo — 3 layers: zodiac ring (CW) + compass (CCW) rotate,
-          TOPPER text stays fixed on top. Tap = Om sound. */}
+      {/* sparkle flash overlay */}
+      <div aria-hidden="true" className="jn-flash-burst" style={{position:"absolute", top:"38%", left:"50%",
+        width:"min(110vw,520px)", height:"min(110vw,520px)", transform:"translate(-50%,-50%)", pointerEvents:"none",
+        background:"radial-gradient(circle, rgba(255,248,210,0.55) 0%, transparent 60%)"}}/>
+
       <div onClick={()=>{ const ok = playOmSound(); if(ok) setOmPlayed(true); }}
-        style={{position:"relative", width:"min(86vw, 55vh, 450px)", aspectRatio:"1/1.17", cursor:"pointer",
-          animation:"splashIn 1.1s ease-out"}}>
+        style={{display:"flex", flexDirection:"column", alignItems:"center", cursor:"pointer",
+          animation:"splashIn 1.0s ease-out"}}>
 
-        {/* wheels zone — upper square area, ring + inner wheel concentric */}
-        <div style={{position:"absolute", top:0, left:"50%", transform:"translateX(-50%)",
-          width:"85%", aspectRatio:"1/1"}}>
-          {/* warm halo behind the inner wheel — lifts the deep-navy disc so it
-              reads as luminous, not as a dark well */}
-          <div aria-hidden="true" style={{position:"absolute", top:"50%", left:"50%", width:"58%", height:"58%",
+        {/* 1. புதிய zodiac சக்கரம் — மேலே, சுழலும் */}
+        <div style={{position:"relative", width:"min(72vw,300px)", aspectRatio:"1/1"}}>
+          {/* golden glow halo */}
+          <div aria-hidden="true" style={{position:"absolute", top:"50%", left:"50%", width:"70%", height:"70%",
             transform:"translate(-50%,-50%)", borderRadius:"50%", pointerEvents:"none",
-            background:"radial-gradient(circle, rgba(255,243,210,0.60) 0%, rgba(255,240,200,0.22) 52%, transparent 72%)"}}/>
-          {/* 1. பின்புற ராசி சக்கரம் — கடிகார திசை (CW) */}
-          <img src={zodiacRingImg} alt="ராசி சக்கரம்" className="jn-spin-cw"
-            style={{position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain",
-              filter:"drop-shadow(0 6px 22px rgba(184,134,11,0.22))"}}/>
-          {/* 2. நடு ராசி-நட்சத்திர wheel — எதிர் திசை (CCW), சற்று பிரகாசம் */}
-          <img src={compassImg} alt="" aria-hidden="true" className="jn-spin-ccw"
-            style={{position:"absolute", top:"50%", left:"50%", width:"56%", height:"56%",
-              transform:"translate(-50%,-50%)", objectFit:"contain",
-              filter:"brightness(1.07) saturate(1.05) drop-shadow(0 2px 10px rgba(0,0,0,0.18))"}}/>
+            background:"radial-gradient(circle, rgba(255,240,180,0.55) 0%, transparent 70%)"}}/>
+          <img src={newZodiacWheelImg} alt="ராசி சக்கரம்" className="jn-spin-cw"
+            style={{width:"100%", height:"100%", objectFit:"contain",
+              filter:"drop-shadow(0 8px 28px rgba(184,134,11,0.30)) drop-shadow(0 0 12px rgba(201,164,78,0.20))"}}/>
         </div>
 
-        {/* 3. TOPPER ASTRO எழுத்து — நிலையாக, முன்னே, சக்கரத்தின் கீழ் overlap */}
-        <img src={topperTextImg} alt="TOPPER ASTRO" className="jn-topper-in"
-          style={{position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)",
-            width:"96%", objectFit:"contain", zIndex:4}}/>
+        {/* 2. TopperAstro logo — கீழே, centered, நிலையாக */}
+        <img src={newTopperLogoImg} alt="TOPPER ASTRO" className="jn-topper-slide"
+          style={{width:"min(82vw,360px)", objectFit:"contain", marginTop:-8,
+            filter:"drop-shadow(0 6px 22px rgba(184,134,11,0.28))"}}/>
       </div>
 
-      {/* brand name + tagline + slim loader */}
-      <div style={{textAlign:"center", zIndex:3, marginTop:16, animation:"splashIn 1.5s ease-out"}}>
-        <div style={{display:"flex", alignItems:"center", justifyContent:"center", gap:12, margin:"0 0 9px"}}>
+      {/* tagline + loader */}
+      <div style={{textAlign:"center", zIndex:3, marginTop:20, animation:"splashIn 1.5s ease-out"}}>
+        <div style={{display:"flex", alignItems:"center", justifyContent:"center", gap:12, margin:"0 0 8px"}}>
           <span style={{width:30, height:1, background:"linear-gradient(90deg,transparent,#c9a44e)"}}/>
-          <p className="jn-serif" style={{fontSize:16, color:"#7b1c1c", letterSpacing:2, fontWeight:700, margin:0}}>ஜோதிட நிபுணர்</p>
+          <p className="jn-serif" style={{fontSize:15, color:"#7b1c1c", letterSpacing:2, fontWeight:700, margin:0}}>ஜோதிட நிபுணர்</p>
           <span style={{width:30, height:1, background:"linear-gradient(90deg,#c9a44e,transparent)"}}/>
         </div>
         <p style={{fontSize:10.5, color:"#b08a3e", letterSpacing:2.4, margin:0, textTransform:"uppercase"}}>Swiss Ephemeris · Classical Vedic Astrology</p>
         <div style={{width:148, height:3, borderRadius:3, background:"rgba(184,134,11,0.15)",
-          overflow:"hidden", margin:"20px auto 0"}}>
+          overflow:"hidden", margin:"18px auto 0"}}>
           <div className="jn-load-bar" style={{height:"100%", width:"42%", borderRadius:3,
             background:"linear-gradient(90deg,#e8c979,#b8860b)"}}/>
         </div>
       </div>
       <style>{`
-        @keyframes splashIn{from{opacity:0;transform:scale(0.92) translateY(16px);}to{opacity:1;transform:scale(1) translateY(0);}}
+        @keyframes splashIn{from{opacity:0;transform:scale(0.93) translateY(18px);}to{opacity:1;transform:scale(1) translateY(0);}}
         @keyframes jnSpinCW{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
-        @keyframes jnSpinCCW{from{transform:rotate(0deg);}to{transform:rotate(-360deg);}}
-        .jn-spin-cw{animation:jnSpinCW 60s linear infinite;transform-origin:50% 50%;}
-        .jn-spin-ccw{transform-origin:50% 50%;animation:jnSpinCCWc 38s linear infinite;}
-        @keyframes jnSpinCCWc{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(-360deg);}}
-        @keyframes jnTopperIn{from{opacity:0;transform:translateX(-50%) translateY(14px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
-        .jn-topper-in{animation:jnTopperIn 1.3s ease-out;}
-        @keyframes jnGlowPulse{0%,100%{opacity:0.3;transform:scale(0.85);}50%{opacity:1;transform:scale(1);}}
+        .jn-spin-cw{animation:jnSpinCW 55s linear infinite;transform-origin:50% 50%;}
+        @keyframes jnTopperSlide{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+        .jn-topper-slide{animation:jnTopperSlide 1.4s ease-out;}
+        @keyframes jnFlashBurst{0%{opacity:0;}18%{opacity:1;}60%{opacity:0.6;}100%{opacity:0.15;}}
+        .jn-flash-burst{animation:jnFlashBurst 2.2s ease-out forwards;}
         @keyframes jnLoadBar{0%{transform:translateX(-120%);}100%{transform:translateX(360%);}}
         .jn-load-bar{animation:jnLoadBar 1.5s cubic-bezier(0.65,0,0.35,1) infinite;}
-        @media (prefers-reduced-motion: reduce){ .jn-spin-cw,.jn-spin-ccw,.jn-load-bar{animation:none;} }
+        @media (prefers-reduced-motion: reduce){ .jn-spin-cw,.jn-load-bar{animation:none;} }
         @keyframes pulse{0%,100%{opacity:0.3;}50%{opacity:1;}}
       `}</style>
     </div>
