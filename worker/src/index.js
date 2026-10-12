@@ -61,7 +61,7 @@ function corsHeaders(env, origin) {
   const h = {
     "Vary": "Origin",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Access-Code",
     "Access-Control-Max-Age": "86400",
   };
   if (allow) h["Access-Control-Allow-Origin"] = allow;
