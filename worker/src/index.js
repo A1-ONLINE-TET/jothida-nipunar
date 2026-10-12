@@ -15,6 +15,7 @@ import {
 } from "./compute.js";
 import { buildBirthPrompt, buildDailyPrompt, buildAskPrompt, currentDashaInfo } from "./prompt.js";
 import { classifyQuestion, buildAskAnswer } from "./ask.js";
+import { createOrder, verifyPayment } from "./pay.js";
 import { callClaude } from "./claude.js";
 import { callGemini } from "./gemini.js";
 
@@ -242,6 +243,7 @@ export default {
         const lastTopic = clampStr(body?.lastTopic, 40);
         const swiss = await fetchSwiss(env, birth);
         const h = buildHoroscope(birth, swiss);
+        h._name = birth.name;
         const dashaData = computeDasha(h, birth);
         const { category, label } = classifyQuestion(question, lastTopic);
         const answer = buildAskAnswer(h, dashaData, question, { category, name: birth.name });
@@ -249,20 +251,56 @@ export default {
       }
 
       // ── /api/ask-ai — AI-powered astrologer Q&A (Gemini / Claude) ──
+      // Engine finds the facts; the LLM phrases them naturally. If no AI key
+      // is set or the call fails, we fall back to the rule-based answer.
       if (url.pathname === "/api/ask-ai") {
         const birth = normalizeBirth(body);
         const question = clampStr(body?.question, 300);
         const lastTopic = clampStr(body?.lastTopic, 40);
         const swiss = await fetchSwiss(env, birth);
         const h = buildHoroscope(birth, swiss);
+        h._name = birth.name;
         const dashaData = computeDasha(h, birth);
         const { category, label } = classifyQuestion(question, lastTopic);
         const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name });
-        const dashaInfo = currentDashaInfo({ dashaData });
-        // Build AI prompt grounded in engine findings (AI adds language, engine adds facts)
-        const prompt = buildAskPrompt({ person: { name: birth.name }, horoscope: h, dashaInfo, question, engineFindings });
-        const ai = await callAI(env, prompt, 400);
-        return json(env, origin, { category, label, answer: engineFindings, ai });
+        const dashaInfo = currentDashaInfo(dashaData);
+        let answer = engineFindings, ai = false;
+        try {
+          const prompt = buildAskPrompt({ person: { name: birth.name }, horoscope: h, dashaInfo, question });
+          const text = await callAI(env, prompt, 400);
+          if (text && text.trim()) { answer = text.trim(); ai = true; }
+        } catch (_) { /* fall back to engine findings */ }
+        return json(env, origin, { category, label, answer, ai });
+      }
+
+      // ── /api/order — create a Razorpay order for the premium answer ──
+      if (url.pathname === "/api/order") {
+        const amount = Math.min(Math.max(parseInt(body?.amount, 10) || 4900, 100), 100000);
+        try {
+          const order = await createOrder(env, amount);
+          return json(env, origin, { orderId: order.id, amount: order.amount, keyId: env.RAZORPAY_KEY_ID });
+        } catch (_) {
+          return json(env, origin, { error: "payment not available" }, 503);
+        }
+      }
+
+      // ── /api/ask-premium — deep AI answer, only after verified payment ──
+      if (url.pathname === "/api/ask-premium") {
+        const orderId = clampStr(body?.razorpay_order_id, 64);
+        const paymentId = clampStr(body?.razorpay_payment_id, 64);
+        const signature = clampStr(body?.razorpay_signature, 128);
+        const ok = await verifyPayment(env, orderId, paymentId, signature);
+        if (!ok) return json(env, origin, { error: "payment verification failed" }, 402);
+        const birth = normalizeBirth(body);
+        const question = clampStr(body?.question, 300);
+        const swiss = await fetchSwiss(env, birth);
+        const h = buildHoroscope(birth, swiss);
+        h._name = birth.name;
+        const dashaData = computeDasha(h, birth);
+        const dashaInfo = currentDashaInfo(dashaData);
+        const prompt = buildAskPrompt({ person: { name: birth.name }, horoscope: h, dashaInfo, question });
+        const answer = await callAI(env, prompt, 800);
+        return json(env, origin, { answer });
       }
 
       // ── /api/engine — generic allow-listed engine RPC {fn, args} ──

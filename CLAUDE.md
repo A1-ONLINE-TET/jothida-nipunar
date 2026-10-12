@@ -61,7 +61,10 @@ Design மாற்றம் secure engine-ஐ தொடாது — பாத�
 - **API (Cloudflare Worker):** `jothidarjothi` → https://jothidarjothi.1982chandramathan.workers.dev
   - Root directory `worker`, deploy command `npx wrangler deploy`
   - Runtime var `FIREBASE_PROJECT_ID = jothidar-d1c8c` (in `worker/wrangler.toml`)
-  - Secret needed for AI பலன்: `ANTHROPIC_API_KEY` (set in Worker → Settings → Variables & Secrets, type=Secret) — **not yet set**
+  - AI provider: `AI_PROVIDER` var (`gemini` அல்லது `claude`) — தற்போது **gemini**.
+    - Gemini: `GEMINI_API_KEY` secret (set ✅). Model var `GEMINI_MODEL` (default `gemini-2.0-flash`).
+    - Claude (alt): `ANTHROPIC_API_KEY` secret. key இல்லாவிட்டால் தானாக மற்றதற்கு fallback.
+  - Premium ₹49 ஆழமான பதில்: `RAZORPAY_KEY_ID` + `RAZORPAY_KEY_SECRET` secrets (optional — இல்லாவிட்டால் /api/order 503).
   - CORS allow-list `ALLOWED_ORIGINS` in `worker/wrangler.toml` — புதிய domain சேர்த்தால் இங்கே சேர்.
 - **Firebase:** project `jothidar-d1c8c` — Auth (Anonymous auto sign-in), Firestore (default-deny rules).
 

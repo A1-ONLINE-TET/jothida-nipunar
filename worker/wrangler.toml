@@ -11,10 +11,20 @@ compatibility_flags = ["nodejs_compat"]
 #
 # Secrets are NOT stored in this file. Set them once with:
 #   wrangler secret put ANTHROPIC_API_KEY
-#   wrangler secret put INTERNAL_TOKEN            # shared with the Python backend
-#   wrangler secret put FIREBASE_PROJECT_ID       # e.g. jothida-nipunar
+#   wrangler secret put GEMINI_API_KEY            # Google AI Studio key (AI பலன் / chat)  ← REQUIRED when AI_PROVIDER="gemini"
+#   wrangler secret put ANTHROPIC_API_KEY         # Claude key (alternative AI provider)
+#   wrangler secret put RAZORPAY_KEY_ID           # premium ₹49 answer (optional — /api/order, /api/ask-premium)
+#   wrangler secret put RAZORPAY_KEY_SECRET       # premium ₹49 answer (optional)
+#   wrangler secret put INTERNAL_TOKEN            # shared with the Python backend (optional)
 #   wrangler secret put SWISS_BACKEND_URL         # https://jothida-api.onrender.com  (optional, high precision)
 #
+# NOTE: FIREBASE_PROJECT_ID is a PUBLIC var (below), NOT a secret.
+#
+# ── What each feature needs ──────────────────────────────────────────
+#   Core (ஜாதகம், தினப்பலன், porutham …) : nothing beyond the [vars] below
+#   Chat / AI பலன் (ஆலோசனை)              : GEMINI_API_KEY  (+ AI_PROVIDER="gemini")
+#   AI OFF chat (rule-based)              : nothing — works offline of any LLM
+#   Premium ₹49 ஆழமான பதில்              : RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET
 # Public, non-secret config goes under [vars] below.
 # ═══════════════════════════════════════════════════════════════════
 
