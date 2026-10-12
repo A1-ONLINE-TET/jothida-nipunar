@@ -34,6 +34,17 @@ const SUGGESTIONS = [
   "ஆரோக்கியம் பற்றி சொல்லுங்கள்",
 ];
 
+// Answers must be plain strings before they become a message — a non-string
+// (object/number) would throw when rendered as a React child or sliced by the
+// typewriter, blanking the whole app. Coerce defensively at the boundary.
+function asText(v, fallback) {
+  if (typeof v === "string" && v.trim()) return v;
+  if (v == null) return fallback;
+  if (typeof v === "object") return fallback;
+  const s = String(v);
+  return s.trim() ? s : fallback;
+}
+
 export default function ChatScreen({ ask, askAI, askPremium, onBack, personName, initialQuestion = "", astrologerName = "ஜோதிட குரு", astrologerTagline = "உங்கள் ஜாதகம் சார்ந்த பதில்கள்", premiumLabel = "⭐ ஆழமான AI பதில் · ₹49" }) {
   const [aiMode, setAiMode] = useState(false); // 🤖 AI இயல்பு மொழி (Gemini) ON/OFF
   const [messages, setMessages] = useState([
@@ -68,7 +79,7 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, personName,
       const fn = (aiMode && askAI) ? askAI : ask;
       const { answer, category } = await fn(question, lastTopicRef.current);
       if (category && category !== "general") lastTopicRef.current = category;
-      setMessages((m) => [...m, { role: "astro", text: answer || "மன்னிக்கவும், இப்போது பதிலளிக்க முடியவில்லை.", done: false }]);
+      setMessages((m) => [...m, { role: "astro", text: asText(answer, "மன்னிக்கவும், இப்போது பதிலளிக்க முடியவில்லை."), done: false }]);
     } catch (e) {
       setMessages((m) => [...m, { role: "astro", text: "⚠ சர்வர் இப்போது பதிலளிக்கவில்லை. சில வினாடிகள் கழித்து மீண்டும் முயற்சிக்கவும்.", done: true }]);
     } finally {
@@ -84,7 +95,7 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, personName,
     setBusy(true);
     try {
       const { answer } = await askPremium(question);
-      setMessages((m) => [...m, { role: "astro", text: answer || "மன்னிக்கவும், பதிலளிக்க முடியவில்லை.", done: false, premium: true }]);
+      setMessages((m) => [...m, { role: "astro", text: asText(answer, "மன்னிக்கவும், பதிலளிக்க முடியவில்லை."), done: false, premium: true }]);
     } catch (e) {
       const msg = String(e?.message || "");
       if (msg !== "cancelled") {
