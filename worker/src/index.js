@@ -13,7 +13,8 @@ import {
   buildHoroscope, computeFullReport, computeDasha, computeDailyBundle,
   computeBacktest, computeEventTiming, computeNakBhava, computePorutham,
 } from "./compute.js";
-import { buildBirthPrompt, buildDailyPrompt, currentDashaInfo } from "./prompt.js";
+import { buildBirthPrompt, buildDailyPrompt, buildAskPrompt, currentDashaInfo } from "./prompt.js";
+import { classifyQuestion, buildAskAnswer } from "./ask.js";
 import { callClaude } from "./claude.js";
 import { callGemini } from "./gemini.js";
 
@@ -232,6 +233,36 @@ export default {
         const groom = norm(body?.groom || {});
         const ayanamsaKey = AYANAMSAS.has(body?.ayanamsaKey) ? body.ayanamsaKey : "lahiri";
         return json(env, origin, { result: computePorutham(bride, groom, ayanamsaKey) });
+      }
+
+      // ── /api/ask — rule-based astrologer Q&A (free, no LLM) ──
+      if (url.pathname === "/api/ask") {
+        const birth = normalizeBirth(body);
+        const question = clampStr(body?.question, 300);
+        const lastTopic = clampStr(body?.lastTopic, 40);
+        const swiss = await fetchSwiss(env, birth);
+        const h = buildHoroscope(birth, swiss);
+        const dashaData = computeDasha(h, birth);
+        const { category, label } = classifyQuestion(question, lastTopic);
+        const answer = buildAskAnswer(h, dashaData, question, { category, name: birth.name });
+        return json(env, origin, { category, label, answer });
+      }
+
+      // ── /api/ask-ai — AI-powered astrologer Q&A (Gemini / Claude) ──
+      if (url.pathname === "/api/ask-ai") {
+        const birth = normalizeBirth(body);
+        const question = clampStr(body?.question, 300);
+        const lastTopic = clampStr(body?.lastTopic, 40);
+        const swiss = await fetchSwiss(env, birth);
+        const h = buildHoroscope(birth, swiss);
+        const dashaData = computeDasha(h, birth);
+        const { category, label } = classifyQuestion(question, lastTopic);
+        const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name });
+        const dashaInfo = currentDashaInfo({ dashaData });
+        // Build AI prompt grounded in engine findings (AI adds language, engine adds facts)
+        const prompt = buildAskPrompt({ person: { name: birth.name }, horoscope: h, dashaInfo, question, engineFindings });
+        const ai = await callAI(env, prompt, 400);
+        return json(env, origin, { category, label, answer: engineFindings, ai });
       }
 
       // ── /api/engine — generic allow-listed engine RPC {fn, args} ──
