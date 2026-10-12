@@ -12,8 +12,14 @@ const newTopperLogoImg = "/logo/new-topper-logo.webp";
 import HomeScreen from "./components/HomeScreen";
 import AdvisoryScreen from "./components/AdvisoryScreen";
 import ChatScreen from "./components/ChatScreen";
-import { apiAsk, apiAskAI } from "./api.js";
+import { apiAsk, apiAskAI, apiAskDeep } from "./api.js";
 import { payThenAskPremium } from "./components/razorpay.js";
+
+// ── FREE MODE ──────────────────────────────────────────────────────
+// இப்போது எல்லாம் இலவசம். ஆழமான AI பதிலுக்கு பணம் தேவையில்லை.
+// பணம் enable செய்ய வேண்டியபோது: PAYMENTS_ENABLED = true ஆக்கவும்
+// (premium பட்டன் மீண்டும் Razorpay checkout-க்கு செல்லும்).
+const PAYMENTS_ENABLED = false;
 // ── The proprietary interpretive engine runs ONLY in the Cloudflare
 // Worker. The browser talks to it through api.js and never imports the
 // engine. Public panchangam/ephemeris + trivial display helpers come from
@@ -1541,10 +1547,15 @@ export default function AstrologyApp() {
       }
       const finalTime = chartMeta?.finalTime || `${String(h24).padStart(2,"0")}:${String(min).padStart(2,"0")}`;
       const geo = chartMeta?.geo || resolveBirthGeo(p);
-      return payThenAskPremium({ birth: buildBirth(dobISO, finalTime, geo), question, name: p.name, amountPaise: 4900 });
+      const birth = buildBirth(dobISO, finalTime, geo);
+      // FREE mode: deep answer with no payment. When payments are on,
+      // route through Razorpay checkout as before.
+      if (!PAYMENTS_ENABLED) return apiAskDeep(birth, question);
+      return payThenAskPremium({ birth, question, name: p.name, amountPaise: 4900 });
     };
     return <ChatScreen ask={askAstrologer} askAI={askAstrologerAI} askPremium={askPremiumAstrologer} personName={formData.name || ""}
       initialQuestion={chatInitialQ} astrologerName="ஜோதிட குரு"
+      premiumLabel={PAYMENTS_ENABLED ? "⭐ ஆழமான AI பதில் · ₹49" : "⭐ ஆழமான AI பதில்"}
       onBack={()=>{ setChatInitialQ(""); goTo(SCREEN.ADVISORY); }} />;
   }
 

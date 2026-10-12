@@ -275,6 +275,29 @@ export default {
         return json(env, origin, { category, label, answer, ai });
       }
 
+      // ── /api/ask-deep — FREE deep AI answer (no payment) ──
+      // Same grounded flow as /api/ask-premium but without the Razorpay
+      // gate. Used while the app is in free mode; payment can be turned
+      // back on by routing the premium button to /api/ask-premium again.
+      if (url.pathname === "/api/ask-deep") {
+        const birth = normalizeBirth(body);
+        const question = clampStr(body?.question, 300);
+        const lastTopic = clampStr(body?.lastTopic, 40);
+        const swiss = await fetchSwiss(env, birth);
+        const h = buildHoroscope(birth, swiss);
+        h._name = birth.name;
+        const dashaData = computeDasha(h, birth);
+        const { category, label } = classifyQuestion(question, lastTopic);
+        const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name });
+        let answer = engineFindings, ai = false;
+        try {
+          const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings, deep: true });
+          const text = await callAI(env, prompt, 1000);
+          if (text && text.trim()) { answer = text.trim(); ai = true; }
+        } catch (_) { /* fall back to engine findings */ }
+        return json(env, origin, { category, label, answer, ai });
+      }
+
       // ── /api/order — create a Razorpay order for the premium answer ──
       if (url.pathname === "/api/order") {
         const amount = Math.min(Math.max(parseInt(body?.amount, 10) || 4900, 100), 100000);

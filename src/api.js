@@ -78,6 +78,12 @@ export async function apiAskAI(birth, question, lastTopic = "") {
   return { category, label, answer, ai };
 }
 
+// FREE deep answer (no payment) — engine findings phrased deeply by the LLM.
+export async function apiAskDeep(birth, question, lastTopic = "") {
+  const { answer, ai } = await post("/api/ask-deep", { ...birth, question, lastTopic });
+  return { answer, ai };
+}
+
 // Create a Razorpay order (amount in paise). Returns {orderId, amount, keyId}.
 export async function apiOrder(amount) {
   return post("/api/order", { amount });
