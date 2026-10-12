@@ -54,7 +54,8 @@ Design மாற்றம் secure engine-ஐ தொடாது — பாத�
 ## 🚀 Deploy அமைப்பு (LIVE)
 - **Repo:** `A1-ONLINE-TET/jothida-nipunar`
 - **Working branch:** `claude/gifted-bell-30bulb`  ← Pages + Worker இதிலிருந்து auto-deploy
-- **Website (Cloudflare Pages):** project `jothida-app` → https://jothida-nipunar.pages.dev
+  - ⚠️ Pages **Production branch** = `claude/gifted-bell-30bulb` (Cloudflare → jothida-nipunar → Settings → Branch control). இதை மாற்றினால் push production-க்கு போகாது, preview மட்டுமே.
+- **Website (Cloudflare Pages):** project **`jothida-nipunar`** → https://jothida-nipunar.pages.dev
   - Build: command `npm run build`, output `dist`
   - Env vars (Production): `VITE_API_URL`, `VITE_FIREBASE_API_KEY`,
     `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`
