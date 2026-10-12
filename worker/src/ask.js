@@ -74,6 +74,16 @@ function fmtMonthYear(d) {
   return `${TA_MONTHS[dt.getMonth()]} ${dt.getFullYear()}`;
 }
 
+// bhavaPhalam-இல் ஒரு வீட்டு எண்ணுக்கான classical reading-ஐ கண்டுபிடி
+function houseReadingFor(bhavaPhalam, houseNum) {
+  if (!bhavaPhalam || !Array.isArray(bhavaPhalam.areas)) return null;
+  for (const a of bhavaPhalam.areas) {
+    const hr = (a.houseReadings || []).find((r) => r.houseNum === houseNum);
+    if (hr) return hr;
+  }
+  return null;
+}
+
 const houseSign = (lagnaIdx, houseNum) => (lagnaIdx + houseNum - 1) % 12;
 const planet = (h, ta) => h.placements.find((p) => p.ta === ta);
 const inHouse = (h, n) => h.placements.filter((p) => p.house === n && p.ta !== "ராகு" && p.ta !== "கேது");
@@ -165,6 +175,39 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
       ], seed)));
   }
 
+  // ── ஆழ் synthesizer: முழு verdict (திருமணம்/ஆரோக்கியம்/தொழில்) ──
+  const ka = extras.keyAreas ? extras.keyAreas[cat] : null;
+  if (ka) {
+    lines.push(`🔮 மொத்த முடிவு — ${ka.verdict}${ka.summary ? `: ${ka.summary}` : ""}`);
+    const facts = (ka.factors || []).filter((f) => f && f.text).slice(0, 5);
+    if (facts.length) {
+      lines.push(facts.map((f) => `${(f.weight || 0) > 0 ? "▲" : (f.weight || 0) < 0 ? "▼" : "•"} ${f.text}`).join("\n"));
+    }
+    if (ka.spouseProfile) {
+      const sp = ka.spouseProfile;
+      const traits = (sp.traits || []).slice(0, 3).map((t) => `${t.planet}: ${t.trait}`).join("; ");
+      lines.push(`💑 வாழ்க்கைத் துணை குறியீடு — ${traits}${sp.direction ? ` • திசை: ${sp.direction}` : ""}${sp.d9Note ? ` • D9 7ஆம் அதிபதி: ${sp.d9Note}` : ""}`);
+    }
+    if (ka.tridosha) {
+      lines.push(`🌿 உடலியல் தோஷம்: ${ka.tridosha.dominant} மிகுதி${ka.tridosha.close ? ` (இணை: ${ka.tridosha.close})` : ""} — சாத்தியப் பாதிப்பு: ${ka.tridosha.effects}`);
+    }
+  }
+
+  // ── வீடு-வாரியான classical கிரக பலன் (எல்லா தலைப்பும்) ──
+  const bp = extras.bhavaPhalam;
+  if (bp) {
+    for (const hn of topic.houses) {
+      const hr = houseReadingFor(bp, hn);
+      if (!hr) continue;
+      const occ = (hr.occupants || []).slice(0, 2);
+      if (occ.length) {
+        for (const o of occ) {
+          lines.push(`${hn}ஆம் வீடு (${hr.houseTheme?.ta || ""}) — ${o.planet}${o.condition ? ` (${o.condition})` : ""}: ${o.effect}`);
+        }
+      }
+    }
+  }
+
   // ── நிகழ்வு காலக்கணிப்பு — "எப்போது?" (தசா × கோசாரம் × வாக்குறுதி) ──
   const et = extras.eventTiming;
   const isCaution = cat === "health";
@@ -216,6 +259,21 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
   }
   if (extras.kalaSarpa && extras.kalaSarpa.present && (cat === "marriage" || cat === "children" || cat === "career")) {
     lines.push(`🐍 கால சர்ப்ப அமைப்பு (${extras.kalaSarpa.type}) உள்ளது — சில காலதாமதம் சாத்தியம்; பரிகாரம்: ${extras.kalaSarpa.remedy}`);
+  }
+
+  // ── குழந்தை தலைப்பு — குடும்ப/சந்ததி குறியீடு ──
+  if (cat === "children" && extras.familyHealth && extras.familyHealth.children) {
+    const ch = extras.familyHealth.children;
+    lines.push(`👶 சந்ததி குறியீடு: ${ch.restriction ? "⚠ சந்ததியில் தடை/குறைவு சாத்தியம்" : "சுமூக குறியீடு"} — ${ch.detail || ""}${ch.note ? ` ${ch.note}` : ""}`);
+  }
+
+  // ── topic-க்கு ஏற்ற பரிகாரம் — பலவீன கிரகத்துக்கு ──
+  if (Array.isArray(extras.remedies)) {
+    const want = new Set([topic.karaka, RASHI_LORD[houseSign(lagnaIdx, topic.houses[0])]]);
+    const rem = extras.remedies.filter((r) => r.needsRemedy && want.has(r.ta)).slice(0, 2);
+    if (rem.length) {
+      lines.push("💎 பரிகாரம்:\n" + rem.map((r) => `• ${r.ta}: ரத்தினம் ${r.gem}${r.mantra ? `, மந்திரம்: ${r.mantra}` : ""}${r.temple ? `, கோயில்: ${r.temple}` : ""}`).join("\n"));
+    }
   }
 
   // closing guidance / remedy

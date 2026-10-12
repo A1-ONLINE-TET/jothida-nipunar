@@ -248,6 +248,9 @@ export function computeConsultation(h, birth, category) {
     dashaData: r.dashaData, eventTiming, sadeSati,
     chevvai: r.chevvaiDosham, kalaSarpa: r.kalaSarpa,
     classicalYogas: r.classicalYogas, mahapurusha: r.mahapurushaYogas,
+    // ஆழ் synthesizers — ground to max
+    keyAreas: r.keyAreas, bhavaPhalam: r.bhavaPhalam,
+    familyHealth: r.familyHealthData, remedies: r.remediesData,
   };
 }
 
