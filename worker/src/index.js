@@ -135,6 +135,16 @@ export default {
     }
 
     try {
+      // ── access-code gate (optional) ── if ACCESS_CODE is set, every API
+      // call must carry the matching X-Access-Code header. Stops a leaked
+      // link being used (and running up AI cost) by anyone who lacks the code.
+      if (env.ACCESS_CODE) {
+        const supplied = request.headers.get("X-Access-Code") || "";
+        if (supplied !== env.ACCESS_CODE) {
+          return json(env, origin, { error: "access denied" }, 403);
+        }
+      }
+
       // ── auth (all API routes require a valid Firebase user) ──
       let user;
       try { user = await authUser(request, env); }

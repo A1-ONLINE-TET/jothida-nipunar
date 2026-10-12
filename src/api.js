@@ -9,6 +9,18 @@ import { getIdToken } from "./firebase.js";
 
 const BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
+// Access code (temporary login gate). Stored after the user enters it; sent
+// on every request. If the server rejects it (403), clear and reload so the
+// gate re-prompts.
+const ACCESS_KEY = "jn_access";
+function accessCode() {
+  try { return localStorage.getItem(ACCESS_KEY) || ""; } catch (_) { return ""; }
+}
+function onAccessDenied() {
+  try { localStorage.removeItem(ACCESS_KEY); } catch (_) {}
+  try { location.reload(); } catch (_) {}
+}
+
 // Revive ISO date strings back into Date objects, recursively.
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 export function reviveDates(v) {
@@ -29,9 +41,11 @@ async function post(path, body) {
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: "Bearer " + token } : {}),
+      "X-Access-Code": accessCode(),
     },
     body: JSON.stringify(body || {}),
   });
+  if (res.status === 403) { onAccessDenied(); throw new Error("access denied"); }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `HTTP ${res.status}`);
@@ -42,8 +56,9 @@ async function post(path, body) {
 async function get(path) {
   const token = await getIdToken();
   const res = await fetch(BASE + path, {
-    headers: { ...(token ? { Authorization: "Bearer " + token } : {}) },
+    headers: { ...(token ? { Authorization: "Bearer " + token } : {}), "X-Access-Code": accessCode() },
   });
+  if (res.status === 403) { onAccessDenied(); throw new Error("access denied"); }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
