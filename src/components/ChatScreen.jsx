@@ -38,6 +38,7 @@ export default function ChatScreen({ ask, askPremium, onBack, personName, initia
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef(null);
   const autoSentRef = useRef(false);
+  const lastTopicRef = useRef(""); // follow-up நினைவு — முந்தைய தலைப்பு
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -59,7 +60,8 @@ export default function ChatScreen({ ask, askPremium, onBack, personName, initia
     setMessages((m) => [...m, { role: "user", text: question, done: true }]);
     setBusy(true);
     try {
-      const { answer } = await ask(question);
+      const { answer, category } = await ask(question, lastTopicRef.current);
+      if (category && category !== "general") lastTopicRef.current = category;
       setMessages((m) => [...m, { role: "astro", text: answer || "மன்னிக்கவும், இப்போது பதிலளிக்க முடியவில்லை.", done: false }]);
     } catch (e) {
       setMessages((m) => [...m, { role: "astro", text: "⚠ சர்வர் இப்போது பதிலளிக்கவில்லை. சில வினாடிகள் கழித்து மீண்டும் முயற்சிக்கவும்.", done: true }]);

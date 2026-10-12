@@ -63,8 +63,15 @@ function classify(q) {
   }
   return "general";
 }
-// index.js இதை வைத்து நிகழ்வு-காலக்கணிப்பு topic-ஐ தேர்வு செய்யும்
-export function classifyQuestion(q) { return classify(q); }
+const VALID_TOPICS = new Set(["marriage", "career", "wealth", "health", "education", "children", "travel"]);
+// follow-up கேள்வி — keyword இல்லை ஆனால் முந்தைய தலைப்பைத் தொடர்கிறது
+// ("எப்போது சரியாகும்?", "எப்படி?", "இன்னும் சொல்லுங்க", "அது பற்றி...")
+// index.js இதை வைத்து நிகழ்வு-காலக்கணிப்பு topic-ஐ தேர்வு செய்யும்.
+export function classifyQuestion(q, lastTopic = "") {
+  const cat = classify(q);
+  if (cat === "general" && VALID_TOPICS.has(lastTopic)) return lastTopic;
+  return cat;
+}
 
 // Cloudflare Worker-ல் 'ta-IN' date locale கிடைக்காது — கை-format
 const TA_MONTHS = ["ஜனவரி","பிப்ரவரி","மார்ச்","ஏப்ரல்","மே","ஜூன்","ஜூலை","ஆகஸ்ட்","செப்டம்பர்","அக்டோபர்","நவம்பர்","டிசம்பர்"];
@@ -111,8 +118,9 @@ function strengthNote(planets) {
 }
 
 export function buildAskAnswer(h, dashaData, question, extras = {}) {
-  const cat = classify(question);
-  const topic = TOPICS[cat];
+  // index.js ஏற்கனவே follow-up-ஐ கணக்கில் கொண்டு category-ஐ தீர்மானித்துள்ளது
+  const cat = extras.category || classify(question);
+  const topic = TOPICS[cat] || TOPICS.general;
   const seed = hashStr((question || "") + (h.lagnaName || ""));
   const name = (h._name || "").trim();
   const greet = name ? `${name}, ` : "";

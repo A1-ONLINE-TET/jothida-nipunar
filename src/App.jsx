@@ -1500,7 +1500,7 @@ export default function AstrologyApp() {
 
   // ═══════ CHAT — rule-based ஜோதிடர் உரையாடல் (LLM இல்லை) ═══════
   if(screen===SCREEN.CHAT) {
-    const askAstrologer = async (question) => {
+    const askAstrologer = async (question, lastTopic = "") => {
       const p = formData;
       const dobISO = chartMeta?.dobISO || parseDDMMYYYY(p.dob);
       let h24 = 6, min = 0;
@@ -1512,7 +1512,7 @@ export default function AstrologyApp() {
       }
       const finalTime = chartMeta?.finalTime || `${String(h24).padStart(2,"0")}:${String(min).padStart(2,"0")}`;
       const geo = chartMeta?.geo || resolveBirthGeo(p);
-      return apiAsk(buildBirth(dobISO, finalTime, geo), question);
+      return apiAsk(buildBirth(dobISO, finalTime, geo), question, lastTopic);
     };
     const askPremiumAstrologer = async (question) => {
       const p = formData;

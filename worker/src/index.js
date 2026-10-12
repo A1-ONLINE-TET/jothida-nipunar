@@ -179,12 +179,14 @@ export default {
         const birth = normalizeBirth(body);
         const question = clampStr(body?.question, 300);
         if (!question.trim()) return json(env, origin, { error: "empty question" }, 400);
+        const lastTopic = clampStr(body?.lastTopic, 20);
         const swiss = await fetchSwiss(env, birth);
         const h = buildHoroscope(birth, swiss);
         h._name = birth.name || "";
-        // ஆழ்பொருள்: நிகழ்வு windows + தோஷம்/யோகம்/சாதே சாதி — ஒரு முறை முழு report
-        const cat0 = classifyQuestion(question);
+        // follow-up நினைவு: keyword இல்லையேல் முந்தைய தலைப்பைத் தொடரு
+        const cat0 = classifyQuestion(question, lastTopic);
         const extras = computeConsultation(h, birth, cat0);
+        extras.category = cat0;
         const { category, label, answer } = buildAskAnswer(h, extras.dashaData, question, extras);
         return json(env, origin, { category, label, answer });
       }
