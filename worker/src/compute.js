@@ -223,6 +223,34 @@ export function computeEventTiming(h, birth, topic) {
   return calcEventTiming(topic, reportDeps(r, h, birth));
 }
 
+// ask-category → EVENT_TOPICS key (நிகழ்வு காலக்கணிப்பு தலைப்பு)
+const CAT_TO_EVENT = {
+  marriage: "marriage", career: "career", wealth: "wealth", health: "health",
+  education: "education", children: "children", travel: "foreign",
+};
+
+// ஆலோசனை chat-க்கான ஆழ்பொருள் bundle — ஒரு முறை முழு report கணக்கிட்டு,
+// topic-க்கான நிகழ்வு windows + தோஷம்/யோகம்/சாதே சாதி சேர்த்துத் தரும்.
+export function computeConsultation(h, birth, category) {
+  const r = computeFullReport(h, birth);
+  const evKey = CAT_TO_EVENT[category] || null;
+  let eventTiming = null;
+  if (evKey) { try { eventTiming = calcEventTiming(evKey, reportDeps(r, h, birth)); } catch (_) { /* skip */ } }
+  let sadeSati = null;
+  try {
+    const today = getTodayTranist(birth.lat, birth.lon, null, birth.ayanamsaKey);
+    const bmRaw = RASHIS.indexOf(h.moonRashi);
+    const birthMoonRashi = bmRaw >= 0 ? bmRaw : 0;
+    const sat = today.placements.find((p) => p.ta === "சனி");
+    if (sat) sadeSati = calcSadeSati(birthMoonRashi, RASHIS.indexOf(sat.rashi));
+  } catch (_) { /* skip */ }
+  return {
+    dashaData: r.dashaData, eventTiming, sadeSati,
+    chevvai: r.chevvaiDosham, kalaSarpa: r.kalaSarpa,
+    classicalYogas: r.classicalYogas, mahapurusha: r.mahapurushaYogas,
+  };
+}
+
 export function computeNakBhava(h, birth) {
   const r = computeFullReport(h, birth);
   return calcNakshatraBhavaLinks(

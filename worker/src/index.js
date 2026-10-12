@@ -12,10 +12,11 @@ import { rateLimit } from "./ratelimit.js";
 import {
   buildHoroscope, computeFullReport, computeDasha, computeDailyBundle,
   computeBacktest, computeEventTiming, computeNakBhava, computePorutham,
+  computeConsultation,
 } from "./compute.js";
 import { buildBirthPrompt, buildDailyPrompt, buildAskPrompt, currentDashaInfo } from "./prompt.js";
 import { callClaude } from "./claude.js";
-import { buildAskAnswer } from "./ask.js";
+import { buildAskAnswer, classifyQuestion } from "./ask.js";
 import { createOrder, verifyPayment } from "./pay.js";
 import { searchPlacesOSM } from "../../src/engine.js";
 import * as engine from "../../src/engine.js";
@@ -181,8 +182,10 @@ export default {
         const swiss = await fetchSwiss(env, birth);
         const h = buildHoroscope(birth, swiss);
         h._name = birth.name || "";
-        const dashaData = computeDasha(h, birth);
-        const { category, label, answer } = buildAskAnswer(h, dashaData, question);
+        // ஆழ்பொருள்: நிகழ்வு windows + தோஷம்/யோகம்/சாதே சாதி — ஒரு முறை முழு report
+        const cat0 = classifyQuestion(question);
+        const extras = computeConsultation(h, birth, cat0);
+        const { category, label, answer } = buildAskAnswer(h, extras.dashaData, question, extras);
         return json(env, origin, { category, label, answer });
       }
 
