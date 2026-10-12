@@ -13,9 +13,10 @@ import {
   buildHoroscope, computeFullReport, computeDasha, computeDailyBundle,
   computeBacktest, computeEventTiming, computeNakBhava, computePorutham,
 } from "./compute.js";
-import { buildBirthPrompt, buildDailyPrompt, buildAskPrompt, currentDashaInfo } from "./prompt.js";
+import { buildBirthPrompt, buildDailyPrompt, currentDashaInfo } from "./prompt.js";
 import { classifyQuestion, buildAskAnswer } from "./ask.js";
 import { createOrder, verifyPayment } from "./pay.js";
+import { buildGeminiAstrologerPrompt } from "./gemini.js";
 import { callClaude } from "./claude.js";
 import { callGemini } from "./gemini.js";
 
@@ -263,11 +264,12 @@ export default {
         const dashaData = computeDasha(h, birth);
         const { category, label } = classifyQuestion(question, lastTopic);
         const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name });
-        const dashaInfo = currentDashaInfo(dashaData);
         let answer = engineFindings, ai = false;
         try {
-          const prompt = buildAskPrompt({ person: { name: birth.name }, horoscope: h, dashaInfo, question });
-          const text = await callAI(env, prompt, 400);
+          // The engine already did the astrology; Gemini only phrases its
+          // findings as an astrologer would. Facts come from the engine.
+          const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings });
+          const text = await callAI(env, prompt, 500);
           if (text && text.trim()) { answer = text.trim(); ai = true; }
         } catch (_) { /* fall back to engine findings */ }
         return json(env, origin, { category, label, answer, ai });
@@ -293,13 +295,16 @@ export default {
         if (!ok) return json(env, origin, { error: "payment verification failed" }, 402);
         const birth = normalizeBirth(body);
         const question = clampStr(body?.question, 300);
+        const lastTopic = clampStr(body?.lastTopic, 40);
         const swiss = await fetchSwiss(env, birth);
         const h = buildHoroscope(birth, swiss);
         h._name = birth.name;
         const dashaData = computeDasha(h, birth);
-        const dashaInfo = currentDashaInfo(dashaData);
-        const prompt = buildAskPrompt({ person: { name: birth.name }, horoscope: h, dashaInfo, question });
-        const answer = await callAI(env, prompt, 800);
+        const { category } = classifyQuestion(question, lastTopic);
+        const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name });
+        // Deep answer — same grounded flow, fuller phrasing.
+        const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings, deep: true });
+        const answer = await callAI(env, prompt, 1000);
         return json(env, origin, { answer });
       }
 
