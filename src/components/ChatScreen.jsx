@@ -3,6 +3,10 @@ import "./chat.css";
 
 // Astrologer message that reveals itself character-by-character (typewriter).
 function TypingText({ text, onDone }) {
+  // Coerce to a string always — if an answer ever comes back as a non-string
+  // (object/number/undefined), `.slice`/`.length` would throw and blank the
+  // whole app. Guarding here keeps the chat resilient to any response shape.
+  const safe = typeof text === "string" ? text : (text == null ? "" : String(text));
   const [n, setN] = useState(0);
   useEffect(() => {
     setN(0);
@@ -10,15 +14,15 @@ function TypingText({ text, onDone }) {
     const id = setInterval(() => {
       i += 2;
       setN(i);
-      if (i >= text.length) { clearInterval(id); onDone && onDone(); }
+      if (i >= safe.length) { clearInterval(id); onDone && onDone(); }
     }, 18);
     return () => clearInterval(id);
-  }, [text]);
-  const shown = text.slice(0, n);
+  }, [safe]);
+  const shown = safe.slice(0, n);
   return (
     <span style={{ whiteSpace: "pre-wrap" }}>
       {shown}
-      {n < text.length && <span className="jn-caret">▋</span>}
+      {n < safe.length && <span className="jn-caret">▋</span>}
     </span>
   );
 }
