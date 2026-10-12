@@ -21,7 +21,7 @@ export async function callGemini(env, prompt, maxTokens = 1000) {
       // nothing for the real answer (answers got cut to one line).
       // thinkingBudget:0 turns thinking off so all tokens go to the reply,
       // and a generous cap guarantees the Tamil answer completes.
-      maxOutputTokens: Math.min(Math.max(maxTokens, 1), 4096),
+      maxOutputTokens: Math.min(Math.max(maxTokens, 1), 8192),
       temperature: 0.7,
       thinkingConfig: { thinkingBudget: 0 },
     },

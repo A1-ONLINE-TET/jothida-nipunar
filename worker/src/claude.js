@@ -17,7 +17,7 @@ export async function callClaude(env, prompt, maxTokens = 1000) {
       // Haiku 5.5 — near-zero cost per answer ($0.10/$0.50 per 1M); set the
       // CLAUDE_MODEL env var to "claude-sonnet-5-5" for higher quality.
       model: env.CLAUDE_MODEL || "claude-haiku-5-5",
-      max_tokens: Math.min(Math.max(maxTokens, 1), 4096),
+      max_tokens: Math.min(Math.max(maxTokens, 1), 8192),
       messages: [{ role: "user", content: prompt }],
     }),
   });

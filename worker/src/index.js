@@ -179,7 +179,7 @@ export default {
           person: { name: birth.name, dob: birth.dob, tob: birth.tob, ampm: birth.ampm, pob: birth.pob },
           horoscope: h, dashaInfo,
         });
-        const text = await callAI(env, prompt, 1500);
+        const text = await callAI(env, prompt, 4000);
         return json(env, origin, { text });
       }
 
@@ -195,7 +195,7 @@ export default {
         let text = "";
         if (withText) {
           const prompt = buildDailyPrompt({ person: { name: birth.name }, horoscope: h, daily });
-          text = await callAI(env, prompt, 1500);
+          text = await callAI(env, prompt, 3500);
         }
         return json(env, origin, { daily, text });
       }
@@ -269,7 +269,7 @@ export default {
           // The engine already did the astrology; Gemini only phrases its
           // findings as an astrologer would. Facts come from the engine.
           const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings });
-          const text = await callAI(env, prompt, 1500);
+          const text = await callAI(env, prompt, 4000);
           if (text && text.trim()) { answer = text.trim(); ai = true; }
         } catch (_) { /* fall back to engine findings */ }
         return json(env, origin, { category, label, answer, ai });
@@ -292,7 +292,7 @@ export default {
         let answer = engineFindings, ai = false;
         try {
           const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings, deep: true });
-          const text = await callAI(env, prompt, 2500);
+          const text = await callAI(env, prompt, 6000);
           if (text && text.trim()) { answer = text.trim(); ai = true; }
         } catch (_) { /* fall back to engine findings */ }
         return json(env, origin, { category, label, answer, ai });
@@ -327,7 +327,7 @@ export default {
         const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name }).answer;
         // Deep answer — same grounded flow, fuller phrasing.
         const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings, deep: true });
-        const answer = await callAI(env, prompt, 2500);
+        const answer = await callAI(env, prompt, 6000);
         return json(env, origin, { answer });
       }
 
