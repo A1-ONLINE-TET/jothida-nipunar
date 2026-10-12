@@ -1047,7 +1047,7 @@ export default function AstrologyApp() {
 
   useEffect(() => {
     // முதல்-முறை → Welcome; திரும்பும் user → நேரடி HOME (onboarding மீண்டும் காட்டாது)
-    if(screen===SCREEN.SPLASH){ const t=setTimeout(()=>goTo(isOnboarded()?SCREEN.HOME:SCREEN.WELCOME),5600); return()=>clearTimeout(t); }
+    if(screen===SCREEN.SPLASH){ const t=setTimeout(()=>{ const saved=loadProfiles(); if(saved.length>0){loadProfile(saved[0]);goTo(SCREEN.HOME);}else{goTo(SCREEN.FORM);} },5600); return()=>clearTimeout(t); }
   }, [screen, goTo]);
 
 
@@ -1228,7 +1228,7 @@ export default function AstrologyApp() {
         setApiSource(source === "swiss" ? "api" : "local");
         applyReport(report);
         saveCurrentProfile();
-        goTo(SCREEN.RESULT);
+        if (!isOnboarded()) { markOnboarded(); goTo(SCREEN.HOME); } else { goTo(SCREEN.RESULT); }
       } catch (e) {
         setApiSource("");
         const ae = getAuthError();
@@ -1444,9 +1444,21 @@ export default function AstrologyApp() {
   if(screen===SCREEN.HOME) {
     const handleHome = (key) => {
       const hasChart = !!(horoscope && dashaData);
-      const toResult = (view) => {
-        if (hasChart) { setAdvancedView(view || ""); goTo(SCREEN.RESULT); }
-        else goTo(SCREEN.FORM);
+      const toResult = async (view) => {
+        if (hasChart) { setAdvancedView(view || ""); goTo(SCREEN.RESULT); return; }
+        if (!formData.dob || !formData.name) { goTo(SCREEN.FORM); return; }
+        // returning user: has profile but chart not computed yet — auto-compute
+        goTo(SCREEN.LOADING);
+        try {
+          const dobISO = parseDDMMYYYY(formData.dob);
+          let h24=6, min24=0;
+          if(formData.tob){ const [hh,mm]=formData.tob.split(':').map(Number); h24=hh||6; min24=mm||0; if(formData.ampm==="PM"&&h24<12)h24+=12; if(formData.ampm==="AM"&&h24===12)h24=0; }
+          const finalTime=`${String(h24).padStart(2,'0')}:${String(min24).padStart(2,'0')}`;
+          const geoT=resolveBirthGeo(formData);
+          const {report}=await apiCompute(buildBirth(dobISO,finalTime,geoT));
+          applyReport(report);
+          setAdvancedView(view||""); goTo(SCREEN.RESULT);
+        } catch(e){ goTo(SCREEN.FORM); }
       };
       switch (key) {
         case "home":        goTo(SCREEN.HOME); break;
