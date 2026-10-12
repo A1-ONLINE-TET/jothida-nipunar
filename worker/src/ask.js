@@ -127,168 +127,130 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
   const lagnaIdx = h.lagna;
 
   const lines = [];
+  // ஒரு பிரிவு (heading + வரிகள்) — வரிகள் இருந்தால் மட்டும் சேர்
+  const sec = (title, body) => {
+    const items = (body || []).filter((x) => x && x.trim());
+    if (items.length) lines.push(`${title}\n${items.join("\n")}`);
+  };
+  // verdict summary-இல் உள்ள நீண்ட "(குறிப்பு: ▲▼...)" meta-note-ஐ நீக்கு
+  const cleanTxt = (s) => (s || "").replace(/\s*\(குறிப்பு:[\s\S]*$/, "").trim();
 
-  // opener
-  lines.push(pick([
-    `${greet}உங்கள் ஜாதகத்தை ஆராய்ந்து ${topic.label} குறித்து பார்க்கிறேன்.`,
-    `${greet}${topic.label} பற்றிய உங்கள் கேள்விக்கு, உங்கள் ஜாதக அமைப்பின்படி சொல்கிறேன்.`,
-    `${greet}உங்கள் லக்னம் ${h.lagnaName}, சந்திர ராசி ${h.moonRashi}, நட்சத்திரம் ${h.nakshatra}. இதன் அடிப்படையில் ${topic.label} பார்ப்போம்.`,
-  ], seed));
+  // ── தொடக்கம் — ஜோதிடர் வரவேற்பு ──
+  lines.push(`${greet}உங்கள் லக்னம் ${h.lagnaName}, சந்திர ராசி ${h.moonRashi}, நட்சத்திரம் ${h.nakshatra}. ${topic.label} குறித்து உங்கள் ஜாதகத்தை ஆராய்ந்து சொல்கிறேன்.`);
 
-  // relevant house(s)
-  for (const hn of topic.houses) {
-    const occ = inHouse(h, hn);
-    const signIdx = houseSign(lagnaIdx, hn);
-    const lord = RASHI_LORD[signIdx];
-    const lordP = planet(h, lord);
-    if (occ.length) {
-      const names = occ.map((p) => p.ta).join(", ");
-      const tone = strengthNote(occ);
-      lines.push(`${hn}ஆம் வீட்டில் (${RASHIS[signIdx]}) ${names} அமைந்துள்ளது — ` + (
-        tone === "good" ? "இது சாதகமான அமைப்பு; இந்தப் பகுதியில் ஆதரவு உண்டு."
-        : tone === "mixed" ? "சில சவால்களுடன் முன்னேற்றம்; பொறுமை தேவை."
-        : "கலவையான பலன்கள்; முயற்சியுடன் நல்லது நடக்கும்."));
-    } else {
-      lines.push(`${hn}ஆம் வீடு (${RASHIS[signIdx]}) காலியாக உள்ளது — அதன் அதிபதி ${lord}தான் முக்கியம்.`);
-    }
-    if (lordP) {
-      lines.push(`${hn}ஆம் அதிபதி ${lord} ${lordP.house}ஆம் வீட்டில் (${lordP.rashi}) உள்ளார் — ` + (
-        BENEFIC.has(lord) ? "சுபகிரகம் என்பதால் இது உங்களுக்கு நன்மை தரும்." : "இதன் பலனை முயற்சியால் சாதகமாக்கலாம்."));
-    }
-  }
-
-  // karaka
-  const kP = planet(h, topic.karaka);
-  if (kP) {
-    lines.push(`${topic.label}-க்கான காரகன் ${topic.karaka} ${kP.house}ஆம் வீட்டில் (${kP.rashi})` +
-      (kP.isRetrograde ? ", வக்கிரம்" : "") + " — " + pick([
-        "இது இந்தப் பகுதியில் தனித்துவமான பலனைக் கொடுக்கும்.",
-        "இதன் தசை/பெயர்ச்சி காலங்களில் முக்கிய நிகழ்வுகள் வரும்.",
-        "இதன் நிலை உங்கள் முயற்சிக்கு வலு சேர்க்கும்.",
-      ], seed + kP.house));
-  }
-
-  // running dasha → timing
-  const { md, ad, mdEnd } = currentLords(dashaData);
-  if (md) {
-    const fav = BENEFIC.has(md) || (ad && BENEFIC.has(ad));
-    lines.push(`தற்போது ${md}${ad ? `-${ad}` : ""} தசை நடைபெறுகிறது — ` + (
-      fav ? pick([
-        "இந்தக் காலம் இந்தப் பகுதிக்கு பொதுவாக சாதகம். முக்கிய முடிவுகளுக்கு ஏற்ற நேரம்.",
-        "சுபகிரக தசை என்பதால் முயற்சிகள் பலன் தரும் வாய்ப்பு அதிகம்.",
-      ], seed)
-      : pick([
-        "இந்தக் காலத்தில் நிதானமும் பொறுமையும் தேவை; அவசர முடிவுகள் வேண்டாம்.",
-        "சில தடைகள் இருந்தாலும், சரியான முயற்சியால் கடந்து செல்லலாம்.",
-      ], seed)));
-  }
-
-  // ── ஆழ் synthesizer: முழு verdict (திருமணம்/ஆரோக்கியம்/தொழில்) ──
+  const { md, ad } = currentLords(dashaData);
   const ka = extras.keyAreas ? extras.keyAreas[cat] : null;
+
   if (ka) {
-    lines.push(`🔮 மொத்த முடிவு — ${ka.verdict}${ka.summary ? `: ${ka.summary}` : ""}`);
-    const facts = (ka.factors || []).filter((f) => f && f.text).slice(0, 5);
-    if (facts.length) {
-      lines.push(facts.map((f) => `${(f.weight || 0) > 0 ? "▲" : (f.weight || 0) < 0 ? "▼" : "•"} ${f.text}`).join("\n"));
-    }
+    // ── ஆழ் synthesizer உள்ள தலைப்பு (திருமணம்/ஆரோக்கியம்/தொழில்) ──
+    sec("◆ மொத்த நிலை", [`${ka.verdict}${ka.summary ? ` — ${cleanTxt(ka.summary)}` : ""}`]);
+    const facts = (ka.factors || []).filter((f) => f && f.text).slice(0, 4)
+      .map((f) => `${(f.weight || 0) > 0 ? "✓" : (f.weight || 0) < 0 ? "⚠" : "•"} ${f.text}`);
+    sec("◆ முக்கிய காரணிகள்", facts);
     if (ka.spouseProfile) {
       const sp = ka.spouseProfile;
-      const traits = (sp.traits || []).slice(0, 3).map((t) => `${t.planet}: ${t.trait}`).join("; ");
-      lines.push(`💑 வாழ்க்கைத் துணை குறியீடு — ${traits}${sp.direction ? ` • திசை: ${sp.direction}` : ""}${sp.d9Note ? ` • D9 7ஆம் அதிபதி: ${sp.d9Note}` : ""}`);
+      const traits = (sp.traits || []).slice(0, 3).map((t) => t.trait).filter(Boolean).join(", ");
+      sec("◆ வாழ்க்கைத் துணை குறியீடு", [
+        traits ? `இயல்பு: ${traits}.` : "",
+        `${sp.direction ? `திசைக் குறியீடு: ${sp.direction}` : ""}${sp.distance ? ` • ${sp.distance}` : ""}`,
+      ]);
     }
     if (ka.tridosha) {
-      lines.push(`🌿 உடலியல் தோஷம்: ${ka.tridosha.dominant} மிகுதி${ka.tridosha.close ? ` (இணை: ${ka.tridosha.close})` : ""} — சாத்தியப் பாதிப்பு: ${ka.tridosha.effects}`);
+      sec("◆ உடலியல் தோஷம்", [`${ka.tridosha.dominant} மிகுதி${ka.tridosha.close ? ` (இணை: ${ka.tridosha.close})` : ""} — ${ka.tridosha.effects}`]);
     }
-  }
-
-  // ── வீடு-வாரியான classical கிரக பலன் (எல்லா தலைப்பும்) ──
-  const bp = extras.bhavaPhalam;
-  if (bp) {
+  } else {
+    // ── keyAreas இல்லாத தலைப்பு — வீடு + அதிபதி + காரகன் + bhavaPhalam ──
+    const chart = [];
     for (const hn of topic.houses) {
-      const hr = houseReadingFor(bp, hn);
-      if (!hr) continue;
-      const occ = (hr.occupants || []).slice(0, 2);
+      const occ = inHouse(h, hn);
+      const signIdx = houseSign(lagnaIdx, hn);
+      const lord = RASHI_LORD[signIdx];
+      const lordP = planet(h, lord);
       if (occ.length) {
-        for (const o of occ) {
-          lines.push(`${hn}ஆம் வீடு (${hr.houseTheme?.ta || ""}) — ${o.planet}${o.condition ? ` (${o.condition})` : ""}: ${o.effect}`);
-        }
+        const tone = strengthNote(occ);
+        chart.push(`${hn}ஆம் வீட்டில் (${RASHIS[signIdx]}) ${occ.map((p) => p.ta).join(", ")} — ${tone === "good" ? "சாதகமான அமைப்பு" : tone === "mixed" ? "சில சவால்களுடன் முன்னேற்றம்" : "கலவையான பலன்"}.`);
+      } else {
+        chart.push(`${hn}ஆம் வீடு (${RASHIS[signIdx]}) காலி — அதிபதி ${lord} முக்கியம்.`);
       }
+      if (lordP) chart.push(`${hn}ஆம் அதிபதி ${lord} ${lordP.house}ஆம் வீட்டில் (${lordP.rashi}) — ${BENEFIC.has(lord) ? "நன்மை தரும்" : "முயற்சியால் சாதகமாக்கலாம்"}.`);
+    }
+    const kP = planet(h, topic.karaka);
+    if (kP) chart.push(`காரகன் ${topic.karaka} ${kP.house}ஆம் வீட்டில் (${kP.rashi})${kP.isRetrograde ? ", வக்கிரம்" : ""} — இதன் தசை/பெயர்ச்சி காலங்களில் முக்கிய நிகழ்வுகள்.`);
+    sec("◆ ஜாதக அமைப்பு", chart);
+
+    const bp = extras.bhavaPhalam;
+    if (bp) {
+      const bl = [];
+      for (const hn of topic.houses) {
+        const hr = houseReadingFor(bp, hn);
+        if (!hr) continue;
+        for (const o of (hr.occupants || []).slice(0, 2)) bl.push(`${o.planet}${o.condition ? ` (${o.condition})` : ""}: ${o.effect}`);
+      }
+      sec("◆ விரிவான பலன்", bl);
     }
   }
 
-  // ── நிகழ்வு காலக்கணிப்பு — "எப்போது?" (தசா × கோசாரம் × வாக்குறுதி) ──
+  // ── எப்போது — நிகழ்வு காலக்கணிப்பு (தசா × கோசாரம் × வாக்குறுதி) ──
   const et = extras.eventTiming;
   const isCaution = cat === "health";
+  const timing = [];
+  if (md) timing.push(`தற்போது ${md}${ad ? `-${ad}` : ""} தசை நடைபெறுகிறது.`);
   if (et && Array.isArray(et.windows) && et.windows.length) {
     const w = et.windows[0];
-    const range = `${fmtMonthYear(w.start)} – ${fmtMonthYear(w.end)}`;
     if (isCaution) {
-      lines.push(`⚠ கூடுதல் கவனம் தேவை காலம்: ${range} (${w.md} தசை${w.ad ? `/${w.ad} புக்தி` : ""}). இக்காலத்தில் உணவு, ஓய்வு, மருத்துவப் பரிசோதனையில் கவனம் தேவை.`);
+      timing.push(`கவனம் தேவை காலம்: ${fmtMonthYear(w.start)} – ${fmtMonthYear(w.end)} (${w.md} தசை) — உணவு, ஓய்வு, மருத்துவப் பரிசோதனையில் கவனம்.`);
     } else {
-      lines.push(`📅 அடுத்த சாதகமான காலம்: ${range} — ${w.md} தசை${w.ad ? `/${w.ad} புக்தி` : ""} [நம்பிக்கை: ${w.confidence}]. இக்காலத்தில் ${topic.label} தொடர்பான முயற்சிகள் பலன் தரும்.`);
-      if (et.windows[1]) {
-        const w2 = et.windows[1];
-        lines.push(`மற்றொரு சாதக காலம்: ${fmtMonthYear(w2.start)} – ${fmtMonthYear(w2.end)} (${w2.md} தசை).`);
-      }
+      timing.push(`அடுத்த சாதக காலம்: ${fmtMonthYear(w.start)} – ${fmtMonthYear(w.end)} (${w.md} தசை${w.ad ? `/${w.ad} புக்தி` : ""}, நம்பிக்கை ${w.confidence}).`);
+      if (et.windows[1]) timing.push(`பிறகு: ${fmtMonthYear(et.windows[1].start)} – ${fmtMonthYear(et.windows[1].end)} (${et.windows[1].md} தசை).`);
     }
-    if (typeof et.promise === "number") {
-      lines.push(`${isCaution ? "6/8/12 பாவ செயல்பாட்டு அளவு" : "ஜாதக வாக்குறுதி (Promise)"}: ${et.promise}%${(!isCaution && et.promiseVerdict) ? ` — ${et.promiseVerdict}` : ""}.`);
-    }
-  } else if (et) {
-    lines.push(isCaution
-      ? "அடுத்த 12 ஆண்டுகளில் 6/8/12 வலு-activation குறைவு — ஆரோக்கியத்திற்கு நல்ல அறிகுறி."
-      : "அடுத்த 12 ஆண்டுகளில் வலுவான தசா activation குறைவு — நீண்டகால தசை பட்டியலைப் பாருங்கள்.");
+    if (typeof et.promise === "number") timing.push(isCaution ? `பாதிப்பு அளவு: ${et.promise}%.` : `ஜாதக வாக்குறுதி: ${et.promise}%${et.promiseVerdict ? ` — ${et.promiseVerdict}` : ""}.`);
   }
+  sec(isCaution ? "◆ கவனம் தேவை காலம்" : "◆ எப்போது", timing);
 
-  // ── topic-க்கு ஏற்ற தோஷம் / யோகம் ──
-  if (cat === "marriage" && extras.chevvai) {
-    const cd = extras.chevvai;
-    if (cd.present) {
-      lines.push(cd.cancelled
-        ? `🔴 செவ்வாய் தோஷம் உள்ளது ஆனால் நிவர்த்தி ஆகிறது (${cd.cancelReason}) — அதிக கவலை வேண்டாம்.`
-        : `🔴 செவ்வாய் தோஷம் உள்ளது (${cd.severityText || ""}) — பொருத்தம் பார்க்கும்போது துணையின் ஜாதகத்திலும் சமன் பார்க்கவும்; பரிகாரம் உதவும்.`);
-    } else {
-      lines.push("✓ செவ்வாய் தோஷம் இல்லை — திருமண வாழ்க்கைக்கு இது சாதகம்.");
-    }
+  // ── கவனிக்க வேண்டியவை — தோஷம்/சாதே சாதி/கால சர்ப்பம்/சந்ததி (ஒரே இடத்தில்) ──
+  const caution = [];
+  if (cat === "marriage" && extras.chevvai && extras.chevvai.present) {
+    caution.push(extras.chevvai.cancelled
+      ? `செவ்வாய் தோஷம் உண்டு, ஆனால் நிவர்த்தி (${extras.chevvai.cancelReason}) — அதிக கவலை வேண்டாம்.`
+      : `செவ்வாய் தோஷம் உண்டு (${extras.chevvai.severityText || ""}) — பொருத்தத்தில் கவனம்; பரிகாரம் உதவும்.`);
   }
   if (cat === "health" && extras.sadeSati) {
-    const ss = extras.sadeSati;
-    lines.push(ss.active
-      ? `♄ தற்போது சாதே சாதி நடைபெறுகிறது (${ss.phase}${ss.severity ? `, தீவிரம்: ${ss.severity === "high" ? "அதிகம்" : "நடுத்தரம்"}` : ""}) — உடல்நலம், மன அழுத்தத்தில் கூடுதல் கவனம்; ஓய்வு, யோகா, தியானம் உதவும்.`
-      : "✓ தற்போது சாதே சாதி இல்லை — சனியின் கடுமையான தாக்கம் இப்போது இல்லை.");
-  }
-  if (cat === "career" || cat === "wealth") {
-    const mp = extras.mahapurusha || [];
-    const cy = (extras.classicalYogas || []).filter((y) => y.type !== "dosha");
-    const topYoga = mp[0] || cy[0];
-    if (topYoga && topYoga.name) {
-      lines.push(`👑 உங்கள் ஜாதகத்தில் "${topYoga.name}" யோகம் உள்ளது — இது ${cat === "career" ? "தொழில்/பதவி" : "செல்வ"} வளர்ச்சிக்கு வலு சேர்க்கும்.`);
-    }
+    caution.push(extras.sadeSati.active
+      ? `சாதே சாதி நடைபெறுகிறது (${extras.sadeSati.phase}) — உடல்/மன நலனில் கவனம்; ஓய்வு, யோகா உதவும்.`
+      : "சாதே சாதி இப்போது இல்லை — சனியின் கடுமை இல்லை.");
   }
   if (extras.kalaSarpa && extras.kalaSarpa.present && (cat === "marriage" || cat === "children" || cat === "career")) {
-    lines.push(`🐍 கால சர்ப்ப அமைப்பு (${extras.kalaSarpa.type}) உள்ளது — சில காலதாமதம் சாத்தியம்; பரிகாரம்: ${extras.kalaSarpa.remedy}`);
+    caution.push(`கால சர்ப்ப அமைப்பு (${extras.kalaSarpa.type}) — சில காலதாமதம் சாத்தியம்.`);
   }
-
-  // ── குழந்தை தலைப்பு — குடும்ப/சந்ததி குறியீடு ──
   if (cat === "children" && extras.familyHealth && extras.familyHealth.children) {
     const ch = extras.familyHealth.children;
-    lines.push(`👶 சந்ததி குறியீடு: ${ch.restriction ? "⚠ சந்ததியில் தடை/குறைவு சாத்தியம்" : "சுமூக குறியீடு"} — ${ch.detail || ""}${ch.note ? ` ${ch.note}` : ""}`);
+    caution.push(`சந்ததி: ${ch.restriction ? "தடை/குறைவு சாத்தியம்" : "சுமூகம்"}${ch.detail ? ` — ${ch.detail}` : ""}`);
+  }
+  sec("◆ கவனிக்க வேண்டியவை", caution);
+
+  // ── யோகம் (தொழில்/பணம்) ──
+  if (cat === "career" || cat === "wealth") {
+    const topYoga = (extras.mahapurusha || [])[0] || (extras.classicalYogas || []).filter((y) => y.type !== "dosha")[0];
+    if (topYoga && topYoga.name) sec("◆ யோகம்", [`"${topYoga.name}" யோகம் உள்ளது — ${cat === "career" ? "தொழில்/பதவி" : "செல்வ"} வளர்ச்சிக்கு வலு சேர்க்கும்.`]);
   }
 
-  // ── topic-க்கு ஏற்ற பரிகாரம் — பலவீன கிரகத்துக்கு ──
+  // ── பரிகாரம் ──
+  const rem = [];
   if (Array.isArray(extras.remedies)) {
     const want = new Set([topic.karaka, RASHI_LORD[houseSign(lagnaIdx, topic.houses[0])]]);
-    const rem = extras.remedies.filter((r) => r.needsRemedy && want.has(r.ta)).slice(0, 2);
-    if (rem.length) {
-      lines.push("💎 பரிகாரம்:\n" + rem.map((r) => `• ${r.ta}: ரத்தினம் ${r.gem}${r.mantra ? `, மந்திரம்: ${r.mantra}` : ""}${r.temple ? `, கோயில்: ${r.temple}` : ""}`).join("\n"));
+    for (const r of extras.remedies.filter((r) => r.needsRemedy && want.has(r.ta)).slice(0, 2)) {
+      rem.push(`${r.ta}: ரத்தினம் ${r.gem}${r.mantra ? `, மந்திரம் ${r.mantra}` : ""}${r.temple ? `, ${r.temple}` : ""}`);
     }
   }
+  if (extras.kalaSarpa && extras.kalaSarpa.present && extras.kalaSarpa.remedy && (cat === "marriage" || cat === "children" || cat === "career")) {
+    rem.push(`கால சர்ப்பம்: ${extras.kalaSarpa.remedy}`);
+  }
+  sec("◆ பரிகாரம்", rem);
 
-  // closing guidance / remedy
+  // ── நிறைவு ──
   lines.push(pick([
-    "பரிகாரமாக — உங்கள் இஷ்ட தெய்வத்தை வழிபட்டு, நல்ல நாளில் முக்கிய காரியங்களைத் தொடங்குங்கள். 🙏",
-    "தொடர்ந்து பார்க்க, முழு ஜாதகம் + தசை விவரங்களைப் பாருங்கள். நம்பிக்கையுடன் முன்னேறுங்கள். ✨",
-    "மேலும் ஆழமான பலனுக்கு குறிப்பிட்ட தேதி/நிகழ்வு சொன்னால், நுணுக்கமாகப் பார்க்கலாம். 🌟",
+    "நம்பிக்கையுடன் முன்னேறுங்கள் — நல்ல நாளில் முக்கிய காரியங்களைத் தொடங்குங்கள். 🙏",
+    "இன்னும் விரிவாக அறிய வேறு கேள்வி கேளுங்கள். வாழ்க வளமுடன். ✨",
   ], seed + 7));
 
   return {
