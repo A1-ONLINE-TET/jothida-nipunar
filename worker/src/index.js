@@ -16,6 +16,7 @@ import {
 } from "./compute.js";
 import { buildBirthPrompt, buildDailyPrompt, buildAskPrompt, currentDashaInfo } from "./prompt.js";
 import { callClaude } from "./claude.js";
+import { callGemini, buildGeminiAstrologerPrompt } from "./gemini.js";
 import { buildAskAnswer, classifyQuestion } from "./ask.js";
 import { createOrder, verifyPayment } from "./pay.js";
 import { searchPlacesOSM } from "../../src/engine.js";
@@ -191,6 +192,36 @@ export default {
         extras.followUp = rawCat === "general" && cat0 !== "general";
         const { category, label, answer } = buildAskAnswer(h, extras.dashaData, question, extras);
         return json(env, origin, { category, label, answer });
+      }
+
+      // ── /api/ask-ai — hybrid: engine துல்லியம் + Gemini இயல்பு மொழி ──
+      // key இல்லையேல் engine பதிலையே திருப்பும் (graceful fallback).
+      if (url.pathname === "/api/ask-ai") {
+        const birth = normalizeBirth(body);
+        const question = clampStr(body?.question, 400);
+        if (!question.trim()) return json(env, origin, { error: "empty question" }, 400);
+        const lastTopic = clampStr(body?.lastTopic, 20);
+        const swiss = await fetchSwiss(env, birth);
+        const h = buildHoroscope(birth, swiss);
+        h._name = birth.name || "";
+        const rawCat = classifyQuestion(question, "");
+        const cat0 = classifyQuestion(question, lastTopic);
+        const extras = computeConsultation(h, birth, cat0);
+        extras.category = cat0;
+        extras.followUp = rawCat === "general" && cat0 !== "general";
+        const eng = buildAskAnswer(h, extras.dashaData, question, extras);
+        if (!env.GEMINI_API_KEY) {
+          // key இல்லை — engine பதிலே (ai:false எனக் குறிக்கிறோம்)
+          return json(env, origin, { category: eng.category, label: eng.label, answer: eng.answer, ai: false });
+        }
+        try {
+          const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings: eng.answer });
+          const aiAnswer = await callGemini(env, prompt, 800);
+          return json(env, origin, { category: eng.category, label: eng.label, answer: aiAnswer || eng.answer, ai: !!aiAnswer });
+        } catch (e) {
+          // Gemini தோல்வி — engine பதிலுக்கு மாறு
+          return json(env, origin, { category: eng.category, label: eng.label, answer: eng.answer, ai: false });
+        }
       }
 
       // ── /api/order — create a Razorpay order (amount in paise) ──

@@ -72,6 +72,12 @@ export async function apiAsk(birth, question, lastTopic = "") {
   return { category, label, answer };
 }
 
+// Hybrid: engine துல்லியம் + Gemini இயல்பு மொழி. key இல்லையேல் engine பதில் (ai:false).
+export async function apiAskAI(birth, question, lastTopic = "") {
+  const { category, label, answer, ai } = await post("/api/ask-ai", { ...birth, question, lastTopic });
+  return { category, label, answer, ai };
+}
+
 // Create a Razorpay order (amount in paise). Returns {orderId, amount, keyId}.
 export async function apiOrder(amount) {
   return post("/api/order", { amount });

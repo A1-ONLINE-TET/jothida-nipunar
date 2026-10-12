@@ -30,7 +30,8 @@ const SUGGESTIONS = [
   "ஆரோக்கியம் பற்றி சொல்லுங்கள்",
 ];
 
-export default function ChatScreen({ ask, askPremium, onBack, personName, initialQuestion = "", astrologerName = "ஜோதிட குரு", astrologerTagline = "உங்கள் ஜாதகம் சார்ந்த பதில்கள்", premiumLabel = "⭐ ஆழமான AI பதில் · ₹49" }) {
+export default function ChatScreen({ ask, askAI, askPremium, onBack, personName, initialQuestion = "", astrologerName = "ஜோதிட குரு", astrologerTagline = "உங்கள் ஜாதகம் சார்ந்த பதில்கள்", premiumLabel = "⭐ ஆழமான AI பதில் · ₹49" }) {
+  const [aiMode, setAiMode] = useState(false); // 🤖 AI இயல்பு மொழி (Gemini) ON/OFF
   const [messages, setMessages] = useState([
     { role: "astro", text: `வணக்கம்${personName ? " " + personName : ""} 🙏 நான் ${astrologerName}. உங்கள் ஜாதகத்தை ஆராய்ந்து பதிலளிக்கிறேன். உங்கள் கேள்வியைக் கேளுங்கள் — திருமணம், தொழில், பணம், ஆரோக்கியம், கல்வி...`, done: true },
   ]);
@@ -60,7 +61,8 @@ export default function ChatScreen({ ask, askPremium, onBack, personName, initia
     setMessages((m) => [...m, { role: "user", text: question, done: true }]);
     setBusy(true);
     try {
-      const { answer, category } = await ask(question, lastTopicRef.current);
+      const fn = (aiMode && askAI) ? askAI : ask;
+      const { answer, category } = await fn(question, lastTopicRef.current);
       if (category && category !== "general") lastTopicRef.current = category;
       setMessages((m) => [...m, { role: "astro", text: answer || "மன்னிக்கவும், இப்போது பதிலளிக்க முடியவில்லை.", done: false }]);
     } catch (e) {
@@ -103,6 +105,19 @@ export default function ChatScreen({ ask, askPremium, onBack, personName, initia
             <div className="chat-sub">{astrologerTagline}</div>
           </div>
         </div>
+        {askAI && (
+          <button
+            onClick={() => setAiMode((v) => !v)}
+            title="AI இயல்பு மொழி"
+            style={{
+              marginLeft: "auto", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700,
+              padding: "6px 12px", borderRadius: 14,
+              background: aiMode ? "#7b1c1c" : "#efe6cf", color: aiMode ? "#fff8e7" : "#7b1c1c",
+            }}
+          >
+            🤖 AI {aiMode ? "ON" : "OFF"}
+          </button>
+        )}
       </header>
 
       <div className="chat-scroll" ref={scrollRef}>

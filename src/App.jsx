@@ -12,7 +12,7 @@ const newTopperLogoImg = "/logo/new-topper-logo.webp";
 import HomeScreen from "./components/HomeScreen";
 import AdvisoryScreen from "./components/AdvisoryScreen";
 import ChatScreen from "./components/ChatScreen";
-import { apiAsk } from "./api.js";
+import { apiAsk, apiAskAI } from "./api.js";
 import { payThenAskPremium } from "./components/razorpay.js";
 // ── The proprietary interpretive engine runs ONLY in the Cloudflare
 // Worker. The browser talks to it through api.js and never imports the
@@ -1514,6 +1514,20 @@ export default function AstrologyApp() {
       const geo = chartMeta?.geo || resolveBirthGeo(p);
       return apiAsk(buildBirth(dobISO, finalTime, geo), question, lastTopic);
     };
+    const askAstrologerAI = async (question, lastTopic = "") => {
+      const p = formData;
+      const dobISO = chartMeta?.dobISO || parseDDMMYYYY(p.dob);
+      let h24 = 6, min = 0;
+      if (p.tob) {
+        const [hh, mm] = p.tob.split(":").map(Number);
+        h24 = hh || 6; min = mm || 0;
+        if (p.ampm === "PM" && h24 < 12) h24 += 12;
+        if (p.ampm === "AM" && h24 === 12) h24 = 0;
+      }
+      const finalTime = chartMeta?.finalTime || `${String(h24).padStart(2,"0")}:${String(min).padStart(2,"0")}`;
+      const geo = chartMeta?.geo || resolveBirthGeo(p);
+      return apiAskAI(buildBirth(dobISO, finalTime, geo), question, lastTopic);
+    };
     const askPremiumAstrologer = async (question) => {
       const p = formData;
       const dobISO = chartMeta?.dobISO || parseDDMMYYYY(p.dob);
@@ -1528,7 +1542,7 @@ export default function AstrologyApp() {
       const geo = chartMeta?.geo || resolveBirthGeo(p);
       return payThenAskPremium({ birth: buildBirth(dobISO, finalTime, geo), question, name: p.name, amountPaise: 4900 });
     };
-    return <ChatScreen ask={askAstrologer} askPremium={askPremiumAstrologer} personName={formData.name || ""}
+    return <ChatScreen ask={askAstrologer} askAI={askAstrologerAI} askPremium={askPremiumAstrologer} personName={formData.name || ""}
       initialQuestion={chatInitialQ} astrologerName="ஜோதிட குரு"
       onBack={()=>{ setChatInitialQ(""); goTo(SCREEN.ADVISORY); }} />;
   }
