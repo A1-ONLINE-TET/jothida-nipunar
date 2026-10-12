@@ -273,7 +273,8 @@ export default {
           if (text && text.trim()) { answer = text.trim(); ai = true; }
           else aiError = "empty AI response";
         } catch (e) { aiError = String(e && e.message || e); }
-        return json(env, origin, { category, label, answer, ai, aiError });
+        const diag = { provider: env.AI_PROVIDER || null, hasAnthropic: !!env.ANTHROPIC_API_KEY, hasGemini: !!env.GEMINI_API_KEY };
+        return json(env, origin, { category, label, answer, ai, aiError, diag });
       }
 
       // ── /api/ask-deep — FREE deep AI answer (no payment) ──
