@@ -1414,10 +1414,11 @@ export default function AstrologyApp() {
 
   // ─── கீழ் Tab Bar (Flutter-style) — எல்லா முதன்மைத் திரைகளிலும் ───
   const TABS = [
-    { key:"home",  icon:"🏠", label:"முகப்பு",  screen:SCREEN.HOME },
-    { key:"chart", icon:"📊", label:"ஜாதகம்",   screen: horoscope ? SCREEN.RESULT : SCREEN.FORM },
-    { key:"today", icon:"🌞", label:"இன்று",    screen: horoscope ? SCREEN.DAILY : SCREEN.CALENDAR },
-    { key:"me",    icon:"👤", label:"நான்",      screen:SCREEN.FORM },
+    { key:"home",     icon:"🏠", label:"முகப்பு",   screen:SCREEN.HOME },
+    { key:"chart",    icon:"📊", label:"ஜாதகம்",    screen: horoscope ? SCREEN.RESULT : SCREEN.FORM },
+    { key:"today",    icon:"🌞", label:"இன்று",     screen: horoscope ? SCREEN.DAILY : SCREEN.CALENDAR },
+    { key:"advisory", icon:"🔮", label:"ஆலோசனை",   screen:SCREEN.ADVISORY },
+    { key:"me",       icon:"👤", label:"நான்",       screen:SCREEN.FORM },
   ];
   const BottomTabs = ({ active }) => (
     <div style={{position:"fixed", left:0, right:0, bottom:0, zIndex:40,
