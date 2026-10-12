@@ -7,7 +7,6 @@
 // client. Secrets (Claude key, internal token) live only as Worker
 // secrets. See wrangler.toml for setup.
 // ═══════════════════════════════════════════════════════════════════
-// redeploy trigger: 2026-10-12 (retry after transient CF 504 on deploy)
 import { verifyIdToken } from "./auth.js";
 import { rateLimit } from "./ratelimit.js";
 import {
@@ -351,4 +350,3 @@ export default {
     }
   },
 };
-// retry 1791812443

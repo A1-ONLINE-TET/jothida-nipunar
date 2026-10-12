@@ -7,20 +7,32 @@ export async function callGemini(env, prompt, maxTokens = 1000) {
   const key = env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY not set");
 
-  const model = env.GEMINI_MODEL || "gemini-2.0-flash";
+  // "gemini-flash-latest" auto-tracks the current flash model, so the app
+  // won't break again when a specific version is retired (gemini-2.0-flash
+  // was deprecated). Override with the GEMINI_MODEL var if needed.
+  const model = env.GEMINI_MODEL || "gemini-flash-latest";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        maxOutputTokens: Math.min(Math.max(maxTokens, 1), 2048),
-        temperature: 0.7,
-      },
-    }),
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      maxOutputTokens: Math.min(Math.max(maxTokens, 1), 2048),
+      temperature: 0.7,
+    },
   });
+
+  // Retry once on transient overload (503/429) — Gemini flash models get
+  // brief "high demand" spikes.
+  let res;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    });
+    if (res.ok || (res.status !== 503 && res.status !== 429)) break;
+    if (attempt === 0) await new Promise((r) => setTimeout(r, 800));
+  }
 
   if (!res.ok) throw new Error(`gemini ${res.status}`);
   const data = await res.json();
