@@ -7,12 +7,16 @@ import {
 import "./home.css";
 
 const services = [
-  { key: "chart",     title: "ஜாதகக் கட்டம்",  description: "உங்கள் ஜாதகம் பார்க்கவும்",              icon: Grid2X2,        theme: "peach" },
-  { key: "porutham",  title: "பொருத்தம் பார்க்க", description: "திருமணம், நட்பு, குடும்ப பொருத்தம்",     icon: Heart,          theme: "rose" },
-  { key: "calendar",  title: "ஜோதிட நாட்கள்",   description: "முக்கிய தினங்கள் மற்றும் முகூர்த்தங்கள்", icon: CalendarDays,   theme: "blue" },
-  { key: "consult",   title: "ஜோதிட ஆலோசனை",   description: "நிபுணர் ஜோதிடர்கள் ஆலோசனை பெறுங்கள்",    icon: UserRound,      theme: "green" },
-  { key: "books",     title: "ஜோதிட நூல்கள்",   description: "பயனுள்ள ஜோதிட தகவல்கள்",                 icon: BookOpen,       theme: "purple" },
-  { key: "more",      title: "மேலும் வசதிகள்",  description: "எல்லா சேவைகளும் ஒரே இடத்தில்",           icon: Star,           theme: "yellow" },
+  { key: "chart",       title: "ஜாதகக் கட்டம்",       description: "கிரக நிலைகள், லக்னம், ராசி முழு ஜாதகம்",      icon: Grid2X2,      theme: "peach" },
+  { key: "dasha",       title: "தசா அட்டவணை",          description: "விம்சோத்தரி தசா, அந்தர்தசா காலக்கணக்கு",      icon: Star,         theme: "yellow" },
+  { key: "yogas",       title: "யோகங்கள் & தோஷங்கள்",  description: "மகாபுருஷ யோகம், கால சர்ப்ப, செவ்வாய் தோஷம்",   icon: Sparkles,     theme: "purple" },
+  { key: "porutham",    title: "திருமண பொருத்தம்",     description: "10 பொருத்தம், நாடி, ரஜ்ஜு, வேதம்",            icon: Heart,        theme: "rose" },
+  { key: "nakbhava",    title: "நட்சத்திர-பாவக",       description: "நட்சத்திர-பாவக இணைப்பு, கோசார காலம்",         icon: Compass,      theme: "blue" },
+  { key: "backtest",    title: "Backtest சரிபார்ப்பு",  description: "கடந்த நிகழ்வுகளில் ஜோதிட துல்லியம் சோதனை",    icon: BookOpen,     theme: "green" },
+  { key: "eventtiming", title: "நிகழ்வு நேரம்",        description: "திருமணம், வேலை, பயணம் — சிறந்த நேரம்",        icon: CalendarDays, theme: "blue" },
+  { key: "sadesati",    title: "சாதே சாதி / குரு பெயர்ச்சி", description: "சனி, குரு கோசார தாக்கம் பார்க்கவும்",   icon: Star,         theme: "yellow" },
+  { key: "muhurtham",   title: "முகூர்த்தம்",           description: "சுப நேரம், ராகு காலம், யமகண்டம்",             icon: CalendarDays, theme: "peach" },
+  { key: "consult",     title: "ஜோதிடரிடம் கேளுங்கள்", description: "உங்கள் கேள்விக்கு நேரடி பதில் பெறுங்கள்",     icon: UserRound,    theme: "green" },
 ];
 
 const navigation = [

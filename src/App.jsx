@@ -1443,21 +1443,31 @@ export default function AstrologyApp() {
   // ═══════ HOME — TOPPER ASTRO முகப்பு (புதிய design) ═══════
   if(screen===SCREEN.HOME) {
     const handleHome = (key) => {
+      const hasChart = !!(horoscope && dashaData);
+      const toResult = (view) => {
+        if (hasChart) { setAdvancedView(view || ""); goTo(SCREEN.RESULT); }
+        else goTo(SCREEN.FORM);
+      };
       switch (key) {
-        case "home":     goTo(SCREEN.HOME); break;
-        case "daily":    goTo(horoscope ? SCREEN.DAILY : SCREEN.CALENDAR); break;
-        case "chart":    goTo(horoscope ? SCREEN.RESULT : SCREEN.FORM); break;
-        case "porutham": setHomeQuestion(null); goTo(SCREEN.PORUTHAM); break;
-        case "calendar": goTo(SCREEN.CALENDAR); break;
+        case "home":        goTo(SCREEN.HOME); break;
+        case "daily":       goTo(horoscope ? SCREEN.DAILY : SCREEN.CALENDAR); break;
+        case "chart":       toResult(""); break;
+        case "dasha":       toResult("dasha"); break;
+        case "yogas":       toResult("yogas"); break;
+        case "nakbhava":    toResult("nakbhava"); break;
+        case "backtest":    toResult("backtest"); break;
+        case "eventtiming": toResult("eventtiming"); break;
+        case "sadesati":    toResult("saniguru"); break;
+        case "muhurtham":   goTo(SCREEN.CALENDAR); break;
+        case "porutham":    setHomeQuestion(null); goTo(SCREEN.PORUTHAM); break;
+        case "calendar":    goTo(SCREEN.CALENDAR); break;
         case "consult":
           if (formData.name && formData.dob) goTo(SCREEN.CHAT);
           else if (profiles[0]) { loadProfile(profiles[0]); goTo(SCREEN.CHAT); }
           else goTo(SCREEN.FORM);
           break;
-        case "books":    goTo(SCREEN.CALENDAR); break;
-        case "more":     goTo(horoscope ? SCREEN.RESULT : SCREEN.FORM); break;
-        case "account":  goTo(SCREEN.FORM); break;
-        default: break; // notifications etc. — no-op
+        case "account":     goTo(SCREEN.FORM); break;
+        default: break;
       }
     };
     return <HomeScreen handle={handleHome} />;
