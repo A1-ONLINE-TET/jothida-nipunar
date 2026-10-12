@@ -247,8 +247,8 @@ export default {
         h._name = birth.name;
         const dashaData = computeDasha(h, birth);
         const { category, label } = classifyQuestion(question, lastTopic);
-        const answer = buildAskAnswer(h, dashaData, question, { category, name: birth.name });
-        return json(env, origin, { category, label, answer });
+        const built = buildAskAnswer(h, dashaData, question, { category, name: birth.name });
+        return json(env, origin, { category, label, answer: built.answer });
       }
 
       // ── /api/ask-ai — AI-powered astrologer Q&A (Gemini / Claude) ──
@@ -263,7 +263,7 @@ export default {
         h._name = birth.name;
         const dashaData = computeDasha(h, birth);
         const { category, label } = classifyQuestion(question, lastTopic);
-        const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name });
+        const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name }).answer;
         let answer = engineFindings, ai = false;
         try {
           // The engine already did the astrology; Gemini only phrases its
@@ -288,7 +288,7 @@ export default {
         h._name = birth.name;
         const dashaData = computeDasha(h, birth);
         const { category, label } = classifyQuestion(question, lastTopic);
-        const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name });
+        const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name }).answer;
         let answer = engineFindings, ai = false;
         try {
           const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings, deep: true });
@@ -324,7 +324,7 @@ export default {
         h._name = birth.name;
         const dashaData = computeDasha(h, birth);
         const { category } = classifyQuestion(question, lastTopic);
-        const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name });
+        const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name }).answer;
         // Deep answer — same grounded flow, fuller phrasing.
         const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings, deep: true });
         const answer = await callAI(env, prompt, 1000);
