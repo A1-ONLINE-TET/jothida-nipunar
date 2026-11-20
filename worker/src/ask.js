@@ -259,7 +259,7 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
   }
   sec(isCaution ? "◆ கவனம் தேவை காலம்" : "◆ எப்போது", timing);
 
-  // ── கவனிக்க வேண்டியவை — தோஷம்/சாதே சாதி/கால சர்ப்பம்/சந்ததி (ஒரே இடத்தில்) ──
+  // ── கவனிக்க வேண்டியவை — தோஷம்/ஏழரைச் சனி/கால சர்ப்பம்/சந்ததி (ஒரே இடத்தில்) ──
   const caution = [];
   if (cat === "marriage" && extras.chevvai && extras.chevvai.present) {
     caution.push(extras.chevvai.cancelled
@@ -268,8 +268,8 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
   }
   if (cat === "health" && extras.sadeSati) {
     caution.push(extras.sadeSati.active
-      ? `சாதே சாதி நடைபெறுகிறது (${extras.sadeSati.phase}) — உடல்/மன நலனில் கவனம்; ஓய்வு, யோகா உதவும்.`
-      : "சாதே சாதி இப்போது இல்லை — சனியின் கடுமை இல்லை.");
+      ? `${extras.sadeSati.isEzharai ? "ஏழரைச் சனி" : "சனியின் கவனக் காலம்"} நடைபெறுகிறது (${extras.sadeSati.phase}) — உடல்/மன நலனில் கவனம்; ஓய்வு, யோகா உதவும்.`
+      : "ஏழரைச் சனி இப்போது இல்லை — சனியின் கடுமை இல்லை.");
   }
   if (extras.kalaSarpa && extras.kalaSarpa.present && (cat === "marriage" || cat === "children" || cat === "career")) {
     caution.push(`கால சர்ப்ப அமைப்பு (${extras.kalaSarpa.type}) — சில காலதாமதம் சாத்தியம்.`);

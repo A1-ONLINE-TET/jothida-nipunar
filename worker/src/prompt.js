@@ -75,7 +75,7 @@ Panchangam for that date: திதி ${today.tithi} ${today.paksham}, யோ�
 Planetary transits relative to birth moon sign, as of that date: ${transitSummary}
 ${dashaLine}
 ${gochara.isChandrashtama ? `${today.isOtherDate ? "அன்று" : "இன்று"} சந்திராஷ்டமம் — கவனமாக இருக்க வேண்டிய நாள்.` : ""}
-${sadeSati?.active ? `Sade Sati status on that date: ${sadeSati.phase} — ${sadeSati.desc}` : "No Sade Sati on that date."}
+${sadeSati?.active ? `Saturn status on that date: ${sadeSati.isEzharai ? "ஏழரைச் சனி, " : ""}${sadeSati.phase}${sadeSati.stage ? ` (${sadeSati.stage})` : ""} — ${sadeSati.desc} In the reading call it by these Tamil names; never write "சாடே சாதி".` : "No ஏழரைச் சனி on that date."}
 Guru Peyarchi (Jupiter transit) effect on that date: ${guruPeyarchi?.desc || "N/A"}
 Tara Bala on that date: ${taraBala?.name} (${taraBala?.mood === "good" ? "favorable" : "use caution"})
 Recommended remedy for this rashi: worship ${remedy?.dayInfo?.deity}, ${remedy?.dayInfo?.remedy}

@@ -5376,11 +5376,12 @@ ${aiPart}
             {sadeSati && (
               <div style={{...card,padding:"10px 12px",
                 border:`1px solid ${sadeSati.active?(sadeSati.severity==="high"?"#d98aa340":"#dcc27e30"):"#58a97f25"}`}}>
-                <div style={{fontSize:11.5,color:"#4a5365",marginBottom:3}}>ஏழரை சனி</div>
+                <div style={{fontSize:11.5,color:"#4a5365",marginBottom:3}}>{sadeSati.active && !sadeSati.isEzharai ? "சனி கோசாரம்" : "ஏழரைச் சனி"}</div>
                 <div style={{fontSize:12.5,fontWeight:700,
                   color:sadeSati.active?(sadeSati.severity==="high"?"#c0564f":"#1f3f68"):"#58a97f"}}>
-                  {sadeSati.active?"⚠ "+sadeSati.phase:"✓ இல்லை"}
+                  {sadeSati.active ? sadeSati.phase : "இல்லை"}
                 </div>
+                {sadeSati.active && sadeSati.stage && <div data-sani-stage style={{fontSize:11.5,color:"#76819a",marginTop:2}}>{sadeSati.stage}</div>}
               </div>
             )}
             {taraBala && (

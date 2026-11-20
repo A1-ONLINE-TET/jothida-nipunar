@@ -246,7 +246,7 @@ const CAT_TO_EVENT = {
 };
 
 // ஆலோசனை chat-க்கான ஆழ்பொருள் bundle — ஒரு முறை முழு report கணக்கிட்டு,
-// topic-க்கான நிகழ்வு windows + தோஷம்/யோகம்/சாதே சாதி சேர்த்துத் தரும்.
+// topic-க்கான நிகழ்வு windows + தோஷம்/யோகம்/ஏழரைச் சனி சேர்த்துத் தரும்.
 export function computeConsultation(h, birth, category) {
   useZone(birth);
   const r = computeFullReport(h, birth);

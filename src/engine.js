@@ -1872,13 +1872,15 @@ function calcCurrentHorai(now, lat=13.0827, lon=80.2707, tzOffset=_tz) {
 // ஏழரை சனி (SADE SATI) — Saturn's 7.5-year cycle relative to birth Moon
 // ═══════════════════════════════════════════════════════════════════
 function calcSadeSati(birthMoonRashi, saturnTodayRashi) {
+  // phase = தமிழ் வழக்குப் பெயர்; stage = அது ஏழரைச் சனியின் எந்தப் பகுதி; isEzharai = ஏழரைச் சனியா (12, 1, 2)
+  // அல்லது சனியின் வேறு கவனக் காலமா (8 = அஷ்டமம், 4 = அர்த்தாஷ்டமம்). "சாடே சாதி" என்ற ஹிந்திச் சொல் வேண்டாம்.
   const houseFromMoon = ((saturnTodayRashi - birthMoonRashi + 12) % 12) + 1;
-  if (houseFromMoon === 12) return { active:true, phase:"தொடக்க சாடே சாதி", phaseEn:"Rising Phase", desc:"ஏழரை சனியின் முதல் கட்டம் தொடங்கியுள்ளது — மன அழுத்தம், மாற்றங்கள் ஏற்படலாம். பொறுமை தேவை.", severity:"caution" };
-  if (houseFromMoon === 1)  return { active:true, phase:"உச்ச சாடே சாதி", phaseEn:"Peak Phase", desc:"ஏழரை சனியின் உச்சக்கட்டம் — மிகவும் கடினமான காலம். ஆன்மீக பயிற்சி, சனி பரிகாரம் செய்யவும்.", severity:"high" };
-  if (houseFromMoon === 2)  return { active:true, phase:"இறங்கு சாடே சாதி", phaseEn:"Setting Phase", desc:"ஏழரை சனி முடிவை நோக்கி செல்கிறது — குடும்பம், பொருளாதாரத்தில் கவனம் தேவை.", severity:"caution" };
-  if (houseFromMoon === 8)  return { active:true, phase:"அஷ்டம சனி (கண்டக சனி)", phaseEn:"Ashtama Shani", desc:"சனி 8ஆம் வீட்டில் — ஆரோக்கியம், எதிர்பாராத சிக்கல்களில் கவனம் தேவை.", severity:"caution" };
-  if (houseFromMoon === 4)  return { active:true, phase:"அர்த்தாஷ்டம சனி", phaseEn:"Ardhashtama Shani", desc:"சனி 4ஆம் வீட்டில் — மனநிலை, வீடு தொடர்பான விஷயங்களில் கவனம்.", severity:"caution" };
-  return { active:false, phase:"ஏழரை சனி இல்லை", phaseEn:"No Sade Sati", desc:"தற்போது ஏழரை சனி (சாடே சாதி) இல்லை. சனியின் கோச்சார (பெயர்ச்சி) பலனை தனியே கீழே பார்க்கவும்.", severity:"none" };
+  if (houseFromMoon === 12) return { active:true, isEzharai:true, phase:"விரயச் சனி", stage:"முதல் இரண்டரை ஆண்டு", phaseEn:"Rising Phase", desc:"ஏழரைச் சனியின் முதல் கட்டம்: சனி உங்கள் ராசிக்கு 12ஆம் இடத்தில். செலவு, அலைச்சல், மன அழுத்தம் கூடலாம்; பொறுமை தேவை.", severity:"caution" };
+  if (houseFromMoon === 1)  return { active:true, isEzharai:true, phase:"ஜென்மச் சனி", stage:"நடு இரண்டரை ஆண்டு", phaseEn:"Peak Phase", desc:"ஏழரைச் சனியின் நடுக் கட்டம்: சனி உங்கள் ராசியிலேயே. உடல்நலம், மன உறுதியில் கவனம் தேவைப்படும் காலம்; நிதானமாகச் செயல்படுங்கள்.", severity:"high" };
+  if (houseFromMoon === 2)  return { active:true, isEzharai:true, phase:"பாதச் சனி", stage:"கடைசி இரண்டரை ஆண்டு", phaseEn:"Setting Phase", desc:"ஏழரைச் சனியின் இறுதிக் கட்டம்: சனி உங்கள் ராசிக்கு 2ஆம் இடத்தில். குடும்பம், பொருளாதாரம், பேச்சில் கவனம் தேவை.", severity:"caution" };
+  if (houseFromMoon === 8)  return { active:true, isEzharai:false, phase:"அஷ்டமச் சனி", stage:"", phaseEn:"Ashtama Shani", desc:"சனி உங்கள் ராசிக்கு 8ஆம் இடத்தில் — ஆரோக்கியம், எதிர்பாராத சிக்கல்களில் கவனம் தேவை.", severity:"caution" };
+  if (houseFromMoon === 4)  return { active:true, isEzharai:false, phase:"அர்த்தாஷ்டமச் சனி", stage:"", phaseEn:"Ardhashtama Shani", desc:"சனி உங்கள் ராசிக்கு 4ஆம் இடத்தில் — மனநிலை, வீடு தொடர்பான விஷயங்களில் கவனம்.", severity:"caution" };
+  return { active:false, isEzharai:false, phase:"ஏழரைச் சனி இல்லை", stage:"", phaseEn:"No Sade Sati", desc:"தற்போது ஏழரைச் சனி இல்லை. சனியின் கோசார (பெயர்ச்சி) பலனைத் தனியே கீழே பார்க்கவும்.", severity:"none" };
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -5351,7 +5353,7 @@ function calcPlanetTransitAnalysis(birthMoonRashiIdx, transitPlacements, birthNa
   const saniHouse = saturn ? ((saturn.rashiIdx - birthMoonRashiIdx + 12) % 12) + 1 : null;
   const guruHouse = jupiter ? ((jupiter.rashiIdx - birthMoonRashiIdx + 12) % 12) + 1 : null;
   const isSadeSati = saniHouse && (saniHouse === 12 || saniHouse === 1 || saniHouse === 2);
-  const sadeSatiPhase = saniHouse === 12 ? "ஏறு பாதை (12th)" : saniHouse === 1 ? "உச்ச பாதை (1st — ஜென்ம சனி)" : saniHouse === 2 ? "இறங்கு பாதை (2nd)" : null;
+  const sadeSatiPhase = saniHouse === 12 ? "விரயச் சனி — முதல் இரண்டரை ஆண்டு" : saniHouse === 1 ? "ஜென்மச் சனி — நடு இரண்டரை ஆண்டு" : saniHouse === 2 ? "பாதச் சனி — கடைசி இரண்டரை ஆண்டு" : null;
   // நட்சத்திர அளவு — the 2½-yr (Sani) / 1-yr (Guru) rashi stay divides into
   // ~3 nakshatra legs; the tara from the birth star refines timing within it.
   const nakInfo = (p) => p && p.nakIdx >= 0 ? {

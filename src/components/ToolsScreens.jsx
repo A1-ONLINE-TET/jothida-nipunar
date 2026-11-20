@@ -156,7 +156,7 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
             )}
             {data.sadeSati && (
               <span style={{ ...chip, background: data.sadeSati.active ? "#fbeeed" : "#e9f5ee", color: data.sadeSati.active ? "#c0564f" : "#2e7d5b" }}>
-                {data.sadeSati.active ? `ஏழரை சனி — ${data.sadeSati.phase}` : "ஏழரை சனி இல்லை"}
+                {data.sadeSati.active ? `${data.sadeSati.isEzharai ? "ஏழரைச் சனி — " : ""}${data.sadeSati.phase}${data.sadeSati.stage ? ` (${data.sadeSati.stage})` : ""}` : "ஏழரைச் சனி இல்லை"}
               </span>
             )}
           </div>
@@ -242,7 +242,7 @@ function PeriodPalan({ p, onNav, onShare }) {
             </div>
             <div style={{ fontSize: 12, color: "#76819a", marginTop: 2 }}>{dShort(s.from)} – {dShort(s.to)}</div>
             <div style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.65, marginTop: 4 }}>{s.desc || s.theme}</div>
-            {s.sadeSati?.active && <span style={{ ...chip, marginTop: 6, background: "#fbeeed", color: "#c0564f" }}>ஏழரை சனி — {s.sadeSati.phase}</span>}
+            {s.sadeSati?.active && <span style={{ ...chip, marginTop: 6, background: "#fbeeed", color: "#c0564f" }}>{s.sadeSati.isEzharai ? "ஏழரைச் சனி — " : ""}{s.sadeSati.phase}{s.sadeSati.stage ? ` (${s.sadeSati.stage})` : ""}</span>}
           </div>
         ))}
       </div>
