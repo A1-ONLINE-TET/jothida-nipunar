@@ -26,28 +26,30 @@
 
   <style>
     :root {
-      /* ── Jothida Nipunar Design System — sacred luxe palette ── */
-      --jn-maroon:      #7b1c1c;
-      --jn-maroon-deep: #5f1414;
-      --jn-maroon-lit:  #9b2c2c;
-      --jn-gold:        #b8860b;
-      --jn-gold-lit:    #d4a017;
-      --jn-gold-soft:   #e8c979;
-      --jn-ink:         #241a15;
-      --jn-ink-soft:    #4a3d35;
-      --jn-ink-muted:   #7a6b60;
-      --jn-line:        #ecdfce;
+      /* ── Jothida Nipunar Design System — calm celestial palette ──
+         மென்மையான navy + muted gold + வெண் பின்னணி. கண்ணை உறுத்தாத,
+         அமைதியான தோற்றம்; எல்லா screen-க்கும் இதே tokens. */
+      --jn-maroon:      #1f3f68;   /* primary (முன்பு மரூன் — இப்போது அமைதியான navy) */
+      --jn-maroon-deep: #16304f;
+      --jn-maroon-lit:  #35598c;
+      --jn-gold:        #a9823c;   /* muted antique gold */
+      --jn-gold-lit:    #c7a568;
+      --jn-gold-soft:   #e2d2a8;
+      --jn-ink:         #27303f;
+      --jn-ink-soft:    #4a5365;
+      --jn-ink-muted:   #76819a;
+      --jn-line:        #e3e8f2;
       --jn-radius:      18px;
-      --jn-shadow-sm:   0 2px 10px rgba(90,40,10,0.06);
-      --jn-shadow-md:   0 10px 34px -12px rgba(90,40,10,0.18), 0 2px 8px rgba(90,40,10,0.05);
-      --jn-shadow-gold: 0 10px 30px -8px rgba(184,134,11,0.35);
+      --jn-shadow-sm:   0 2px 10px rgba(35,55,95,0.05);
+      --jn-shadow-md:   0 10px 34px -12px rgba(35,55,95,0.14), 0 2px 8px rgba(35,55,95,0.04);
+      --jn-shadow-gold: 0 10px 30px -8px rgba(170,140,85,0.28);
       --jn-ease:        cubic-bezier(0.22, 1, 0.36, 1);
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { -webkit-text-size-adjust: 100%; }
     body {
       font-family: 'Noto Sans Tamil', 'Segoe UI', system-ui, sans-serif;
-      background: #ffffff;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafd 55%, #f3f6fb 100%);
       background-attachment: fixed;
       color: var(--jn-ink);
       -webkit-font-smoothing: antialiased;
@@ -68,11 +70,11 @@
     /* Inputs — refined focus ring */
     input, select, textarea { font-family: inherit; transition: border-color .2s var(--jn-ease), box-shadow .2s var(--jn-ease), background .2s; }
     input:focus, select:focus, textarea:focus {
-      border-color: var(--jn-gold) !important;
-      box-shadow: 0 0 0 3px rgba(184,134,11,0.16) !important;
-      background: #fffdf7 !important;
+      border-color: var(--jn-gold-lit) !important;
+      box-shadow: 0 0 0 3px rgba(170,140,85,0.14) !important;
+      background: #fcfdff !important;
     }
-    input::placeholder { color: #b3a596; }
+    input::placeholder { color: #a3adc2; }
 
     /* Buttons — universal micro-interaction */
     button { font-family: inherit; transition: transform .16s var(--jn-ease), box-shadow .2s var(--jn-ease), filter .2s, background .2s; -webkit-tap-highlight-color: transparent; }
@@ -82,8 +84,8 @@
     /* Scrollbar */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: linear-gradient(#e8c979,#b8860b); border-radius: 6px; }
-    ::selection { background: rgba(184,134,11,0.22); }
+    ::-webkit-scrollbar-thumb { background: #cdd5e4; border-radius: 6px; }
+    ::selection { background: rgba(170,140,85,0.20); }
 
     /* ── Reusable motion ── */
     @keyframes jnFadeUp   { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform:none; } }
@@ -105,8 +107,8 @@
     .jn-shine { position: relative; overflow: hidden; }
     .jn-shine::after {
       content:""; position:absolute; inset:0;
-      background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,.42) 48%, transparent 66%);
-      background-size: 220% 100%; animation: jnShimmer 3.6s var(--jn-ease) infinite;
+      background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,.22) 48%, transparent 66%);
+      background-size: 220% 100%; animation: jnShimmer 5.2s var(--jn-ease) infinite;
       pointer-events:none;
     }
     /* Lift-on-hover card */
