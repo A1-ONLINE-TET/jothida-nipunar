@@ -12,7 +12,7 @@ import { rateLimit } from "./ratelimit.js";
 import {
   buildHoroscope, computeFullReport, computeDasha, computeDailyBundle,
   computeBacktest, computeEventTiming, computeNakBhava, computePorutham,
-  computeRasiPalan, computeMonthMuhurta, computeAltDashas, computeRasiPeriod, navagrahaReference,
+  computeRasiPalan, computeMonthMuhurta, computeAltDashas, computeRasiPeriod, navagrahaReference, computeConsultation,
 } from "./compute.js";
 import { computeFestivals } from "./festivals.js";
 import { computeVratham } from "./vratham.js";
@@ -165,7 +165,13 @@ async function answerQuestion(env, birth, question, lastTopic, mode, personaRaw 
   const dashaData = computeDasha(h, birth);
   const category = classifyQuestion(question, lastTopic || (persona !== "general" ? persona : ""));
   const label = topicLabel(category);
-  const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name }).answer;
+  // ஆழ்ந்த கணிப்புகள் (பலன்கள் பக்கத்தின் அதே தீர்ப்பு, நிகழ்வுக் காலம், தோஷம், யோகம், ஏழரைச் சனி) — பதிலின் அடிப்படை.
+  // கணக்கு தவறினால் அடிப்படை அடுக்குடன் (வீடு, அதிபதி, காரகன், தசை) பதில் தொடரும்.
+  let deep = {};
+  try { deep = computeConsultation(h, birth, category) || {}; } catch (_) { deep = {}; }
+  // கேள்வியில் தனித் தலைப்புச் சொல் இல்லை ("எப்போது?", "பரிகாரம் என்ன?") = முந்தைய தலைப்பின் தொடர் கேள்வி → குவிந்த பதில்.
+  const followUp = category !== "general" && classifyQuestion(question, "") === "general";
+  const engineFindings = buildAskAnswer(h, deep.dashaData || dashaData, question, { ...deep, category, name: birth.name, followUp }).answer;
   let answer = engineFindings, ai = false;
   if (mode !== "engine") {
     try {

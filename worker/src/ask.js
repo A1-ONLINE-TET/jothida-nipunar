@@ -130,6 +130,24 @@ function strengthNote(planets) {
   return "neutral";
 }
 
+// நிகழ்வுக் காலக் கணிப்பின் (தசை × கோசாரம் × ஜாதக வாக்குறுதி) வரிகள். engine காலங்களை வலு வரிசையில் தருகிறது;
+// இங்கே இனி வரும் (அல்லது நடப்பில் உள்ள) வலுவான இரண்டை எடுத்துக் கால வரிசையில் சொல்கிறோம்.
+function timingLines(et, isCaution) {
+  const out = [];
+  if (!et || !Array.isArray(et.windows) || !et.windows.length) return out;
+  const now = civilNow();
+  const top = et.windows.filter((w) => new Date(w.end) > now).slice(0, 2).sort((a, b) => new Date(a.start) - new Date(b.start));
+  top.forEach((w, i) => {
+    const running = new Date(w.start) <= now;
+    const span = running ? `இப்போதிருந்து ${fmtMonthYear(w.end)} வரை` : `${fmtMonthYear(w.start)} – ${fmtMonthYear(w.end)}`;
+    const lord = `${w.md} தசை${w.ad ? `/${w.ad} புக்தி` : ""}`;
+    if (isCaution) out.push(`${i === 0 ? "கவனம் தேவைப்படும் காலம்" : "அதன் பின்"}: ${span} (${lord}) — உணவு, ஓய்வு, மருத்துவப் பரிசோதனையில் கவனம்.`);
+    else out.push(`${i === 0 ? (running ? "நடப்புக் காலமே சாதகமானது" : "அடுத்த சாதக காலம்") : "அதன் பின்"}: ${span} (${lord}; கணிப்பு வலு: ${w.confidence}).`);
+  });
+  if (top.length && !isCaution && typeof et.promise === "number") out.push(`ஜாதகத்தில் இதற்கான அடிப்படை வலு: ${et.promise}/100${et.promiseVerdict ? ` — ${et.promiseVerdict}` : ""}.`);
+  return out;
+}
+
 export function buildAskAnswer(h, dashaData, question, extras = {}) {
   // index.js ஏற்கனவே follow-up-ஐ கணக்கில் கொண்டு category-ஐ தீர்மானித்துள்ளது
   const cat = extras.category || classify(question);
@@ -159,17 +177,10 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
     if (intent === "timing") {
       const foc = [`${greet}${topic.label} — எப்போது என்பதைப் பார்ப்போம்.`];
       if (md) foc.push(`தற்போது ${md}${ad ? `-${ad}` : ""} தசை நடைபெறுகிறது.`);
-      if (et && Array.isArray(et.windows) && et.windows.length) {
-        const w = et.windows[0];
-        foc.push(isCaution
-          ? `கவனம் தேவை காலம்: ${fmtMonthYear(w.start)} – ${fmtMonthYear(w.end)} (${w.md} தசை).`
-          : `சாதகமான காலம்: ${fmtMonthYear(w.start)} – ${fmtMonthYear(w.end)} (${w.md} தசை${w.ad ? `/${w.ad} புக்தி` : ""}, நம்பிக்கை ${w.confidence}).`);
-        if (et.windows[1] && !isCaution) foc.push(`பிறகு: ${fmtMonthYear(et.windows[1].start)} – ${fmtMonthYear(et.windows[1].end)} (${et.windows[1].md} தசை).`);
-        if (typeof et.promise === "number") foc.push(`ஜாதக வாக்குறுதி: ${et.promise}%${(!isCaution && et.promiseVerdict) ? ` — ${et.promiseVerdict}` : ""}.`);
-      } else {
-        foc.push("அடுத்த 12 ஆண்டுகளில் வலுவான தசைத் தூண்டல் குறைவு — பொறுமையுடன் முயற்சி தேவை.");
-      }
-      foc.push("இந்தக் காலங்களில் முயற்சி செய்தால் பலன் கிடைக்கும். 🙏");
+      const tl = timingLines(et, isCaution);
+      if (tl.length) foc.push(...tl);
+      else foc.push("அடுத்த 12 ஆண்டுகளில் வலுவான தசைத் தூண்டல் குறைவு — பொறுமையுடன் முயற்சி தேவை.");
+      foc.push(isCaution ? "இந்தக் காலங்களில் உடல்நலத்தில் கூடுதல் கவனம் வையுங்கள்." : "இந்தக் காலங்களில் முயற்சி செய்தால் பலன் கிடைக்கும்.");
       return { category: cat, label: topic.label, answer: foc.join("\n\n") };
     }
     if (intent === "remedy") {
@@ -178,12 +189,14 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
       if (Array.isArray(extras.remedies)) {
         const want = new Set([topic.karaka, RASHI_LORD[houseSign(lagnaIdx, topic.houses[0])]]);
         for (const r of extras.remedies.filter((r) => r.needsRemedy && want.has(r.ta)).slice(0, 3)) {
-          rr.push(`• ${r.ta}: ரத்தினம் ${r.gem}${r.mantra ? `, மந்திரம் ${r.mantra}` : ""}${r.temple ? `, ${r.temple}` : ""}${r.donate ? `, தானம்: ${r.donate}` : ""}`);
+          // ரத்தினப் பரிந்துரை இங்கே இல்லை — அது லக்னப்படி பரிகாரத் திட்டத்தில் (remedy.js) மட்டும்.
+          const parts = [r.mantra ? `மந்திரம் ${r.mantra}` : "", r.temple || "", r.donate ? `தானம்: ${r.donate}` : ""].filter(Boolean);
+          if (parts.length) rr.push(`• ${r.ta}: ${parts.join(", ")}`);
         }
       }
       if (extras.kalaSarpa && extras.kalaSarpa.present && extras.kalaSarpa.remedy) rr.push(`• கால சர்ப்பம்: ${extras.kalaSarpa.remedy}`);
       if (cat === "marriage" && extras.chevvai && extras.chevvai.present && !extras.chevvai.cancelled) rr.push("• செவ்வாய் தோஷம்: செவ்வாய் பகவான் வழிபாடு, வைதீஸ்வரன் கோயில்; பொருத்தத்தில் சமன் பார்க்கவும்.");
-      if (rr.length) foc.push(rr.join("\n"));
+      if (rr.length) foc.push(rr.join("\n") + "\nஎது தேவை, எது தேவையில்லை, ரத்தினம் அணியலாமா என்ற முழுத் திட்டம்: ஜாதகம் → பரிகாரம் பகுதி.");
       else foc.push("உங்கள் ஜாதகத்தில் தனிப் பலவீனம் இல்லை — இஷ்ட தெய்வ வழிபாடு, நல்ல நாளில் காரியம் தொடங்கினால் போதும்.");
       foc.push("பரிகாரம் முழு மனதுடன் செய்தால் பலன் உண்டு. 🙏");
       return { category: cat, label: topic.label, answer: foc.join("\n\n") };
@@ -210,7 +223,7 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
       ]);
     }
     if (ka.tridosha) {
-      sec("◆ உடலியல் தோஷம்", [`${ka.tridosha.dominant} மிகுதி${ka.tridosha.close ? ` (இணை: ${ka.tridosha.close})` : ""} — ${ka.tridosha.effects}`]);
+      sec("◆ உடல் இயல்பு", [`${ka.tridosha.dominant} மிகுதி${ka.tridosha.close ? ` (இணை: ${ka.tridosha.close})` : ""} — பொதுவாகக் கவனிக்க வேண்டியவை: ${ka.tridosha.effects}`]);
     }
   } else {
     // ── keyAreas இல்லாத தலைப்பு — வீடு + அதிபதி + காரகன் + bhavaPhalam ──
@@ -247,16 +260,7 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
   // ── எப்போது — நிகழ்வு காலக்கணிப்பு (தசா × கோசாரம் × வாக்குறுதி) ──
   const timing = [];
   if (md) timing.push(`தற்போது ${md}${ad ? `-${ad}` : ""} தசை நடைபெறுகிறது.`);
-  if (et && Array.isArray(et.windows) && et.windows.length) {
-    const w = et.windows[0];
-    if (isCaution) {
-      timing.push(`கவனம் தேவை காலம்: ${fmtMonthYear(w.start)} – ${fmtMonthYear(w.end)} (${w.md} தசை) — உணவு, ஓய்வு, மருத்துவப் பரிசோதனையில் கவனம்.`);
-    } else {
-      timing.push(`அடுத்த சாதக காலம்: ${fmtMonthYear(w.start)} – ${fmtMonthYear(w.end)} (${w.md} தசை${w.ad ? `/${w.ad} புக்தி` : ""}, நம்பிக்கை ${w.confidence}).`);
-      if (et.windows[1]) timing.push(`பிறகு: ${fmtMonthYear(et.windows[1].start)} – ${fmtMonthYear(et.windows[1].end)} (${et.windows[1].md} தசை).`);
-    }
-    if (typeof et.promise === "number") timing.push(isCaution ? `பாதிப்பு அளவு: ${et.promise}%.` : `ஜாதக வாக்குறுதி: ${et.promise}%${et.promiseVerdict ? ` — ${et.promiseVerdict}` : ""}.`);
-  }
+  timing.push(...timingLines(et, isCaution));
   sec(isCaution ? "◆ கவனம் தேவை காலம்" : "◆ எப்போது", timing);
 
   // ── கவனிக்க வேண்டியவை — தோஷம்/ஏழரைச் சனி/கால சர்ப்பம்/சந்ததி (ஒரே இடத்தில்) ──
@@ -291,12 +295,14 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
   if (Array.isArray(extras.remedies)) {
     const want = new Set([topic.karaka, RASHI_LORD[houseSign(lagnaIdx, topic.houses[0])]]);
     for (const r of extras.remedies.filter((r) => r.needsRemedy && want.has(r.ta)).slice(0, 2)) {
-      rem.push(`${r.ta}: ரத்தினம் ${r.gem}${r.mantra ? `, மந்திரம் ${r.mantra}` : ""}${r.temple ? `, ${r.temple}` : ""}`);
+      const parts = [r.mantra ? `மந்திரம் ${r.mantra}` : "", r.temple || ""].filter(Boolean);
+      if (parts.length) rem.push(`${r.ta}: ${parts.join(", ")}`);
     }
   }
   if (extras.kalaSarpa && extras.kalaSarpa.present && extras.kalaSarpa.remedy && (cat === "marriage" || cat === "children" || cat === "career")) {
     rem.push(`கால சர்ப்பம்: ${extras.kalaSarpa.remedy}`);
   }
+  if (rem.length) rem.push("முழுத் திட்டம் (எது தேவை, எது தேவையில்லை, ரத்தினம்): ஜாதகம் → பரிகாரம் பகுதி.");
   sec("◆ பரிகாரம்", rem);
 
   // ── நிறைவு ──
