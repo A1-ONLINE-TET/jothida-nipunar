@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ArrowLeft, ChevronRight, Grid2X2, Sun, Sparkles, Heart, CalendarDays, Star,
-  Hash, Baby, Share2, TriangleAlert, CircleCheck, PartyPopper, Flame, ChevronLeft,
+  Hash, Baby, Share2, TriangleAlert, CircleCheck, PartyPopper, Flame, ChevronLeft, ShieldCheck,
 } from "lucide-react";
 
 import BottomNav from "./BottomNav.jsx";
@@ -33,6 +33,7 @@ const SERVICE_GROUPS = [
     { key: "chart",    title: "முழு ஜாதகம்",        desc: "கட்டம், பலன்கள், தசா, 29 ஆழமான பகுப்பாய்வுகள்", icon: Grid2X2,      bg: "#ffead7", fg: "#b65b22" },
     { key: "daily",    title: "தனிப்பட்ட தினப்பலன்", desc: "உங்கள் ராசி, நட்சத்திரம், தசை அடிப்படையில்",     icon: Sun,          bg: "#fff1cb", fg: "#b47a15" },
     { key: "advisory", title: "ஜோதிடரிடம் ஆலோசனை",  desc: "திருமணம், தொழில், ஆரோக்கியம் — கேள்வி கேளுங்கள்", icon: Sparkles,     bg: "#f0e5ff", fg: "#7652aa" },
+    { key: "remedy",   title: "பரிகாரம்",            desc: "உங்கள் ஜாதகத்துக்கு எது தேவை, எது தேவையில்லை",   icon: ShieldCheck,  bg: "#e9f5f4", fg: "#2e8b84" },
     { key: "porutham", title: "திருமண பொருத்தம்",    desc: "10 பொருத்தம், தசை ஒத்திசைவு",                   icon: Heart,        bg: "#ffe5eb", fg: "#d84b65" },
   ] },
   { title: "எல்லோருக்கும்", hint: "பிறப்பு விவரம் தேவையில்லை", items: [

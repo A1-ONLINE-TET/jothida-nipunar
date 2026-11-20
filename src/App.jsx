@@ -13,9 +13,10 @@ import HomeScreen from "./components/HomeScreen";
 import AdvisoryScreen from "./components/AdvisoryScreen";
 import ChatScreen from "./components/ChatScreen";
 import BottomNav from "./components/BottomNav.jsx";
+import RemedyTab from "./components/RemedyTab.jsx";
 import { ServicesScreen, RasiPalanScreen, NumerologyScreen, NameLettersScreen, FestivalsScreen, NavagrahaScreen } from "./components/ToolsScreens.jsx";
 import { NAME_SYLLABLES, VARA_SOOLAM, gowriForDay } from "./components/tools-data.js";
-import { NotebookPen, Share2, Users, Heart, HeartPulse, Briefcase, Coins, GraduationCap, Hourglass, ChevronRight, ChevronDown, FileText, Sparkles, Star, UserRound, Plus, Trash2, Settings } from "lucide-react";
+import { NotebookPen, Share2, Users, Heart, HeartPulse, Briefcase, Coins, GraduationCap, Hourglass, ChevronRight, ChevronDown, FileText, Sparkles, Star, UserRound, Plus, Trash2, Settings, ShieldCheck } from "lucide-react";
 import { apiAsk, apiAskAI, apiAskDeep } from "./api.js";
 import { payThenAskPremium } from "./components/razorpay.js";
 
@@ -30,7 +31,7 @@ const PAYMENTS_ENABLED = false;
 // almanac.js (a tree-shaken client subset — see that file).
 import {
   apiCompute, apiPredict, apiDaily, apiBacktest, apiEventTiming,
-  apiNakBhava, apiPorutham, apiEngine, apiRasiPalan, apiMuhurtaMonth, apiAltDashas,
+  apiNakBhava, apiPorutham, apiEngine, apiRasiPalan, apiMuhurtaMonth, apiAltDashas, apiRemedyPlan,
   apiRasiPeriod, apiFestivals, apiNavagraha,
 } from "./api.js";
 import { saveProfileCloud, loadProfileCloud, getAuthError } from "./firebase.js";
@@ -932,7 +933,7 @@ const DEEP_GROUPS = [
   { title: "சிறப்பு முறைகள்", color: "#6f4c92", items: [
     ["jaimini", "ஜைமினி முறை"], ["prashna", "பிரஸ்னம் (இப்போதைய கேள்வி)"] ] },
   { title: "நாள் & பரிகாரம்", color: "#99496a", items: [
-    ["rahukalam", "ராகு காலம் / எமகண்டம் / குளிகை"], ["muhurtha", "முஹூர்த்தம் (சுப நேரம்)"], ["remedies", "பரிகாரங்கள்"] ] },
+    ["rahukalam", "ராகு காலம் / எமகண்டம் / குளிகை"], ["muhurtha", "முஹூர்த்தம் (சுப நேரம்)"], ["remedies", "கிரக வழிபாட்டு அட்டவணை"] ] },
 ];
 
 export default function AstrologyApp() {
@@ -1008,6 +1009,7 @@ export default function AstrologyApp() {
   // தசா tab — விம்சோத்தரி (இயல்பு) | யோகினி | அஷ்டோத்தரி (கேட்கும்போது server கணக்கு)
   const [dashaSystem, setDashaSystem] = useState("vim");
   const [altDashas, setAltDashas] = useState(null);
+  const [remedyPlan, setRemedyPlan] = useState(null); // null | "loading" | "error" | plan
   // கணக்கு — சேமித்த ஜாதகத் தேடல், குறிப்பு திருத்தம்
   const [profileQuery, setProfileQuery] = useState("");
   const [noteEditId, setNoteEditId] = useState(null);
@@ -1336,7 +1338,7 @@ export default function AstrologyApp() {
   const applyReport = (r) => {
     chartKeyRef.current = birthKey();
     setDailyData(null); setPrediction(""); setOpenAreas(new Set());
-    setAltDashas(null); setDashaSystem("vim");
+    setAltDashas(null); setDashaSystem("vim"); setRemedyPlan(null);
     setChartMeta(r.chartMeta); setHoroscope(r.horoscope);
     setNavamsaData(r.navamsaData); setDrishtiData(r.drishtiData);
     setD10Data(r.d10Data); setD2Data(r.d2Data); setD3Data(r.d3Data);
@@ -1593,7 +1595,7 @@ export default function AstrologyApp() {
   // ═══════ வழிசெலுத்தல் — எல்லா பக்கங்களும் இதன் வழியே இணைகின்றன ═══════
   // ஜாதக முடிவுப் பக்கம் — view: "" (சுருக்கம்) | "chart" | "palan" | "dasha" | ஆழ்பகுதி key.
   // ஜாதகம் இல்லை / வேறு நபருடையது எனில் முதலில் கணக்கிடும் (returning user, profile மாற்றம்).
-  const RESULT_TABS = ["summary", "chart", "palan", "dasha", "deep"];
+  const RESULT_TABS = ["summary", "chart", "palan", "dasha", "remedy", "deep"];
   const showResultView = (view) => {
     if (!view) { setResultTab("summary"); setAdvancedView(""); }
     else if (RESULT_TABS.includes(view)) { setResultTab(view); setAdvancedView(""); }
@@ -1659,6 +1661,7 @@ export default function AstrologyApp() {
       case "names":       goTo(SCREEN.NAMES); break;
       case "festivals":   goTo(SCREEN.FESTIVALS); break;
       case "navagraha":   goTo(SCREEN.NAVAGRAHA); break;
+      case "remedy":      openResultView("remedy"); break;
       default: break;
     }
   };
@@ -1670,6 +1673,17 @@ export default function AstrologyApp() {
     else if (screen === SCREEN.DAILY && !dailyData) openDailyAuto();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
+
+  // பரிகாரம் tab முதன்முறை திறக்கும்போது திட்டத்தை server-இலிருந்து பெறு (ஜாதகம் மாறினால் applyReport அதை நீக்கும்).
+  useEffect(() => {
+    if (screen !== SCREEN.RESULT || resultTab !== "remedy" || remedyPlan || !horoscope) return;
+    const key = chartKeyRef.current;
+    setRemedyPlan("loading");
+    apiRemedyPlan(buildBirth(chartMeta?.dobISO || parseDDMMYYYY(formData.dob), chartMeta?.finalTime || "06:00", chartMeta?.geo || resolveBirthGeo(formData)))
+      .then((p) => { if (chartKeyRef.current === key) setRemedyPlan(p); })
+      .catch(() => { if (chartKeyRef.current === key) setRemedyPlan("error"); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen, resultTab, remedyPlan, horoscope]);
 
   if(screen===SCREEN.HOME) {
     return <HomeScreen handle={handleNav} />;
@@ -2588,10 +2602,10 @@ ${aiPart}
           </div>
 
           {/* ═══ உள்-tabs: சுருக்கம் | கட்டம் | பலன்கள் | தசா | ஆழம் ═══ */}
-          <div style={{display:"flex",gap:6,marginBottom:14}}>
-            {[["summary","சுருக்கம்"],["chart","கட்டம்"],["palan","பலன்கள்"],["dasha","தசா"],["deep","ஆழம்"]].map(([k,l])=>(
+          <div className="jn-tabs" style={{display:"flex",gap:3,marginBottom:14,overflowX:"auto",scrollbarWidth:"none"}}>
+            {[["summary","சுருக்கம்"],["chart","கட்டம்"],["palan","பலன்கள்"],["dasha","தசா"],["remedy","பரிகாரம்"],["deep","ஆழம்"]].map(([k,l])=>(
               <button key={k} data-tab={k} onClick={()=>{ setResultTab(k); window.scrollTo({top:0}); }} style={{
-                flex:"1 1 auto",padding:"9px 2px",borderRadius:999,fontSize: 12.5,fontWeight:resultTab===k?700:500,cursor:"pointer",whiteSpace:"nowrap",
+                flex:"1 0 auto",padding:"9px 2px",borderRadius:999,fontSize:"clamp(11.5px, 3.1vw, 12.5px)",fontWeight:resultTab===k?700:500,cursor:"pointer",whiteSpace:"nowrap",
                 border:resultTab===k?"1px solid #1f3f68":"1px solid #e3e8f2",
                 background:resultTab===k?"#1f3f68":"#ffffff",color:resultTab===k?"#ffffff":"#4a5365"}}>{l}</button>
             ))}
@@ -2662,6 +2676,14 @@ ${aiPart}
               <div style={secTitle}>AI ஜோதிட பலன்</div>
               <div style={{fontSize: 14,lineHeight:1.85,color:"#27303f",whiteSpace:"pre-wrap"}}>{prediction}</div>
             </div>)}
+            <button data-open-remedy onClick={()=>{ setResultTab("remedy"); window.scrollTo({top:0}); }} style={{...card,display:"flex",alignItems:"center",gap:12,width:"100%",textAlign:"left",cursor:"pointer",marginBottom:10,padding:"14px 16px"}}>
+              <span style={{width:40,height:40,borderRadius:12,background:"#e9f5f4",color:"#2e8b84",display:"grid",placeItems:"center",flexShrink:0}}><ShieldCheck size={20} strokeWidth={1.8}/></span>
+              <span style={{flex:1,minWidth:0}}>
+                <span style={{display:"block",fontSize: 14.5,fontWeight:700,color:"#27303f"}}>பரிகாரம்</span>
+                <span style={{display:"block",fontSize: 12.5,color:"#76819a",lineHeight:1.5}}>உங்கள் ஜாதகத்துக்கு எது தேவை, எது தேவையில்லை</span>
+              </span>
+              <ChevronRight size={18} color="#a3adc2" style={{flexShrink:0}}/>
+            </button>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
               <button data-pdf onClick={downloadPDF} style={{...btnOutline,display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontSize: 13.5,padding:"13px 0"}}>
                 <FileText size={17}/> PDF பதிவிறக்கு
@@ -4691,56 +4713,53 @@ ${aiPart}
             </div>
           )}
 
-          {/* ═══ பரிகாரம் ═══ */}
+          {/* ═══ கிரக வழிபாட்டு அட்டவணை (பொதுக் குறிப்பு) — தனிப்பட்ட தீர்ப்பு "பரிகாரம்" tab-இல் ═══ */}
           {advancedView==="remedies" && remediesData && remediesData.length > 0 && (
-            <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
-              <div style={{fontSize:13,fontWeight:700,color:"#226b66",marginBottom:8,borderBottom:"2px solid #2e8b8430",borderLeft:"3px solid #2e8b84",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-                பரிகாரம் — கோயில், மந்திரம், ரத்தினம்
-              </div>
-              {remediesData.filter(r => r.needsRemedy).length > 0 && (
-                <div style={{padding:"10px 12px",background:"#f2f5fb",borderRadius:8,border:"1px solid #ffe0b2",marginBottom:10}}>
-                  <div style={{fontSize:12.5,fontWeight:700,color:"#7d6a3f",marginBottom:4}}>⚠ பரிகாரம் தேவையான கிரகங்கள்</div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                    {remediesData.filter(r=>r.needsRemedy).map((r,i)=>(
-                      <span key={i} style={{fontSize:12,padding:"3px 8px",borderRadius:4,fontWeight:600,
-                        background:r.isDebilitated?"#fde8e8":"#fff8e1",
-                        color:r.isDebilitated?"#c0564f":"#7d6a3f",
-                        border:`1px solid ${r.isDebilitated?"#f5c6c6":"#ffe082"}`}}>
-                        {r.ta} {r.isDebilitated?"(நீசம்)":r.isWeak?"(பலவீனம்)":"(பகை)"}
-                      </span>
-                    ))}
+            <div style={{...card,marginBottom:10,padding:"16px"}}>
+              <div style={secTitle}>கிரக வழிபாட்டு அட்டவணை</div>
+              <button data-open-remedy-tab onClick={()=>{ showResultView("remedy"); window.scrollTo({top:0}); }} style={{display:"flex",alignItems:"center",gap:10,width:"100%",textAlign:"left",cursor:"pointer",
+                padding:"11px 12px",borderRadius:12,background:"#e9f5f4",border:"1px solid #cfe6e3",marginBottom:12}}>
+                <ShieldCheck size={18} color="#2e8b84" style={{flexShrink:0}}/>
+                <span style={{flex:1,fontSize: 13,lineHeight:1.6,color:"#27303f"}}>இது ஒன்பது கிரகங்களின் பொதுக் குறிப்பு. <b>உங்களுக்கு எது தேவை, எந்த ரத்தினம் கூடாது</b> என்பதைப் "பரிகாரம்" பகுதி காட்டும்.</span>
+                <ChevronRight size={17} color="#2e8b84" style={{flexShrink:0}}/>
+              </button>
+              {remediesData.map((r,i) => {
+                const state = r.isDebilitated ? ["நீசம்","#c0564f","#fbeeed"] : r.isUnifiedWeak ? ["பலவீனம்","#b5683a","#faf0e8"] : r.isEnemy ? ["பகை வீடு","#a9823c","#f8f3e6"] : r.unifiedTier ? [r.unifiedTier,"#2e7d5b","#eaf5ef"] : null;
+                return (
+                <div key={i} style={{padding:"12px 0",borderTop:i?"1px solid #eef1f6":"none"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:7}}>
+                    <div style={{fontSize: 14.5,fontWeight:700,color:"#27303f"}}>{r.ta} <span style={{fontSize: 12.5,color:"#76819a",fontWeight:500}}>· {r.rashi}{r.unifiedComposite!=null?` · ${r.unifiedComposite}/100`:""}</span></div>
+                    {state && <span style={{...chipBase,fontSize: 11.5,color:state[1],background:state[2]}}>{state[0]}</span>}
                   </div>
-                </div>
-              )}
-              {remediesData.map((r,i) => (
-                <div key={i} style={{marginBottom:8,padding:"10px 12px",background:r.needsRemedy?"#fffbeb":"#f8f8f8",
-                  borderRadius:8,border:`1px solid ${r.needsRemedy?"#fde68a":"#e8e8e8"}`,
-                  borderLeft:r.needsRemedy?`3px solid ${r.gemColor}`:"3px solid #e0e0e0"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                    <div style={{fontSize:12,fontWeight:700,color:"#27303f"}}>{r.ta} <span style={{fontSize:12,color:"#4a5365",fontWeight:400}}>({r.rashi})</span></div>
-                    {r.needsRemedy && <span style={{fontSize:11,padding:"2px 6px",borderRadius:4,background:"#fde8e8",color:"#c0564f",fontWeight:700}}>பரிகாரம் தேவை</span>}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 10px",fontSize: 12.5,lineHeight:1.6,color:"#27303f"}}>
+                    <div><span style={{color:"#76819a"}}>கிழமை:</span> {r.day}</div>
+                    <div><span style={{color:"#76819a"}}>நிறம்:</span> {r.color}</div>
+                    <div><span style={{color:"#76819a"}}>மலர்:</span> {r.flower}</div>
+                    <div><span style={{color:"#76819a"}}>திசை:</span> {r.direction}</div>
+                    <div style={{gridColumn:"1/3"}}><span style={{color:"#76819a"}}>கோயில்:</span> {r.temple}</div>
+                    <div style={{gridColumn:"1/3"}}><span style={{color:"#76819a"}}>தானம்:</span> {r.donate}</div>
+                    <div style={{gridColumn:"1/3"}}><span style={{color:"#76819a"}}>உரிய ரத்தினம்:</span> {r.gem}</div>
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,fontSize:12}}>
-                    <div><span style={{color:"#a9823c",fontWeight:600}}>ரத்தினம்:</span> <span style={{color:"#27303f"}}>{r.gem}</span></div>
-                    <div><span style={{color:"#a9823c",fontWeight:600}}>கோயில்:</span> <span style={{color:"#27303f"}}>{r.temple}</span></div>
-                    <div><span style={{color:"#a9823c",fontWeight:600}}>கிழமை:</span> <span style={{color:"#27303f"}}>{r.day}</span></div>
-                    <div><span style={{color:"#a9823c",fontWeight:600}}>நிறம்:</span> <span style={{color:"#27303f"}}>{r.color}</span></div>
-                    <div><span style={{color:"#a9823c",fontWeight:600}}>மலர்:</span> <span style={{color:"#27303f"}}>{r.flower}</span></div>
-                    <div><span style={{color:"#a9823c",fontWeight:600}}>திசை:</span> <span style={{color:"#27303f"}}>{r.direction}</span></div>
-                    <div style={{gridColumn:"1/3"}}><span style={{color:"#a9823c",fontWeight:600}}>தானம்:</span> <span style={{color:"#27303f"}}>{r.donate}</span></div>
+                  <div style={{marginTop:7,padding:"8px 10px",background:"#f5f7fb",borderRadius:10}}>
+                    <div style={{fontSize: 12.5,color:"#1f3f68",fontWeight:600,lineHeight:1.6}}>{r.mantra}</div>
+                    <div style={{fontSize: 11.5,color:"#76819a",marginTop:2}}>ஜெப எண்ணிக்கை: {r.mantraCount}</div>
                   </div>
-                  <div style={{marginTop:6,padding:"6px 8px",background:"#f0f9ff",borderRadius:4,border:"1px solid #bae6fd"}}>
-                    <div style={{fontSize:11.5,color:"#0369a1",fontWeight:600}}>மந்திரம்: <span style={{fontWeight:400}}>{r.mantra}</span></div>
-                    <div style={{fontSize:11.5,color:"#4a5365",marginTop:2}}>ஜெப எண்ணிக்கை: {r.mantraCount}</div>
-                  </div>
-                </div>
-              ))}
+                </div>);
+              })}
+              <div style={{fontSize: 12,color:"#76819a",lineHeight:1.7,marginTop:6}}>ரத்தினம் எல்லோருக்கும் பொருந்தாது — லக்னத்துக்கு நன்மை தரும் கிரகத்தின் ரத்தினம் மட்டுமே, அதுவும் ஜோதிடர் ஆலோசனையுடன்.</div>
             </div>
           )}
 
           </>)}
 
           {/* ═══ தசா ═══ */}
+          {/* ═══ பரிகாரம் — வேர்க் காரணத்திலிருந்து (server கணக்கு) ═══ */}
+          {resultTab==="remedy" && (
+            <RemedyTab plan={remedyPlan} card={card} fmtDate={fmtDateTa} name={formData.name}
+              onRetry={()=>setRemedyPlan(null)} onNav={handleNav} onShare={shareOut}
+              onOpenAll={()=>{ showResultView("remedies"); window.scrollTo({top:0}); }} />
+          )}
+
           {resultTab==="dasha" && (<>
           {/* தற்போதைய காலம் — நடப்பு தசை/புக்தி, தசாநாதன் நிலை */}
           {bhavaPhalam?.dashaContext && (()=>{

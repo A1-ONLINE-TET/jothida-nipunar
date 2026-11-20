@@ -38,12 +38,14 @@ Browser (thin client, src/)  ──Firebase idToken──▶  Cloudflare Worker 
 | `src/App.jsx` | **முழு UI + design** (React, styling, screens) | ✅ design வேலைக்கு இதுதான் |
 | `src/components/BottomNav.jsx` | எல்லா பக்கங்களுக்கும் பொதுவான கீழ்ப்பட்டை (5 tabs) | nav மாற்றும்போது |
 | `src/components/ToolsScreens.jsx` | பொதுச் சேவைகள்: எல்லா சேவைகளும், 12 ராசி பலன் (இன்று–ஆண்டு), எண் கணிதம், பெயர் எழுத்துக்கள், பண்டிகைகள், நவகிரக வழிபாடு | புதிய கருவி சேர்க்கும்போது |
+| `src/components/RemedyTab.jsx` | "பரிகாரம்" tab-இன் காட்சி (தரவு `/api/remedy-plan`-இலிருந்து; விற்பனை இல்லை) | பரிகாரத் திரை மாற்றும்போது |
 | `src/components/tools-data.js` | பொது அட்டவணைகள்: கௌரி பஞ்சாங்கம், வார சூலம், நட்சத்திர பாத எழுத்துக்கள், எண் கணிதம் | ⚠ ஆதாரத்துடன் சரிபார்த்தவை — மாற்றும்போது மீண்டும் சரிபார் |
 | `src/almanac.js` | client public panchangam re-exports | அரிதாக |
 | `src/api.js` | server bridge | endpoint சேர்க்கும்போது |
 | `src/engine.js` | proprietary engine (server-only) | logic மாற்றும்போது (client-ல் import ❌) |
 | `src/precision.js`, `bhava-phalam.js`, `deep-analysis.js`, `constants.js` | engine helpers (pure) | logic மாற்றம் |
 | `worker/src/*` | Cloudflare Worker (index, compute, prompt, auth, claude) | server logic/endpoints |
+| `worker/src/remedy.js` | பரிகாரத் திட்ட விதிகள் (வேர்க் காரணம் → தேவை/தேவையில்லை, பலப்படுத்து/சாந்தி, ரத்தினத் தீர்ப்பு) | ⚠ server-only; விதி மாற்றினால் பல ஜாதகங்களில் வெளியீட்டைப் பார் |
 | `worker/src/festivals.js` | தமிழ்ப் பண்டிகை விதிகள் + civil தமிழ்த் தேதி | ⚠ மாற்றினால் `node scripts/test-festivals.mjs` (ஆதாரத் தேதிகளுடன் 4 ஆண்டு ஒப்பீடு) |
 | `index.html`, `public/` | HTML shell, PWA, `_headers` | design/meta |
 
@@ -57,7 +59,7 @@ Design மாற்றம் secure engine-ஐ தொடாது — பாத�
 
 ### 🧭 Navigation அமைப்பு (App.jsx)
 - எல்லா பக்க மாற்றங்களும் `handleNav(key)` வழியே (Home cards, `BottomNav`, Advisory).
-- ஜாதக முடிவுப் பக்கம் 5 உள்-tabs: `resultTab` = summary | chart | palan | dasha | deep.
+- ஜாதக முடிவுப் பக்கம் 6 உள்-tabs: `resultTab` = summary | chart | palan | dasha | remedy | deep.
   "ஆழம்" tab-இன் 29 பகுப்பாய்வுகள் `DEEP_GROUPS` பட்டியலில் (key = `advancedView`).
 - `openResultView(view)` / `openDailyAuto()` — ஜாதகம் இல்லை அல்லது வேறு சுயவிவரத்துடையது
   எனில் (`chartIsCurrent()` = false) முதலில் கணக்கிட்டுத் திறக்கும். புதிய பக்கம்/இணைப்பு
@@ -75,6 +77,12 @@ Design மாற்றம் secure engine-ஐ தொடாது — பாத�
 - `/api/festivals` — ஓர் ஆண்டின் 24 தமிழ்ப் பண்டிகைகள். விதிகள் `scripts/fixtures/tamil-festivals-ref.json`
   (Drik Panchang 2025–2028) உடன் பொருந்தியவை மட்டும்; பொருந்தாதவை (மாசி மகம், நவராத்திரி தொடக்கம்,
   அட்சய திருதியை) வேண்டுமென்றே சேர்க்கப்படவில்லை.
+- `/api/remedy-plan` — பரிகாரத் திட்டம் (`worker/src/remedy.js`). எல்லாக் கிரகத்துக்கும் பரிகாரம் சொல்வதில்லை:
+  (1) கிரகம் உண்மையில் பாதிக்கப்பட்டுள்ளதா, (2) அது ஜாதகருக்கு முக்கியமா (லக்னாதிபதி, நடப்பு/வரும் தசை புக்தி,
+  கவனம் கோரும் பகுதியின் அதிபதி/காரகன்), (3) லக்னத்துக்கு சுபனா பாபனா (பலப்படுத்து + ரத்தினம் சரி / சாந்தி + ரத்தினம்
+  வேண்டாம்) என்று பார்த்து அதிகபட்சம் 4 முதன்மைப் பரிகாரம்; மீதி "விரும்பினால்"; தேவையில்லாதவை தனிப் பட்டியல்.
+  செவ்வாய் தோஷம், கால சர்ப்பம், சனி கோசாரம் தனி மதிப்பீடு. **விற்பனை/கட்டண இணைப்பு சேர்க்கக் கூடாது.**
+  "ஆழம்" பட்டியலின் `remedies` = ஒன்பது கிரகப் பொது அட்டவணை மட்டும் (தனிப்பட்ட தீர்ப்பு அல்ல).
 - `/api/navagraha` — engine-இன் நவகிரக பரிகார அட்டவணை (மந்திரம், கோயில், ரத்தினம், தானம்).
 - `/api/muhurta-month` ஒவ்வொரு நாளுக்கும் civil தமிழ்த் தேதியும் தரும் (சங்கராந்தி அஸ்தமனத்துக்கு முன் = அன்றே
   மாதப் பிறப்பு). `calcTamilDate` பிறப்புக் கணத்துக்கானது — நாட்காட்டிக்கு அதைப் பயன்படுத்தாதே.

@@ -15,6 +15,7 @@ import {
   computeRasiPalan, computeMonthMuhurta, computeAltDashas, computeRasiPeriod, navagrahaReference,
 } from "./compute.js";
 import { computeFestivals } from "./festivals.js";
+import { computeRemedyPlan } from "./remedy.js";
 import { buildBirthPrompt, buildDailyPrompt, currentDashaInfo } from "./prompt.js";
 import { classifyQuestion, buildAskAnswer } from "./ask.js";
 import { createOrder, verifyPayment } from "./pay.js";
@@ -294,6 +295,13 @@ export default {
         const birthNakIdx = intIn(body?.birthNakIdx, 0, 26);
         const birthMoonRashi = intIn(body?.birthMoonRashi, 0, 11);
         return json(env, origin, { result: computeMonthMuhurta(year, month, okGeo ? lat : 13.0827, okGeo ? lon : 80.2707, birthNakIdx, birthMoonRashi) });
+      }
+
+      // ── /api/remedy-plan — வேர்க் காரண அடிப்படைப் பரிகாரத் திட்டம் ──
+      if (url.pathname === "/api/remedy-plan") {
+        const birth = normalizeBirth(body);
+        const h = buildHoroscope(birth, await fetchSwiss(env, birth));
+        return json(env, origin, { result: computeRemedyPlan(h, computeFullReport(h, birth), birth) });
       }
 
       // ── /api/alt-dashas — யோகினி + அஷ்டோத்தரி தசை ──

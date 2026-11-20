@@ -153,6 +153,11 @@ export async function apiNavagraha() {
   const { result } = await post("/api/navagraha", {});
   return result;
 }
+// பரிகாரத் திட்டம் — ஜாதகத்தின் வேர்க் காரணத்திலிருந்து (எது தேவை, எது தேவையில்லை).
+export async function apiRemedyPlan(birth) {
+  const { result } = await post("/api/remedy-plan", birth);
+  return reviveDates(result);
+}
 // யோகினி + அஷ்டோத்தரி தசை.
 export async function apiAltDashas(birth) {
   const { result } = await post("/api/alt-dashas", birth);
