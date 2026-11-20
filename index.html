@@ -87,6 +87,19 @@
     ::-webkit-scrollbar-thumb { background: #cdd5e4; border-radius: 6px; }
     ::selection { background: rgba(170,140,85,0.20); }
     .jn-tabs::-webkit-scrollbar { display: none; }
+    /* அகலமான அட்டவணைகள்: பக்கவாட்டில் இன்னும் உள்ளது என்பதைக் காட்டும் விளிம்பு நிழல் */
+    .jn-xscroll {
+      background:
+        linear-gradient(to right, #fff 30%, rgba(255,255,255,0)) left center,
+        linear-gradient(to left, #fff 30%, rgba(255,255,255,0)) right center,
+        radial-gradient(farthest-side at 0 50%, rgba(31,63,104,.22), transparent) left center,
+        radial-gradient(farthest-side at 100% 50%, rgba(31,63,104,.22), transparent) right center;
+      background-repeat: no-repeat;
+      background-size: 30px 100%, 30px 100%, 12px 100%, 12px 100%;
+      background-attachment: local, local, scroll, scroll;
+      -webkit-overflow-scrolling: touch;
+    }
+
 
     /* ── Reusable motion ── */
     @keyframes jnFadeUp   { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform:none; } }

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Sparkles, Send } from "lucide-react";
 import "./chat.css";
 
 // Astrologer message that reveals itself character-by-character (typewriter).
@@ -48,7 +49,7 @@ function asText(v, fallback) {
 export default function ChatScreen({ ask, askAI, askPremium, onBack, personName, initialQuestion = "", astrologerName = "ஜோதிட குரு", astrologerTagline = "உங்கள் ஜாதகம் சார்ந்த பதில்கள்", premiumLabel = "⭐ ஆழமான AI பதில் · ₹49" }) {
   const [aiMode, setAiMode] = useState(false); // 🤖 AI இயல்பு மொழி (Gemini) ON/OFF
   const [messages, setMessages] = useState([
-    { role: "astro", text: `வணக்கம்${personName ? " " + personName : ""} 🙏 நான் ${astrologerName}. உங்கள் ஜாதகத்தை ஆராய்ந்து பதிலளிக்கிறேன். உங்கள் கேள்வியைக் கேளுங்கள் — திருமணம், தொழில், பணம், ஆரோக்கியம், கல்வி...`, done: true },
+    { role: "astro", text: `வணக்கம்${personName ? " " + personName : ""} — நான் ${astrologerName}. உங்கள் ஜாதகத்தை ஆராய்ந்து பதிலளிக்கிறேன். உங்கள் கேள்வியைக் கேளுங்கள் — திருமணம், தொழில், பணம், ஆரோக்கியம், கல்வி...`, done: true },
   ]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -114,7 +115,7 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, personName,
       <header className="chat-top">
         <button className="chat-back" onClick={onBack} aria-label="பின்">‹</button>
         <div className="chat-astro">
-          <div className="chat-ava">🔮</div>
+          <div className="chat-ava"><Sparkles size={20} strokeWidth={1.8} /></div>
           <div>
             <div className="chat-ttl">{astrologerName}</div>
             <div className="chat-sub">{astrologerTagline}</div>
@@ -125,12 +126,13 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, personName,
             onClick={() => setAiMode((v) => !v)}
             title="AI இயல்பு மொழி"
             style={{
-              marginLeft: "auto", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700,
-              padding: "6px 12px", borderRadius: 14,
-              background: aiMode ? "#7b1c1c" : "#efe6cf", color: aiMode ? "#fff8e7" : "#7b1c1c",
+              marginLeft: "auto", cursor: "pointer", fontSize: 12, fontWeight: 700, minHeight: 36,
+              padding: "0 14px", borderRadius: 999, fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0,
+              border: aiMode ? "1px solid #1f3f68" : "1px solid #e3e8f2",
+              background: aiMode ? "#1f3f68" : "#ffffff", color: aiMode ? "#ffffff" : "#4a5365",
             }}
           >
-            🤖 AI {aiMode ? "ON" : "OFF"}
+            AI: {aiMode ? "இயக்கம்" : "நிறுத்தம்"}
           </button>
         )}
       </header>
@@ -139,7 +141,7 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, personName,
         {messages.map((m, i) => (
           <div key={i} className={`chat-row ${m.role}`}>
             <div className={`chat-bubble ${m.role} ${m.premium ? "premium" : ""}`}>
-              {m.premium && <div className="chat-premium-tag">⭐ AI ஆழ்ந்த பதில்</div>}
+              {m.premium && <div className="chat-premium-tag">AI ஆழ்ந்த பதில்</div>}
               {m.role === "astro" && !m.done
                 ? <TypingText text={m.text} onDone={() => markDone(i)} />
                 : <span style={{ whiteSpace: "pre-wrap" }}>{m.text}</span>}
@@ -179,7 +181,7 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, personName,
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") send(); }}
         />
-        <button className="chat-send" onClick={() => send()} disabled={busy || !input.trim()} aria-label="அனுப்பு">➤</button>
+        <button className="chat-send" onClick={() => send()} disabled={busy || !input.trim()} aria-label="அனுப்பு"><Send size={18} /></button>
       </div>
     </div>
   );

@@ -14,11 +14,11 @@ import AdvisoryScreen from "./components/AdvisoryScreen";
 import ChatScreen from "./components/ChatScreen";
 import BottomNav from "./components/BottomNav.jsx";
 import { kizhamai } from "./components/tools-data.js";
-import { tamilCivilDate } from "./components/panchang-lite.js";
+import { tamilCivilDate, dayPanchang } from "./components/panchang-lite.js";
 import RemedyTab from "./components/RemedyTab.jsx";
 import { RasiPalanScreen, NumerologyScreen, NameLettersScreen, FestivalsScreen, NavagrahaScreen } from "./components/ToolsScreens.jsx";
 import { NAME_SYLLABLES, VARA_SOOLAM, gowriForDay } from "./components/tools-data.js";
-import { NotebookPen, Share2, Users, Heart, HeartPulse, Briefcase, Coins, GraduationCap, Hourglass, ChevronRight, ChevronDown, FileText, Sparkles, Star, UserRound, Plus, Trash2, Settings, ShieldCheck } from "lucide-react";
+import { NotebookPen, Share2, Users, Heart, HeartPulse, Briefcase, Coins, GraduationCap, Hourglass, ChevronRight, ChevronLeft, ChevronDown, FileText, Sparkles, Star, UserRound, Plus, Trash2, Settings, ShieldCheck } from "lucide-react";
 import { apiAsk, apiAskAI, apiAskDeep } from "./api.js";
 import { payThenAskPremium } from "./components/razorpay.js";
 
@@ -334,7 +334,7 @@ function TraditionalChart({ horoscope, navamsaData, title="ராசி", showNa
     ];
     const kendra = (n) => n === 1 || n === 4 || n === 7 || n === 10;
     return (
-      <svg data-north-chart viewBox={`-2 -2 ${S+4} ${S+24}`} style={{width:"100%",maxWidth:300,background:"#fff",borderRadius:4}}>
+      <svg data-north-chart viewBox={`-2 -2 ${S+4} ${S+24}`} style={{width:"100%",maxWidth:340,background:"#fff",borderRadius:4}}>
         <rect x="0" y="0" width={S} height={S} fill="none" stroke="#35598c" strokeWidth="2.5"/>
         <line x1="0" y1="0" x2={S} y2={S} stroke="#35598c" strokeWidth="1.2"/>
         <line x1={S} y1="0" x2="0" y2={S} stroke="#35598c" strokeWidth="1.2"/>
@@ -348,11 +348,11 @@ function TraditionalChart({ horoscope, navamsaData, title="ராசி", showNa
           const lh = 11, y0 = py - ((lines.length - 1) * lh) / 2 + 3;
           return (
             <g key={n}>
-              <text x={nx} y={ny} textAnchor="middle" fill="#a9823c" fontSize="9" fontWeight="700" fontFamily="sans-serif">{((lagnaIdx + n - 1) % 12) + 1}</text>
+              <text x={nx} y={ny} textAnchor="middle" fill="#a9823c" fontSize="10" fontWeight="700" fontFamily="sans-serif">{((lagnaIdx + n - 1) % 12) + 1}</text>
               {lines.map((t, i) => (
-                <text key={i} x={px} y={y0 + i*lh} textAnchor="middle" fill="#000" fontSize={lines.length > 3 ? 8 : 9.5} fontWeight="600" fontFamily="'Noto Sans Tamil',sans-serif">{t}</text>
+                <text key={i} x={px} y={y0 + i*lh} textAnchor="middle" fill="#000" fontSize={lines.length > 3 ? 9.8 : 10.5} fontWeight="700" fontFamily="'Noto Sans Tamil',sans-serif">{t}</text>
               ))}
-              {n === 1 && <text x={h} y={q - 28} textAnchor="middle" fill="#c0564f" fontSize="8.5" fontWeight="900" fontFamily="'Noto Sans Tamil',sans-serif">லக்</text>}
+              {n === 1 && <text x={h} y={q - 28} textAnchor="middle" fill="#c0564f" fontSize="10" fontWeight="900" fontFamily="'Noto Sans Tamil',sans-serif">லக்</text>}
             </g>
           );
         })}
@@ -379,7 +379,7 @@ function TraditionalChart({ horoscope, navamsaData, title="ராசி", showNa
       : RASHIS.indexOf(horoscope.moonRashi);
 
     return (
-      <svg viewBox={`-2 -2 ${W+4} ${H+4}`} style={{width:"100%",maxWidth:300,background:"#fff",borderRadius:4}}>
+      <svg viewBox={`-2 -2 ${W+4} ${H+4}`} style={{width:"100%",maxWidth:340,background:"#fff",borderRadius:4}}>
         <rect x="-1" y="-1" width={W+2} height={H+2} fill="none" stroke="#35598c" strokeWidth="3"/>
         <rect x="2" y="2" width={W-4} height={H-4} fill="none" stroke="#35598c" strokeWidth="1"/>
         {[1,2,3].map(i=>(
@@ -400,7 +400,7 @@ function TraditionalChart({ horoscope, navamsaData, title="ராசி", showNa
           const planets = rashiPlanets[rashi] || [];
           // Center-align: calculate vertical start position
           // Shrink row height when a stellium would overflow the box
-          const rowH = planets.length > 4 ? Math.max(10, (cH - 6) / planets.length) : 14;
+          const rowH = planets.length > 4 ? Math.max(11, (cH - 14) / planets.length) : 14.5;
           const totalH = planets.length * rowH;
           const startY = y + (cH - totalH) / 2;
           return (
@@ -409,33 +409,26 @@ function TraditionalChart({ horoscope, navamsaData, title="ராசி", showNa
                 const shortN = P_SHORT[p.ta] || p.ta.slice(0,3);
                 // Nakshatra-pada beside planet (rasi chart only —
                 // nakshatra belongs to the natal longitude, not navamsa)
-                const nak = !isNavamsa ? nakPadaLabel(p) : "";
                 return(
                   <text key={pi}
                     x={x + cW/2}
                     y={startY + pi*rowH + 10}
                     textAnchor="middle"
-                    fill="#000" fontSize="10" fontWeight="600"
+                    fill="#16304f" fontSize={planets.length > 4 ? 10 : 11} fontWeight="700"
                     fontFamily="'Noto Sans Tamil',sans-serif">
                     {shortN}
-                    {nak && <tspan dx="2" fontSize="6.5" fontWeight="400" fill="#555">{nak}</tspan>}
                   </text>
                 );
               })}
               {isL && (
                 <text x={x+cW/2} y={y+cH-4} textAnchor="middle"
-                  fill="#c0564f" fontSize="10" fontWeight="900"
-                  fontFamily="'Noto Sans Tamil',sans-serif">லக்
-                  {!isNavamsa && horoscope.lagnaNakshatra && (
-                    <tspan dx="2" fontSize="6.5" fontWeight="400" fill="#a33">
-                      {nakPadaLabel({ nakIdx: NAKSHATRAS.indexOf(horoscope.lagnaNakshatra), nakshatraTa: horoscope.lagnaNakshatra, pada: horoscope.lagnaPada })}
-                    </tspan>
-                  )}</text>
+                  fill="#c0564f" fontSize="10.5" fontWeight="900"
+                  fontFamily="'Noto Sans Tamil',sans-serif">லக்</text>
               )}
               {/* குளிகன் — சனியின் காலப்பகுதி லக்னம் (ராசி chart மட்டும்) */}
               {!isNavamsa && gulika != null && rashi === gulika && (
-                <text x={x+4} y={y+10} textAnchor="start"
-                  fill="#555" fontSize="7" fontWeight="700"
+                <text x={x+4} y={y+12} textAnchor="start"
+                  fill="#76819a" fontSize="9.8" fontWeight="700"
                   fontFamily="'Noto Sans Tamil',sans-serif">குளி</text>
               )}
             </g>
@@ -938,6 +931,16 @@ function guessBirthZone(cc, lat, lon) {
   return ZONE_BY_COUNTRY[cc] ?? "";
 }
 
+// துணைப் பக்கங்களின் "பின்" பொத்தான் — எல்லா இடத்திலும் ஒரே தோற்றம், 40px தொடு இலக்கு.
+const BackLink = ({ onClick, label = "பின்" }) => (
+  <button data-back onClick={onClick} style={{display:"inline-flex",alignItems:"center",gap:4,minHeight:40,padding:"0 16px 0 10px",marginBottom:12,
+    background:"#ffffff",border:"1px solid #e3e8f2",borderRadius:999,color:"#1f3f68",fontSize: 13.5,fontWeight:600,cursor:"pointer"}}>
+    <ChevronLeft size={18}/>{label}
+  </button>
+);
+// சிறு நிலைக் குறி (சுபம் / தவிர்க்க …)
+const chipSm = { fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, lineHeight: 1.5, flexShrink: 0 };
+
 // வாழ்க்கைப் பகுதி → icon + நிறம் (பலன்கள் / சுருக்கம் இரண்டிலும் ஒன்றே)
 const AREA_STYLE = {
   self:      { icon: UserRound,     color: "#5565b8", tint: "#eef1fb", short: "குணநலன்" },
@@ -1159,6 +1162,7 @@ export default function AstrologyApp() {
         greg: now.toLocaleDateString("ta-IN",{day:"numeric",month:"long",year:"numeric"}),
         tamil: tamilCivilDate(now),
         tithi: h.tithi, waxing: (h.paksham || "").includes("சுக்ல"), nakshatra: h.nakshatra,
+        dp: dayPanchang(now, g.lat, g.lon),
         rahuKalam: (muh.rahuKalam || "").replace(" — ", "–"), sunrise: muh.sunrise, sunset: muh.sunset,
       };
     } catch(e) { return null; }
@@ -1760,7 +1764,7 @@ export default function AstrologyApp() {
     };
     return <ChatScreen ask={askAstrologer} askAI={askAstrologerAI} askPremium={askPremiumAstrologer} personName={formData.name || ""}
       initialQuestion={chatInitialQ} astrologerName="ஜோதிட குரு"
-      premiumLabel={PAYMENTS_ENABLED ? "⭐ ஆழமான AI பதில் · ₹49" : "⭐ ஆழமான AI பதில்"}
+      premiumLabel={PAYMENTS_ENABLED ? "ஆழமான AI பதில் · ₹49" : "ஆழமான AI பதில்"}
       onBack={()=>{ setChatInitialQ(""); goTo(SCREEN.ADVISORY); }} />;
   }
 
@@ -2021,7 +2025,7 @@ export default function AstrologyApp() {
                 onClick={()=>{ setFormData(blank); setHomeQuestion(null); goTo(SCREEN.FORM); }}><Plus size={16}/> புதிய ஜாதகம்</button>
             </div>
             {hasBirth && (
-              <button data-edit-birth onClick={()=>{ setHomeQuestion(null); goTo(SCREEN.FORM); }} style={{background:"none",border:"none",padding:"12px 0 0",fontSize: 13,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>
+              <button data-edit-birth onClick={()=>{ setHomeQuestion(null); goTo(SCREEN.FORM); }} style={{background:"none",border:"none",padding:0,marginTop:6,minHeight:40,fontSize: 13,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>
                 {formData.name} — பிறப்பு விவரத்தைத் திருத்து →
               </button>
             )}
@@ -2061,7 +2065,7 @@ export default function AstrologyApp() {
   if(screen===SCREEN.FORM) return (
     <div style={base}>
       <div style={{...container, paddingTop:18, paddingBottom:104}}>
-        <button onClick={()=>goTo(SCREEN.HOME)} style={{background:"none",border:"none",color:T.accent,fontSize:13,cursor:"pointer",padding:0,marginBottom:12,fontWeight:600}}>← பின்</button>
+        <BackLink onClick={()=>goTo(SCREEN.HOME)} />
         {/* தேர்ந்த கேள்வி banner — முகப்பிலிருந்து வந்தால் */}
         {homeQuestion && (
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"10px 14px",
@@ -2243,8 +2247,8 @@ export default function AstrologyApp() {
 
               {/* Manual precise lat/lon entry — for advanced users who already know exact coordinates */}
               <button type="button" onClick={()=>setShowManualGeo(v=>!v)} style={{
-                background:"none",border:"none",color:"#4a5365",fontSize:12,cursor:"pointer",
-                padding:"6px 0 0",textDecoration:"underline"
+                background:"none",border:"none",color:"#4a5365",fontSize:12.5,cursor:"pointer",
+                padding:0,marginTop:4,minHeight:36,textDecoration:"underline"
               }}>{showManualGeo?"அட்சரேகை/தீர்க்கரேகை மறை":"அட்சரேகை/தீர்க்கரேகை நேரடியாக உள்ளிட"}</button>
 
               {showManualGeo && (
@@ -2322,7 +2326,7 @@ export default function AstrologyApp() {
   if(screen===SCREEN.PREMIUM) return (
     <div style={base}>
       <div style={{...container,paddingTop:24,paddingBottom:104}}>
-        <button onClick={()=>goTo(SCREEN.ACCOUNT)} style={{background:"none",border:"none",color:T.accent,fontSize:14,cursor:"pointer",padding:0,marginBottom:20}}>← என் கணக்கு</button>
+        <BackLink onClick={()=>goTo(SCREEN.ACCOUNT)} label="என் கணக்கு" />
         <div style={{textAlign:"center",marginBottom:28}}>
           <div style={{width:56,height:56,borderRadius:18,background:"#f4eefa",color:"#6f4c92",display:"grid",placeItems:"center",margin:"0 auto 10px"}}><Star size={28} strokeWidth={1.7}/></div>
           <h2 style={{fontSize:22,fontWeight:700,margin:"0 0 6px",color:"#6f4c92"}}>Premium திட்டம்</h2>
@@ -2710,7 +2714,7 @@ ${aiPart}
                   {bhavaPhalam.yogaList.map((y,i)=>(<span key={"y"+i} style={{...chipBase,background:"#e9f5ee",color:"#2e7d5b"}}>{stripEmoji(y)}</span>))}
                   {bhavaPhalam.doshaList.map((y,i)=>(<span key={"d"+i} style={{...chipBase,background:"#fbeeed",color:"#c0564f"}}>{stripEmoji(y)}</span>))}
                 </div>
-                <button onClick={()=>{ setResultTab("deep"); pickAdvancedView("yogas"); }} style={{background:"none",border:"none",padding:"12px 0 0",fontSize: 13,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>விவரம் பார்க்க →</button>
+                <button onClick={()=>{ setResultTab("deep"); pickAdvancedView("yogas"); }} style={{background:"none",border:"none",padding:0,marginTop:4,minHeight:40,fontSize: 13,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>விவரம் பார்க்க →</button>
               </div>
             )}
 
@@ -2799,7 +2803,7 @@ ${aiPart}
           <div style={{...card,marginBottom:10,padding:8}}>
             <div style={{display:"flex",gap:6,justifyContent:"center",margin:"4px 0 10px"}}>
               {[[false,"தென்னிந்திய கட்டம்"],[true,"வட இந்திய கட்டம்"]].map(([v,l])=>(
-                <button key={l} data-chart-style={v?"north":"south"} onClick={()=>pickChartStyle(v)} style={{padding:"6px 14px",borderRadius:999,fontSize: 12.5,fontWeight:northChart===v?700:500,cursor:"pointer",
+                <button key={l} data-chart-style={v?"north":"south"} onClick={()=>pickChartStyle(v)} style={{minHeight:38,padding:"0 16px",borderRadius:999,fontSize: 12.5,fontWeight:northChart===v?700:500,cursor:"pointer",
                   border:northChart===v?"1px solid #a9823c":"1px solid #e3e8f2",background:northChart===v?"#f6f1e4":"#ffffff",color:northChart===v?"#7d6a3f":"#4a5365"}}>{l}</button>
               ))}
             </div>
@@ -2810,7 +2814,7 @@ ${aiPart}
           {/* ═══ 3. PLANETARY POSITIONS TABLE ═══ */}
           <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
             <div style={{fontSize:13,fontWeight:700,color:"#3e4c99",marginBottom:8,borderBottom:"2px solid #5565b830",borderLeft:"3px solid #5565b8",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>நிராயண ஸ்புடங்கள்</div>
-            <div style={{overflowX:"auto"}}>
+            <div className="jn-xscroll" style={{overflowX:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
                 <thead><tr style={{borderBottom:"1.5px solid #c7a56840"}}>
                   <th style={{padding:"5px 2px",color:"#a9823c",fontWeight:700,textAlign:"left"}}>கிரகம்</th>
@@ -2840,7 +2844,7 @@ ${aiPart}
                         <td style={{padding:"5px 2px",color:"#27303f",fontWeight:600}}>
                           {p.ta}
                           {p.isRetrograde && p.ta !== "ராகு" && p.ta !== "கேது" && <span style={{color:"#c0564f",fontSize:11.5,marginLeft:2}} title="வக்ரம் (Retrograde)">℞</span>}
-                          {p.isCombust && <span style={{color:"#fff",background:"#d98a4a",fontSize:10.5,marginLeft:2,padding:"0 2px",borderRadius:2,fontWeight:700}} title="அஸ்தங்கம் (Combust)">C</span>}
+                          {p.isCombust && <span style={{color:"#fff",background:"#d98a4a",fontSize:11,marginLeft:2,padding:"0 3px",borderRadius:2,fontWeight:700}} title="அஸ்தங்கம் (Combust)">C</span>}
                           {p.isMoolaTri && <span style={{color:"#2e7d5b",fontSize:11,marginLeft:2}} title="மூலத்திரிகோணம்">MT</span>}
                         </td>
                         <td style={{padding:"5px 2px",textAlign:"center",color:"#27303f",fontFamily:"monospace"}}>{p.dms}</td>
@@ -2994,7 +2998,7 @@ ${aiPart}
                 )}
 
                 <button data-area-toggle={area.key} onClick={()=>toggleArea(area.key)} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",
-                  padding:"8px 0 0",fontSize: 13,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>
+                  padding:"0",marginTop:4,minHeight:40,fontSize: 13,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>
                   {open ? "விவரத்தை மறை" : "முழு விவரம்"}
                   <ChevronDown size={16} style={{transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}/>
                 </button>
@@ -3119,7 +3123,7 @@ ${aiPart}
                   </span>
                 </div>
                 <button data-area-toggle="family" onClick={()=>toggleArea("__family")} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",
-                  padding:"8px 0 0",fontSize: 13,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>
+                  padding:"0",marginTop:4,minHeight:40,fontSize: 13,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>
                   {open ? "விவரத்தை மறை" : "முழு விவரம்"}
                   <ChevronDown size={16} style={{transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}/>
                 </button>
@@ -3146,7 +3150,7 @@ ${aiPart}
           {advancedView==="grahabala" && grahaBala && grahaBala.length > 0 && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#9d5f38",marginBottom:8,borderBottom:"2px solid #c07a4a30",borderLeft:"3px solid #c07a4a",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-                கிரக பலம் (Graha Bala)
+                கிரக பலம்
               </div>
               {grahaBala.map((g,i) => {
                 const statusColor = g.status==="உச்சம்"||g.status==="சொந்த வீடு" ? "#58a97f"
@@ -3206,10 +3210,9 @@ ${aiPart}
                         background:`${col}08`, borderLeft:`3px solid ${col}`, borderRadius:"0 6px 6px 0"
                       }}>
                         <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          <span style={{fontSize:14}}>{y.icon}</span>
+                          <span style={{fontSize:14,color:"#76819a"}}>{stripEmoji(y.icon)}</span>
                           <span style={{fontSize:12,fontWeight:700,color:col}}>{y.name}</span>
-                          <span style={{fontSize:11,color:`${col}90`}}>{y.nameEn}</span>
-                          {isDosha && <span style={{fontSize:10.5,background:"#d98aa320",color:"#c0564f",padding:"1px 6px",borderRadius:5,marginLeft:"auto",fontWeight:700}}>தோஷம்</span>}
+                          {isDosha && <span style={{fontSize:11,background:"#d98aa320",color:"#c0564f",padding:"1px 6px",borderRadius:5,marginLeft:"auto",fontWeight:700}}>தோஷம்</span>}
                         </div>
                         <div style={{fontSize:12,color:"#27303f",marginTop:4,lineHeight:1.6}}>{y.desc}</div>
                       </div>
@@ -3232,7 +3235,7 @@ ${aiPart}
           {advancedView==="ashtakavarga" && ashtakavargaData && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#6f4c92",marginBottom:8,borderBottom:"2px solid #8a62b030",borderLeft:"3px solid #8a62b0",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-                சர்வாஷ்டகவர்க்கம் (Sarvashtakavarga)
+                சர்வாஷ்டகவர்க்கம்
               </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:6}}>
                 {ashtakavargaData.sav.map((count,i) => {
@@ -3260,7 +3263,7 @@ ${aiPart}
           {advancedView==="drishti" && drishtiData && drishtiData.length > 0 && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#3e4c99",marginBottom:8,borderBottom:"2px solid #5565b830",borderLeft:"3px solid #5565b8",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-                கிரக திருஷ்டி (Graha Drishti)
+                கிரக திருஷ்டி
               </div>
               {drishtiData.map((a,i) => (
                 <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",
@@ -3308,9 +3311,9 @@ ${aiPart}
           {advancedView==="divisional" && d2Data && d3Data && d12Data && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#9d5f38",marginBottom:8,borderBottom:"2px solid #c07a4a30",borderLeft:"3px solid #c07a4a",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-                பிரிவு சக்கரங்கள் (Divisional Charts)
+                பிரிவு சக்கரங்கள்
               </div>
-              <div style={{overflowX:"auto"}}>
+              <div className="jn-xscroll" style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                   <thead>
                     <tr style={{borderBottom:"1.5px solid #c7a56840"}}>
@@ -3363,9 +3366,9 @@ ${aiPart}
           {advancedView==="shodashavarga" && d16Data && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#99496a",marginBottom:8,borderBottom:"2px solid #b8608430",borderLeft:"3px solid #b86084",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-                மேல் வர்க்க சக்கரங்கள் (Higher Divisional Charts)
+                மேல் வர்க்க சக்கரங்கள்
               </div>
-              <div style={{overflowX:"auto"}}>
+              <div className="jn-xscroll" style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                   <thead>
                     <tr style={{borderBottom:"1.5px solid #c7a56840"}}>
@@ -3400,7 +3403,7 @@ ${aiPart}
               {/* Vimshopaka Bala (ShadVarga 20-point strength) */}
               {vimshopakaData && (
                 <div style={{marginTop:12,paddingTop:10,borderTop:"1px dashed #dfe5f0"}}>
-                  <div style={{fontSize:12.5,fontWeight:700,color:"#7d6a3f",marginBottom:6}}>விம்சோபக பலம் (Vimshopaka — ஷட்வர்க்க 20)</div>
+                  <div style={{fontSize:12.5,fontWeight:700,color:"#7d6a3f",marginBottom:6}}>விம்சோபக பலம் — ஷட்வர்க்கம் (20)</div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
                     {vimshopakaData.map((v,i)=>(
                       <div key={i} style={{fontSize:11.5,padding:"4px 8px",borderRadius:6,minWidth:78,
@@ -3424,13 +3427,13 @@ ${aiPart}
           {advancedView==="jaimini" && jaiminiData && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#53763c",marginBottom:8,borderBottom:"2px solid #6b915030",borderLeft:"3px solid #6b9150",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-                ஜைமினி பகுப்பாய்வு (Jaimini)
+                ஜைமினி பகுப்பாய்வு
               </div>
 
               {/* Chara Karakas */}
               {jaiminiData.charaKarakas && jaiminiData.charaKarakas.length > 0 && (
                 <div style={{marginBottom:12}}>
-                  <div style={{fontSize:12.5,fontWeight:700,color:"#7d6a3f",marginBottom:5}}>சர காரகர்கள் (Chara Karakas)</div>
+                  <div style={{fontSize:12.5,fontWeight:700,color:"#7d6a3f",marginBottom:5}}>சர காரகர்கள்</div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
                     {jaiminiData.charaKarakas.map((k,i)=>(
                       <div key={i} style={{fontSize:11.5,padding:"3px 7px",borderRadius:5,background:"#f1f4fa",border:"1px solid #dfe5f0",color:"#16304f"}}>
@@ -3476,7 +3479,7 @@ ${aiPart}
               {/* All 12 Arudha Padas */}
               {arudhaPadasData && (
                 <div style={{marginTop:10,paddingTop:10,borderTop:"1px dashed #dfe5f0"}}>
-                  <div style={{fontSize:12.5,fontWeight:700,color:"#7d6a3f",marginBottom:6}}>12 ஆரூட பதங்கள் (Arudha Padas)</div>
+                  <div style={{fontSize:12.5,fontWeight:700,color:"#7d6a3f",marginBottom:6}}>12 ஆரூட பதங்கள்</div>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:4}}>
                     {arudhaPadasData.filter(Boolean).map((p,i)=>(
                       <div key={i} style={{fontSize:11.5,padding:"4px 7px",borderRadius:5,background:p.houseNum===1?"#fff3d6":"#f1f4fa",border:"1px solid #dfe5f0",color:"#16304f",display:"flex",justifyContent:"space-between"}}>
@@ -3492,8 +3495,8 @@ ${aiPart}
               {/* Chara Dasha (KN Rao) */}
               {charaDashaData && (
                 <div style={{marginTop:12,paddingTop:10,borderTop:"1px dashed #dfe5f0"}}>
-                  <div style={{fontSize:12.5,fontWeight:700,color:"#7d6a3f",marginBottom:5}}>சர தசா (Chara Dasha) — திசை: {charaDashaData.direction}</div>
-                  <div style={{overflowX:"auto"}}>
+                  <div style={{fontSize:12.5,fontWeight:700,color:"#7d6a3f",marginBottom:5}}>சர தசா — திசை: {charaDashaData.direction}</div>
+                  <div className="jn-xscroll" style={{overflowX:"auto"}}>
                     <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                       <thead><tr style={{borderBottom:"1.5px solid #c7a56840"}}>
                         <th style={{padding:"4px 3px",color:"#a9823c",fontWeight:700,textAlign:"left"}}>ராசி தசை</th>
@@ -3543,7 +3546,7 @@ ${aiPart}
 
               {/* Annual chart planet houses */}
               <div style={{fontSize:12.5,fontWeight:700,color:"#7d6a3f",marginBottom:5}}>ஆண்டு ஜாதக கிரக நிலை</div>
-              <div style={{overflowX:"auto",marginBottom:10}}>
+              <div className="jn-xscroll" style={{overflowX:"auto",marginBottom:10}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                   <thead><tr style={{borderBottom:"1.5px solid #c7a56840"}}>
                     <th style={{padding:"4px 3px",color:"#a9823c",fontWeight:700,textAlign:"left"}}>கிரகம்</th>
@@ -3582,7 +3585,7 @@ ${aiPart}
           {advancedView==="prashna" && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#3e4c99",marginBottom:8,borderBottom:"2px solid #5565b830",borderLeft:"3px solid #5565b8",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-                பிரஸ்னம் (Prashna Horary)
+                பிரஸ்னம்
               </div>
               <div style={{fontSize:12,color:"#4a5365",lineHeight:1.6,marginBottom:10}}>
                 மனதில் ஒரு கேள்வியை நினைத்து, <b>இப்போது</b> கீழே பொத்தானை அழுத்துங்கள். அந்த தருணத்துக்கான லக்னம் அமைத்து பலன் பார்க்கப்படும் (தத்கால பிரஸ்ன முறை).
@@ -3694,9 +3697,9 @@ ${aiPart}
           {advancedView==="bhava" && bhavaChart && bhavaChart.cusps && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#99496a",marginBottom:8,borderBottom:"2px solid #b8608430",borderLeft:"3px solid #b86084",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-                பாவ சக்கரம் (Bhava Chart — Equal House)
+                பாவ சக்கரம் (சம வீட்டு முறை)
               </div>
-              <div style={{overflowX:"auto"}}>
+              <div className="jn-xscroll" style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                   <thead>
                     <tr style={{borderBottom:"1.5px solid #c7a56840"}}>
@@ -3747,7 +3750,7 @@ ${aiPart}
               <div style={{fontSize:13,fontWeight:700,color:"#53763c",marginBottom:8,borderBottom:"2px solid #6b915030",borderLeft:"3px solid #6b9150",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
                 நவாம்ச பல பகுப்பாய்வு (D9 Strength)
               </div>
-              <div style={{overflowX:"auto"}}>
+              <div className="jn-xscroll" style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                   <thead>
                     <tr style={{borderBottom:"1.5px solid #c7a56840"}}>
@@ -3794,22 +3797,22 @@ ${aiPart}
           {advancedView==="shadbala" && shadBala && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#6f4c92",marginBottom:8,borderBottom:"2px solid #8a62b030",borderLeft:"3px solid #8a62b0",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-                ஷட்பலம் (Shadbala — 6 வகை பலம்)
+                ஷட்பலம் — 6 வகை பலம்
               </div>
-              <div style={{overflowX:"auto"}}>
+              <div className="jn-xscroll" style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                   <thead>
                     <tr style={{borderBottom:"1.5px solid #c7a56840"}}>
                       <th style={{padding:"5px 3px",color:"#a9823c",fontWeight:700,textAlign:"left",fontSize:11.5}}>கிரகம்</th>
+                      <th style={{padding:"5px 3px",color:"#a9823c",fontWeight:700,textAlign:"center",fontSize:11.5}}>மொத்தம்</th>
+                      <th style={{padding:"5px 3px",color:"#a9823c",fontWeight:700,textAlign:"center",fontSize:11.5}}>தேவை</th>
+                      <th style={{padding:"5px 3px",color:"#a9823c",fontWeight:700,textAlign:"center",fontSize:11.5}}>நிலை</th>
                       <th style={{padding:"5px 3px",color:"#a9823c",fontWeight:700,textAlign:"center",fontSize:11.5}}>ஸ்தான</th>
                       <th style={{padding:"5px 3px",color:"#a9823c",fontWeight:700,textAlign:"center",fontSize:11.5}}>திக்</th>
                       <th style={{padding:"5px 3px",color:"#a9823c",fontWeight:700,textAlign:"center",fontSize:11.5}}>கால</th>
                       <th style={{padding:"5px 3px",color:"#a9823c",fontWeight:700,textAlign:"center",fontSize:11.5}}>சேஷ்டா</th>
                       <th style={{padding:"5px 3px",color:"#a9823c",fontWeight:700,textAlign:"center",fontSize:11.5}}>நைசர்கிக</th>
                       <th style={{padding:"5px 3px",color:"#a9823c",fontWeight:700,textAlign:"center",fontSize:11.5}}>திரிக்</th>
-                      <th style={{padding:"5px 3px",color:"#a9823c",fontWeight:700,textAlign:"center",fontSize:11.5}}>மொத்தம்</th>
-                      <th style={{padding:"5px 3px",color:"#a9823c",fontWeight:700,textAlign:"center",fontSize:11.5}}>தேவை</th>
-                      <th style={{padding:"5px 3px",color:"#a9823c",fontWeight:700,textAlign:"center",fontSize:11.5}}>நிலை</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3824,19 +3827,19 @@ ${aiPart}
                             </span>
                           )}
                         </td>
+                        <td style={{padding:"5px 3px",textAlign:"center",color:"#1f3f68",fontWeight:700,fontSize:12}}>{p.total?.toFixed(0)}</td>
+                        <td style={{padding:"5px 3px",textAlign:"center",color:"#a9823c",fontSize:11.5}}>{p.required?.toFixed(0)}</td>
+                        <td style={{padding:"5px 3px",textAlign:"center"}}>
+                          {p.total >= p.required ?
+                            <span style={{color:"#2e7d5b",fontWeight:700,fontSize:11.5}}>பலம்</span> :
+                            <span style={{color:"#c0564f",fontWeight:700,fontSize:11.5}}>பலவீனம்</span>}
+                        </td>
                         <td style={{padding:"5px 3px",textAlign:"center",color:"#27303f",fontSize:11.5}}>{p.sthanaBala?.toFixed(0)}</td>
                         <td style={{padding:"5px 3px",textAlign:"center",color:"#27303f",fontSize:11.5}}>{p.digBala?.toFixed(0)}</td>
                         <td style={{padding:"5px 3px",textAlign:"center",color:"#27303f",fontSize:11.5}}>{p.kalaBala?.toFixed(0)}</td>
                         <td style={{padding:"5px 3px",textAlign:"center",color:"#27303f",fontSize:11.5}}>{p.cheshtaBala?.toFixed(0)}</td>
                         <td style={{padding:"5px 3px",textAlign:"center",color:"#27303f",fontSize:11.5}}>{p.naisargikaBala?.toFixed(0)}</td>
                         <td style={{padding:"5px 3px",textAlign:"center",color:"#27303f",fontSize:11.5}}>{p.drikBala?.toFixed(0)}</td>
-                        <td style={{padding:"5px 3px",textAlign:"center",color:"#1f3f68",fontWeight:700,fontSize:12}}>{p.total?.toFixed(0)}</td>
-                        <td style={{padding:"5px 3px",textAlign:"center",color:"#a9823c",fontSize:11.5}}>{p.required?.toFixed(0)}</td>
-                        <td style={{padding:"5px 3px",textAlign:"center"}}>
-                          {p.total >= p.required ?
-                            <span style={{color:"#2e7d5b",fontWeight:700,fontSize:11.5}}>✓ பலம்</span> :
-                            <span style={{color:"#c0564f",fontWeight:700,fontSize:11.5}}>✗ பலவீனம்</span>}
-                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -3851,13 +3854,13 @@ ${aiPart}
                         background:p.total>=p.required?"linear-gradient(90deg,#2e7d5b,#2ea55f)":"linear-gradient(90deg,#c0564f,#e85050)",
                         borderRadius:4,transition:"width 0.3s"}}/>
                     </div>
-                    <div style={{fontSize:10.5,textAlign:"center",color:"#4a5365",marginTop:1}}>{((p.total/p.required)*100).toFixed(0)}%</div>
+                    <div style={{fontSize:11,textAlign:"center",color:"#4a5365",marginTop:1}}>{((p.total/p.required)*100).toFixed(0)}%</div>
                   </div>
                 ))}
               </div>
               <div style={{fontSize:11.5,color:"#76819a",marginTop:8,lineHeight:1.5}}>
                 ஸ்தான=இருப்பிடம் • திக்=திசை • கால=நேரம் • சேஷ்டா=இயக்கம் • நைசர்கிக=இயற்கை • திரிக்=பார்வை
-                {shadBala.some(p=>p.yuddha) && " • ⚔=கிரக யுத்தம் (Yuddha)"}
+                {shadBala.some(p=>p.yuddha) && " • ⚔=கிரக யுத்தம்"}
               </div>
             </div>
           )}
@@ -3866,7 +3869,7 @@ ${aiPart}
           {advancedView==="funcnature" && functionalNature && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#3e4c99",marginBottom:8,borderBottom:"2px solid #5565b830",borderLeft:"3px solid #5565b8",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-                லக்னவாரி சுப-பாபர் (Functional Nature) — BPHS Ch.34
+                லக்னவாரி சுப-பாபர்
               </div>
               <div style={{fontSize:12,color:"#4a5365",marginBottom:8}}>
                 {horoscope?.lagnaName} லக்னத்திற்கு — வீட்டு அதிபத்யத்தில் இருந்து நேரடியாகக் கணிக்கப்பட்டது.
@@ -3888,7 +3891,7 @@ ${aiPart}
               ))}
               {marakaBadhaka && (
                 <div style={{marginTop:10,padding:"10px 12px",background:"#fff8e1",borderRadius:8,border:"1px solid #ffe082"}}>
-                  <div style={{fontSize:12.5,fontWeight:700,color:"#1f3f68",marginBottom:4}}>☠ மாரகர் & பாதகாதிபதி</div>
+                  <div style={{fontSize:12.5,fontWeight:700,color:"#1f3f68",marginBottom:4}}>மாரகர் & பாதகாதிபதி</div>
                   <div style={{fontSize:12,color:"#27303f",lineHeight:1.7}}>
                     <b>மாரகாதிபதிகள் (2,7):</b> {marakaBadhaka.marakaLords.join(", ")}
                     {marakaBadhaka.occupants27.length > 0 && <span> • மாரக ஸ்தானத்தில்: {marakaBadhaka.occupants27.join(", ")}</span>}
@@ -3924,7 +3927,7 @@ ${aiPart}
                   background:lk.strength>=3?"#f1f8e9":lk.strength>=2?"#faf9f0":"#faf9f5",
                   border:`1.5px solid ${lk.strength>=3?"#7cb342":lk.strength>=2?"#c7a568":"#dfe5f0"}`}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                    <span style={{fontSize:12,fontWeight:700,color:"#27303f"}}>{lk.icon} {lk.afterTa}</span>
+                    <span style={{fontSize:12,fontWeight:700,color:"#27303f"}}>{lk.afterTa}</span>
                     <span style={{fontSize:11.5,fontWeight:800,padding:"2px 8px",borderRadius:10,
                       background:lk.strength>=3?"#dcfce7":lk.strength>=2?"#fef9c3":"#eff2f9",
                       color:lk.strength>=3?"#2e7d5b":"#7d6a3f"}}>{lk.strengthTa}</span>
@@ -3953,11 +3956,11 @@ ${aiPart}
               <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
                 {Object.entries(EVENT_TOPICS).map(([key,t])=>(
                   <button key={key} onClick={()=>{ setEventTopic(key); if(!eventTiming[key]) runEventTiming(key); }}
-                    style={{padding:"5px 10px",borderRadius:16,fontSize:12,fontWeight:600,cursor:"pointer",
-                      border:`1.5px solid ${eventTopic===key?"#1f3f68":"#c7a568"}`,
+                    style={{minHeight:38,padding:"0 14px",borderRadius:999,fontSize:13,fontWeight:600,cursor:"pointer",
+                      border:`1px solid ${eventTopic===key?"#1f3f68":"#e3e8f2"}`,
                       background:eventTopic===key?"#1f3f68":"#fafbfe",
                       color:eventTopic===key?"#fafbfe":"#1f3f68"}}>
-                    {t.icon} {t.ta}
+                    {t.ta}
                   </button>
                 ))}
               </div>
@@ -3976,7 +3979,7 @@ ${aiPart}
                       background:et.promise>=65?"#f1f8e9":et.promise<45?"#fdf0f0":"#fff8e1",
                       border:`1px solid ${et.promise>=65?"#c5e1a5":et.promise<45?"#f0c8c8":"#ffe082"}`}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                        <span style={{fontSize:12,fontWeight:700,color:"#27303f"}}>{et.icon} {isCaution ? "6/8/12 பாவ செயல்பாட்டு அளவு (நோய்-சாத்தியம்)" : "ஜாதக வாக்குறுதி (Promise)"}</span>
+                        <span style={{fontSize:12,fontWeight:700,color:"#27303f"}}>{isCaution ? "6/8/12 பாவ செயல்பாட்டு அளவு (நோய்-சாத்தியம்)" : "ஜாதக வாக்குறுதி (Promise)"}</span>
                         <span style={{fontSize:12,fontWeight:800,color:et.promise>=65?"#2e7d5b":et.promise<45?"#c0564f":"#7d6a3f"}}>{et.promise}%{isCaution ? "" : ` — ${et.promiseVerdict}`}</span>
                       </div>
                       <div style={{height:8,background:"#eee",borderRadius:4,overflow:"hidden",marginBottom:6}}>
@@ -4005,7 +4008,7 @@ ${aiPart}
                         border:`1.5px solid ${i===0?(isCaution?"#e57373":"#7cb342"):"#dfe5f0"}`}}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
                           <span style={{fontSize:12.5,fontWeight:700,color:"#27303f"}}>
-                            {i===0 && (isCaution?"⚠ ":"⭐ ")}{w.start.toLocaleDateString('ta-IN',{year:'numeric',month:'short'})} — {w.end.toLocaleDateString('ta-IN',{year:'numeric',month:'short'})}
+                            {w.start.toLocaleDateString('ta-IN',{year:'numeric',month:'short'})} — {w.end.toLocaleDateString('ta-IN',{year:'numeric',month:'short'})}
                           </span>
                           <span style={{fontSize:11.5,fontWeight:800,padding:"2px 8px",borderRadius:10,
                             background:isCaution
@@ -4053,7 +4056,7 @@ ${aiPart}
                           <div style={{fontSize:12,fontWeight:700,color:"#1f3f68",marginBottom:4}}>இக்கேள்வியுடன் பிணைந்த நிபந்தனைகள்</div>
                           {rel.map((lk,li)=>(
                             <div key={li} style={{fontSize:11.5,color:"#4a5365",lineHeight:1.6,marginBottom:3}}>
-                              {lk.icon} {lk.text} <span style={{color:"#1f3f68"}}>({lk.how})</span>
+                              {lk.text} <span style={{color:"#1f3f68"}}>({lk.how})</span>
                               {lk.dashaNote && <span style={{color:"#2e7d5b",fontWeight:600}}> — {lk.dashaNote}</span>}
                             </div>
                           ))}
@@ -4176,7 +4179,7 @@ ${aiPart}
                           <div style={{fontSize:11.5,fontWeight:700,color:"#303f9f",marginBottom:2}}>கூர்மையான தொடுகைகள் — நட்சத்திரம் & ஜென்ம ஸ்புட (±1°) அளவில்</div>
                           {oc.touches.map((tc,ti)=>(
                             <div key={ti} style={{fontSize:11,lineHeight:1.65,color:tc.type==="டிகிரி"?"#1f3f68":"#303f9f",marginBottom:2}}>
-                              {tc.type==="டிகிரி"?"🔥":"⭐"} <b>{tc.label}</b> — {tc.text}
+                              <b>{tc.label}</b> — {tc.text}
                               {tc.swissNote && <b style={{color:"#00695c"}}> [{tc.swissNote}]</b>}
                             </div>
                           ))}
@@ -4232,10 +4235,10 @@ ${aiPart}
               <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:8}}>
                 {Object.entries(EVENT_TOPICS).map(([k,v])=>(
                   <button key={k} onClick={()=>setBtTopic(k)} style={{
-                    padding:"6px 10px",borderRadius:14,fontSize:12,fontWeight:600,cursor:"pointer",
-                    border:`1.5px solid ${btTopic===k?"#1f3f68":"#dfe5f0"}`,
+                    minHeight:38,padding:"0 14px",borderRadius:999,fontSize:13,fontWeight:600,cursor:"pointer",
+                    border:`1px solid ${btTopic===k?"#1f3f68":"#e3e8f2"}`,
                     background:btTopic===k?"#1f3f68":"#faf9f5",color:btTopic===k?"#fafbfe":"#4a5365"
-                  }}>{v.icon} {v.ta}</button>
+                  }}>{v.ta}</button>
                 ))}
               </div>
               {/* தேதி + சரிபார் */}
@@ -4259,7 +4262,7 @@ ${aiPart}
                     {btResult.verdict}
                   </div>
                   <div style={{fontSize:12,color:"#4a5365",marginBottom:4}}>
-                    {btResult.icon} {btResult.topic} • {btDateStr} • {btResult.md} தசை / {btResult.ad} புக்தி • மதிப்பெண்: <b>{btResult.score}</b> ({btResult.hit})
+                    {btResult.topic} • {btDateStr} • {btResult.md} தசை / {btResult.ad} புக்தி • மதிப்பெண்: <b>{btResult.score}</b> ({btResult.hit})
                     <span style={{color:"#76819a"}}> — தசைப் பங்கு {btResult.dScore} + transit பங்கு {btResult.tScore}</span>
                   </div>
                   {/* நிகழ்வு விழுந்த காலவீச்சுகள் — from → to */}
@@ -4343,7 +4346,7 @@ ${aiPart}
               {backtests.map(b=>(
                 <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:6,
                   padding:"5px 8px",marginBottom:4,borderRadius:6,background:"#faf9f5",border:"1px solid #eee5d5"}}>
-                  <span style={{fontSize:11.5,color:"#4a5365"}}>{b.icon} {b.topic} • {b.dateStr} • {b.chart}</span>
+                  <span style={{fontSize:11.5,color:"#4a5365"}}>{b.topic} • {b.dateStr} • {b.chart}</span>
                   <span style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                     <b style={{fontSize:11.5,color:b.hit==="உயர்"?"#2e7d5b":b.hit==="குறை"?"#c0564f":"#8a6d00"}}>{b.score} • {b.hit}</b>
                     <button onClick={()=>setBacktests(prev=>{const next=prev.filter(x=>x.id!==b.id);persistBacktests(next);return next;})}
@@ -4442,7 +4445,7 @@ ${aiPart}
               <div style={{fontSize:13,fontWeight:700,color:"#226b66",marginBottom:8,borderBottom:"2px solid #2e8b8430",borderLeft:"3px solid #2e8b84",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
                 கிரக அவஸ்தைகள் (BPHS Ch.45) — பலன் தீவிர அளவு
               </div>
-              <div style={{overflowX:"auto"}}>
+              <div className="jn-xscroll" style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                   <thead>
                     <tr style={{borderBottom:"1.5px solid #c7a56840"}}>
@@ -4484,7 +4487,7 @@ ${aiPart}
           {advancedView==="bhavabala" && bhavaBalaData && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#9d5f38",marginBottom:8,borderBottom:"2px solid #c07a4a30",borderLeft:"3px solid #c07a4a",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-                பாவ பலம் (Bhava Bala) — எந்த வீடு பலமானது?
+                பாவ பலம் — எந்த வீடு பலமானது?
               </div>
               {bhavaBalaData.map((b,i)=>(
                 <div key={i} style={{marginBottom:6}}>
@@ -4512,11 +4515,11 @@ ${aiPart}
           {advancedView==="transitoverlay" && (
             <div style={{...card,marginBottom:10,padding:"12px 14px"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#99496a",marginBottom:8,borderBottom:"2px solid #b8608430",borderLeft:"3px solid #b86084",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-                கோசாரம் — இன்றைய கிரக நிலை (Transit Overlay)
+                கோசாரம் — இன்றைய கிரக நிலை
               </div>
               {transitOverlay && transitOverlay.length > 0 ? (
                 <div>
-                  <div style={{overflowX:"auto"}}>
+                  <div className="jn-xscroll" style={{overflowX:"auto"}}>
                     <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                       <thead>
                         <tr style={{borderBottom:"1.5px solid #c7a56840"}}>
@@ -4554,7 +4557,7 @@ ${aiPart}
                               {p.vedha && (
                                 <div style={{fontSize:11,color:"#c0564f",fontWeight:600}}
                                   title={`${p.vedha.house}ஆம் வீட்டில் ${p.vedha.by} இருப்பதால் இந்த சுப கோசாரம் தடைபடுகிறது`}>
-                                  ⛔ வேதை ({p.vedha.by})
+                                  வேதை ({p.vedha.by})
                                 </div>
                               )}
                               {p.gocharaFav && !p.vedha && (
@@ -4608,7 +4611,7 @@ ${aiPart}
                         <div style={{fontSize:13,color:"#7d6a3f",fontWeight:800}}>{times.yamaGandam.end}</div>
                       </div>
                       <div style={{padding:"12px 10px",background:"#f3e8ff",borderRadius:8,border:"1px solid #d8b4fe",textAlign:"center"}}>
-                        <div style={{fontSize:12,color:"#6b21a8",fontWeight:700,marginBottom:4}}>⚫ குளிகை</div>
+                        <div style={{fontSize:12,color:"#6b21a8",fontWeight:700,marginBottom:4}}>குளிகை</div>
                         <div style={{fontSize:13,color:"#6b21a8",fontWeight:800}}>{times.gulikai.start}</div>
                         <div style={{fontSize:12,color:"#4a5365"}}>முதல்</div>
                         <div style={{fontSize:13,color:"#6b21a8",fontWeight:800}}>{times.gulikai.end}</div>
@@ -4841,7 +4844,7 @@ ${aiPart}
                 ))}
                 {/* தசாநாதன் தன் ராசிநாதன், நட்சத்திராதிபதி, சேர்க்கை-பார்வை வழியாகவும் பலன் தருவான் */}
                 {pc && (<>
-                  <button onClick={()=>toggleArea("__dashaChain")} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",padding:"12px 0 0",fontSize: 13,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>
+                  <button onClick={()=>toggleArea("__dashaChain")} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",padding:0,marginTop:6,minHeight:40,fontSize: 13,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>
                     தசாநாதன் பலன் தரும் வழி <ChevronDown size={16} style={{transform:chainOpen?"rotate(180deg)":"none",transition:"transform .2s"}}/>
                   </button>
                   {chainOpen && (
@@ -4940,7 +4943,7 @@ ${aiPart}
                                   background:pad.isCurrent?"#e8f5e9":"transparent",borderRadius:3}}
                                   onClick={(e)=>{e.stopPropagation();setExpandedDasha(expandedDasha===`${i}-${j}-${k}`?`${i}-${j}`:`${i}-${j}-${k}`)}}>
                                   <span style={{fontSize: 12,flex:1,color:pad.isCurrent?"#2e7d5b":"#4a5365"}}>{pad.name}
-                                    {pad.isCurrent&&<span style={{fontSize: 10.5,background:"#d4edda",color:"#2e7d5b",padding:"0 3px",borderRadius:3,marginLeft:3,fontWeight:700}}>நடப்பு</span>}
+                                    {pad.isCurrent&&<span style={{fontSize: 11,background:"#d4edda",color:"#2e7d5b",padding:"0 3px",borderRadius:3,marginLeft:3,fontWeight:700}}>நடப்பு</span>}
                                   </span>
                                   <span style={{fontSize: 11,color:"#76819a"}}>{pad.duration}</span>
                                   <span style={{fontSize: 11,color:"#76819a",transition:"transform 0.2s",transform:expandedDasha===`${i}-${j}-${k}`?"rotate(180deg)":"rotate(0)"}}>▾</span>
@@ -4952,9 +4955,9 @@ ${aiPart}
                                       <div key={l} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 0",
                                         background:sd.isCurrent?"#e0f0ff":"transparent",borderRadius:3}}>
                                         <span style={{fontSize: 11.5,flex:1,color:sd.isCurrent?"#1565c0":"#4a5365"}}>{sd.name}
-                                          {sd.isCurrent&&<span style={{fontSize: 10.5,background:"#cfe4fa",color:"#1565c0",padding:"0 3px",borderRadius:3,marginLeft:3,fontWeight:700}}>நடப்பு</span>}
+                                          {sd.isCurrent&&<span style={{fontSize: 11,background:"#cfe4fa",color:"#1565c0",padding:"0 3px",borderRadius:3,marginLeft:3,fontWeight:700}}>நடப்பு</span>}
                                         </span>
-                                        <span style={{fontSize: 10.5,color:"#76819a"}}>{sd.duration}</span>
+                                        <span style={{fontSize: 11,color:"#76819a"}}>{sd.duration}</span>
                                       </div>
                                     ))}
                                   </div>
@@ -5011,12 +5014,12 @@ ${aiPart}
     return(
       <div style={base}>
         <div style={{...container,paddingTop:24,paddingBottom:104}}>
-          <button onClick={()=>goTo(SCREEN.HOME)} style={{background:"none",border:"none",color:T.accent,fontSize:14,cursor:"pointer",padding:0,marginBottom:16}}>← பின்</button>
+          <BackLink onClick={()=>goTo(SCREEN.HOME)} />
 
           <div style={{textAlign:"center",marginBottom:24}}>
-            <div style={{fontSize:36,marginBottom:6}}>💍</div>
-            <h2 style={{fontSize:20,fontWeight:500,color:"#c0564f",margin:"0 0 4px"}}>திருமண பொருத்தம்</h2>
-            <p style={{fontSize:12,color:"#a9823c"}}>திருமணப் பொருத்தம் — Kundali Matching</p>
+            <div style={{width:52,height:52,borderRadius:16,background:"#fbeef2",color:"#c2607c",display:"grid",placeItems:"center",margin:"0 auto 8px"}}><Heart size={26} strokeWidth={1.8}/></div>
+            <h2 style={{fontSize:20,fontWeight:700,color:"#1f3f68",margin:"0 0 4px"}}>திருமண பொருத்தம்</h2>
+            <p style={{fontSize:12.5,color:"#76819a",margin:0}}>10 பொருத்தம் · தோஷ ஒப்பீடு · தசை ஒத்திசைவு</p>
           </div>
 
           <div style={{...card,marginBottom:12,boxShadow:`inset 3px 0 0 #d98aa3, ${card.boxShadow}`}}>
@@ -5075,8 +5078,8 @@ ${aiPart}
 
           <button style={{...btnGold,opacity:(!isValidDDMMYYYY(poruthBride.dob)||!isValidDDMMYYYY(poruthGroom.dob)||poruthLoading)?0.4:1,
             pointerEvents:(!isValidDDMMYYYY(poruthBride.dob)||!isValidDDMMYYYY(poruthGroom.dob)||poruthLoading)?"none":"auto",
-            background:"linear-gradient(135deg,#d98aa3,#ff8fab,#d98aa3)"}} onClick={handlePorutham}>
-            {poruthLoading ? "கணக்கிடுகிறது..." : "💍 பொருத்தம் பார் →"}
+            }} data-porutham-submit onClick={handlePorutham}>
+            {poruthLoading ? "கணக்கிடுகிறது…" : "பொருத்தம் பார்"}
           </button>
 
           {poruthResult&&(
@@ -5154,44 +5157,48 @@ ${aiPart}
       <div style={base}>
         <div style={{...container,paddingTop:20,paddingBottom:104}}>
           <div style={{textAlign:"center",marginBottom:12}}>
-            <h2 style={{fontSize:19,fontWeight:500,color:"#9d5f38",margin:"0 0 2px"}}>
+            <h2 style={{fontSize:20,fontWeight:700,color:"#1f3f68",margin:"0 0 2px"}}>
               {today.isFuture?"எதிர்கால பலன்":today.isPast?"கடந்த நாள் பலன்":"இன்றைய பலன்"}
             </h2>
-            <p style={{fontSize:12,color:"#a9823c"}}>{today.dateStr} • {kizhamai(today.dayName)}</p>
+            <p style={{fontSize:12.5,color:"#76819a",margin:0}}>{formData.name ? `${formData.name} · ` : ""}{horoscope?.moonRashi ? `${horoscope.moonRashi} ராசி` : ""}</p>
             {today.isOtherDate && (
               <div style={{fontSize:11.5,color:today.isFuture?"#58a97f":"#4a5365",marginTop:3,fontWeight:600}}>
-                {today.isFuture?"✨ எதிர்கால கணிப்பு — அன்றைய தசை-புக்தி அடிப்படையில்":"📖 கடந்த நாளின் பலன் பார்வை"}
+                {today.isFuture?"எதிர்கால கணிப்பு — அன்றைய தசை-புக்தி அடிப்படையில்":"கடந்த நாளின் பலன் பார்வை"}
               </div>
             )}
           </div>
 
           {/* ═══ Date Navigator — browse to any past/future date ═══ */}
-          <div style={{...card,marginBottom:12,padding:"10px 12px"}}>
-            <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <button onClick={()=>{
+          <div style={{...card,marginBottom:12,padding:"8px 10px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <button aria-label="முந்தைய நாள்" data-daily-prev onClick={()=>{
                 const d = new Date(today.dateObj); d.setDate(d.getDate()-1);
                 openDailyScreen(d);
-              }} style={{background:"#eceff7",border:"1px solid #c7a56825",borderRadius:8,
-                width:32,height:32,color:"#1f3f68",fontSize:15,cursor:"pointer",flexShrink:0}}>◂</button>
+              }} style={{width:40,height:40,display:"grid",placeItems:"center",background:"#f2f5fb",border:"1px solid #e3e8f2",borderRadius:12,color:"#1f3f68",cursor:"pointer",flexShrink:0}}><ChevronLeft size={20}/></button>
 
-              <input type="date" value={`${today.dateObj.getFullYear()}-${String(today.dateObj.getMonth()+1).padStart(2,'0')}-${String(today.dateObj.getDate()).padStart(2,'0')}`}
-                onChange={e=>{
-                  if(!e.target.value) return;
-                  const [y,m,d] = e.target.value.split('-').map(Number);
-                  openDailyScreen(new Date(y, m-1, d));
-                }}
-                style={{...inputStyle,flex:1,padding:"7px 10px",fontSize:12,colorScheme:"dark",textAlign:"center"}}/>
+              {/* தேதி — தமிழில் காட்டப்படும்; தட்டினால் கருவியின் தேதித் தேர்வி திறக்கும் (மறைவான input மேலே படர்ந்துள்ளது) */}
+              <label style={{position:"relative",flex:1,minHeight:40,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
+                <span data-daily-date style={{fontSize: 14.5,fontWeight:700,color:"#27303f",lineHeight:1.35}}>{today.dateStr}</span>
+                <span style={{fontSize:12,color:"#76819a",lineHeight:1.3,whiteSpace:"nowrap"}}>{kizhamai(today.dayName)} · மாற்ற தட்டவும்</span>
+                <input type="date" aria-label="தேதியைத் தேர்ந்தெடுக்க" value={`${today.dateObj.getFullYear()}-${String(today.dateObj.getMonth()+1).padStart(2,'0')}-${String(today.dateObj.getDate()).padStart(2,'0')}`}
+                  onChange={e=>{
+                    if(!e.target.value) return;
+                    const [y,m,d] = e.target.value.split('-').map(Number);
+                    openDailyScreen(new Date(y, m-1, d));
+                  }}
+                  onClick={e=>{ try { e.currentTarget.showPicker && e.currentTarget.showPicker(); } catch(_){} }}
+                  style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:0,cursor:"pointer",border:"none",padding:0}}/>
+              </label>
 
-              <button onClick={()=>{
+              <button aria-label="அடுத்த நாள்" data-daily-next onClick={()=>{
                 const d = new Date(today.dateObj); d.setDate(d.getDate()+1);
                 openDailyScreen(d);
-              }} style={{background:"#eceff7",border:"1px solid #c7a56825",borderRadius:8,
-                width:32,height:32,color:"#1f3f68",fontSize:15,cursor:"pointer",flexShrink:0}}>▸</button>
+              }} style={{width:40,height:40,display:"grid",placeItems:"center",background:"#f2f5fb",border:"1px solid #e3e8f2",borderRadius:12,color:"#1f3f68",cursor:"pointer",flexShrink:0}}><ChevronRight size={20}/></button>
             </div>
             {today.isOtherDate && (
               <button onClick={()=>openDailyScreen(null)} style={{
                 marginTop:8,width:"100%",background:"none",border:"none",color:"#58a97f",
-                fontSize:12.5,fontWeight:600,cursor:"pointer",padding:"4px 0"
+                fontSize:13,fontWeight:700,cursor:"pointer",padding:"10px 0 4px",minHeight:36
               }}>இன்றைக்கு திரும்பு</button>
             )}
           </div>
@@ -5215,7 +5222,7 @@ ${aiPart}
           )}
 
           {/* Mood Banner */}
-          <div style={{...card,marginBottom:12,padding:"14px 16px",textAlign:"center",
+          <div style={{...card,position:"relative",marginBottom:12,padding:"14px 44px",textAlign:"center",
             border:`1.5px solid ${moodColor}40`, background:`${moodColor}10`}}>
             <div style={{fontSize:15,fontWeight:700,color:moodColor}}>{moodText}</div>
             <button data-share onClick={()=>shareOut("இன்றைய பலன்", [
@@ -5224,7 +5231,7 @@ ${aiPart}
               currentDasha?.mahadasha ? `நடப்பு தசை: ${currentDasha.mahadasha.name}${currentDasha.bhukti ? " / " + currentDasha.bhukti.name : ""}` : "",
               muhurtham ? `ராகு காலம்: ${muhurtham.rahuKalam}` : "",
               "— ஜோதிட நிபுணர்",
-            ].filter(Boolean).join("\n"))} style={{float:"right",marginTop:-22,background:"none",border:"none",color:"#4a5365",cursor:"pointer",padding:4,display:"grid",placeItems:"center"}} aria-label="பகிர்"><Share2 size={17}/></button>
+            ].filter(Boolean).join("\n"))} style={{position:"absolute",top:4,right:4,width:40,height:40,background:"none",border:"none",color:"#4a5365",cursor:"pointer",padding:0,display:"grid",placeItems:"center"}} aria-label="பகிர்"><Share2 size={17}/></button>
             {gochara.isChandrashtama && (
               <div style={{fontSize:12.5,color:"#c0564f",marginTop:6,fontWeight:600}}>
                 ⚠ {today.isOtherDate?"அன்று":"இன்று"} சந்திராஷ்டமம் — புதிய காரியங்களைத் தவிர்க்கவும்
@@ -5354,17 +5361,16 @@ ${aiPart}
             </div>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
               <tbody>
-                {[
-                  ["திதி",`${today.tithi}, ${today.paksham}`],
-                  ["நட்சத்திரம்",`${today.nakshatra}, பாதம் ${today.nakshatraPada||1}`],
+                {(()=>{ const dp = dayPanchang(new Date(today.dateObj), dailyGeo.lat, dailyGeo.lon); return [
+                  ["திதி", dp ? `${dp.tithi} — ${dp.tithiUntil}${dp.tithiNext ? `; பின் ${dp.tithiNext}` : ""}` : `${today.tithi}, ${today.paksham}`],
+                  ["நட்சத்திரம்", dp ? `${dp.nakshatra} — ${dp.nakUntil}${dp.nakNext ? `; பின் ${dp.nakNext}` : ""}` : `${today.nakshatra}, பாதம் ${today.nakshatraPada||1}`],
                   ["யோகம்",today.yogam],
                   ["கரணம்",today.karanam],
                   ["சந்திர ராசி",today.moonRashi],
-                ].map(([l,v],i)=>(
-                  <tr key={i} style={{borderBottom:"1px solid #eef1f6"}}>
-                    <td style={{padding:"4px 0",color:"#a9823c",width:"38%",fontWeight:600,fontSize:12.5}}>{l}</td>
-                    <td style={{padding:"4px 0",color:"#76819a",width:10}}>:</td>
-                    <td style={{padding:"4px 6px",color:"#27303f",fontWeight:600,fontSize:12.5}}>{v}</td>
+                ]; })().map(([l,v],i)=>(
+                  <tr key={i} style={{borderTop:i?"1px solid #eef1f6":"none"}}>
+                    <td style={{padding:"7px 0",color:"#76819a",width:"34%",fontSize:13,verticalAlign:"top"}}>{l}</td>
+                    <td style={{padding:"7px 0 7px 6px",color:"#27303f",fontWeight:600,fontSize:13,lineHeight:1.5}}>{v}</td>
                   </tr>
                 ))}
               </tbody>
@@ -5392,9 +5398,8 @@ ${aiPart}
                     <div style={{fontSize:11,color:"#76819a",marginTop:3}}>திதி + நட்சத்திரம் + கிழமை எண்கணித அடிப்படை (classical தசா அல்ல)</div>
                   </div>
                   <div style={{background:"linear-gradient(135deg,#a9823c15,#c7a56808)",borderRadius:8,padding:"10px 12px",border:"1px solid #a9823c25"}}>
-                    <div style={{fontSize:11.5,color:"#4a5365",marginBottom:4}}>ராசி ரத்தினம்</div>
-                    <div style={{fontSize:12,fontWeight:700,color:"#a9823c"}}>{birthLucky.gem}</div>
-                    <div style={{fontSize:12,color:"#4a5365",marginTop:3}}>உப: {birthLucky.subGem}</div>
+                    <div style={{fontSize:11.5,color:"#4a5365",marginBottom:4}}>அதிர்ஷ்ட நிறம்</div>
+                    <div style={{fontSize:13,fontWeight:700,color:"#a9823c"}}>{birthLucky.color}</div>
                   </div>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:8}}>
@@ -5437,8 +5442,8 @@ ${aiPart}
                   <div style={{fontSize:12.5,fontWeight:700,color:"#27303f"}}>{remedy.rashiInfo.color}</div>
                 </div>
                 <div style={{background:"#eceff7",borderRadius:6,padding:"7px 9px"}}>
-                  <div style={{fontSize:11.5,color:"#4a5365"}}>ரத்தினம்</div>
-                  <div style={{fontSize:12.5,fontWeight:700,color:"#27303f"}}>{remedy.rashiInfo.gem}</div>
+                  <div style={{fontSize:11.5,color:"#4a5365"}}>சாதகமான கிழமை</div>
+                  <div style={{fontSize:12.5,fontWeight:700,color:"#27303f"}}>{kizhamai(["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"][remedy.rashiInfo.favDay] || "")}</div>
                 </div>
               </div>
               <div style={{background:"#58a97f08",border:"1px solid #58a97f20",borderRadius:6,padding:"8px 10px",marginBottom:10}}>
@@ -5593,90 +5598,74 @@ ${aiPart}
     }
 
     const sel = calData[calSelected - 1]; // Selected day data
+    const selGeo = resolveBirthGeo(formData);
+    const selPanchang = sel ? dayPanchang(new Date(calYear, calMonth, sel.d), selGeo.lat, selGeo.lon) : null; // உதய காலத் திதி/நட்சத்திரம் + முடிவு நேரம்
     const today = new Date();
     const isCurrentMonth = calMonth === today.getMonth() && calYear === today.getFullYear();
 
     return(
       <div style={base}>
         <div style={{...container,paddingTop:16,paddingBottom:104}}>
-          <button onClick={()=>goTo(SCREEN.HOME)} style={{background:"none",border:"none",color:T.accent,fontSize:14,cursor:"pointer",padding:0,marginBottom:12}}>← பின்</button>
+          <BackLink onClick={()=>goTo(SCREEN.HOME)} />
 
           {/* Header */}
           <div style={{textAlign:"center",marginBottom:14}}>
-            <div style={{fontSize:12.5,color:"#4a5365",letterSpacing:3,marginBottom:2}}>✦ பஞ்சாங்கம் ✦</div>
-            <div style={{fontSize:12.5,color:"#58a97f",marginTop:4}}>{TAMIL_MONTHS[tamilMonthPrevIdx]} / {TAMIL_MONTHS[tamilMonthIdx]} மாதம்</div>
-            {calFetching && (
-              <div style={{fontSize:11.5,color:"#a9823c80",marginTop:4}}>
-                ⟳ துல்லியமான தரவை பின்னணியில் பெறுகிறது...
-              </div>
-            )}
+            <div style={{fontSize: 20,fontWeight:700,color:"#1f3f68"}}>பஞ்சாங்கம்</div>
+            <div style={{fontSize:12.5,color:"#76819a",marginTop:2}}>{TAMIL_MONTHS[tamilMonthPrevIdx]} / {TAMIL_MONTHS[tamilMonthIdx]} மாதம்</div>
           </div>
 
           {/* Month Navigator */}
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,padding:"8px 12px",
-            background:"#e9f5f4",borderRadius:12,border:"1px solid #2e8b8420"}}>
-            <button onClick={()=>{ if(calMonth===0){setCalMonth(11);setCalYear(y=>y-1);} else setCalMonth(m=>m-1); setCalSelected(1); }}
-              style={{background:"none",border:"none",color:"#226b66",fontSize:20,cursor:"pointer",padding:"4px 8px"}}>◂</button>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,padding:"6px 8px",
+            background:"#e9f5f4",borderRadius:14,border:"1px solid #cfe6e3"}}>
+            <button aria-label="முந்தைய மாதம்" onClick={()=>{ if(calMonth===0){setCalMonth(11);setCalYear(y=>y-1);} else setCalMonth(m=>m-1); setCalSelected(1); }}
+              style={{width:40,height:40,display:"grid",placeItems:"center",background:"#ffffff",border:"1px solid #cfe6e3",borderRadius:12,color:"#226b66",cursor:"pointer"}}><ChevronLeft size={20}/></button>
             <div style={{textAlign:"center"}}>
-              <div style={{fontSize:17,fontWeight:700,color:"#226b66",letterSpacing:1}}>{MONTH_NAMES_TA[calMonth]}</div>
-              <div style={{fontSize:12.5,color:"#4a5365"}}>{calYear}</div>
+              <div style={{fontSize:17,fontWeight:700,color:"#226b66"}}>{MONTH_NAMES_TA[calMonth]} {calYear}</div>
             </div>
-            <button onClick={()=>{ if(calMonth===11){setCalMonth(0);setCalYear(y=>y+1);} else setCalMonth(m=>m+1); setCalSelected(1); }}
-              style={{background:"none",border:"none",color:"#226b66",fontSize:20,cursor:"pointer",padding:"4px 8px"}}>▸</button>
+            <button aria-label="அடுத்த மாதம்" onClick={()=>{ if(calMonth===11){setCalMonth(0);setCalYear(y=>y+1);} else setCalMonth(m=>m+1); setCalSelected(1); }}
+              style={{width:40,height:40,display:"grid",placeItems:"center",background:"#ffffff",border:"1px solid #cfe6e3",borderRadius:12,color:"#226b66",cursor:"pointer"}}><ChevronRight size={20}/></button>
           </div>
 
-          {/* Calendar Grid */}
-          <div style={{background:"rgba(255,255,255,0.02)",borderRadius:12,border:"1px solid #c7a56810",padding:"8px 6px",marginBottom:12}}>
-            {/* Day headers */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1,marginBottom:4}}>
+          {/* Calendar Grid — தேதி + குறிப் புள்ளிகள் மட்டும்; விவரம் கீழே தேர்ந்தெடுத்த நாள் அட்டையில் */}
+          <div style={{...card,padding:"8px 8px 10px",marginBottom:10}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:4}}>
               {DAY_SHORT.map((dh,i)=>(
-                <div key={i} style={{textAlign:"center",fontSize:10,fontWeight:700,
-                  color:i===0?"#c0564f":i===6?"#2563eb":"#555555",padding:"6px 0"}}>{dh}</div>
+                <div key={i} style={{textAlign:"center",fontSize:12,fontWeight:700,
+                  color:i===0?"#c0564f":"#76819a",padding:"6px 0"}}>{dh}</div>
               ))}
             </div>
-            {/* Date cells */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
               {Array.from({length:firstDay},(_,i)=>(<div key={`e${i}`}/>))}
               {calData.map((cd,i)=>{
                 const isTodayCell = isCurrentMonth && cd.d === today.getDate();
                 const isSelected = cd.d === calSelected;
-                const bgMap = {festival:"#dcc27e10",good:"#58a97f08",bad:"#d98aa308",normal:"transparent"};
-                const borderMap = {festival:"#dcc27e30",good:"#58a97f15",bad:"#d98aa315",normal:"#e9edf6"};
+                const iso = `${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(cd.d).padStart(2,"0")}`;
+                const isFest = calFestivals.year === calYear && calFestivals.list.some(f => f.iso === iso);
+                const dots = [cd.isPournami ? "#e0b84c" : null, cd.isAmavasai ? "#27303f" : null, cd.isEkadashi ? "#2e8b84" : null, isFest ? "#c2607c" : null].filter(Boolean);
                 return(
-                  <div key={i} onClick={()=>setCalSelected(cd.d)} style={{
-                    background:isSelected?"#ede4cc":bgMap[cd.dayType],
-                    border:isSelected?"1.5px solid #a78bfa":isTodayCell?"1.5px solid #dcc27e50":`1px solid ${borderMap[cd.dayType]}`,
-                    borderRadius:8,padding:"3px 2px",minHeight:48,textAlign:"center",cursor:"pointer",
-                    transition:"all 0.15s",position:"relative"
+                  <button key={i} data-cal-day={cd.d} onClick={()=>setCalSelected(cd.d)} style={{
+                    background:isSelected?"#1f3f68":cd.dayType==="good"?"#eef7f1":cd.dayType==="bad"?"#fbf1f0":"#ffffff",
+                    border:isSelected?"1px solid #1f3f68":isTodayCell?"1.5px solid #a9823c":"1px solid #e9edf6",
+                    borderRadius:10,padding:"6px 0 5px",minHeight:46,textAlign:"center",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4
                   }}>
-                    {isTodayCell && <div style={{position:"absolute",top:2,right:3,width:5,height:5,borderRadius:"50%",background:"#1f3f68"}}/>}
-                    <div style={{fontSize:14,fontWeight:700,color:
-                      isSelected?"#a9823c":
-                      cd.dayOfWeek===0?"#c0564f":
-                      cd.isPournami||cd.isAmavasai?"#1f3f68":
-                      cd.dayType==="bad"?"#d98aa380":"#1a1a1a"
-                    }}>{cd.d}</div>
-                    <div style={{fontSize:6.5,color:cd.dayType==="festival"?"#1f3f68":"#555555",lineHeight:1.2,marginTop:1,
-                      overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cd.nakshatra?cd.nakshatra.slice(0,4):""}</div>
-                    <div style={{fontSize:6,color:
-                      cd.dayType==="good"?"#58a97f":
-                      cd.dayType==="bad"?"#c0564f80":"#777777",lineHeight:1.2}}>
-                      {cd.isPournami?"🌕":cd.isAmavasai?"🌑":cd.isEkadashi?"🕉":""}
-                      {cd.tithi?cd.tithi.slice(0,4):""}
-                    </div>
-                  </div>
+                    <span style={{fontSize:15,fontWeight:isSelected||isTodayCell?800:600,lineHeight:1.2,
+                      color:isSelected?"#ffffff":cd.dayOfWeek===0?"#c0564f":"#27303f"}}>{cd.d}</span>
+                    <span style={{display:"flex",gap:3,height:6}}>
+                      {dots.map((c,k)=>(<span key={k} style={{width:6,height:6,borderRadius:6,background:c,boxShadow:isSelected?"0 0 0 1px #ffffff":"none"}}/>))}
+                    </span>
+                  </button>
                 );
               })}
             </div>
           </div>
 
           {/* Legend */}
-          <div style={{display:"flex",justifyContent:"center",gap:12,marginBottom:14,flexWrap:"wrap"}}>
-            <span style={{fontSize:11,color:"#1f3f68"}}>🌕 பௌர்ணமி</span>
-            <span style={{fontSize:11,color:"#a9823c"}}>🌑 அமாவாசை</span>
-            <span style={{fontSize:11,color:"#58a97f"}}>● சுபம்</span>
-            <span style={{fontSize:11,color:"#c0564f"}}>● அசுபம்</span>
-            <span style={{fontSize:11,color:"#1f3f68"}}>🕉 ஏகாதசி</span>
+          <div style={{display:"flex",justifyContent:"center",gap:"6px 12px",marginBottom:14,flexWrap:"wrap"}}>
+            {[["#e0b84c","பௌர்ணமி"],["#27303f","அமாவாசை"],["#2e8b84","ஏகாதசி"],["#c2607c","பண்டிகை"]].map(([c,l])=>(
+              <span key={l} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,color:"#4a5365"}}><span style={{width:7,height:7,borderRadius:7,background:c}}/>{l}</span>
+            ))}
+            <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,color:"#4a5365"}}><span style={{width:11,height:11,borderRadius:3,background:"#eef7f1",border:"1px solid #cfe6da"}}/>சுப நாள்</span>
+            <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,color:"#4a5365"}}><span style={{width:11,height:11,borderRadius:3,background:"#fbf1f0",border:"1px solid #f0d6d3"}}/>கவனம்</span>
           </div>
 
           {/* ═══ Selected Day Detail — Full Panchangam ═══ */}
@@ -5704,85 +5693,50 @@ ${aiPart}
                 })()}
                 {(sel.isPournami||sel.isAmavasai||sel.isEkadashi||sel.isPradosham||sel.isChaturthi) && (
                   <div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {sel.isPournami && <span style={{fontSize:11.5,background:"#dcc27e20",color:"#1f3f68",padding:"2px 8px",borderRadius:10,fontWeight:600}}>🌕 பௌர்ணமி</span>}
-                    {sel.isAmavasai && <span style={{fontSize:11.5,background:"#e8dcc0",color:"#a9823c",padding:"2px 8px",borderRadius:10,fontWeight:600}}>🌑 அமாவாசை</span>}
-                    {sel.isEkadashi && <span style={{fontSize:11.5,background:"#58a97f20",color:"#58a97f",padding:"2px 8px",borderRadius:10,fontWeight:600}}>🕉 ஏகாதசி</span>}
-                    {sel.isPradosham && <span style={{fontSize:11.5,background:"#e6d2d2",color:"#1f3f68",padding:"2px 8px",borderRadius:10,fontWeight:600}}>🔱 பிரதோஷம்</span>}
-                    {sel.isChaturthi && <span style={{fontSize:11.5,background:"#d98aa315",color:"#c0564f",padding:"2px 8px",borderRadius:10,fontWeight:600}}>🐘 சதுர்த்தி</span>}
+                    {[[sel.isPournami,"பௌர்ணமி","#7d6a3f","#f6f1e4"],[sel.isAmavasai,"அமாவாசை","#27303f","#eceff5"],[sel.isEkadashi,"ஏகாதசி","#226b66","#e9f5f4"],[sel.isPradosham,"பிரதோஷம்","#5565b8","#eef1fb"],[sel.isChaturthi,"சதுர்த்தி","#b5683a","#faf0e8"]]
+                      .filter(x=>x[0]).map(([,l,c,b])=>(<span key={l} style={{fontSize:11.5,background:b,color:c,padding:"3px 10px",borderRadius:999,fontWeight:700}}>{l}</span>))}
                   </div>
                 )}
               </div>
 
-              {/* Panchangam 5 Angas */}
-              <div style={{padding:"10px 14px",borderBottom:"1px solid #eef1f6"}}>
-                <div style={{fontSize:12,fontWeight:700,color:"#a9823c",marginBottom:8,letterSpacing:1}}>☸ பஞ்சாங்கம் (5 அங்கங்கள்)</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                  {[
-                    {label:"வாரம்", value: DAY_NAMES_TA[sel.dayOfWeek], icon:"📅", color:"#27303f"},
-                    {label:"திதி", value: sel.tithi, icon:"🌙", color: sel.dayType==="bad"?"#c0564f":sel.dayType==="good"?"#58a97f":"#1f3f68"},
-                    {label:"நட்சத்திரம்", value: sel.nakshatra, icon:"⭐", color:"#a9823c"},
-                    {label:"யோகம்", value: sel.yogam, icon:"☯", color:"#27303f"},
-                    {label:"கரணம்", value: sel.karanam, icon:"⚡", color:"#27303f"},
-                    {label:"பக்ஷம்", value: sel.paksham, icon: sel.paksham?.includes("சுக்ல")?"🌓":"🌗", color:"#a9823c"},
-                  ].map((item,i)=>(
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",
-                      background:"rgba(255,255,255,0.02)",borderRadius:6}}>
-                      <span style={{fontSize:14}}>{item.icon}</span>
-                      <div>
-                        <div style={{fontSize:11,color:"#4a5365"}}>{item.label}</div>
-                        <div style={{fontSize:12.5,fontWeight:600,color:item.color}}>{item.value||"—"}</div>
+              {/* பஞ்சாங்கம் — உதய காலத் திதி/நட்சத்திரம் + முடியும் நேரம் */}
+              {(()=>{
+                const dp = selPanchang;
+                const rows = [
+                  ["திதி", dp ? dp.tithi : sel.tithi, dp ? `${dp.tithiUntil}${dp.tithiNext ? ` · பின் ${dp.tithiNext}` : ""}` : (sel.paksham || "")],
+                  ["நட்சத்திரம்", dp ? dp.nakshatra : sel.nakshatra, dp ? `${dp.nakUntil}${dp.nakNext ? ` · பின் ${dp.nakNext}` : ""}` : ""],
+                  ["பக்ஷம்", sel.paksham?.includes("சுக்ல") ? "வளர்பிறை" : "தேய்பிறை", ""],
+                  ["யோகம்", sel.yogam, ""], ["கரணம்", sel.karanam, ""], ["சந்திர ராசி", sel.moonRashi, ""],
+                  ["சூரிய உதயம்", sel.sunrise, ""], ["சூரிய அஸ்தமனம்", sel.sunset, ""],
+                ];
+                return (
+                  <div data-cal-panchang style={{padding:"6px 14px 4px",borderBottom:"1px solid #eef1f6"}}>
+                    {rows.map(([l,v,x],i)=>(
+                      <div key={l} style={{display:"flex",gap:10,padding:"8px 0",borderTop:i?"1px solid #f2f4f9":"none",fontSize: 13.5,lineHeight:1.5}}>
+                        <span style={{width:128,flexShrink:0,color:"#76819a"}}>{l}</span>
+                        <span style={{flex:1,minWidth:0}}>
+                          <span style={{fontWeight:700,color:"#27303f",fontVariantNumeric:"tabular-nums"}}>{v||"—"}</span>
+                          {x ? <span style={{display:"block",fontSize:12,color:"#76819a"}}>{x}</span> : null}
+                        </span>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Moon Rashi */}
-              <div style={{padding:"8px 14px",borderBottom:"1px solid #eef1f6",display:"flex",alignItems:"center",gap:10}}>
-                <span style={{fontSize:16}}>☽</span>
-                <div>
-                  <div style={{fontSize:11,color:"#4a5365"}}>சந்திர ராசி</div>
-                  <div style={{fontSize:12,fontWeight:600,color:"#1f3f68"}}>{sel.moonRashi||"—"}</div>
-                </div>
-              </div>
-
-              {/* Sunrise / Sunset */}
-              <div style={{padding:"8px 14px",borderBottom:"1px solid #eef1f6"}}>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontSize:18}}>🌅</span>
-                    <div>
-                      <div style={{fontSize:11,color:"#4a5365"}}>சூரிய உதயம்</div>
-                      <div style={{fontSize:14,fontWeight:700,color:"#1f3f68",fontFamily:"monospace"}}>{sel.sunrise}</div>
-                    </div>
+                    ))}
                   </div>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontSize:18}}>🌇</span>
-                    <div>
-                      <div style={{fontSize:11,color:"#4a5365"}}>சூரிய அஸ்தமனம்</div>
-                      <div style={{fontSize:14,fontWeight:700,color:"#c0564f",fontFamily:"monospace"}}>{sel.sunset}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
 
-              {/* Kalam Table — Rahu, Ema, Gulikai, Abhijit */}
-              <div style={{padding:"10px 14px"}}>
-                <div style={{fontSize:12,fontWeight:700,color:"#a9823c",marginBottom:8,letterSpacing:1}}>⏰ காலங்கள்</div>
+              {/* காலங்கள் — ராகு காலம், எமகண்டம், குளிகை, அபிஜித் */}
+              <div style={{padding:"12px 14px"}}>
+                <div style={{fontSize: 13.5,fontWeight:700,color:"#1f3f68",marginBottom:8}}>நல்ல நேரம் · தவிர்க்க வேண்டிய நேரம்</div>
                 {[
-                  {label:"ராகு காலம்", value:sel.rahuKalam, icon:"☊", color:"#c0564f", bg:"#d98aa308", desc:"தவிர்க்கவும்"},
-                  {label:"எமகண்டம்", value:sel.yamagandam, icon:"💀", color:"#d98aa380", bg:"#d98aa305", desc:"தவிர்க்கவும்"},
-                  {label:"குளிகை", value:sel.kuligai, icon:"⚠", color:"#a9823c", bg:"#f8f4ea", desc:"கவனம்"},
-                  {label:"அபிஜித் முகூர்த்தம்", value:sel.abhijit, icon:"✨", color:"#58a97f", bg:"#58a97f08", desc:"மிகச் சிறந்தது"},
+                  {label:"அபிஜித் முகூர்த்தம்", value:sel.abhijit, good:true},
+                  {label:"ராகு காலம்", value:sel.rahuKalam},
+                  {label:"எமகண்டம்", value:sel.yamagandam},
+                  {label:"குளிகை", value:sel.kuligai},
                 ].map((k,i)=>(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 10px",marginBottom:4,
-                    background:k.bg,borderRadius:8,borderLeft:`3px solid ${k.color}30`}}>
-                    <span style={{fontSize:14,width:20,textAlign:"center"}}>{k.icon}</span>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:12,fontWeight:600,color:k.color}}>{k.label}</div>
-                      <div style={{fontSize:11,color:"#76819a"}}>{k.desc}</div>
-                    </div>
-                    <div style={{fontSize:12,fontWeight:700,color:k.color,fontFamily:"monospace"}}>{k.value}</div>
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:i?"1px solid #f2f4f9":"none"}}>
+                    <span style={{...chipSm,color:k.good?"#2e7d5b":"#c0564f",background:k.good?"#eaf5ef":"#fbeeed"}}>{k.good?"சுபம்":"தவிர்க்க"}</span>
+                    <span style={{flex:1,fontSize: 13.5,fontWeight:600,color:"#27303f"}}>{k.label}</span>
+                    <span style={{fontSize: 13.5,fontWeight:700,color:"#27303f",fontVariantNumeric:"tabular-nums"}}>{(k.value||"").replace(" — ","–")}</span>
                   </div>
                 ))}
               </div>
@@ -5886,7 +5840,7 @@ ${aiPart}
               return v;
             };
             const dateChip = (x, bg, fg) => (
-              <button key={x.d} onClick={()=>setCalSelected(x.d)} style={{fontSize: 12.5,fontWeight:700,padding:"5px 11px",borderRadius:999,border:"none",cursor:"pointer",background:bg,color:fg}}>
+              <button key={x.d} onClick={()=>setCalSelected(x.d)} style={{fontSize: 13,fontWeight:700,minHeight:36,padding:"0 13px",borderRadius:999,border:"none",cursor:"pointer",background:bg,color:fg}}>
                 {x.d} {DAY_SHORT[new Date(calYear, calMonth, x.d).getDay()]}
               </button>
             );
@@ -5902,7 +5856,7 @@ ${aiPart}
                     return (<>
                       <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:8,marginBottom:6}}>
                         <div style={{fontSize: 12.5,fontWeight:700,color:"#99496a"}}>பண்டிகைகள்</div>
-                        <button data-all-festivals onClick={()=>goTo(SCREEN.FESTIVALS)} style={{background:"none",border:"none",padding:0,fontSize: 12.5,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>ஆண்டு முழுவதும் →</button>
+                        <button data-all-festivals onClick={()=>goTo(SCREEN.FESTIVALS)} style={{background:"none",border:"none",padding:"0 0 0 12px",minHeight:36,fontSize: 12.5,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>ஆண்டு முழுவதும் →</button>
                       </div>
                       {fs.length === 0 && <div style={{fontSize: 13,color:"#76819a",marginBottom:4}}>இந்த மாதம் முக்கியப் பண்டிகை இல்லை.</div>}
                       {fs.map((f) => { const d = Number(f.iso.slice(8)); return (

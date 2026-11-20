@@ -160,7 +160,7 @@ export default function RemedyTab({ plan, card, fmtDate, onRetry, onNav, onOpenA
             <div style={{ fontSize: 13.5, lineHeight: 1.75, color: INK }}>{plan.headline.text}</div>
           </div>
         </div>
-        <button data-remedy-why onClick={() => setShowWhy((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12, padding: 0, background: "none", border: "none", cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: TEAL_DARK }}>
+        <button data-remedy-why onClick={() => setShowWhy((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, minHeight: 40, padding: 0, background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, color: TEAL_DARK }}>
           <Info size={15} />எப்படித் தீர்மானிக்கப்பட்டது?
           <ChevronDown size={15} style={{ transform: showWhy ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
         </button>

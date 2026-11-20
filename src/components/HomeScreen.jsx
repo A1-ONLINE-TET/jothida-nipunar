@@ -79,8 +79,8 @@ export default function HomeScreen({ handle = () => {}, today = null, hasProfile
             <span className="today-more" aria-hidden="true"><ChevronRight size={16} /></span>
           </div>
           <div className="today-grid">
-            <span><small>திதி</small><b>{today.tithi}</b>{paksha ? <i>{paksha}</i> : null}</span>
-            <span><small>நட்சத்திரம்</small><b>{today.nakshatra}</b></span>
+            <span><small>திதி{paksha ? ` · ${paksha}` : ""}</small><b>{today.tithi}</b>{today.dp ? <i>{today.dp.tithiUntil}{today.dp.tithiNext ? ` · பின் ${today.dp.tithiNext}` : ""}</i> : null}</span>
+            <span><small>நட்சத்திரம்</small><b>{today.nakshatra}</b>{today.dp ? <i>{today.dp.nakUntil}{today.dp.nakNext ? ` · பின் ${today.dp.nakNext}` : ""}</i> : null}</span>
             <span><small>ராகு காலம்</small><b>{today.rahuKalam}</b></span>
             <span><small>உதயம் · அஸ்தமனம்</small><b>{today.sunrise} · {today.sunset}</b></span>
           </div>

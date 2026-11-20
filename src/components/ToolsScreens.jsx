@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  ArrowLeft, ChevronRight, Share2, TriangleAlert, CircleCheck, ChevronLeft,
+  ChevronRight, Share2, TriangleAlert, CircleCheck, ChevronLeft,
 } from "lucide-react";
 
 import BottomNav from "./BottomNav.jsx";
@@ -14,14 +14,14 @@ const h2 = { fontSize: 20, fontWeight: 700, margin: "0 0 2px", color: "#1f3f68" 
 const sub = { fontSize: 13, color: "#76819a", margin: "0 0 16px", lineHeight: 1.6 };
 const secTitle = { fontSize: 15, fontWeight: 700, color: "#1f3f68", marginBottom: 10 };
 const chip = { fontSize: 12, fontWeight: 600, padding: "4px 11px", borderRadius: 999, lineHeight: 1.5, display: "inline-block" };
-const backBtn = { background: "none", border: "none", color: "#8a6f3a", fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 };
+const backBtn = { display: "inline-flex", alignItems: "center", gap: 4, minHeight: 40, padding: "0 16px 0 10px", marginBottom: 12, background: "#ffffff", border: "1px solid #e3e8f2", borderRadius: 999, color: "#1f3f68", fontSize: 13.5, fontWeight: 600, cursor: "pointer" };
 const input = { width: "100%", padding: "13px 15px", background: "#fcfdff", border: "1.5px solid #d9e0ee", borderRadius: 12, color: "#27303f", fontSize: 15, outline: "none", boxSizing: "border-box" };
 const label = { display: "block", marginBottom: 6, fontSize: 13, color: "#4a5365", fontWeight: 600 };
 const note = { fontSize: 11.5, color: "#a3adc2", textAlign: "center", lineHeight: 1.6, margin: "4px 0 0" };
 const iconBox = (bg, fg) => ({ width: 40, height: 40, borderRadius: 12, background: bg, color: fg, display: "grid", placeItems: "center", flexShrink: 0 });
 
 function Back({ onBack, text = "பின்" }) {
-  return <button style={backBtn} onClick={onBack}><ArrowLeft size={16} /> {text}</button>;
+  return <button data-back style={backBtn} onClick={onBack}><ChevronLeft size={18} />{text}</button>;
 }
 
 // ═══════════════════════════════════════════════════════════════════
