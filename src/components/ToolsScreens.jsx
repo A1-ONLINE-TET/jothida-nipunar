@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  ArrowLeft, ChevronRight, Grid2X2, Sun, Sparkles, Heart, CalendarDays, Star,
-  Hash, Baby, Share2, TriangleAlert, CircleCheck, PartyPopper, Flame, ChevronLeft, ShieldCheck,
+  ArrowLeft, ChevronRight, Share2, TriangleAlert, CircleCheck, ChevronLeft,
 } from "lucide-react";
 
 import BottomNav from "./BottomNav.jsx";
@@ -21,66 +20,8 @@ const label = { display: "block", marginBottom: 6, fontSize: 13, color: "#4a5365
 const note = { fontSize: 11.5, color: "#a3adc2", textAlign: "center", lineHeight: 1.6, margin: "4px 0 0" };
 const iconBox = (bg, fg) => ({ width: 40, height: 40, borderRadius: 12, background: bg, color: fg, display: "grid", placeItems: "center", flexShrink: 0 });
 
-function Back({ onBack, text = "முகப்பு" }) {
+function Back({ onBack, text = "பின்" }) {
   return <button style={backBtn} onClick={onBack}><ArrowLeft size={16} /> {text}</button>;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// எல்லா சேவைகளும் — பிறப்பு விவரம் தேவையானவை / தேவையில்லாதவை
-// ═══════════════════════════════════════════════════════════════════
-const SERVICE_GROUPS = [
-  { title: "உங்கள் பிறப்பு விவரப்படி", hint: "பிறந்த தேதி, நேரம், இடம் தேவை", items: [
-    { key: "chart",    title: "முழு ஜாதகம்",        desc: "கட்டம், பலன்கள், தசா, 29 ஆழமான பகுப்பாய்வுகள்", icon: Grid2X2,      bg: "#ffead7", fg: "#b65b22" },
-    { key: "daily",    title: "தனிப்பட்ட தினப்பலன்", desc: "உங்கள் ராசி, நட்சத்திரம், தசை அடிப்படையில்",     icon: Sun,          bg: "#fff1cb", fg: "#b47a15" },
-    { key: "advisory", title: "ஜோதிடரிடம் ஆலோசனை",  desc: "திருமணம், தொழில், ஆரோக்கியம் — கேள்வி கேளுங்கள்", icon: Sparkles,     bg: "#f0e5ff", fg: "#7652aa" },
-    { key: "remedy",   title: "பரிகாரம்",            desc: "உங்கள் ஜாதகத்துக்கு எது தேவை, எது தேவையில்லை",   icon: ShieldCheck,  bg: "#e9f5f4", fg: "#2e8b84" },
-    { key: "porutham", title: "திருமண பொருத்தம்",    desc: "10 பொருத்தம், தசை ஒத்திசைவு",                   icon: Heart,        bg: "#ffe5eb", fg: "#d84b65" },
-  ] },
-  { title: "எல்லோருக்கும்", hint: "பிறப்பு விவரம் தேவையில்லை", items: [
-    { key: "rasi",       title: "12 ராசி பலன்",            desc: "இன்று, நாளை, வாரம், மாதம், ஆண்டு",               icon: Star,         bg: "#e9f5f4", fg: "#2e8b84" },
-    { key: "calendar",   title: "பஞ்சாங்கம் & நல்ல நேரம்", desc: "திதி, நட்சத்திரம், கௌரி, ஹோரை, சுப நாட்கள்",      icon: CalendarDays, bg: "#e1f3ff", fg: "#1685bd" },
-    { key: "numerology", title: "எண் கணிதம்",              desc: "பிறவி எண், விதி எண், பெயர் எண்",                icon: Hash,         bg: "#eef1fb", fg: "#5565b8" },
-    { key: "names",      title: "குழந்தை பெயர் எழுத்துக்கள்", desc: "நட்சத்திர பாதப்படி பெயரின் முதல் எழுத்து",     icon: Baby,         bg: "#f0f6ea", fg: "#6b9150" },
-    { key: "festivals",  title: "பண்டிகைகள் & விசேஷ நாட்கள்", desc: "இந்த ஆண்டின் தமிழ்ப் பண்டிகைத் தேதிகள்",         icon: PartyPopper,  bg: "#faeef3", fg: "#b86084" },
-    { key: "navagraha",  title: "நவகிரக வழிபாடு",           desc: "மந்திரம், கோயில், ரத்தினம், தானம்",              icon: Flame,        bg: "#faf0e8", fg: "#c07a4a" },
-  ] },
-];
-
-export function ServicesScreen({ onNav }) {
-  return (
-    <div style={page}>
-      <div style={wrap}>
-        <Back onBack={() => onNav("home")} />
-        <h2 style={h2}>எல்லா சேவைகளும்</h2>
-        <p style={sub}>தேவையானதைத் தட்டுங்கள்</p>
-        {SERVICE_GROUPS.map((g) => (
-          <div key={g.title} style={{ marginBottom: 18 }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#1f3f68" }}>{g.title}</div>
-              <div style={{ fontSize: 11.5, color: "#76819a" }}>{g.hint}</div>
-            </div>
-            <div style={{ ...card, padding: "4px 14px", marginBottom: 0 }}>
-              {g.items.map((it, i) => {
-                const Icon = it.icon;
-                return (
-                  <button key={it.key} data-service={it.key} onClick={() => onNav(it.key)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: "none", cursor: "pointer", padding: "12px 0",
-                    borderLeft: "none", borderRight: "none", borderBottom: "none", borderTop: i ? "1px solid #eef1f6" : "none" }}>
-                    <span style={iconBox(it.bg, it.fg)}><Icon size={20} strokeWidth={1.8} /></span>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: "block", fontSize: 14.5, fontWeight: 700, color: "#27303f" }}>{it.title}</span>
-                      <span style={{ display: "block", fontSize: 12, color: "#76819a", lineHeight: 1.5 }}>{it.desc}</span>
-                    </span>
-                    <ChevronRight size={18} color="#a3adc2" style={{ flexShrink: 0 }} />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-      <BottomNav active="" onNav={onNav} />
-    </div>
-  );
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -395,7 +336,7 @@ export function FestivalsScreen({ fetchFestivals, onNav, onOpenDate }) {
   return (
     <div style={page}>
       <div style={wrap}>
-        <Back onBack={() => onNav("services")} text="சேவைகள்" />
+        <Back onBack={() => onNav("home")} />
         <h2 style={h2}>பண்டிகைகள் & விசேஷ நாட்கள்</h2>
         <p style={sub}>தமிழ்நாட்டுப் பஞ்சாங்க வழக்குப்படி</p>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
@@ -451,7 +392,7 @@ export function NavagrahaScreen({ fetchNavagraha, onNav }) {
   return (
     <div style={page}>
       <div style={wrap}>
-        <Back onBack={() => onNav("services")} text="சேவைகள்" />
+        <Back onBack={() => onNav("home")} />
         <h2 style={h2}>நவகிரக வழிபாடு</h2>
         <p style={sub}>ஒவ்வொரு கிரகத்துக்கும் மந்திரம், கோயில், ரத்தினம், தானம்</p>
         {err && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>விவரங்களைப் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.</div>}
@@ -515,7 +456,7 @@ export function NumerologyScreen({ defaultDob = "", onNav }) {
   return (
     <div style={page}>
       <div style={wrap}>
-        <Back onBack={() => onNav("services")} text="சேவைகள்" />
+        <Back onBack={() => onNav("home")} />
         <h2 style={h2}>எண் கணிதம்</h2>
         <p style={sub}>பிறந்த தேதியும் பெயரும் கொடுத்தால் மூன்று எண்களும் கிடைக்கும்</p>
         <div style={card}>
@@ -562,7 +503,7 @@ export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = nu
   return (
     <div style={page}>
       <div style={wrap}>
-        <Back onBack={() => onNav("services")} text="சேவைகள்" />
+        <Back onBack={() => onNav("home")} />
         <h2 style={h2}>குழந்தை பெயர் எழுத்துக்கள்</h2>
         <p style={sub}>பிறந்த நட்சத்திர பாதத்துக்கு உரிய எழுத்தில் பெயர் தொடங்குவது மரபு</p>
         <div style={card}>

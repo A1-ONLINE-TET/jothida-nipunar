@@ -6,7 +6,7 @@ import "./home.css";
 // key-கள் App.jsx-ன் handleNav()-உடன் நேரடியாக இணைகின்றன.
 export const NAV_ITEMS = [
   { key: "home",     label: "முகப்பு",   icon: Compass },
-  { key: "daily",    label: "ராசிபலன்", icon: Sun },
+  { key: "daily",    label: "தினப்பலன்", icon: Sun },
   { key: "chart",    label: "ஜாதகம்",   icon: Grid2X2 },
   { key: "advisory", label: "ஆலோசனை",  icon: Sparkles },
   { key: "account",  label: "கணக்கு",   icon: UserRound },

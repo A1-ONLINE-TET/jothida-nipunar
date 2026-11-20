@@ -14,8 +14,9 @@ import AdvisoryScreen from "./components/AdvisoryScreen";
 import ChatScreen from "./components/ChatScreen";
 import BottomNav from "./components/BottomNav.jsx";
 import { kizhamai } from "./components/tools-data.js";
+import { tamilCivilDate } from "./components/panchang-lite.js";
 import RemedyTab from "./components/RemedyTab.jsx";
-import { ServicesScreen, RasiPalanScreen, NumerologyScreen, NameLettersScreen, FestivalsScreen, NavagrahaScreen } from "./components/ToolsScreens.jsx";
+import { RasiPalanScreen, NumerologyScreen, NameLettersScreen, FestivalsScreen, NavagrahaScreen } from "./components/ToolsScreens.jsx";
 import { NAME_SYLLABLES, VARA_SOOLAM, gowriForDay } from "./components/tools-data.js";
 import { NotebookPen, Share2, Users, Heart, HeartPulse, Briefcase, Coins, GraduationCap, Hourglass, ChevronRight, ChevronDown, FileText, Sparkles, Star, UserRound, Plus, Trash2, Settings, ShieldCheck } from "lucide-react";
 import { apiAsk, apiAskAI, apiAskDeep } from "./api.js";
@@ -1144,20 +1145,25 @@ export default function AstrologyApp() {
   const [keyAreas, setKeyAreas] = useState(null);
   // முகப்பில் தேர்ந்த கேள்வி — ஜாதகம் உருவானதும் அந்தப் பகுதிக்கு நேரடி
   const [homeQuestion, setHomeQuestion] = useState(null);
-  // முகப்பு "இன்று" strip — Chennai default, தினமும் ஒருமுறை (dateKey) கணி
+  // முகப்பு "இன்று" அட்டை — நாட்காட்டிப் பக்கத்தின் அதே கணக்கு (06:00 பஞ்சாங்கம், சுயவிவர இடம் / சென்னை),
+  // தினமும் ஒருமுறை. பொதுப் பஞ்சாங்கம் மட்டும் (almanac).
   const homeToday = useMemo(() => {
     try {
       const now = new Date();
       const iso = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-      const h = generateHoroscope(iso, "06:00", 13.0827, 80.2707, true);
-      const inaus = calcInauspiciousTimes(now, 13.0827, 80.2707);
-      let tamil = null; try { tamil = calcTamilDate(iso, "06:00", 13.0827, 80.2707); } catch(e){}
-      const wd = ["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"][now.getDay()];
-      return { h, inaus, tamil, wd, now,
-        greg: now.toLocaleDateString("ta-IN",{day:"numeric",month:"long",year:"numeric"}) };
+      const g = resolveBirthGeo(formData);
+      const h = generateHoroscope(iso, "06:00", g.lat, g.lon, true);
+      const muh = calcMuhurtham(now, g.lat, g.lon, 5.5);
+      return {
+        weekday: ["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"][now.getDay()],
+        greg: now.toLocaleDateString("ta-IN",{day:"numeric",month:"long",year:"numeric"}),
+        tamil: tamilCivilDate(now),
+        tithi: h.tithi, waxing: (h.paksham || "").includes("சுக்ல"), nakshatra: h.nakshatra,
+        rahuKalam: (muh.rahuKalam || "").replace(" — ", "–"), sunrise: muh.sunrise, sunset: muh.sunset,
+      };
     } catch(e) { return null; }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [new Date().toDateString()]);
+  }, [new Date().toDateString(), formData.pob, formData.pobLat, formData.pobLon]);
   const [tamilDate, setTamilDate] = useState(null);
   const [showTamilDate, setShowTamilDate] = useState(false);
   const [expandedDasha, setExpandedDasha] = useState(null);
@@ -1688,7 +1694,6 @@ export default function AstrologyApp() {
       case "account":     goTo(SCREEN.ACCOUNT); break;
       case "premium":     goTo(SCREEN.PREMIUM); break;
       case "newchart":    goTo(SCREEN.FORM); break;
-      case "services":    goTo(SCREEN.SERVICES); break;
       case "rasi":        goTo(SCREEN.RASI); break;
       case "numerology":  goTo(SCREEN.NUMEROLOGY); break;
       case "names":       goTo(SCREEN.NAMES); break;
@@ -1719,7 +1724,7 @@ export default function AstrologyApp() {
   }, [screen, resultTab, remedyPlan, horoscope]);
 
   if(screen===SCREEN.HOME) {
-    return <HomeScreen handle={handleNav} />;
+    return <HomeScreen handle={handleNav} today={homeToday} hasProfile={profiles.length > 0 || !!(formData.name && isValidDDMMYYYY(formData.dob))} name={formData.name} />;
   }
 
   if(screen===SCREEN.ADVISORY) {
@@ -1932,7 +1937,6 @@ export default function AstrologyApp() {
   );
 
   // ═══════ பொதுச் சேவைகள் — பிறப்பு விவரம் தேவையில்லாதவை ═══════
-  if(screen===SCREEN.SERVICES) return <ServicesScreen onNav={handleNav} />;
   if(screen===SCREEN.RASI) {
     // தற்போதைய ஜாதகம் இருந்தால் அதன் ராசியே முன்தேர்வு
     const myRashi = chartIsCurrent() ? RASHIS.indexOf(horoscope.moonRashi) : -1;
@@ -2012,9 +2016,8 @@ export default function AstrologyApp() {
                 </div>
               );
             })}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:6}}>
-              <button data-view-chart style={{...btnGold,fontSize: 13.5,padding:"12px 0",opacity:hasBirth?1:0.4,pointerEvents:hasBirth?"auto":"none"}} onClick={()=>openResultView("")}>ஜாதகம் பார்க்க</button>
-              <button data-new-chart style={{...btnOutline,fontSize: 13.5,padding:"12px 0",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}
+            <div style={{marginTop:6}}>
+              <button data-new-chart style={{...btnOutline,width:"100%",fontSize: 13.5,padding:"12px 0",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}
                 onClick={()=>{ setFormData(blank); setHomeQuestion(null); goTo(SCREEN.FORM); }}><Plus size={16}/> புதிய ஜாதகம்</button>
             </div>
             {hasBirth && (
@@ -2058,7 +2061,7 @@ export default function AstrologyApp() {
   if(screen===SCREEN.FORM) return (
     <div style={base}>
       <div style={{...container, paddingTop:18, paddingBottom:104}}>
-        <button onClick={()=>goTo(SCREEN.HOME)} style={{background:"none",border:"none",color:T.accent,fontSize:13,cursor:"pointer",padding:0,marginBottom:12,fontWeight:600}}>← முகப்பு</button>
+        <button onClick={()=>goTo(SCREEN.HOME)} style={{background:"none",border:"none",color:T.accent,fontSize:13,cursor:"pointer",padding:0,marginBottom:12,fontWeight:600}}>← பின்</button>
         {/* தேர்ந்த கேள்வி banner — முகப்பிலிருந்து வந்தால் */}
         {homeQuestion && (
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"10px 14px",
@@ -2725,14 +2728,6 @@ ${aiPart}
               <div style={secTitle}>AI ஜோதிட பலன்</div>
               <div style={{fontSize: 14,lineHeight:1.85,color:"#27303f",whiteSpace:"pre-wrap"}}>{prediction}</div>
             </div>)}
-            <button data-open-remedy onClick={()=>{ setResultTab("remedy"); window.scrollTo({top:0}); }} style={{...card,display:"flex",alignItems:"center",gap:12,width:"100%",textAlign:"left",cursor:"pointer",marginBottom:10,padding:"14px 16px"}}>
-              <span style={{width:40,height:40,borderRadius:12,background:"#e9f5f4",color:"#2e8b84",display:"grid",placeItems:"center",flexShrink:0}}><ShieldCheck size={20} strokeWidth={1.8}/></span>
-              <span style={{flex:1,minWidth:0}}>
-                <span style={{display:"block",fontSize: 14.5,fontWeight:700,color:"#27303f"}}>பரிகாரம்</span>
-                <span style={{display:"block",fontSize: 12.5,color:"#76819a",lineHeight:1.5}}>உங்கள் ஜாதகத்துக்கு எது தேவை, எது தேவையில்லை</span>
-              </span>
-              <ChevronRight size={18} color="#a3adc2" style={{flexShrink:0}}/>
-            </button>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
               <button data-pdf onClick={downloadPDF} style={{...btnOutline,display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontSize: 13.5,padding:"13px 0"}}>
                 <FileText size={17}/> PDF பதிவிறக்கு
@@ -5016,7 +5011,7 @@ ${aiPart}
     return(
       <div style={base}>
         <div style={{...container,paddingTop:24,paddingBottom:104}}>
-          <button onClick={()=>goTo(SCREEN.HOME)} style={{background:"none",border:"none",color:T.accent,fontSize:14,cursor:"pointer",padding:0,marginBottom:16}}>← முகப்பு</button>
+          <button onClick={()=>goTo(SCREEN.HOME)} style={{background:"none",border:"none",color:T.accent,fontSize:14,cursor:"pointer",padding:0,marginBottom:16}}>← பின்</button>
 
           <div style={{textAlign:"center",marginBottom:24}}>
             <div style={{fontSize:36,marginBottom:6}}>💍</div>
@@ -5158,8 +5153,6 @@ ${aiPart}
     return (
       <div style={base}>
         <div style={{...container,paddingTop:20,paddingBottom:104}}>
-          <button onClick={()=>goTo(SCREEN.HOME)} style={{background:"none",border:"none",color:T.accent,fontSize:14,cursor:"pointer",padding:0,marginBottom:12}}>← முகப்பு</button>
-
           <div style={{textAlign:"center",marginBottom:12}}>
             <h2 style={{fontSize:19,fontWeight:500,color:"#9d5f38",margin:"0 0 2px"}}>
               {today.isFuture?"எதிர்கால பலன்":today.isPast?"கடந்த நாள் பலன்":"இன்றைய பலன்"}
@@ -5606,7 +5599,7 @@ ${aiPart}
     return(
       <div style={base}>
         <div style={{...container,paddingTop:16,paddingBottom:104}}>
-          <button onClick={()=>goTo(SCREEN.HOME)} style={{background:"none",border:"none",color:T.accent,fontSize:14,cursor:"pointer",padding:0,marginBottom:12}}>← முகப்பு</button>
+          <button onClick={()=>goTo(SCREEN.HOME)} style={{background:"none",border:"none",color:T.accent,fontSize:14,cursor:"pointer",padding:0,marginBottom:12}}>← பின்</button>
 
           {/* Header */}
           <div style={{textAlign:"center",marginBottom:14}}>

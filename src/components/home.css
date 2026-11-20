@@ -15,13 +15,13 @@
   position: relative;
   isolation: isolate;
   width: 100%;
-  height: 100dvh;
+  min-height: 100dvh;           /* உயரமான திரை: சக்கரம் மீத இடத்தை நிரப்பும்; குட்டைத் திரை: பக்கம் உருளும் */
   max-width: 520px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  padding: 8px 14px calc(6px + env(safe-area-inset-bottom));
-  overflow: hidden;
+  padding: 8px 14px calc(84px + env(safe-area-inset-bottom)); /* நிலையான கீழ்ப்பட்டைக்கு இடம் */
+  overflow-x: hidden;
   box-sizing: border-box;
   color: var(--h-navy);
   font-family: "Noto Sans Tamil", "Latha", system-ui, sans-serif;
@@ -65,6 +65,40 @@
   display: grid; grid-template-columns: 42px 1fr 42px; align-items: center; gap: 12px;
 }
 
+.topbar.topbar-center { grid-template-columns: 1fr; }
+.topbar-center .brand { cursor: default; }
+.hero-greeting { margin: 4px 0 0; font-size: 12.5px; font-weight: 600; color: #7d6a3f; }
+
+/* ── புதிய பயனர் அழைப்பு ── */
+.start-card {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 11px; width: 100%;
+  margin: 6px 0 0; padding: 10px 12px; border: 1px solid #d9c9a0; border-radius: 18px;
+  background: linear-gradient(135deg, #fffaf0, #f8f1de); color: var(--h-navy); cursor: pointer; text-align: left;
+  font-family: inherit; box-shadow: 0 8px 20px rgba(169,130,60,0.12);
+}
+.start-icon { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px; background: #1f3f68; color: #f7e2a6; }
+.start-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.start-copy b { font-size: clamp(13.5px, 3.7vw, 15.5px); font-weight: 800; line-height: 1.35; }
+.start-copy small { font-size: 11.5px; color: #6b7486; line-height: 1.45; }
+
+/* ── இன்றைய பஞ்சாங்கம் ── */
+.today-card {
+  flex: 0 0 auto; display: block; width: 100%; margin: 6px 0 0; padding: 10px 12px 11px;
+  border: 1px solid #eceefb; border-radius: 18px; background: #ffffff; color: var(--h-navy);
+  box-shadow: 0 10px 26px rgba(16,42,80,0.07); cursor: pointer; text-align: left; font-family: inherit;
+}
+.today-head { display: flex; align-items: center; gap: 10px; }
+.today-icon { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 11px; background: #e1f3ff; color: #1685bd; }
+.today-date { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.today-date b { font-size: clamp(14px, 3.8vw, 16px); font-weight: 800; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.today-date small { font-size: 11.5px; color: #6b7486; line-height: 1.45; }
+.today-more { display: grid; place-items: center; flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: #fff1df; color: #a85e19; }
+.today-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 9px; padding-top: 9px; border-top: 1px solid #eef1f6; }
+.today-grid span { display: flex; flex-direction: column; min-width: 0; }
+.today-grid small { font-size: 11px; color: #76819a; line-height: 1.4; }
+.today-grid b { font-size: clamp(12.5px, 3.4vw, 14px); font-weight: 700; color: #27303f; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.today-grid i { font-style: normal; font-size: 11px; color: #76819a; line-height: 1.3; }
+
 .round-button {
   display: grid; place-items: center; width: 42px; height: 42px; border: 0; border-radius: 50%;
   background: #eef1fb; color: var(--h-navy); cursor: pointer;
@@ -84,7 +118,7 @@
 
 /* ── hero (flex-grows to fill) ── */
 .hero {
-  flex: 1 1 auto; min-height: 0; margin: 0;
+  flex: 0 1 auto; min-height: min-content; margin: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
 }
 .hero-copy { flex: 0 0 auto; text-align: center; padding-top: 4px; }
@@ -100,10 +134,15 @@
 .gold-divider span:last-child { transform: rotate(180deg); }
 
 /* wheel takes the remaining vertical space, scaled to fit */
+/* சக்கரம்: உயரமான திரையில் மீத இடத்தை நிரப்பும் (80–280px); இடம் போதாத குட்டைத் திரையில்
+   சுருங்கி உருக்குலையாமல் முழுதாக மறையும் (கீழே media queries). */
 .zodiac-stage {
-  position: relative; flex: 1 1 auto; min-height: 0; width: 100%;
+  position: relative; flex: 1 1 clamp(80px, calc(100dvh - 716px), 280px); min-height: 80px; max-height: 280px; width: 100%;
   display: flex; align-items: center; justify-content: center;
 }
+@media (max-height: 779px) { .zodiac-stage { display: none; } }
+.app-shell.has-start .zodiac-stage { flex-basis: clamp(80px, calc(100dvh - 816px), 280px); }
+@media (max-height: 879px) { .app-shell.has-start .zodiac-stage { display: none; } }
 .zodiac-glow {
   position: absolute; width: 56%; height: 56%; border-radius: 50%;
   background: #f4c96f30; filter: blur(32px);
@@ -156,23 +195,24 @@
 }
 .service-card {
   position: relative; display: flex; align-items: center; flex-direction: column; justify-content: center;
-  min-width: 0; padding: 11px 6px 14px; border: 1px solid #eceefb; border-radius: 16px;
+  min-width: 0; padding: 9px 5px 10px; border: 1px solid #eceefb; border-radius: 16px; font-family: inherit;
   background: #ffffff; color: var(--h-navy); text-align: center; cursor: pointer;
   box-shadow: 0 8px 20px rgba(16,42,80,0.06); transition: transform 180ms ease, box-shadow 180ms ease;
 }
 .service-card:hover { transform: translateY(-3px); box-shadow: 0 12px 22px #102a5012; }
 .service-icon {
-  display: grid; place-items: center; width: clamp(42px, 13vw, 54px); height: clamp(42px, 13vw, 54px);
-  flex-shrink: 0; margin-bottom: 8px; border-radius: 50%;
+  display: grid; place-items: center; width: clamp(38px, 11.5vw, 48px); height: clamp(38px, 11.5vw, 48px);
+  flex-shrink: 0; margin-bottom: 6px; border-radius: 50%;
 }
 .service-icon svg { width: 46%; height: 46%; }
-.service-title { font-size: clamp(11px, 3vw, 13px); line-height: 1.3; font-weight: 800; }
-.service-description { margin-top: 3px; color: #777; font-size: clamp(8.5px, 2.4vw, 10px); line-height: 1.35; }
+.service-title { font-size: clamp(11.5px, 3.1vw, 13px); line-height: 1.3; font-weight: 800; }
+.service-description { margin-top: 2px; color: #76819a; font-size: 11px; line-height: 1.35; }
 .service-arrow {
   position: absolute; right: 6px; bottom: 6px; display: grid; place-items: center;
   width: 19px; height: 19px; border-radius: 50%; background: #fff1df; color: #a85e19;
 }
 .service-arrow svg { width: 13px; height: 13px; }
+.service-card:has(.service-arrow) { padding-bottom: 24px; }
 
 .peach .service-icon { background: #ffead7; color: #b65b22; }
 .rose .service-icon { background: #ffe5eb; color: #d84b65; }
@@ -210,8 +250,10 @@
 /* short screens: trim a little more */
 @media (max-height: 720px) {
   .hero h1 { font-size: clamp(15px, 4.4vw, 20px); }
-  .service-card { padding: 9px 5px 13px; }
-  .horoscope-card { padding: 9px 12px; }
+  .service-card { padding: 7px 4px 8px; }
+  .service-description { display: none; }
+  .today-card { padding: 8px 11px 9px; }
+  .today-grid { margin-top: 7px; padding-top: 7px; gap: 4px 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

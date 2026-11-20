@@ -1,5 +1,5 @@
 import {
-  ArrowLeft, Heart, Briefcase, Coins, HeartPulse,
+  Heart, Briefcase, Coins, HeartPulse,
   GraduationCap, Baby, Plane, MessageCircle, ChevronRight, Sparkles,
 } from "lucide-react";
 
@@ -37,14 +37,10 @@ export default function AdvisoryScreen({ onBack = () => {}, onPick = () => {}, o
       <div className="ambient ambient-left" />
       <div className="ambient ambient-right" />
 
-      <header className="topbar">
-        <button className="round-button" aria-label="பின் செல்" onClick={onBack}>
-          <ArrowLeft size={24} />
-        </button>
-        <button className="brand brand-logo" aria-label="Topper Astro home" onClick={onBack}>
+      <header className="topbar topbar-center">
+        <span className="brand brand-logo">
           <img src="/logo/topper-text.webp" alt="TOPPER ASTRO" />
-        </button>
-        <span className="round-button" aria-hidden="true" style={{ visibility: "hidden" }} />
+        </span>
       </header>
 
       <section className="hero" style={{ minHeight: "auto", paddingBottom: 8, flex: "0 0 auto" }}>
@@ -80,7 +76,7 @@ export default function AdvisoryScreen({ onBack = () => {}, onPick = () => {}, o
       </section>
 
       <div style={{ flex: "1 1 auto" }} />
-      <BottomNav active="advisory" onNav={onNav} fixed={false} />
+      <BottomNav active="advisory" onNav={onNav} />
     </main>
   );
 }
