@@ -13,7 +13,9 @@ import HomeScreen from "./components/HomeScreen";
 import AdvisoryScreen from "./components/AdvisoryScreen";
 import ChatScreen from "./components/ChatScreen";
 import BottomNav from "./components/BottomNav.jsx";
-import { Users, Heart, HeartPulse, Briefcase, Coins, GraduationCap, Hourglass, ChevronRight, ChevronDown, FileText, Sparkles, Star, UserRound, Plus, Trash2, Settings } from "lucide-react";
+import { ServicesScreen, RasiPalanScreen, NumerologyScreen, NameLettersScreen } from "./components/ToolsScreens.jsx";
+import { NAME_SYLLABLES, VARA_SOOLAM, gowriForDay } from "./components/tools-data.js";
+import { NotebookPen, Share2, Users, Heart, HeartPulse, Briefcase, Coins, GraduationCap, Hourglass, ChevronRight, ChevronDown, FileText, Sparkles, Star, UserRound, Plus, Trash2, Settings } from "lucide-react";
 import { apiAsk, apiAskAI, apiAskDeep } from "./api.js";
 import { payThenAskPremium } from "./components/razorpay.js";
 
@@ -28,7 +30,7 @@ const PAYMENTS_ENABLED = false;
 // almanac.js (a tree-shaken client subset — see that file).
 import {
   apiCompute, apiPredict, apiDaily, apiBacktest, apiEventTiming,
-  apiNakBhava, apiPorutham, apiEngine,
+  apiNakBhava, apiPorutham, apiEngine, apiRasiPalan, apiMuhurtaMonth, apiAltDashas,
 } from "./api.js";
 import { saveProfileCloud, loadProfileCloud, getAuthError } from "./firebase.js";
 import {
@@ -820,7 +822,7 @@ function markOnboarded() {
   try { localStorage.setItem(ONBOARD_KEY, "1"); } catch (e) { /* storage unavailable — skip */ }
 }
 
-const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8, HOME:9, WELCOME:10, CHAT:11, ADVISORY:12, ACCOUNT:13 };
+const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8, HOME:9, WELCOME:10, CHAT:11, ADVISORY:12, ACCOUNT:13, SERVICES:14, RASI:15, NUMEROLOGY:16, NAMES:17 };
 
 // முகப்பு கேள்வி அட்டைகள் — தட்டினால் FORM → ஜாதகம் → அந்தப் பகுதிக்கு நேரடி
 const HOME_QUESTIONS = [
@@ -836,8 +838,15 @@ const HOME_QUESTIONS = [
 // DISPLAY HELPERS — காட்சிக்கு மட்டும் (engine output மாறாது)
 // ═══════════════════════════════════════════════════════════════════
 const stripEmoji = (t) => String(t ?? "").replace(/[\p{Extended_Pictographic}️‍]/gu, "").replace(/[ \t]{2,}/g, " ").trim();
-const TA_WORDS = [[/\bfactors\b/g, "காரணிகள்"], [/\bclassical\b/g, "பாரம்பரிய"], [/\bchronic\b/g, "நீண்டகால"], [/BPHS உறுதிப்பாடு/g, "சாஸ்திர உறுதிப்பாடு"]];
+const TA_WORDS = [[/\btransit\b/g, "கோசாரம்"], [/\bfactors\b/g, "காரணிகள்"], [/\bclassical\b/g, "பாரம்பரிய"], [/\bchronic\b/g, "நீண்டகால"], [/BPHS உறுதிப்பாடு/g, "சாஸ்திர உறுதிப்பாடு"]];
 const taText = (t) => TA_WORDS.reduce((x, [re, to]) => x.replace(re, to), stripEmoji(t));
+// பகிர் — கைபேசியில் system share sheet; இல்லையேல் WhatsApp
+const shareOut = (title, text) => {
+  try {
+    if (navigator.share) { navigator.share({ title, text }).catch(() => {}); return; }
+  } catch (_) { /* fall through */ }
+  window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener");
+};
 // engine தரும் கடும் நிறங்களை அமைதியான மூன்று பொருள்-நிறங்களாக்கு
 const calmTone = (c) => { const k = String(c || "").toLowerCase(); return k === "#0d7a30" ? "#2e7d5b" : k === "#cc1a1a" ? "#c0564f" : k === "#b8860b" ? "#a9823c" : (c || "#27303f"); };
 const fmtDateTa = (d) => d ? new Date(d).toLocaleDateString("ta-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
@@ -885,15 +894,17 @@ export default function AstrologyApp() {
   const saveCurrentProfile = () => {
     if (!formData.name || !formData.dob) return;
     setProfiles(prev => {
-      const rest = prev.filter(p => !(p.name === formData.name && p.dob === formData.dob && p.tob === formData.tob && p.ampm === formData.ampm));
+      const same = (p) => p.name === formData.name && p.dob === formData.dob && p.tob === formData.tob && p.ampm === formData.ampm;
+      const old = prev.find(same);
+      const rest = prev.filter(p => !same(p));
       const entry = {
-        id: Date.now(),
+        id: old?.id || Date.now(), notes: old?.notes || "",
         name: formData.name, dob: formData.dob, tob: formData.tob, sec: formData.sec || "", ampm: formData.ampm,
         gender: formData.gender || "",
         pob: formData.pob, pobLat: formData.pobLat, pobLon: formData.pobLon, pobSource: formData.pobSource,
         savedAt: new Date().toISOString()
       };
-      const next = [entry, ...rest].slice(0, 20);
+      const next = [entry, ...rest].slice(0, 200);
       persistProfiles(next);
       // Best-effort cloud save (Firestore) — free per-user record of the
       // primary birth details. Never blocks the UI; failures are ignored.
@@ -936,6 +947,12 @@ export default function AstrologyApp() {
   // தற்போது state-இல் உள்ள ஜாதகம் எந்தப் பிறப்பு விவரத்துக்கானது — விவரம்/சுயவிவரம்
   // மாறினால் பழைய ஜாதகம் புதிய பெயருடன் காட்டப்படாமல் மீண்டும் கணக்கிட இது உதவும்.
   const chartKeyRef = useRef("");
+  // தசா tab — விம்சோத்தரி (இயல்பு) | யோகினி | அஷ்டோத்தரி (கேட்கும்போது server கணக்கு)
+  const [dashaSystem, setDashaSystem] = useState("vim");
+  const [altDashas, setAltDashas] = useState(null);
+  // கணக்கு — சேமித்த ஜாதகத் தேடல், குறிப்பு திருத்தம்
+  const [profileQuery, setProfileQuery] = useState("");
+  const [noteEditId, setNoteEditId] = useState(null);
   const [fadeIn, setFadeIn] = useState(true);
   // Precise place search (OpenStreetMap Nominatim) — for accurate birth-place lat/lon
   const [placeResults, setPlaceResults] = useState([]);
@@ -1094,6 +1111,27 @@ export default function AstrologyApp() {
     setCalFetching(false);
   }, [screen, calMonth, calYear]);
 
+  // மாத சுப நாட்கள் / விசேஷ நாட்கள் / சந்திராஷ்டமம் — server கணக்கு (engine).
+  // தற்போதைய ஜாதகம் இருந்தால் அதன் நட்சத்திரம், ராசிக்கு ஏற்ப தனிப்பயன்.
+  const [calMuhurta, setCalMuhurta] = useState({ key: "", days: null });
+  const [calOpen, setCalOpen] = useState(() => new Set());
+  useEffect(() => {
+    if (screen !== SCREEN.CALENDAR) return;
+    const cur = !!(horoscope && chartKeyRef.current === birthKey());
+    const nakIdx = cur ? NAKSHATRAS.indexOf(horoscope.nakshatra) : -1;
+    const rIdx = cur ? RASHIS.indexOf(horoscope.moonRashi) : -1;
+    const geo = resolveBirthGeo(formData);
+    const key = `${calYear}-${calMonth}-${nakIdx}-${rIdx}-${geo.lat}-${geo.lon}`;
+    if (calMuhurta.key === key) return;
+    let alive = true;
+    setCalMuhurta({ key, days: null });
+    apiMuhurtaMonth(calYear, calMonth, geo, nakIdx >= 0 ? nakIdx : null, rIdx >= 0 ? rIdx : null)
+      .then((days) => { if (alive) setCalMuhurta({ key, days }); })
+      .catch(() => { if (alive) setCalMuhurta({ key, days: [] }); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen, calMonth, calYear]);
+
   const goTo = useCallback((s) => {
     setFadeIn(false);
     setTimeout(() => { setScreen(s); setFadeIn(true); }, 300);
@@ -1101,7 +1139,7 @@ export default function AstrologyApp() {
 
   useEffect(() => {
     // முதல்-முறை → Welcome; திரும்பும் user → நேரடி HOME (onboarding மீண்டும் காட்டாது)
-    if(screen===SCREEN.SPLASH){ const t=setTimeout(()=>{ const saved=loadProfiles(); if(saved.length>0){loadProfile(saved[0]);goTo(SCREEN.HOME);}else{goTo(SCREEN.FORM);} },5600); return()=>clearTimeout(t); }
+    if(screen===SCREEN.SPLASH){ const t=setTimeout(()=>{ const saved=loadProfiles(); if(saved.length>0){loadProfile(saved[0]);} goTo(SCREEN.HOME); },5600); return()=>clearTimeout(t); }
   }, [screen, goTo]);
 
 
@@ -1232,6 +1270,7 @@ export default function AstrologyApp() {
   const applyReport = (r) => {
     chartKeyRef.current = birthKey();
     setDailyData(null); setPrediction(""); setOpenAreas(new Set());
+    setAltDashas(null); setDashaSystem("vim");
     setChartMeta(r.chartMeta); setHoroscope(r.horoscope);
     setNavamsaData(r.navamsaData); setDrishtiData(r.drishtiData);
     setD10Data(r.d10Data); setD2Data(r.d2Data); setD3Data(r.d3Data);
@@ -1302,7 +1341,8 @@ export default function AstrologyApp() {
         applyReport(report);
         saveCurrentProfile();
         setResultTab("summary"); setAdvancedView("");
-        if (!isOnboarded()) { markOnboarded(); goTo(SCREEN.HOME); } else { goTo(SCREEN.RESULT); }
+        if (!isOnboarded()) markOnboarded();
+        goTo(SCREEN.RESULT);
       } catch (e) {
         setApiSource("");
         const ae = getAuthError();
@@ -1547,6 +1587,10 @@ export default function AstrologyApp() {
       case "account":     goTo(SCREEN.ACCOUNT); break;
       case "premium":     goTo(SCREEN.PREMIUM); break;
       case "newchart":    goTo(SCREEN.FORM); break;
+      case "services":    goTo(SCREEN.SERVICES); break;
+      case "rasi":        goTo(SCREEN.RASI); break;
+      case "numerology":  goTo(SCREEN.NUMEROLOGY); break;
+      case "names":       goTo(SCREEN.NAMES); break;
       default: break;
     }
   };
@@ -1699,7 +1743,7 @@ export default function AstrologyApp() {
           <p className="jn-serif" style={{fontSize:15, color:"#1f3f68", letterSpacing:2, fontWeight:700, margin:0}}>ஜோதிட நிபுணர்</p>
           <span style={{width:30, height:1, background:"linear-gradient(90deg,#bba368,transparent)"}}/>
         </div>
-        <p style={{fontSize:12, color:"#a08a55", letterSpacing:2.4, margin:0, textTransform:"uppercase"}}>Swiss Ephemeris · Classical Vedic Astrology</p>
+        <p style={{fontSize:12, color:"#a08a55", letterSpacing:2.4, margin:0, textTransform:"uppercase"}}>Classical Vedic Astrology</p>
         <div style={{width:148, height:3, borderRadius:3, background:"rgba(170,140,85,0.15)",
           overflow:"hidden", margin:"18px auto 0"}}>
           <div className="jn-load-bar" style={{height:"100%", width:"42%", borderRadius:3,
@@ -1772,6 +1816,22 @@ export default function AstrologyApp() {
     </div>
   );
 
+  // ═══════ பொதுச் சேவைகள் — பிறப்பு விவரம் தேவையில்லாதவை ═══════
+  if(screen===SCREEN.SERVICES) return <ServicesScreen onNav={handleNav} />;
+  if(screen===SCREEN.RASI) {
+    // தற்போதைய ஜாதகம் இருந்தால் அதன் ராசியே முன்தேர்வு
+    const myRashi = chartIsCurrent() ? RASHIS.indexOf(horoscope.moonRashi) : -1;
+    const geo = formData.dob ? resolveBirthGeo(formData) : null;
+    return <RasiPalanScreen rashis={RASHIS} defaultRashi={myRashi >= 0 ? myRashi : null}
+      fetchPalan={(idx, iso) => apiRasiPalan(idx, iso, geo, ayanamsaKey)} onNav={handleNav} onShare={shareOut} />;
+  }
+  if(screen===SCREEN.NUMEROLOGY) return <NumerologyScreen defaultDob={isValidDDMMYYYY(formData.dob) ? formData.dob : ""} onNav={handleNav} />;
+  if(screen===SCREEN.NAMES) {
+    const cur = chartIsCurrent();
+    return <NameLettersScreen nakshatras={NAKSHATRAS} defaultNak={cur ? Math.max(0, NAKSHATRAS.indexOf(horoscope.nakshatra)) : 0}
+      defaultPada={cur ? (horoscope.nakshatraPada || null) : null} onNav={handleNav} />;
+  }
+
   // ═══════ ACCOUNT — சேமித்த ஜாதகங்கள் + அமைப்புகள் ═══════
   if(screen===SCREEN.ACCOUNT) {
     const isActive = (p) => p.name===formData.name && p.dob===formData.dob && p.tob===formData.tob && p.ampm===formData.ampm;
@@ -1789,22 +1849,43 @@ export default function AstrologyApp() {
             {profiles.length===0 && (
               <div style={{fontSize: 13,color:"#76819a",lineHeight:1.7,marginBottom:10}}>இன்னும் ஜாதகம் எதுவும் சேமிக்கப்படவில்லை. பிறப்பு விவரம் கொடுத்து ஜாதகம் உருவாக்கினால் இங்கே சேரும்.</div>
             )}
-            {profiles.map(p=>{
+            {profiles.length > 5 && (
+              <input data-profile-search value={profileQuery} onChange={e=>setProfileQuery(e.target.value)} placeholder="பெயர் அல்லது ஊர் தேடு"
+                style={{...inputStyle,fontSize: 14,padding:"11px 14px",marginBottom:10}}/>
+            )}
+            {profiles.filter(p => { const q = profileQuery.trim().toLowerCase(); return !q || (p.name||"").toLowerCase().includes(q) || (p.pob||"").toLowerCase().includes(q); }).map(p=>{
               const on = isActive(p);
+              const editing = noteEditId === p.id;
+              const saveNote = (text) => setProfiles(prev => { const next = prev.map(x => x.id === p.id ? { ...x, notes: text.slice(0, 600) } : x); persistProfiles(next); return next; });
               return (
-                <div key={p.id} data-profile={p.name} onClick={()=>{ loadProfile(p); setProfiles(prev => { const next = [p, ...prev.filter(x => x.id !== p.id)]; persistProfiles(next); return next; }); }} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 12px",marginBottom:8,
-                  borderRadius:14,cursor:"pointer",background:on?"#eef1fb":"#ffffff",border:on?"1px solid #c9d3ea":"1px solid #e3e8f2"}}>
-                  <span style={{width:36,height:36,borderRadius:"50%",background:on?"#1f3f68":"#f3f5f9",color:on?"#ffffff":"#76819a",display:"grid",placeItems:"center",flexShrink:0}}><UserRound size={18}/></span>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize: 14,fontWeight:700,color:"#27303f",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                      {p.name}{on && <span style={{fontSize: 11,fontWeight:700,color:"#3e4c99",background:"#dfe5f6",borderRadius:999,padding:"2px 8px",marginLeft:8}}>தற்போது</span>}
+                <div key={p.id} style={{marginBottom:8,borderRadius:14,background:on?"#eef1fb":"#ffffff",border:on?"1px solid #c9d3ea":"1px solid #e3e8f2"}}>
+                  <div data-profile={p.name} onClick={()=>{ loadProfile(p); setProfiles(prev => { const next = [p, ...prev.filter(x => x.id !== p.id)]; persistProfiles(next); return next; }); }}
+                    style={{display:"flex",alignItems:"center",gap:10,padding:"11px 12px",cursor:"pointer"}}>
+                    <span style={{width:36,height:36,borderRadius:"50%",background:on?"#1f3f68":"#f3f5f9",color:on?"#ffffff":"#76819a",display:"grid",placeItems:"center",flexShrink:0}}><UserRound size={18}/></span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize: 14,fontWeight:700,color:"#27303f",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                        {p.name}{on && <span style={{fontSize: 11,fontWeight:700,color:"#3e4c99",background:"#dfe5f6",borderRadius:999,padding:"2px 8px",marginLeft:8}}>தற்போது</span>}
+                      </div>
+                      <div style={{fontSize: 12,color:"#76819a",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                        {p.dob}{p.tob ? ` · ${p.tob} ${p.ampm === "AM" ? "காலை" : "மாலை"}` : ""}{p.pob ? ` · ${p.pob}` : ""}
+                      </div>
                     </div>
-                    <div style={{fontSize: 12,color:"#76819a",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                      {p.dob}{p.tob ? ` · ${p.tob} ${p.ampm === "AM" ? "காலை" : "மாலை"}` : ""}{p.pob ? ` · ${p.pob}` : ""}
-                    </div>
+                    <button aria-label={`${p.name} — குறிப்பு`} data-note-btn onClick={(e)=>{ e.stopPropagation(); setNoteEditId(editing ? null : p.id); }}
+                      style={{background:"none",border:"none",color:p.notes?"#a9823c":"#76819a",cursor:"pointer",padding:8,flexShrink:0,display:"grid",placeItems:"center"}}><NotebookPen size={17}/></button>
+                    <button aria-label={`${p.name} — நீக்கு`} onClick={(e)=>{ e.stopPropagation(); if (window.confirm(`"${p.name}" ஜாதகத்தை நீக்கவா?`)) deleteProfile(p.id); }}
+                      style={{background:"none",border:"none",color:"#c0564f",cursor:"pointer",padding:8,flexShrink:0,display:"grid",placeItems:"center"}}><Trash2 size={17}/></button>
                   </div>
-                  <button aria-label={`${p.name} — நீக்கு`} onClick={(e)=>{ e.stopPropagation(); if (window.confirm(`"${p.name}" ஜாதகத்தை நீக்கவா?`)) deleteProfile(p.id); }}
-                    style={{background:"none",border:"none",color:"#c0564f",cursor:"pointer",padding:8,flexShrink:0,display:"grid",placeItems:"center"}}><Trash2 size={17}/></button>
+                  {!editing && p.notes && (
+                    <div data-note-preview style={{fontSize: 12.5,color:"#4a5365",lineHeight:1.6,padding:"0 12px 10px 58px",whiteSpace:"pre-wrap"}}>{p.notes}</div>
+                  )}
+                  {editing && (
+                    <div style={{padding:"0 12px 12px"}}>
+                      <textarea data-note-input defaultValue={p.notes || ""} rows={3} maxLength={600} placeholder="குறிப்பு — எ.கா. கேட்ட கேள்வி, சொன்ன பரிகாரம், அடுத்த சந்திப்பு"
+                        onBlur={(e)=>saveNote(e.target.value)}
+                        style={{...inputStyle,fontSize: 13.5,padding:"10px 12px",resize:"vertical",lineHeight:1.6}}/>
+                      <button data-note-save onClick={()=>setNoteEditId(null)} style={{marginTop:6,background:"#1f3f68",border:"none",borderRadius:999,color:"#ffffff",fontSize: 12.5,fontWeight:600,padding:"7px 16px",cursor:"pointer"}}>சேமி</button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -2079,7 +2160,7 @@ export default function AstrologyApp() {
           <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:36}}>☉</div>
         </div>
         <p style={{color:"#1f3f68",fontSize:15,fontWeight:500}}>கிரக நிலைகளை கணக்கிடுகிறது...</p>
-        <p style={{color:"#4a5365",fontSize:12.5,marginTop:6}}>Swiss Ephemeris Engine</p>
+        <p style={{color:"#4a5365",fontSize:12.5,marginTop:6}}>வானியல் கணிதம் · பாரம்பரிய ஜோதிட விதிகள்</p>
         <div style={{display:"flex",justifyContent:"center",gap:6,marginTop:20}}>
           {[0,1,2,3,4].map(i=>(
             <div key={i} style={{width:6,height:6,borderRadius:"50%",background:"#c7a568",
@@ -2505,9 +2586,20 @@ ${aiPart}
               <div style={secTitle}>AI ஜோதிட பலன்</div>
               <div style={{fontSize: 14,lineHeight:1.85,color:"#27303f",whiteSpace:"pre-wrap"}}>{prediction}</div>
             </div>)}
-            <button onClick={downloadPDF} style={{...btnOutline,display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontSize: 14,padding:"13px 0"}}>
-              <FileText size={18}/> முழு ஜாதகம் PDF பதிவிறக்கு
-            </button>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <button data-pdf onClick={downloadPDF} style={{...btnOutline,display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontSize: 13.5,padding:"13px 0"}}>
+                <FileText size={17}/> PDF பதிவிறக்கு
+              </button>
+              <button data-share onClick={()=>shareOut(`${formData.name} — ஜாதகச் சுருக்கம்`, [
+                `${formData.name} — ஜாதகச் சுருக்கம்`,
+                `லக்னம்: ${horoscope.lagnaName} · ராசி: ${horoscope.moonRashi} · நட்சத்திரம்: ${horoscope.nakshatra}`,
+                ...(keyAreas ? ["marriage","career","health"].filter(k=>keyAreas[k]).map(k=>`${AREA_STYLE[k].short}: ${stripEmoji(keyAreas[k].verdict)}`) : []),
+                bhavaPhalam?.dashaContext ? `நடப்பு தசை: ${bhavaPhalam.dashaContext.mahaLord}${bhavaPhalam.dashaContext.antarLord ? " / " + bhavaPhalam.dashaContext.antarLord + " புக்தி" : ""}` : "",
+                "— ஜோதிட நிபுணர்",
+              ].filter(Boolean).join("\n"))} style={{...btnOutline,display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontSize: 13.5,padding:"13px 0"}}>
+                <Share2 size={17}/> பகிர்
+              </button>
+            </div>
           </>)}
 
           {/* ═══ கட்டம் — பிறப்பு விவரம், ராசி/நவாம்சம், ஸ்புடங்கள், அதிர்ஷ்டம் ═══ */}
@@ -2520,6 +2612,7 @@ ${aiPart}
                   ["பெயர்",formData.name],["பிறந்த நாள்",formData.dob],["பிறந்த நேரம்",birthTime],
                   ["பிறந்த இடம்",formData.pob||"—"],["உதய லக்னம்",horoscope.lagnaName],["ராசி",horoscope.moonRashi],
                   ["விண்மீன்",`${horoscope.nakshatra}, பாதம் ${horoscope.nakshatraPada||1}`],
+                  ...(()=>{ const sy = NAME_SYLLABLES[NAKSHATRAS.indexOf(horoscope.nakshatra)]?.[(horoscope.nakshatraPada||1)-1]; return sy ? [["பெயர் எழுத்து",`${sy[0]} (${sy[1]})`]] : []; })(),
                   ["நிலவு நாள்(திதி)",`${horoscope.tithi||""}, ${horoscope.paksham||""}`],
                   ["கரணம்",horoscope.karanam||"—"],["யோகம்",horoscope.yogam||"—"],
                   ...(gulikaData ? [["குளிகன் (மாந்தி)",`${gulikaData.rashi} ${gulikaData.degInSign}° — ${gulikaData.nakshatra} (${gulikaData.timeLabel})`]] : []),
@@ -3838,9 +3931,7 @@ ${aiPart}
                 நட்சத்திர-பாவக இணைப்பு — கிரகன் யாருடைய நட்சத்திரத்தில்? எந்தப் பாவப் பலன்? எப்போது?
               </div>
               <div style={{fontSize:11.5,color:"#7d6a3f",marginBottom:10,lineHeight:1.6}}>
-                விதி: கிரகன் அமர்ந்த நட்சத்திரத்தின் அதிபதி எந்தப் பாவங்களை ஆள்கிறாரோ/அமர்ந்துள்ளாரோ — அந்தப் பாவப்
-                பலன்களையும் அக்கிரகன் இணைத்துத் தருவான் (classical/KP). அதன் மீதான பார்வைகள் சுப/அசுபத்தை மாற்றும்;
-                குரு/சனி கோசாரம் அந்த ராசிகளைத் தொடும்போதே பலன் வெளிப்படும்.
+                கிரகம் அமர்ந்த நட்சத்திரத்தின் அதிபதி ஆளும் பாவப் பலன்களையும் அக்கிரகம் இணைத்துத் தரும். ஒவ்வொரு கிரகத்தையும் தட்டினால் பார்வை, கோசார காலம், பரிகாரம் விரியும்.
               </div>
               {nakBhavaData.houses.map((hs,hi)=>(
                 <div key={hi} style={{marginBottom:hs.isEmpty?6:10,padding:hs.isEmpty?"6px 10px":"10px 12px",borderRadius:8,
@@ -3852,14 +3943,16 @@ ${aiPart}
                     <div style={{fontSize:11.5,color:"#76819a",marginTop:2}}>{hs.note}</div>
                   ) : hs.occupants.map((oc,oi)=>(
                     <div key={oi} style={{marginTop:8,paddingTop:8,borderTop:oi>0?"1px dashed #dfe5f0":"none"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                      <div data-nb-toggle onClick={()=>toggleArea(`nb-${hi}-${oi}`)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:3,cursor:"pointer"}}>
                         <span style={{fontSize:12.5,fontWeight:700}}>{oc.symbol} {oc.ta}
                           {oc.star && <span style={{fontSize:11.5,color:"#7d6a3f",fontWeight:500}}> — {oc.star.nak}{oc.star.pada?`-${oc.star.pada}`:""} (அதிபதி: {oc.star.starLord})</span>}
                         </span>
                         <span style={{fontSize:11.5,fontWeight:800,padding:"2px 8px",borderRadius:10,
                           background:oc.verdict.startsWith("சுபம்")?"#dcfce7":oc.verdict.startsWith("அசுபம்")?"#fee2e2":"#fef9c3",
                           color:oc.verdict.startsWith("சுபம்")?"#2e7d5b":oc.verdict.startsWith("அசுபம்")?"#c0564f":"#7d6a3f"}}>{oc.verdict}</span>
+                        <ChevronDown size={16} color="#76819a" style={{flexShrink:0,transform:openAreas.has(`nb-${hi}-${oi}`)?"rotate(180deg)":"none",transition:"transform .2s"}}/>
                       </div>
+                      {openAreas.has(`nb-${hi}-${oi}`) && (<>
                       {/* 1. நட்சத்திராதிபதி வழி பாவகத் தொடர்பு + செயல்திறன் + KP + பாவ நிலை */}
                       {oc.star && (
                         <div style={{fontSize:11.5,lineHeight:1.65,color:"#4a5365",background:"#f3f6fb",border:"1px solid #eee0c5",borderRadius:6,padding:"6px 8px",marginBottom:5}}>
@@ -3898,7 +3991,7 @@ ${aiPart}
                           <div style={{fontSize:11.5,fontWeight:700,color:"#33691e",marginBottom:2}}>கோசாரத்தில் பலன் வெளிப்படும் காலங்கள் (நாள்-அளவு துல்லியம், அடுத்த 12 ஆண்டு)</div>
                           {[...oc.jupWindows.map(w=>({...w,sym:"♃",col:"#2e7d5b"})), ...oc.satWindows.map(w=>({...w,sym:"♄",col:"#7d6a3f"}))].map((w,wi)=>(
                             <div key={wi} style={{marginBottom:5,paddingBottom:4,borderBottom:"1px dashed #d8e6cf"}}>
-                              <div style={{fontSize:11.5,lineHeight:1.6,color:w.col}}>{w.sym} <b>{w.label}</b> — {w.text}</div>
+                              <div style={{fontSize:11.5,lineHeight:1.6,color:w.col}}>{w.sym} <b>{w.label}</b> — {taText(w.text)}</div>
                               {w.dasha && (
                                 <div style={{fontSize:11,lineHeight:1.6,color:w.dasha.conf==="மிக உயர்"||w.dasha.conf==="உயர்"?"#2e7d5b":w.dasha.conf==="குறை"?"#c0564f":"#7d6a3f"}}>
                                   தசை-இணைவு <b>[{w.dasha.conf}]</b>: {w.dasha.text}
@@ -3916,7 +4009,7 @@ ${aiPart}
                               )}
                               {w.triggers && w.triggers.length > 0 && (
                                 <div style={{fontSize:11,lineHeight:1.6,color:"#1f3f68",fontWeight:600}}>
-                                  ⚡ Trigger நாட்கள் (வேக கிரகம் ஜென்ம ஸ்புடம் தொடும்): {w.triggers.map((tg,tgi)=>(
+                                  தூண்டு நாட்கள் (வேக கிரகம் ஜென்ம ஸ்புடம் தொடும்): {w.triggers.map((tg,tgi)=>(
                                     <span key={tgi}>{tgi>0 && " • "}{tg.planet==="சூரியன்"?"☉":"♂"} {tg.label}</span>
                                   ))} — இந்நாட்களில் நிகழ்வு வாய்ப்பு உச்சம் (±1-2 நாள்)
                                 </div>
@@ -3958,6 +4051,7 @@ ${aiPart}
                           பரிகாரம் தேவையில்லை — இக்கிரகத்தின் இணைப்பும் பார்வைகளும் சுபமாக உள்ளன
                         </div>
                       )}
+                      </>)}
                     </div>
                   ))}
                 </div>
@@ -4329,7 +4423,7 @@ ${aiPart}
               ) : (
                 <div style={{padding:"14px",background:"#f8f8f8",borderRadius:8,border:"1px solid #e8e8e8",textAlign:"center"}}>
                   <div style={{fontSize:12.5,color:"#7d6a3f",fontWeight:600}}>கோசார தரவு கிடைக்கவில்லை</div>
-                  <div style={{fontSize:12,color:"#4a5365",marginTop:4}}>Swiss Ephemeris API மூலம் இன்றைய கிரக நிலைகள் பெறப்படும்போது கோசாரம் காட்டப்படும்</div>
+                  <div style={{fontSize:12,color:"#4a5365",marginTop:4}}>இன்றைய கிரக நிலைகள் பெறப்படும்போது கோசாரம் காட்டப்படும்</div>
                 </div>
               )}
             </div>
@@ -4616,8 +4710,43 @@ ${aiPart}
             );
           })()}
 
+          {/* தசை முறை — விம்சோத்தரி / யோகினி / அஷ்டோத்தரி */}
+          <div style={{display:"flex",gap:6,marginBottom:10}}>
+            {[["vim","விம்சோத்தரி"],["yogini","யோகினி"],["ashtottari","அஷ்டோத்தரி"]].map(([k,l])=>(
+              <button key={k} data-dasha-system={k} onClick={()=>{
+                setDashaSystem(k);
+                if (k !== "vim" && !altDashas) {
+                  setAltDashas("loading");
+                  apiAltDashas(buildBirth(chartMeta?.dobISO || parseDDMMYYYY(formData.dob), chartMeta?.finalTime || "06:00", chartMeta?.geo || resolveBirthGeo(formData)))
+                    .then(setAltDashas).catch(()=>setAltDashas("error"));
+                }
+              }} style={{flex:1,padding:"8px 0",borderRadius:12,fontSize: 12.5,fontWeight:dashaSystem===k?700:500,cursor:"pointer",
+                border:dashaSystem===k?"1px solid #a9823c":"1px solid #e3e8f2",background:dashaSystem===k?"#f6f1e4":"#ffffff",color:dashaSystem===k?"#7d6a3f":"#4a5365"}}>{l}</button>
+            ))}
+          </div>
+          {dashaSystem!=="vim" && (
+            <div data-alt-dasha style={{...card,marginBottom:10,padding:"16px"}}>
+              <div style={{...secTitle,marginBottom:2}}>{dashaSystem==="yogini" ? "யோகினி தசை (36 ஆண்டு சுழற்சி)" : "அஷ்டோத்தரி தசை (108 ஆண்டு சுழற்சி)"}</div>
+              <div style={{fontSize: 12,color:"#76819a",marginBottom:8,lineHeight:1.6}}>ஒப்பீட்டுக்கான மாற்று தசை முறை. பலன்களும் காலக்கணிப்புகளும் விம்சோத்தரி அடிப்படையிலேயே.</div>
+              {altDashas==="loading" && <div style={{fontSize: 13,color:"#76819a"}}>கணக்கிடப்படுகிறது…</div>}
+              {altDashas==="error" && <div style={{fontSize: 13,color:"#c0564f"}}>பெற முடியவில்லை. மீண்டும் முயற்சிக்கவும்.</div>}
+              {altDashas && typeof altDashas==="object" && (altDashas[dashaSystem]?.dashas||[]).map((d,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 8px",borderTop:i?"1px solid #eef1f6":"none",background:d.isCurrent?"#f1f4fa":"transparent",borderRadius:d.isCurrent?8:0}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize: 14,fontWeight:d.isCurrent?700:400,color:d.isCurrent?"#1f3f68":"#27303f"}}>
+                      {d.name}{d.planet && d.planet!==d.name ? ` (${d.planet})` : ""}
+                      {d.isCurrent && <span style={{fontSize: 11,background:"#e7edf8",color:"#1f3f68",padding:"1px 7px",borderRadius:999,fontWeight:700,marginLeft:8}}>நடப்பு</span>}
+                    </div>
+                    <div style={{fontSize: 12,color:"#4a5365",marginTop:1}}>{fmtDateTa(d.startDate)} — {fmtDateTa(d.endDate)}</div>
+                  </div>
+                  <span style={{fontSize: 12,color:"#4a5365",flexShrink:0}}>{d.years} ஆண்டு</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* ═══ 4. DASHA SUMMARY (with dates) ═══ */}
-          {dashaData&&(<div style={{...card,marginBottom:10,padding:"16px"}}>
+          {dashaSystem==="vim"&&dashaData&&(<div style={{...card,marginBottom:10,padding:"16px"}}>
             <div style={{...secTitle,marginBottom:2}}>விம்சோத்தரி தசா காலக்கணக்கு</div>
             <div style={{fontSize: 13,color:"#a9823c",marginBottom:8,marginTop:6}}>
               நட்சத்திரம்: <span style={{color:"#27303f"}}>{dashaData.birthNakshatra}</span> • நாதன்: <span style={{color:"#27303f"}}>{dashaData.birthLord.name}</span>
@@ -4819,6 +4948,15 @@ ${aiPart}
                   {poruthResult.grade}
                 </div>
                 <div style={{fontSize:12.5,color:"#a9823c",marginTop:4}}>{poruthResult.brideName||"பெண்"} ❤ {poruthResult.groomName||"ஆண்"}</div>
+                <button data-share onClick={()=>shareOut("திருமண பொருத்தம்", [
+                  `திருமண பொருத்தம்: ${poruthResult.brideName||"பெண்"} — ${poruthResult.groomName||"ஆண்"}`,
+                  `${poruthResult.totalScore}/${poruthResult.maxScore} — ${poruthResult.grade}`,
+                  `பொருந்துபவை: ${poruthResult.results.filter(r=>r.ok).map(r=>r.name).join(", ") || "—"}`,
+                  `பொருந்தாதவை: ${poruthResult.results.filter(r=>!r.ok).map(r=>r.name).join(", ") || "—"}`,
+                  "— ஜோதிட நிபுணர்",
+                ].join("\n"))} style={{marginTop:12,background:"#ffffff",border:"1px solid #e3e8f2",borderRadius:999,padding:"8px 18px",color:"#1f3f68",fontSize: 13,fontWeight:600,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6}}>
+                  <Share2 size={15}/> பகிர்
+                </button>
               </div>
               {poruthResult.results.map((r,i)=>(
                 <div key={i} style={{...card,padding:"12px 16px",marginBottom:6,display:"flex",alignItems:"center",gap:12,boxShadow:`inset 3px 0 0 ${r.ok?"#58a97f":"#c0564f"}`}}>
@@ -4933,6 +5071,13 @@ ${aiPart}
           <div style={{...card,marginBottom:12,padding:"14px 16px",textAlign:"center",
             border:`1.5px solid ${moodColor}40`, background:`${moodColor}10`}}>
             <div style={{fontSize:15,fontWeight:700,color:moodColor}}>{moodText}</div>
+            <button data-share onClick={()=>shareOut("இன்றைய பலன்", [
+              `${formData.name} — ${today.dateStr} ${today.dayName}கிழமை`,
+              moodText + (gochara.isChandrashtama ? " (சந்திராஷ்டமம்)" : ""),
+              currentDasha?.mahadasha ? `நடப்பு தசை: ${currentDasha.mahadasha.name}${currentDasha.bhukti ? " / " + currentDasha.bhukti.name : ""}` : "",
+              muhurtham ? `ராகு காலம்: ${muhurtham.rahuKalam}` : "",
+              "— ஜோதிட நிபுணர்",
+            ].filter(Boolean).join("\n"))} style={{float:"right",marginTop:-22,background:"none",border:"none",color:"#4a5365",cursor:"pointer",padding:4,display:"grid",placeItems:"center"}} aria-label="பகிர்"><Share2 size={17}/></button>
             {gochara.isChandrashtama && (
               <div style={{fontSize:12.5,color:"#c0564f",marginTop:6,fontWeight:600}}>
                 ⚠ {today.isOtherDate?"அன்று":"இன்று"} சந்திராஷ்டமம் — புதிய காரியங்களைத் தவிர்க்கவும்
@@ -5221,7 +5366,7 @@ ${aiPart}
           <div style={{...card,marginBottom:12,padding:"14px 16px"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
               <div style={{width:32,height:32,borderRadius:10,background:"linear-gradient(135deg,#c7a56830,#a9823c20)",
-                display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🤖</div>
+                display:"flex",alignItems:"center",justifyContent:"center",color:"#a9823c"}}><Sparkles size={17}/></div>
               <div style={{fontSize:13,fontWeight:600,color:"#1f3f68"}}>AI தினப்பலன்</div>
             </div>
             {dailyLoading ? (
@@ -5239,7 +5384,6 @@ ${aiPart}
             )}
           </div>
 
-          <button style={{...btnOutline,fontSize:12,padding:"10px 0"}} onClick={()=>goTo(SCREEN.RESULT)}>← ஜாதகத்திற்கு திரும்பு</button>
         </div>
         <BottomNav active="daily" onNav={handleNav} />
       </div>
@@ -5402,9 +5546,6 @@ ${aiPart}
                   <div style={{textAlign:"right"}}>
                     <div style={{fontSize:12,color:"#a9823c"}}>{MONTH_NAMES_TA[calMonth]} {calYear}</div>
                     <div style={{fontSize:12,color:"#4a5365"}}>{TAMIL_MONTHS[tamilMonthPrevIdx]}/{TAMIL_MONTHS[tamilMonthIdx]}</div>
-                    <div style={{fontSize:11,color:sel.isFromBackend?"#58a97f":"#4a536580",marginTop:2}}>
-                      {sel.isFromBackend ? "✓ Swiss Ephemeris" : "≈ தோராய கணிப்பு"}
-                    </div>
                   </div>
                 </div>
                 {(sel.isPournami||sel.isAmavasai||sel.isEkadashi||sel.isPradosham||sel.isChaturthi) && (
@@ -5491,8 +5632,147 @@ ${aiPart}
                   </div>
                 ))}
               </div>
+
+              {/* நாளின் தன்மை — சுப மதிப்பு, சூலம், பஞ்சகம், (தனிப்பட்ட) தாரா பலம் / சந்திராஷ்டமம் */}
+              {(()=>{
+                const md = calMuhurta.days ? calMuhurta.days.find(x => x.d === sel.d) : null;
+                const rows = [
+                  md ? ["சுப மதிப்பு", `${md.verdict} (${md.score}/100)`, md.score >= 60 ? "#2e7d5b" : md.score < 40 ? "#c0564f" : "#4a5365"] : null,
+                  ["வார சூலம்", `${VARA_SOOLAM[sel.dayOfWeek]} — இத்திசைப் பயணத்தைத் தவிர்ப்பது மரபு`, "#4a5365"],
+                  md?.panchaka ? ["பஞ்சகம்", md.panchaka, "#c0564f"] : null,
+                  md?.tara ? ["உங்கள் தாரா பலம்", `${md.tara.name} — ${md.tara.desc}`, md.tara.mood === "good" ? "#2e7d5b" : md.tara.mood === "bad" ? "#c0564f" : "#4a5365"] : null,
+                  md?.chandrashtama ? ["சந்திராஷ்டமம்", "உங்கள் ராசிக்கு சந்திராஷ்டம நாள் — முக்கிய முடிவுகளைத் தவிர்க்கவும்", "#c0564f"] : null,
+                ].filter(Boolean);
+                return (
+                  <div data-day-nature style={{padding:"4px 14px 10px",borderTop:"1px solid #eef1f6"}}>
+                    {rows.map(([k,v,c],i)=>(
+                      <div key={k} style={{display:"flex",gap:12,padding:"8px 0",borderTop:i?"1px solid #eef1f6":"none",fontSize: 13,lineHeight:1.6}}>
+                        <span style={{width:104,flexShrink:0,color:"#76819a"}}>{k}</span>
+                        <span style={{color:c,fontWeight:600}}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* கௌரி நல்ல நேரம் + ஹோரை அட்டவணை — தட்டினால் விரியும் */}
+              {(()=>{
+                const next = calData[sel.d] || sel; // மறுநாள் உதயம் (மாத இறுதியில் அதே நாள் மதிப்பு)
+                const toMin = (hm) => { const [h,m] = String(hm).split(":").map(Number); return h*60 + (m||0); };
+                const gowri = gowriForDay(sel.dayOfWeek, sel.sunrise, sel.sunset, next.sunrise);
+                const horaRows = () => {
+                  const sr = toMin(sel.sunrise), ss = toMin(sel.sunset), nsr = toMin(next.sunrise) + 1440;
+                  const g2 = resolveBirthGeo(formData);
+                  const at = (min) => { const d = new Date(sel.dt.getFullYear(), sel.dt.getMonth(), sel.dt.getDate(), 0, 0, 0); d.setMinutes(Math.round(min) + 1); return calcCurrentHorai(d, g2.lat, g2.lon); };
+                  const out = [];
+                  for (let i = 0; i < 12; i++) out.push({ ...at(sr + i * (ss - sr) / 12), night: false });
+                  for (let i = 0; i < 12; i++) out.push({ ...at(ss + i * (nsr - ss) / 12), night: true });
+                  return out;
+                };
+                const toggle = (k) => setCalOpen(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
+                const head = (k, title, hint) => (
+                  <button data-cal-toggle={k} onClick={()=>toggle(k)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,width:"100%",padding:"13px 14px",
+                    background:"none",borderLeft:"none",borderRight:"none",borderBottom:"none",borderTop:"1px solid #eef1f6",cursor:"pointer",textAlign:"left"}}>
+                    <span>
+                      <span style={{display:"block",fontSize: 14,fontWeight:700,color:"#1f3f68"}}>{title}</span>
+                      <span style={{display:"block",fontSize: 12,color:"#76819a"}}>{hint}</span>
+                    </span>
+                    <ChevronDown size={18} color="#76819a" style={{transform:calOpen.has(k)?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}/>
+                  </button>
+                );
+                const slot = (x, i) => (
+                  <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"7px 10px",borderRadius:10,marginBottom:4,
+                    background:x.good?"#e9f5ee":"#fbeeed"}}>
+                    <span style={{fontSize: 13,fontWeight:700,color:x.good?"#2e7d5b":"#c0564f"}}>{x.ta}</span>
+                    <span style={{fontSize: 12.5,color:"#4a5365",fontFamily:"monospace"}}>{x.from} – {x.to}</span>
+                  </div>
+                );
+                return (<>
+                  {head("gowri", "கௌரி நல்ல நேரம்", "உத்தி, அமிர்தம், லாபம், தனம், சுகம் — நல்லவை")}
+                  {calOpen.has("gowri") && (
+                    <div data-gowri style={{padding:"0 14px 12px"}}>
+                      <div style={{fontSize: 12,fontWeight:700,color:"#76819a",margin:"2px 0 6px"}}>பகல்</div>
+                      {gowri.day.map(slot)}
+                      <div style={{fontSize: 12,fontWeight:700,color:"#76819a",margin:"10px 0 6px"}}>இரவு</div>
+                      {gowri.night.map(slot)}
+                    </div>
+                  )}
+                  {head("hora", "ஹோரை அட்டவணை", "குரு, சுக்கிரன், புதன், சந்திரன் ஹோரைகள் சுபம்")}
+                  {calOpen.has("hora") && (
+                    <div data-hora style={{padding:"0 14px 12px"}}>
+                      {horaRows().map((h, i) => (
+                        <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderTop:i?"1px solid #f3f5f9":"none",fontSize: 13}}>
+                          <span style={{width:22,textAlign:"center",color:"#a9823c"}}>{h.symbol}</span>
+                          <span style={{flex:1,fontWeight:600,color:h.isBenefic?"#2e7d5b":"#4a5365"}}>{h.planet}{i===0?" (பகல்)":i===12?" (இரவு)":""}</span>
+                          <span style={{fontSize: 12.5,color:"#4a5365",fontFamily:"monospace"}}>{h.startLabel} – {h.endLabel}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>);
+              })()}
             </div>
           )}
+
+          {/* ═══ இந்த மாத முக்கிய நாட்கள் — விரதம்/விசேஷம், சுப நாட்கள், சந்திராஷ்டமம் ═══ */}
+          {(()=>{
+            const days = calMuhurta.days;
+            const personal = !!(horoscope && chartKeyRef.current === birthKey());
+            const vratOf = (x) => {
+              const v = [];
+              if (x.tithiIdx === 15) v.push("பௌர்ணமி");
+              if (x.tithiIdx === 30) v.push("அமாவாசை");
+              if (x.tithiIdx === 11 || x.tithiIdx === 26) v.push("ஏகாதசி");
+              if (x.tithiIdx === 13 || x.tithiIdx === 28) v.push("பிரதோஷம்");
+              if (x.tithiIdx === 4) v.push("சதுர்த்தி");
+              if (x.tithiIdx === 19) v.push("சங்கடஹர சதுர்த்தி");
+              if (x.tithiIdx === 6) v.push("சஷ்டி");
+              if (x.tithiIdx === 29) v.push("மாத சிவராத்திரி");
+              if (x.nakshatra === "கார்த்திகை") v.push("கிருத்திகை");
+              return v;
+            };
+            const dateChip = (x, bg, fg) => (
+              <button key={x.d} onClick={()=>setCalSelected(x.d)} style={{fontSize: 12.5,fontWeight:700,padding:"5px 11px",borderRadius:999,border:"none",cursor:"pointer",background:bg,color:fg}}>
+                {x.d} {DAY_SHORT[new Date(calYear, calMonth, x.d).getDay()]}
+              </button>
+            );
+            return (
+              <div data-month-days style={{...card,padding:"16px",marginBottom:12}}>
+                <div style={{fontSize: 15,fontWeight:700,color:"#1f3f68",marginBottom:10}}>{MONTH_NAMES_TA[calMonth]} — முக்கிய நாட்கள்</div>
+                {days === null && <div style={{fontSize: 13,color:"#76819a"}}>கணக்கிடப்படுகிறது…</div>}
+                {days && days.length === 0 && <div style={{fontSize: 13,color:"#c0564f"}}>இந்தப் பட்டியலைப் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.</div>}
+                {days && days.length > 0 && (<>
+                  <div style={{fontSize: 12.5,fontWeight:700,color:"#226b66",marginBottom:6}}>விரத & விசேஷ நாட்கள்</div>
+                  {days.filter(x => vratOf(x).length).map((x) => (
+                    <button key={x.d} onClick={()=>setCalSelected(x.d)} style={{display:"flex",gap:12,width:"100%",textAlign:"left",padding:"7px 0",background:"none",
+                      borderLeft:"none",borderRight:"none",borderBottom:"none",borderTop:"1px solid #f3f5f9",cursor:"pointer",fontSize: 13,lineHeight:1.5}}>
+                      <span style={{width:60,flexShrink:0,fontWeight:700,color:"#27303f"}}>{x.d} {DAY_SHORT[new Date(calYear, calMonth, x.d).getDay()]}</span>
+                      <span style={{color:"#4a5365"}}>{vratOf(x).join(" · ")}</span>
+                    </button>
+                  ))}
+
+                  <div style={{fontSize: 12.5,fontWeight:700,color:"#53763c",margin:"14px 0 6px"}}>பொதுவான சுப நாட்கள்</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                    {days.filter(x => x.score >= 80 && !x.panchaka).map(x => dateChip(x, "#e9f5ee", "#2e7d5b"))}
+                    {days.filter(x => x.score >= 80 && !x.panchaka).length === 0 && <span style={{fontSize: 13,color:"#76819a"}}>இந்த மாதம் மிகச் சிறந்த நாள் இல்லை; நல்ல நாட்களை நாள் விவரத்தில் பார்க்கவும்.</span>}
+                  </div>
+                  <div style={{fontSize: 11.5,color:"#76819a",marginTop:6,lineHeight:1.6}}>கிழமை, திதி, நட்சத்திரம், யோகம் நான்கும் சுபமாக அமைந்த நாட்கள். திருமணம் போன்ற முகூர்த்தங்களுக்கு இருவர் நட்சத்திரப்படி ஜோதிடரிடம் உறுதி செய்யவும்.</div>
+
+                  <div style={{fontSize: 12.5,fontWeight:700,color:"#99496a",margin:"14px 0 6px"}}>சந்திராஷ்டமம்</div>
+                  {personal ? (
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                      {days.filter(x => x.chandrashtama).map(x => dateChip(x, "#fbeeed", "#c0564f"))}
+                      {days.filter(x => x.chandrashtama).length === 0 && <span style={{fontSize: 13,color:"#76819a"}}>இந்த மாதம் இல்லை.</span>}
+                    </div>
+                  ) : (
+                    <div style={{fontSize: 13,color:"#76819a",lineHeight:1.6}}>ஜாதகம் உருவாக்கினால் உங்கள் ராசிக்கான சந்திராஷ்டம நாட்களும் தாரா பலமும் இங்கே காட்டப்படும்.</div>
+                  )}
+                  {personal && <div style={{fontSize: 11.5,color:"#76819a",marginTop:6}}>{formData.name} — {horoscope.moonRashi} ராசி, {horoscope.nakshatra} நட்சத்திரப்படி.</div>}
+                  <div style={{fontSize: 11.5,color:"#a3adc2",marginTop:10,lineHeight:1.6}}>திதிகள் சூரிய உதய நேரப்படி. சில விரதங்கள் மாலை/இரவு திதியைப் பொறுத்து ஒரு நாள் முன்பின் அமையலாம் — உள்ளூர் பஞ்சாங்கத்துடன் உறுதி செய்யவும்.</div>
+                </>)}
+              </div>
+            );
+          })()}
 
           {/* Quick Today Button */}
           {!isCurrentMonth && (

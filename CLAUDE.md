@@ -37,6 +37,8 @@ Browser (thin client, src/)  ──Firebase idToken──▶  Cloudflare Worker 
 |------|------|-------------|
 | `src/App.jsx` | **முழு UI + design** (React, styling, screens) | ✅ design வேலைக்கு இதுதான் |
 | `src/components/BottomNav.jsx` | எல்லா பக்கங்களுக்கும் பொதுவான கீழ்ப்பட்டை (5 tabs) | nav மாற்றும்போது |
+| `src/components/ToolsScreens.jsx` | பொதுச் சேவைகள்: எல்லா சேவைகளும், 12 ராசி பலன், எண் கணிதம், பெயர் எழுத்துக்கள் | புதிய கருவி சேர்க்கும்போது |
+| `src/components/tools-data.js` | பொது அட்டவணைகள்: கௌரி பஞ்சாங்கம், வார சூலம், நட்சத்திர பாத எழுத்துக்கள், எண் கணிதம் | ⚠ ஆதாரத்துடன் சரிபார்த்தவை — மாற்றும்போது மீண்டும் சரிபார் |
 | `src/almanac.js` | client public panchangam re-exports | அரிதாக |
 | `src/api.js` | server bridge | endpoint சேர்க்கும்போது |
 | `src/engine.js` | proprietary engine (server-only) | logic மாற்றும்போது (client-ல் import ❌) |
@@ -60,6 +62,15 @@ Design மாற்றம் secure engine-ஐ தொடாது — பாத�
   எனில் (`chartIsCurrent()` = false) முதலில் கணக்கிட்டுத் திறக்கும். புதிய பக்கம்/இணைப்பு
   சேர்த்தால் இவற்றையே பயன்படுத்து — `goTo(SCREEN.RESULT/DAILY)` நேரடியாக அழைக்காதே.
 - காட்சிக்கு மட்டுமான உரை மெருகு: `stripEmoji`, `taText`, `calmTone` (engine output மாறாது).
+- பிறப்பு விவரம் இல்லாமலும் app முகப்பில் திறக்கும்; பொதுச் சேவைகள் (12 ராசி பலன், பஞ்சாங்கம்,
+  எண் கணிதம், பெயர் எழுத்து) உடனே பயன்படும். தனிப்பட்டவை (ஜாதகம், தினப்பலன், chat) FORM கேட்கும்.
+
+### 🧩 Worker endpoints (engine கணக்கு — `worker/src/compute.js` + `index.js`, bridge `src/api.js`)
+- `/api/rasi-palan` — ராசி (0–11) அடிப்படை அன்றைய கோசார பலன்; பிறப்பு விவரம் தேவையில்லை.
+- `/api/muhurta-month` — மாதத்தின் ஒவ்வொரு நாளுக்கும் சுப மதிப்பு, பஞ்சகம்; ஜென்ம நட்சத்திரம்/ராசி
+  கொடுத்தால் தாரா பலம், சந்திராஷ்டமம் (நாட்காட்டி "முக்கிய நாட்கள்").
+- `/api/alt-dashas` — யோகினி, அஷ்டோத்தரி தசை (தசா tab).
+- JSON-இல் `null` → `Number(null) === 0` ஆகும்; விருப்ப எண் புலங்களை `typeof v === "number"` என்று சரிபார்.
 
 ## 🚀 Deploy அமைப்பு (LIVE)
 - **Repo:** `A1-ONLINE-TET/jothida-nipunar`

@@ -128,6 +128,22 @@ export async function apiPorutham(bride, groom, ayanamsaKey) {
   return reviveDates(result);
 }
 
+// 12 ராசி பலன் — rashiIdx 0..11 (மேஷம்..மீனம்); பிறப்பு விவரம் தேவையில்லை.
+export async function apiRasiPalan(rashiIdx, targetDateISO = null, geo = null, ayanamsaKey = "lahiri") {
+  const { result } = await post("/api/rasi-palan", { rashiIdx, targetDateISO, lat: geo?.lat, lon: geo?.lon, ayanamsaKey });
+  return reviveDates(result);
+}
+// மாத சுப நாட்கள் (+ ஜென்ம நட்சத்திரம்/ராசி இருந்தால் தாரா பலம், சந்திராஷ்டமம்).
+export async function apiMuhurtaMonth(year, month, geo = null, birthNakIdx = null, birthMoonRashi = null) {
+  const { result } = await post("/api/muhurta-month", { year, month, lat: geo?.lat, lon: geo?.lon, birthNakIdx, birthMoonRashi });
+  return result || [];
+}
+// யோகினி + அஷ்டோத்தரி தசை.
+export async function apiAltDashas(birth) {
+  const { result } = await post("/api/alt-dashas", birth);
+  return reviveDates(result);
+}
+
 // Generic on-demand engine call (prashna, etc. — args must be JSON-safe,
 // no Date objects).
 export async function apiEngine(fn, args = []) {

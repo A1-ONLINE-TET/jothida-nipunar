@@ -1,16 +1,18 @@
 import { useState } from "react";
 import {
-  Menu, Sun, Grid2X2, Heart, CalendarDays, ChevronRight, Sparkles,
+  Menu, Sun, Grid2X2, Heart, CalendarDays, ChevronRight, Sparkles, Star, LayoutGrid,
 } from "lucide-react";
 
 import "./home.css";
 import BottomNav, { NAV_ITEMS as navigation } from "./BottomNav.jsx";
 
 const services = [
-  { key: "advisory", title: "ஜோதிடரிடம் ஆலோசனை", description: "திருமணம், தொழில், ஆரோக்கியம் — ஜோதிடர் பதில்", icon: Sparkles,     theme: "purple" },
-  { key: "chart",    title: "ஜாதகக் கட்டம்",     description: "கிரக நிலைகள், லக்னம், ராசி முழு ஜாதகம்",      icon: Grid2X2,      theme: "peach" },
-  { key: "porutham", title: "திருமண பொருத்தம்",  description: "10 பொருத்தம், நாடி, ரஜ்ஜு, வேதம்",           icon: Heart,        theme: "rose" },
-  { key: "calendar", title: "ஜோதிட நாட்கள்",     description: "முகூர்த்தம், ராகு காலம், பஞ்சாங்கம்",         icon: CalendarDays, theme: "blue" },
+  { key: "advisory", title: "ஜோதிடரிடம் ஆலோசனை", description: "திருமணம், தொழில், ஆரோக்கியம்", icon: Sparkles,     theme: "purple" },
+  { key: "chart",    title: "ஜாதகக் கட்டம்",     description: "கிரக நிலை, பலன்கள், தசா",       icon: Grid2X2,      theme: "peach" },
+  { key: "rasi",     title: "12 ராசி பலன்",       description: "இன்று, நாளை — ராசி வாரியாக",    icon: Star,         theme: "green" },
+  { key: "porutham", title: "திருமண பொருத்தம்",  description: "10 பொருத்தம், தசை ஒத்திசைவு",   icon: Heart,        theme: "rose" },
+  { key: "calendar", title: "பஞ்சாங்கம்",         description: "நல்ல நேரம், சுப நாட்கள்",        icon: CalendarDays, theme: "blue" },
+  { key: "services", title: "எல்லா சேவைகளும்",   description: "எண் கணிதம், பெயர் எழுத்து…",    icon: LayoutGrid,   theme: "yellow" },
 ];
 
 

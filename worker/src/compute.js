@@ -25,6 +25,7 @@ import {
   calcSadeSati, calcGuruPeyarchi, calcTaraBala, RASHIS, NAKSHATRAS,
   calcDashaSandhi, calcNakshatraBhavaLinks, calcBacktest, calcEventTiming,
   calculate10Porutham, calcDailyLuckyNumbers, GRAHA_FRIENDSHIP,
+  calculateYoginiDasha, calculateAshtottariDasha, checkPanchaka, SANI_TRANSIT_EFFECTS,
 } from "../../src/engine.js";
 
 // Vimshottari dasha for this birth (needed by the daily bundle + prompts).
@@ -296,4 +297,77 @@ export function computePorutham(bride, groom, ayanamsaKey) {
     }
   } catch (_) { /* optional */ }
   return { ...calculate10Porutham(nak1 >= 0 ? nak1 : 0, nak2 >= 0 ? nak2 : 0, rashi1 >= 0 ? rashi1 : 0, rashi2 >= 0 ? rashi2 : 0), bride: h1, groom: h2, brideName: bride.name, groomName: groom.name, dashaCompat };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 12 ராசி பலன் — பிறப்பு விவரம் தேவையில்லை; ராசி (சந்திர ராசி) அடிப்படையில்
+// அன்றைய கோசாரம், குரு/சனி பெயர்ச்சி நிலை, பரிகாரம், அதிர்ஷ்ட எண்கள்.
+// ═══════════════════════════════════════════════════════════════════
+export function computeRasiPalan(rashiIdx, targetDateISO, lat = 13.0827, lon = 80.2707, ayanamsaKey = "lahiri") {
+  const targetDate = targetDateISO ? new Date(targetDateISO + "T06:00:00") : null;
+  const today = getTodayTranist(lat, lon, targetDate, ayanamsaKey);
+  const g = calculateGochara(rashiIdx, today.placements);
+  const weekday = today.dateObj.getDay();
+  const todayNakIdx = NAKSHATRAS.indexOf(today.nakshatra);
+  const remedy = getPersonalizedRemedy(rashiIdx, weekday, g.isChandrashtama, today.tithi);
+  const sat = today.placements.find((p) => p.ta === "சனி");
+  const jup = today.placements.find((p) => p.ta === "குரு");
+  const satRashi = sat ? RASHIS.indexOf(sat.rashi) : -1;
+  const sadeSati = sat ? calcSadeSati(rashiIdx, satRashi) : null;
+  const guruPeyarchi = jup ? calcGuruPeyarchi(rashiIdx, RASHIS.indexOf(jup.rashi)) : null;
+  const saniHouse = sat ? ((satRashi - rashiIdx + 12) % 12) + 1 : null;
+  const saniTransit = saniHouse ? { houseFromMoon: saniHouse, rashi: sat.rashi, ...(SANI_TRANSIT_EFFECTS[saniHouse] || {}) } : null;
+  const pk = todayNakIdx >= 0 ? checkPanchaka(todayNakIdx, weekday) : null;
+  return {
+    rashi: RASHIS[rashiIdx],
+    date: { dateStr: today.dateStr, dayName: today.dayName, dateObj: today.dateObj },
+    panchang: { tithi: today.tithi, paksham: today.paksham, nakshatra: today.nakshatra, yogam: today.yogam, karanam: today.karanam, moonRashi: today.moonRashi },
+    gochara: {
+      overallMood: g.overallMood, isChandrashtama: !!g.isChandrashtama, goodCount: g.goodCount, badCount: g.badCount,
+      results: g.results.map((r) => ({ ta: r.ta, symbol: r.symbol, rashi: r.rashi, houseFromMoon: r.houseFromMoon, effect: r.effect, isRetrograde: !!r.isRetrograde })),
+    },
+    remedy, sadeSati, guruPeyarchi, saniTransit,
+    panchaka: pk && pk.active ? pk : null,
+    luckyNums: calcDailyLuckyNumbers(rashiIdx, today.tithi, todayNakIdx >= 0 ? todayNakIdx : 0, weekday),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// மாத சுப நாட்கள் — ஒவ்வொரு நாளுக்கும் பொது முகூர்த்த மதிப்பு (கிழமை + திதி +
+// நட்சத்திரம் + யோகம்). ஜென்ம நட்சத்திரம்/ராசி கொடுத்தால் தாரா பலம், சந்திராஷ்டமம்.
+// ═══════════════════════════════════════════════════════════════════
+export function computeMonthMuhurta(year, month, lat = 13.0827, lon = 80.2707, birthNakIdx = null, birthMoonRashi = null) {
+  const days = new Date(year, month + 1, 0).getDate();
+  const out = [];
+  for (let d = 1; d <= days; d++) {
+    const dt = new Date(year, month, d, 6, 0, 0);
+    const m = calcMuhurtha(dt, birthNakIdx, lat, lon);
+    const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const h = generateHoroscope(iso, "06:00", lat, lon, true);
+    const moonRashiIdx = RASHIS.indexOf(h.moonRashi);
+    const tara = birthNakIdx != null && m.nakIdx >= 0 ? calcTaraBala(birthNakIdx, m.nakIdx) : null;
+    const pk = m.nakIdx >= 0 ? checkPanchaka(m.nakIdx, dt.getDay()) : null;
+    out.push({
+      d, score: m.score, verdict: m.verdict, vaaram: m.vaaram, tithiName: m.tithiName, tithiIdx: m.tithiIdx,
+      paksham: m.tithiIdx <= 15 ? "வளர்பிறை" : "தேய்பிறை",
+      nakIdx: m.nakIdx, nakshatra: NAKSHATRAS[m.nakIdx] || "", yogam: m.yogam, isYogaBad: !!m.isYogaBad,
+      moonRashi: h.moonRashi,
+      tara, chandrashtama: birthMoonRashi != null && moonRashiIdx >= 0 ? (((moonRashiIdx - birthMoonRashi + 12) % 12) + 1) === 8 : false,
+      panchaka: pk && pk.active ? pk.name : null,
+    });
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// மாற்று தசை முறைகள் — யோகினி, அஷ்டோத்தரி (ஜோதிடர்களுக்கு ஒப்பீட்டுக்கு)
+// ═══════════════════════════════════════════════════════════════════
+export function computeAltDashas(h, birth) {
+  const [dY, dM, dD] = birth.dobISO.split("-").map(Number);
+  const [dH, dMin] = (birth.time24 || "06:00").split(":").map(Number);
+  const moonP = h.placements.find((p) => p.ta === "சந்திரன்");
+  const moonLong = moonP ? (moonP.fullLong ?? moonP.rashiIdx * 30 + (moonP.degExact ?? moonP.degree ?? 0)) : 0;
+  const birthDate = new Date(dY, dM - 1, dD, Number.isFinite(dH) ? dH : 6, Number.isFinite(dMin) ? dMin : 0);
+  const slim = (r) => r && r.dashas ? { system: r.system, dashas: r.dashas.map((d) => ({ name: d.name, planet: d.planet || d.name, years: d.years, startDate: d.startDate, endDate: d.endDate, isCurrent: !!d.isCurrent })) } : null;
+  return { yogini: slim(calculateYoginiDasha(moonLong, birthDate)), ashtottari: slim(calculateAshtottariDasha(moonLong, birthDate)) };
 }

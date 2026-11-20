@@ -12,6 +12,7 @@ import { rateLimit } from "./ratelimit.js";
 import {
   buildHoroscope, computeFullReport, computeDasha, computeDailyBundle,
   computeBacktest, computeEventTiming, computeNakBhava, computePorutham,
+  computeRasiPalan, computeMonthMuhurta, computeAltDashas,
 } from "./compute.js";
 import { buildBirthPrompt, buildDailyPrompt, currentDashaInfo } from "./prompt.js";
 import { classifyQuestion, buildAskAnswer } from "./ask.js";
@@ -245,6 +246,37 @@ export default {
         const groom = norm(body?.groom || {});
         const ayanamsaKey = AYANAMSAS.has(body?.ayanamsaKey) ? body.ayanamsaKey : "lahiri";
         return json(env, origin, { result: computePorutham(bride, groom, ayanamsaKey) });
+      }
+
+      // ── /api/rasi-palan — 12 ராசி பலன் (பிறப்பு விவரம் தேவையில்லை) ──
+      if (url.pathname === "/api/rasi-palan") {
+        const rashiIdx = body?.rashiIdx;
+        if (typeof rashiIdx !== "number" || !Number.isInteger(rashiIdx) || rashiIdx < 0 || rashiIdx > 11) return json(env, origin, { error: "bad rashiIdx" }, 400);
+        const targetDateISO = /^\d{4}-\d{2}-\d{2}$/.test(body?.targetDateISO || "") ? body.targetDateISO : null;
+        const lat = body?.lat, lon = body?.lon;
+        const okGeo = typeof lat === "number" && typeof lon === "number" && Number.isFinite(lat) && lat >= -90 && lat <= 90 && Number.isFinite(lon) && lon >= -180 && lon <= 180;
+        const ayanamsaKey = AYANAMSAS.has(body?.ayanamsaKey) ? body.ayanamsaKey : "lahiri";
+        return json(env, origin, { result: computeRasiPalan(rashiIdx, targetDateISO, okGeo ? lat : 13.0827, okGeo ? lon : 80.2707, ayanamsaKey) });
+      }
+
+      // ── /api/muhurta-month — மாத சுப நாட்கள் (+ தாரா பலம் / சந்திராஷ்டமம்) ──
+      if (url.pathname === "/api/muhurta-month") {
+        const year = body?.year, month = body?.month;
+        if (typeof year !== "number" || typeof month !== "number" || !Number.isInteger(year) || year < 1900 || year > 2100 || !Number.isInteger(month) || month < 0 || month > 11) return json(env, origin, { error: "bad month" }, 400);
+        const lat = body?.lat, lon = body?.lon;
+        const okGeo = typeof lat === "number" && typeof lon === "number" && Number.isFinite(lat) && lat >= -90 && lat <= 90 && Number.isFinite(lon) && lon >= -180 && lon <= 180;
+        // null/undefined → தனிப்பயன் இல்லை (Number(null) === 0 என்பதால் வகையை நேரடியாகச் சரிபார்)
+        const intIn = (v, lo, hi) => (typeof v === "number" && Number.isInteger(v) && v >= lo && v <= hi ? v : null);
+        const birthNakIdx = intIn(body?.birthNakIdx, 0, 26);
+        const birthMoonRashi = intIn(body?.birthMoonRashi, 0, 11);
+        return json(env, origin, { result: computeMonthMuhurta(year, month, okGeo ? lat : 13.0827, okGeo ? lon : 80.2707, birthNakIdx, birthMoonRashi) });
+      }
+
+      // ── /api/alt-dashas — யோகினி + அஷ்டோத்தரி தசை ──
+      if (url.pathname === "/api/alt-dashas") {
+        const birth = normalizeBirth(body);
+        const h = buildHoroscope(birth, await fetchSwiss(env, birth));
+        return json(env, origin, { result: computeAltDashas(h, birth) });
       }
 
       // ── /api/ask — rule-based astrologer Q&A (free, no LLM) ──
