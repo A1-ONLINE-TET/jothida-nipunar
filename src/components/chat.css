@@ -84,3 +84,19 @@
   background: linear-gradient(135deg, #2a4d7e, #1f3f68); box-shadow: 0 4px 12px rgba(31,63,104,0.28);
  display: grid; place-items: center; }
 .chat-send:disabled { opacity: 0.45; cursor: default; }
+
+/* ── AI அறிவிப்பு + பதில் புகார் ── */
+.chat-notice { flex: 0 0 auto; margin: 0; padding: 9px 14px; font-size: 12px; line-height: 1.55; color: #7d6a3f; background: #f8f3e6; border-bottom: 1px solid #e9dcc0; }
+.chat-report-link { display: flex; align-items: center; gap: 6px; min-height: 36px; margin-top: 6px; padding: 0; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 600; color: #76819a; }
+.chat-reported { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; font-weight: 600; color: #2e7d5b; }
+.chat-report-box { margin-top: 10px; padding: 12px; border-radius: 12px; background: #f5f7fb; border: 1px solid #e3e8f2; }
+.chat-report-ttl { font-size: 13px; font-weight: 700; color: #1f3f68; margin-bottom: 8px; }
+.chat-report-reasons { display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-report-reasons button { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid #d9e0ee; background: #ffffff; color: #4a5365; font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.chat-report-reasons button.on { background: #1f3f68; border-color: #1f3f68; color: #ffffff; }
+.chat-report-box textarea { width: 100%; margin-top: 8px; padding: 9px 11px; border-radius: 10px; border: 1px solid #d9e0ee; background: #ffffff; color: #27303f; font-family: inherit; font-size: 13px; line-height: 1.5; resize: vertical; outline: none; }
+.chat-report-err { margin-top: 6px; font-size: 12px; color: #c0564f; }
+.chat-report-actions { display: flex; gap: 8px; margin-top: 8px; }
+.chat-report-actions button { min-height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid #c9d3ea; background: #ffffff; color: #1f3f68; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.chat-report-actions button.primary { border: none; background: #1f3f68; color: #ffffff; }
+.chat-report-actions button:disabled { opacity: 0.5; cursor: default; }

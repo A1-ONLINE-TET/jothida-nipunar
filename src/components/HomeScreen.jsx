@@ -14,8 +14,8 @@ const services = [
   { key: "rasi",       title: "12 ராசி பலன்",      description: "இன்று முதல் ஆண்டு வரை",   icon: Star,        theme: "green" },
   { key: "porutham",   title: "திருமண பொருத்தம்", description: "10 பொருத்தம்",            icon: Heart,       theme: "rose" },
   { key: "numerology", title: "எண் கணிதம்",        description: "பிறவி, விதி, பெயர் எண்",  icon: Hash,        theme: "purple" },
-  { key: "names",      title: "குழந்தை பெயர்",     description: "நட்சத்திரப்படி எழுத்து",  icon: Baby,        theme: "peach" },
-  { key: "festivals",  title: "பண்டிகைகள்",        description: "விசேஷ நாட்கள்",           icon: PartyPopper, theme: "yellow" },
+  { key: "names",      title: "குழந்தை பெயர்",     description: "நட்சத்திரப்படி எழுத்து, பெயர்கள்",  icon: Baby,        theme: "peach" },
+  { key: "festivals",  title: "பண்டிகைகள்",        description: "விரத நாட்களுடன்",           icon: PartyPopper, theme: "yellow" },
   { key: "navagraha",  title: "நவகிரக வழிபாடு",    description: "மந்திரம், கோயில், தானம்", icon: Flame,       theme: "blue" },
 ];
 

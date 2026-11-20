@@ -157,6 +157,12 @@ export async function apiFestivals(year) {
   const { result } = await post("/api/festivals", { year });
   return result || [];
 }
+// ஒரு ஆண்டின் மாத விரத நாட்கள் → { year, items: [{ key, name, date, paksha?, note? }] }
+// (date என்பது "YYYY-MM-DD" சரம் — reviveDates அதை Date ஆக்காது.)
+export async function apiVratham(year) {
+  const { result } = await post("/api/vratham", { year });
+  return (result && Array.isArray(result.items)) ? result.items : [];
+}
 // நவகிரக வழிபாட்டுக் குறிப்புகள்.
 export async function apiNavagraha() {
   const { result } = await post("/api/navagraha", {});

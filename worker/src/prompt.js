@@ -11,6 +11,10 @@
 // Live current dasha chain, recomputed against "now" (ported from the
 // client's getCurrentDashaInfo — never trusts a frozen .isCurrent flag).
 import { civilNow } from "../../src/engine.js";
+import { AI_GUARDRAILS } from "./safety.js";
+
+// Appended to every prompt: what the model must never say (worker/src/safety.js).
+const RULES = `\n\n${AI_GUARDRAILS}`;
 export function currentDashaInfo(dashaData) {
   if (!dashaData || !dashaData.dashas) return "";
   const now = civilNow();
@@ -33,7 +37,7 @@ Name: ${person.name}, DOB: ${person.dob}, TOB: ${person.tob ? `${person.tob} ${p
 Lagna: ${horoscope.lagnaName} (${horoscope.lagnaEn}), Moon: ${horoscope.moonRashi}, Nakshatra: ${horoscope.nakshatra}
 Planets: ${horoscope.placements.map((p) => `${p.ta}:${p.rashi} H${p.house} ${p.degree}°`).join(", ")}
 ${dashaInfo ? `Dasha periods:\n${dashaInfo}` : ""}
-Predict: பொது பலன், தொழில், திருமணம், ஆரோக்கியம், நிதி. Consider the current Mahadasha-Antardasha-Pratyantardasha lords and their combined effects on each life area. 200 words. Warm tone.`;
+Predict: பொது பலன், தொழில், திருமணம், ஆரோக்கியம், நிதி. Consider the current Mahadasha-Antardasha-Pratyantardasha lords and their combined effects on each life area. 200 words. Warm tone.${RULES}`;
 }
 
 // Premium AI chat — answer the user's OWN question, grounded in their chart.
@@ -44,7 +48,7 @@ Chart: Lagna ${horoscope.lagnaName} (${horoscope.lagnaEn}), Moon ${horoscope.moo
 Planets: ${horoscope.placements.map((p) => `${p.ta}:${p.rashi} H${p.house}`).join(", ")}
 ${dashaInfo ? `Current dasha:\n${dashaInfo}` : ""}
 Client's question: "${question}"
-Give a focused, compassionate, practical answer (max 220 words) that directly addresses the question using the relevant houses, house lords, karakas and the running dasha. Mention likely timing where the dasha supports it. If the question is not astrology-related, gently say so and invite an astrology question. End with one short remedy or word of encouragement.`;
+Give a focused, compassionate, practical answer (max 220 words) that directly addresses the question using the relevant houses, house lords, karakas and the running dasha. Mention likely timing where the dasha supports it. If the question is not astrology-related, gently say so and invite an astrology question. End with one short remedy or word of encouragement.${RULES}`;
 }
 
 export function buildDailyPrompt({ person, horoscope, daily }) {
@@ -75,5 +79,5 @@ ${sadeSati?.active ? `Sade Sati status on that date: ${sadeSati.phase} — ${sad
 Guru Peyarchi (Jupiter transit) effect on that date: ${guruPeyarchi?.desc || "N/A"}
 Tara Bala on that date: ${taraBala?.name} (${taraBala?.mood === "good" ? "favorable" : "use caution"})
 Recommended remedy for this rashi: worship ${remedy?.dayInfo?.deity}, ${remedy?.dayInfo?.remedy}
-Give a short, warm, practical ${today.isFuture ? "prediction for that future date" : "daily prediction"} (170 words max) covering: general mood, favorable/unfavorable timing, one practical tip. The Dasha-Bhukti is the most important personalization factor — ground the reading in what the Mahadasha and Bhukti lords represent, then layer in the transits and panchangam on top. Do not repeat the raw planetary data back — synthesize it into natural guidance.`;
+Give a short, warm, practical ${today.isFuture ? "prediction for that future date" : "daily prediction"} (170 words max) covering: general mood, favorable/unfavorable timing, one practical tip. The Dasha-Bhukti is the most important personalization factor — ground the reading in what the Mahadasha and Bhukti lords represent, then layer in the transits and panchangam on top. Do not repeat the raw planetary data back — synthesize it into natural guidance.${RULES}`;
 }

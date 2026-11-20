@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { MURUGAN_IMG } from "./murugan-b64.js";
+import { useState, useEffect, useRef, useCallback, useMemo, lazy } from "react";
+// PDF தலைப்புப் படம் (61 KB base64) — PDF உருவாக்கும்போது மட்டும் ஏற்றப்படும்.
+let MURUGAN_IMG = "";
+const loadPdfImage = () => MURUGAN_IMG ? Promise.resolve() : import("./murugan-b64.js").then((m) => { MURUGAN_IMG = m.MURUGAN_IMG; }).catch(() => {});
 // TOPPER ASTRO logo — splash 3-layer composite (background removed, separate
 // layers in public/logo/): zodiac ring + compass counter-rotate behind the
 // fixed TOPPER text. Public assets → referenced by URL, not import.
@@ -10,13 +12,19 @@ const logoFullImg = "/logo/logo-full.webp"; // static composite — welcome/head
 const newZodiacWheelImg = "/logo/new-zodiac-wheel.webp";
 const newTopperLogoImg = "/logo/new-topper-logo.webp";
 import HomeScreen from "./components/HomeScreen";
-import AdvisoryScreen from "./components/AdvisoryScreen";
-import ChatScreen from "./components/ChatScreen";
+// முகப்பு உடனே தேவை; மற்ற திரைகள் திறக்கும்போது ஏற்றப்படும் (முதல் திறப்பு வேகமாக).
+const AdvisoryScreen = lazy(() => import("./components/AdvisoryScreen"));
+const ChatScreen = lazy(() => import("./components/ChatScreen"));
 import BottomNav from "./components/BottomNav.jsx";
 import { kizhamai } from "./components/tools-data.js";
 import { tamilCivilDate, dayPanchang } from "./components/panchang-lite.js";
-import RemedyTab from "./components/RemedyTab.jsx";
-import { RasiPalanScreen, NumerologyScreen, NameLettersScreen, FestivalsScreen, NavagrahaScreen } from "./components/ToolsScreens.jsx";
+const RemedyTab = lazy(() => import("./components/RemedyTab.jsx"));
+const toolScreen = (name) => lazy(() => import("./components/ToolsScreens.jsx").then((m) => ({ default: m[name] })));
+const RasiPalanScreen = toolScreen("RasiPalanScreen");
+const NumerologyScreen = toolScreen("NumerologyScreen");
+const NameLettersScreen = toolScreen("NameLettersScreen");
+const FestivalsScreen = toolScreen("FestivalsScreen");
+const NavagrahaScreen = toolScreen("NavagrahaScreen");
 import { NAME_SYLLABLES, VARA_SOOLAM, gowriForDay } from "./components/tools-data.js";
 import { NotebookPen, Share2, Users, Heart, HeartPulse, Briefcase, Coins, GraduationCap, Hourglass, ChevronRight, ChevronLeft, ChevronDown, FileText, Sparkles, Star, UserRound, Plus, Trash2, Settings, ShieldCheck } from "lucide-react";
 import { apiAsk, apiAskAI, apiAskDeep } from "./api.js";
@@ -27,6 +35,7 @@ import { payThenAskPremium } from "./components/razorpay.js";
 // பணம் enable செய்ய வேண்டியபோது: PAYMENTS_ENABLED = true ஆக்கவும்
 // (premium பட்டன் மீண்டும் Razorpay checkout-க்கு செல்லும்).
 const PAYMENTS_ENABLED = false;
+const APP_VERSION = "1.0.0";
 // ── The proprietary interpretive engine runs ONLY in the Cloudflare
 // Worker. The browser talks to it through api.js and never imports the
 // engine. Public panchangam/ephemeris + trivial display helpers come from
@@ -34,9 +43,11 @@ const PAYMENTS_ENABLED = false;
 import {
   apiCompute, apiPredict, apiDaily, apiBacktest, apiEventTiming,
   apiNakBhava, apiPorutham, apiEngine, apiRasiPalan, apiMuhurtaMonth, apiAltDashas, apiRemedyPlan,
-  apiRasiPeriod, apiFestivals, apiNavagraha,
+  apiRasiPeriod, apiFestivals, apiNavagraha, apiVratham,
 } from "./api.js";
-import { saveProfileCloud, loadProfileCloud, getAuthError } from "./firebase.js";
+import { saveProfilesCloud, loadProfilesCloud, getAuthError, onUser, submitReport } from "./firebase.js";
+const AccountExtras = lazy(() => import("./components/AccountExtras.jsx"));
+import { AiTextFooter } from "./components/ReportBox.jsx";
 import {
   generateHoroscope, calcMuhurtham, calcInauspiciousTimes, calcTamilDate,
   calcCurrentHorai, getNakshatraLord, geocodeCity, geocodeCityAsync,
@@ -1035,9 +1046,6 @@ export default function AstrologyApp() {
       };
       const next = [entry, ...rest].slice(0, 200);
       persistProfiles(next);
-      // Best-effort cloud save (Firestore) — free per-user record of the
-      // primary birth details. Never blocks the UI; failures are ignored.
-      saveProfileCloud(entry);
       return next;
     });
   };
@@ -1048,26 +1056,44 @@ export default function AstrologyApp() {
     setPlaceResults([]); setPlaceDropdownOpen(false);
   };
 
-  // Returning user: if nothing is saved locally, pull the cloud profile
-  // (Firestore) once at startup and seed the saved-profiles list with it.
+  // ── சேமித்த ஜாதகங்களின் மேகப் பிரதி (Firestore users/{uid}) ──
+  // உள்நுழைந்த கணக்கு தெரிந்ததும் (தொடக்கம், Google இணைப்பு, கணக்கு மாற்றம்) மேகப் பட்டியலை
+  // இந்தச் சாதனப் பட்டியலுடன் சேர்க்கும்; அதன் பின் ஒவ்வொரு மாற்றமும் மேகத்தில் சேமிக்கப்படும்.
+  // மேகத்தை அடைய முடியாவிட்டால் (இணையம் இல்லை) இந்த அமர்வில் எழுதுவதில்லை — காலிப் பட்டியல்
+  // மேகப் பிரதியை அழித்துவிடக் கூடாது.
+  const cloudUidRef = useRef(null);
+  const profilesRef = useRef(profiles);
+  profilesRef.current = profiles;
   useEffect(() => {
     let alive = true;
-    (async () => {
-      try {
-        if (loadProfiles().length > 0) return; // local already has data
-        const p = await loadProfileCloud();
-        if (alive && p && p.name) {
-          setProfiles(prev => (prev.length ? prev : [p]));
-        }
-      } catch (_) { /* ignore */ }
-    })();
-    return () => { alive = false; };
+    const unsub = onUser(async (u) => {
+      if (!u) { cloudUidRef.current = null; return; }
+      if (cloudUidRef.current === u.uid) return;
+      cloudUidRef.current = null;
+      const cloud = await loadProfilesCloud();
+      if (!alive || cloud === null) return;
+      const keyOf = (p) => `${p.name}|${p.dob}|${p.tob}|${p.ampm}`;
+      const local = profilesRef.current;
+      const seen = new Set(local.map(keyOf));
+      const merged = [...local, ...cloud.filter((p) => !seen.has(keyOf(p)))].slice(0, 200);
+      cloudUidRef.current = u.uid;
+      if (merged.length !== local.length) { persistProfiles(merged); setProfiles(merged); }
+      else if (local.length && cloud.length !== local.length) saveProfilesCloud(local);
+    });
+    return () => { alive = false; unsub(); };
   }, []);
+  useEffect(() => {
+    if (!cloudUidRef.current) return;
+    const t = setTimeout(() => { if (cloudUidRef.current) saveProfilesCloud(profiles); }, 1500);
+    return () => clearTimeout(t);
+  }, [profiles]);
 
   const deleteProfile = (id) => {
     setProfiles(prev => { const next = prev.filter(p => p.id !== id); persistProfiles(next); return next; });
   };
   const [horoscope, setHoroscope] = useState(null);
+  // ஜாதகம் தயாரானதும் PDF தலைப்புப் படத்தை முன்கூட்டியே ஏற்று — "PDF பதிவிறக்கு" தட்டும்போது காத்திருக்க வேண்டாம்.
+  useEffect(() => { if (horoscope) loadPdfImage(); }, [horoscope]);
   const [prediction, setPrediction] = useState("");
   const [predictionLoading, setPredictionLoading] = useState(false);
   // ஜாதக முடிவுப் பக்கத்தின் உள்-tabs: summary | chart | palan | dasha | deep
@@ -1217,6 +1243,7 @@ export default function AstrologyApp() {
   // Daily prediction
   const [dailyData, setDailyData] = useState(null);
   const [dailyPrediction, setDailyPrediction] = useState("");
+  const [dailyAiOk, setDailyAiOk] = useState(false); // dailyPrediction உண்மையில் AI உரையா (பிழைச் செய்தி அல்ல)
   const [dailyLoading, setDailyLoading] = useState(false);
   // Calendar
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
@@ -1256,10 +1283,19 @@ export default function AstrologyApp() {
   const [calMuhurta, setCalMuhurta] = useState({ key: "", days: null });
   const [calOpen, setCalOpen] = useState(() => new Set());
   const [calFestivals, setCalFestivals] = useState({ year: 0, list: [] });
+  const [calVratham, setCalVratham] = useState({ year: 0, map: {} });
   useEffect(() => {
     if (screen !== SCREEN.CALENDAR || calFestivals.year === calYear) return;
     let alive = true;
     apiFestivals(calYear).then((list) => { if (alive) setCalFestivals({ year: calYear, list }); }).catch(() => {});
+    // விரத நாட்கள் (அமாவாசை, பௌர்ணமி, ஏகாதசி…) — "பண்டிகைகள்" பக்கத்தின் அதே server பட்டியல்; நாட்காட்டியின்
+    // புள்ளிகளும் குறிகளும் அதனுடன் ஒத்திருக்க. கிடைக்காவிட்டால் (இணையம் இல்லை) உதய காலத் திதிக் குறிகள்.
+    apiVratham(calYear).then((items) => {
+      if (!alive) return;
+      const map = {};
+      for (const v of items) (map[v.date] = map[v.date] || []).push(v);
+      setCalVratham({ year: calYear, map });
+    }).catch(() => {});
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen, calYear]);
@@ -1280,10 +1316,81 @@ export default function AstrologyApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen, calMonth, calYear]);
 
+  // ── திரை வரலாறு: கைபேசியின் "பின்" பொத்தான் (Android app, உலாவி) முந்தைய திரைக்குச் செல்ல வேண்டும்;
+  // முகப்பில் அழுத்தினால் மட்டும் app மூடும். திரை மாற்றம் ஒவ்வொன்றும் உலாவி வரலாற்றில் பதிவாகிறது:
+  //   • முகப்பு = வேர்; முகப்புக்குச் செல்வது வரலாற்றை வேர் வரை திருப்பும்.
+  //   • கீழ்ப்பட்டையின் ஒரு tab-இலிருந்து இன்னொரு tab = மாற்றீடு (அடுக்காது) — "பின்" முகப்புக்கு.
+  //   • LOADING போன்ற இடைநிலைத் திரைகள் வரலாற்றில் தங்காது.
+  //   • முந்தைய திரைக்கே திரும்பும் "பின்" பொத்தான்கள் = history.back().
+  //   • "ஆழம்" பகுதியின் ஒரு பகுப்பாய்வு = தனிப் பதிவு (view) — "பின்" பட்டியலுக்கு.
+  const navStack = useRef([{ jn: SCREEN.HOME }]);
+  const skipPop = useRef(0);
+  const histOK = typeof window !== "undefined" && !!window.history && typeof window.history.pushState === "function";
+  const NAV_TRANSIENT = [SCREEN.SPLASH, SCREEN.LOADING, SCREEN.WELCOME, SCREEN.AUTH];
+  const NAV_TABS = [SCREEN.DAILY, SCREEN.RESULT, SCREEN.ADVISORY, SCREEN.ACCOUNT];
+  const histWrite = (kind, entry) => {
+    if (!histOK) return;
+    const st = navStack.current;
+    try {
+      if (kind === "push") { st.push(entry); window.history.pushState({ jn: entry.jn, view: entry.view || "", d: st.length - 1 }, ""); }
+      else { st[st.length - 1] = entry; window.history.replaceState({ jn: entry.jn, view: entry.view || "", d: st.length - 1 }, ""); }
+    } catch (_) { /* வரலாறு கிடைக்காத சூழல் — திரை மாற்றம் மட்டும் */ }
+  };
+  const histBack = (n) => {
+    if (!histOK || n <= 0) return;
+    const st = navStack.current;
+    st.length = Math.max(1, st.length - n);
+    skipPop.current += 1;
+    try { window.history.go(-n); } catch (_) { skipPop.current -= 1; }
+  };
   const goTo = useCallback((s) => {
     setFadeIn(false);
     setTimeout(() => { setScreen(s); setFadeIn(true); }, 300);
+    const st = navStack.current;
+    const top = st[st.length - 1];
+    if (s === SCREEN.HOME) { if (st.length > 1) histBack(st.length - 1); }
+    else if (NAV_TRANSIENT.includes(s) && s !== SCREEN.LOADING) { /* SPLASH / WELCOME / AUTH — பதிவு இல்லை */ }
+    else if (st.length >= 2 && st[st.length - 2].jn === s && !st[st.length - 2].view) histBack(1);
+    else if (top.jn === s) { /* அதே திரை — "ஆழம்" பகுதியின் பதிவை கீழே உள்ள effect கவனிக்கும் */ }
+    else if (NAV_TRANSIENT.includes(top.jn) || (s === SCREEN.LOADING && !top.view && (top.jn === SCREEN.FORM || NAV_TABS.includes(top.jn)))
+      || (NAV_TABS.includes(top.jn) && NAV_TABS.includes(s) && !top.view)) histWrite("replace", { jn: s });
+    else histWrite("push", { jn: s });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const navGuard = useRef({});
+  useEffect(() => {
+    if (!histOK) return undefined;
+    try { window.history.replaceState({ jn: SCREEN.HOME, view: "", d: 0 }, ""); } catch (_) { /* ignore */ }
+    const onPop = (e) => {
+      if (skipPop.current > 0) { skipPop.current -= 1; return; }   // நாமே அழைத்த back/go — திரை ஏற்கனவே மாறிவிட்டது
+      const state = e.state && typeof e.state.jn === "number" ? e.state : { jn: SCREEN.HOME, view: "", d: 0 };
+      const st = navStack.current;
+      const d = Math.max(0, Math.min(typeof state.d === "number" ? state.d : 0, st.length - 1));
+      st.length = d + 1;
+      let target = st[d].jn, view = st[d].view || "";
+      const g = navGuard.current;
+      // தேவையான தரவு இல்லாத திரைக்குத் திரும்ப முடியாது (எ.கா. தரவு நீக்கிய பின்) → முகப்பு.
+      if (NAV_TRANSIENT.includes(target) || (target === SCREEN.RESULT && !g.hasChart) || (target === SCREEN.DAILY && !g.hasDaily) || (target === SCREEN.CHAT && !g.hasBirth)) { target = SCREEN.HOME; view = ""; }
+      setAdvancedView(view);
+      setFadeIn(false);
+      setTimeout(() => { setScreen(target); setFadeIn(true); window.scrollTo({ top: 0 }); }, 200);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  navGuard.current = { hasChart: !!horoscope, hasDaily: !!dailyData, hasBirth: !!(formData.name && formData.dob) };
+  // "ஆழம்" பகுதியில் ஒரு பகுப்பாய்வு திறந்தால் தனி வரலாற்றுப் பதிவு; மூடினால் அது நீங்கும்.
+  useEffect(() => {
+    if (!histOK || screen !== SCREEN.RESULT) return;
+    const st = navStack.current, top = st[st.length - 1];
+    if (top.jn !== SCREEN.RESULT) return;
+    if (advancedView) {
+      if (!top.view) histWrite("push", { jn: SCREEN.RESULT, view: advancedView });
+      else if (top.view !== advancedView) histWrite("replace", { jn: SCREEN.RESULT, view: advancedView });
+    } else if (top.view) histBack(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [advancedView, screen]);
 
   useEffect(() => {
     // முதல்-முறை → Welcome; திரும்பும் user → நேரடி HOME (onboarding மீண்டும் காட்டாது)
@@ -1586,8 +1693,9 @@ export default function AstrologyApp() {
         const dObj = dailyData.today?.dateObj ? new Date(dailyData.today.dateObj) : null;
         const targetISO = dObj ? `${dObj.getFullYear()}-${String(dObj.getMonth()+1).padStart(2,'0')}-${String(dObj.getDate()).padStart(2,'0')}` : null;
         const { text } = await apiDaily(birth, targetISO, true);
+        setDailyAiOk(!!text);
         setDailyPrediction(text || "இன்றைய பலன் கிடைக்கவில்லை.");
-      } catch (e) { setDailyPrediction("இணைய இணைப்பு தேவை."); }
+      } catch (e) { setDailyAiOk(false); setDailyPrediction("இணைய இணைப்பு தேவை."); }
       setDailyLoading(false);
       return;
     }
@@ -1791,17 +1899,20 @@ export default function AstrologyApp() {
       const { dobISO, finalTime, geoT } = birthFromForm();
       return buildBirth(dobISO, finalTime, geoT);
     };
-    const askAstrologer = async (question, lastTopic = "") => apiAsk(chatBirth(), question, lastTopic);
-    const askAstrologerAI = async (question, lastTopic = "") => apiAskAI(chatBirth(), question, lastTopic);
+    // காட்சிக்கு மட்டும்: பதிலில் உள்ள emoji-களை நீக்கு (engine வெளியீடு மாறாது).
+    const clean = (r) => (r && typeof r.answer === "string" ? { ...r, answer: stripEmoji(r.answer).replace(/[ \t]+\n/g, "\n").trim() } : r);
+    const askAstrologer = async (question, lastTopic = "") => clean(await apiAsk(chatBirth(), question, lastTopic));
+    const askAstrologerAI = async (question, lastTopic = "") => clean(await apiAskAI(chatBirth(), question, lastTopic));
     const askPremiumAstrologer = async (question) => {
       const birth = chatBirth();
       // FREE mode: deep answer with no payment. When payments are on,
       // route through Razorpay checkout as before.
-      if (!PAYMENTS_ENABLED) return apiAskDeep(birth, question);
+      if (!PAYMENTS_ENABLED) return clean(await apiAskDeep(birth, question));
       return payThenAskPremium({ birth, question, name: formData.name, amountPaise: 4900 });
     };
     return <ChatScreen ask={askAstrologer} askAI={askAstrologerAI} askPremium={askPremiumAstrologer} personName={formData.name || ""}
       initialQuestion={chatInitialQ} astrologerName="ஜோதிட குரு"
+      onReport={(r) => submitReport({ ...r, kind: "answer", app: APP_VERSION })}
       premiumLabel={PAYMENTS_ENABLED ? "ஆழமான AI பதில் · ₹49" : "ஆழமான AI பதில்"}
       onBack={()=>{ setChatInitialQ(""); goTo(SCREEN.ADVISORY); }} />;
   }
@@ -1997,7 +2108,7 @@ export default function AstrologyApp() {
   if(screen===SCREEN.FESTIVALS) {
     // பண்டிகையைத் தட்டினால் நாட்காட்டியில் அந்த நாள் — அன்றைய பஞ்சாங்கம், நல்ல நேரம்
     const openDate = (iso) => { const [y, m, d] = iso.split("-").map(Number); setCalYear(y); setCalMonth(m - 1); setCalSelected(d); goTo(SCREEN.CALENDAR); };
-    return <FestivalsScreen fetchFestivals={apiFestivals} onNav={handleNav} onOpenDate={openDate} />;
+    return <FestivalsScreen fetchFestivals={apiFestivals} fetchVratham={apiVratham} onNav={handleNav} onOpenDate={openDate} />;
   }
   if(screen===SCREEN.NAVAGRAHA) return <NavagrahaScreen fetchNavagraha={apiNavagraha} onNav={handleNav} />;
 
@@ -2100,7 +2211,15 @@ export default function AstrologyApp() {
             </div>
           )}
 
-          <p style={{textAlign:"center",fontSize: 11.5,color:"#a3adc2",margin:"6px 0 0"}}>ஜோதிட நிபுணர் · TOPPER ASTRO</p>
+          <AccountExtras card={card} cardTitle={cardTitle} profileCount={profiles.length}
+            onWiped={() => {
+              try { ["jn_profiles_v2", "jn_backtests_v1", "jn_chart_style"].forEach((k) => localStorage.removeItem(k)); } catch (_) { /* ignore */ }
+              cloudUidRef.current = null;
+              profilesRef.current = []; setProfiles([]); setBacktests([]); persistBacktests([]); setFormData(blank); setHoroscope(null);
+              goTo(SCREEN.HOME);
+            }} />
+
+          <p style={{textAlign:"center",fontSize: 11.5,color:"#a3adc2",margin:"14px 0 0"}}>ஜோதிட நிபுணர் · TOPPER ASTRO · பதிப்பு {APP_VERSION}</p>
         </div>
         <BottomNav active="account" onNav={handleNav} />
       </div>
@@ -2415,7 +2534,8 @@ export default function AstrologyApp() {
   if(screen===SCREEN.RESULT&&horoscope){
     const birthTime = formData.tob ? `${formData.tob} ${formData.ampm === "PM" ? "மாலை" : "காலை"}` : "—";
 
-    const downloadPDF = () => {
+    const downloadPDF = async () => {
+      await loadPdfImage();
       const h = horoscope;
       const fmtD = (d) => d ? d.toLocaleDateString("ta-IN") : "";
       // ── ஓலை-style section builder ──
@@ -2777,6 +2897,7 @@ ${aiPart}
             {prediction&&(<div style={{...card,marginBottom:10,padding:"16px"}}>
               <div style={secTitle}>AI ஜோதிட பலன்</div>
               <div style={{fontSize: 14,lineHeight:1.85,color:"#27303f",whiteSpace:"pre-wrap"}}>{prediction}</div>
+              <AiTextFooter onReport={(reason, comment) => submitReport({ kind: "answer", mode: "predict", question: "AI ஜோதிட பலன்", answer: prediction, reason, comment, app: APP_VERSION })} />
             </div>)}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
               <button data-pdf onClick={downloadPDF} style={{...btnOutline,display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontSize: 13.5,padding:"13px 0"}}>
@@ -5469,7 +5590,10 @@ ${aiPart}
                 <style>{`@keyframes spin{to{transform:rotate(360deg);}}`}</style>
               </div>
             ) : dailyPrediction ? (
-              <div style={{fontSize:13,lineHeight:1.9,color:"#27303f",whiteSpace:"pre-wrap"}}>{dailyPrediction}</div>
+              <>
+                <div style={{fontSize:13,lineHeight:1.9,color:"#27303f",whiteSpace:"pre-wrap"}}>{dailyPrediction}</div>
+                {dailyAiOk && <AiTextFooter onReport={(reason, comment) => submitReport({ kind: "answer", mode: "daily", question: "AI தினப்பலன்", answer: dailyPrediction, reason, comment, app: APP_VERSION })} />}
+              </>
             ) : (
               <button style={{...btnGold,width:"auto",padding:"10px 24px",display:"inline-block",fontSize:13}} onClick={fetchDailyPrediction}>
                 {today.isOtherDate?"அன்றைய பலன் பெறு":"இன்றைய பலன் பெறு"} →
@@ -5582,7 +5706,9 @@ ${aiPart}
                 const isSelected = cd.d === calSelected;
                 const iso = `${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(cd.d).padStart(2,"0")}`;
                 const isFest = calFestivals.year === calYear && calFestivals.list.some(f => f.iso === iso);
-                const dots = [cd.isPournami ? "#e0b84c" : null, cd.isAmavasai ? "#27303f" : null, cd.isEkadashi ? "#2e8b84" : null, isFest ? "#c2607c" : null].filter(Boolean);
+                const vk = calVratham.year === calYear ? (calVratham.map[iso] || []).map(v => v.key) : null;
+                const mark = (key, flag) => (vk ? vk.includes(key) : flag);
+                const dots = [mark("pournami", cd.isPournami) ? "#e0b84c" : null, mark("amavasai", cd.isAmavasai) ? "#27303f" : null, mark("ekadashi", cd.isEkadashi) ? "#2e8b84" : null, isFest ? "#c2607c" : null].filter(Boolean);
                 return(
                   <button key={i} data-cal-day={cd.d} onClick={()=>setCalSelected(cd.d)} style={{
                     background:isSelected?"#1f3f68":cd.dayType==="good"?"#eef7f1":cd.dayType==="bad"?"#fbf1f0":"#ffffff",
@@ -5632,12 +5758,19 @@ ${aiPart}
                     <div data-day-festival style={{marginTop:8,fontSize: 13.5,fontWeight:700,color:"#99496a"}}>{fs.map(f => f.name).join(" · ")}</div>
                   ) : null;
                 })()}
-                {(sel.isPournami||sel.isAmavasai||sel.isEkadashi||sel.isPradosham||sel.isChaturthi) && (
-                  <div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {[[sel.isPournami,"பௌர்ணமி","#7d6a3f","#f6f1e4"],[sel.isAmavasai,"அமாவாசை","#27303f","#eceff5"],[sel.isEkadashi,"ஏகாதசி","#226b66","#e9f5f4"],[sel.isPradosham,"பிரதோஷம்","#5565b8","#eef1fb"],[sel.isChaturthi,"சதுர்த்தி","#b5683a","#faf0e8"]]
-                      .filter(x=>x[0]).map(([,l,c,b])=>(<span key={l} style={{fontSize:11.5,background:b,color:c,padding:"3px 10px",borderRadius:999,fontWeight:700}}>{l}</span>))}
-                  </div>
-                )}
+                {(()=>{
+                  const iso = `${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(sel.d).padStart(2,"0")}`;
+                  const TONE = { pournami:["#7d6a3f","#f6f1e4"], amavasai:["#27303f","#eceff5"], ekadashi:["#226b66","#e9f5f4"], pradosham:["#5565b8","#eef1fb"] };
+                  const chips = calVratham.year === calYear
+                    ? (calVratham.map[iso] || []).map(v => [v.note && v.key === "pradosham" ? v.note : v.name, ...(TONE[v.key] || ["#4a5365","#f3f5f9"])])
+                    : [[sel.isPournami,"pournami","பௌர்ணமி"],[sel.isAmavasai,"amavasai","அமாவாசை"],[sel.isEkadashi,"ekadashi","ஏகாதசி"],[sel.isPradosham,"pradosham","பிரதோஷம்"],[sel.isChaturthi,"chaturthi","சதுர்த்தி"]]
+                        .filter(x => x[0]).map(([,k,l]) => [l, ...(TONE[k] || ["#4a5365","#f3f5f9"])]);
+                  return chips.length ? (
+                    <div data-day-vratham style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
+                      {chips.map(([l,c,b])=>(<span key={l} style={{fontSize:11.5,background:b,color:c,padding:"3px 10px",borderRadius:999,fontWeight:700}}>{l}</span>))}
+                    </div>
+                  ) : null;
+                })()}
               </div>
 
               {/* பஞ்சாங்கம் — உதய காலத் திதி/நட்சத்திரம் + முடியும் நேரம் */}
@@ -5810,13 +5943,25 @@ ${aiPart}
                     </>);
                   })()}
                   <div style={{fontSize: 12.5,fontWeight:700,color:"#226b66",margin:"14px 0 6px"}}>விரத நாட்கள்</div>
-                  {days.filter(x => vratOf(x).length).map((x) => (
-                    <button key={x.d} onClick={()=>setCalSelected(x.d)} style={{display:"flex",gap:12,width:"100%",textAlign:"left",padding:"7px 0",background:"none",
-                      borderLeft:"none",borderRight:"none",borderBottom:"none",borderTop:"1px solid #f3f5f9",cursor:"pointer",fontSize: 13,lineHeight:1.5}}>
-                      <span style={{width:60,flexShrink:0,fontWeight:700,color:"#27303f"}}>{x.d} {DAY_SHORT[new Date(calYear, calMonth, x.d).getDay()]}</span>
-                      <span style={{color:"#4a5365"}}>{vratOf(x).join(" · ")}</span>
-                    </button>
-                  ))}
+                  {(()=>{
+                    // "பண்டிகைகள் → விரத நாட்கள்" பக்கத்தின் அதே server பட்டியல் (ஒவ்வொரு விரதத்துக்கும் உரிய நேர விதிப்படி).
+                    // அது கிடைக்காதபோது மட்டும் உதய காலத் திதிப்படி தோராயப் பட்டியல்.
+                    const vrOK = calVratham.year === calYear;
+                    const rows = vrOK
+                      ? days.map(x => { const iso = `${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(x.d).padStart(2,"0")}`;
+                          return { d: x.d, names: (calVratham.map[iso] || []).map(v => v.key === "pradosham" && v.note ? v.note : v.name) }; }).filter(r => r.names.length)
+                      : days.map(x => ({ d: x.d, names: vratOf(x).filter(n => n !== "சஷ்டி") })).filter(r => r.names.length);
+                    return (<>
+                      {rows.map((r) => (
+                        <button key={r.d} data-month-vratham onClick={()=>setCalSelected(r.d)} style={{display:"flex",gap:12,width:"100%",textAlign:"left",padding:"7px 0",background:"none",
+                          borderLeft:"none",borderRight:"none",borderBottom:"none",borderTop:"1px solid #f3f5f9",cursor:"pointer",fontSize: 13,lineHeight:1.5}}>
+                          <span style={{width:60,flexShrink:0,fontWeight:700,color:"#27303f"}}>{r.d} {DAY_SHORT[new Date(calYear, calMonth, r.d).getDay()]}</span>
+                          <span style={{color:"#4a5365"}}>{r.names.join(" · ")}</span>
+                        </button>
+                      ))}
+                      {!vrOK && <div style={{fontSize: 11.5,color:"#a3adc2",marginTop:6,lineHeight:1.6}}>தோராயப் பட்டியல் (சூரிய உதயத் திதிப்படி). சரியான விரத நாட்களுக்கு இணையம் தேவை.</div>}
+                    </>);
+                  })()}
 
                   <div style={{fontSize: 12.5,fontWeight:700,color:"#53763c",margin:"14px 0 6px"}}>பொதுவான சுப நாட்கள்</div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
@@ -5835,7 +5980,7 @@ ${aiPart}
                     <div style={{fontSize: 13,color:"#76819a",lineHeight:1.6}}>ஜாதகம் உருவாக்கினால் உங்கள் ராசிக்கான சந்திராஷ்டம நாட்களும் தாரா பலமும் இங்கே காட்டப்படும்.</div>
                   )}
                   {personal && <div style={{fontSize: 11.5,color:"#76819a",marginTop:6}}>{formData.name} — {horoscope.moonRashi} ராசி, {horoscope.nakshatra} நட்சத்திரப்படி.</div>}
-                  <div style={{fontSize: 11.5,color:"#a3adc2",marginTop:10,lineHeight:1.6}}>திதிகள் சூரிய உதய நேரப்படி. சில விரதங்கள் மாலை/இரவு திதியைப் பொறுத்து ஒரு நாள் முன்பின் அமையலாம் — உள்ளூர் பஞ்சாங்கத்துடன் உறுதி செய்யவும்.</div>
+                  <div style={{fontSize: 11.5,color:"#a3adc2",marginTop:10,lineHeight:1.6}}>விரத நாட்கள் சென்னைக்கான திருக்கணிதக் கணக்குப்படி; ஏகாதசி ஸ்மார்த்த முறை. உள்ளூர்ப் பஞ்சாங்கத்தில் ஒரு நாள் வேறுபடலாம்.</div>
                 </>)}
               </div>
             );

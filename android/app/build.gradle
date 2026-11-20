@@ -1,0 +1,87 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Trusted Web Activity settings. The host lives ONLY here: to move the app to a
+// custom domain, change hostName, rebuild, and serve /.well-known/assetlinks.json
+// from the new domain.
+def twa = [
+    applicationId: 'com.topperastro.jothidam',
+    hostName     : 'jothida-nipunar.pages.dev',
+    launchPath   : '/',
+]
+
+// Release signing comes from android/keystore.properties (git-ignored) or, failing
+// that, from environment variables. Without either the project still configures
+// and builds, but the release outputs are unsigned.
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file('keystore.properties')
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+def signingValue = { String key, String envName ->
+    keystoreProps.getProperty(key) ?: System.getenv(envName)
+}
+def releaseSigning = [
+    storeFile    : signingValue('storeFile', 'TWA_KEYSTORE_FILE'),
+    storePassword: signingValue('storePassword', 'TWA_KEYSTORE_PASSWORD'),
+    keyAlias     : signingValue('keyAlias', 'TWA_KEY_ALIAS'),
+    keyPassword  : signingValue('keyPassword', 'TWA_KEY_PASSWORD'),
+]
+def hasReleaseSigning = releaseSigning.values().every { it }
+
+android {
+    namespace = twa.applicationId
+    compileSdk 36
+
+    defaultConfig {
+        applicationId twa.applicationId
+        // androidbrowserhelper 2.7.x requires API 24.
+        minSdk 24
+        targetSdk 36
+        versionCode 1
+        versionName '1.0.0'
+
+        manifestPlaceholders = [
+            hostName : twa.hostName,
+            launchUrl: "https://${twa.hostName}${twa.launchPath}",
+        ]
+
+        // Tells Android / the browser which site this app claims. The site confirms
+        // it with https://<hostName>/.well-known/assetlinks.json.
+        resValue 'string', 'assetStatements',
+            '[{ \\"relation\\": [\\"delegate_permission/common.handle_all_urls\\"],' +
+            ' \\"target\\": { \\"namespace\\": \\"web\\", \\"site\\": \\"https://' +
+            twa.hostName + '\\" } }]'
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile rootProject.file(releaseSigning.storeFile)
+                storePassword releaseSigning.storePassword
+                keyAlias releaseSigning.keyAlias
+                keyPassword releaseSigning.keyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.4'
+}

@@ -15,13 +15,15 @@ import {
   computeRasiPalan, computeMonthMuhurta, computeAltDashas, computeRasiPeriod, navagrahaReference,
 } from "./compute.js";
 import { computeFestivals } from "./festivals.js";
+import { computeVratham } from "./vratham.js";
 import { computeRemedyPlan } from "./remedy.js";
 import { buildBirthPrompt, buildDailyPrompt, currentDashaInfo } from "./prompt.js";
-import { classifyQuestion, buildAskAnswer } from "./ask.js";
+import { classifyQuestion, buildAskAnswer, topicLabel } from "./ask.js";
 import { createOrder, verifyPayment } from "./pay.js";
 import { buildGeminiAstrologerPrompt } from "./gemini.js";
 import { callClaude } from "./claude.js";
 import { callGemini } from "./gemini.js";
+import { screenQuestion, withSafetyNote, answerIsUnsafe } from "./safety.js";
 
 // Route AI calls: set AI_PROVIDER="gemini" in wrangler.toml [vars] to use Gemini.
 // Default is Claude. Falls back to the other if the primary key is missing.
@@ -135,6 +137,41 @@ async function fetchSwiss(env, birth) {
   } catch (_) { return null; }
 }
 
+// AI உரை — பாதுகாப்பு விதிகளை மீறினால் ஒருமுறை மீண்டும் கேட்கும்; மீண்டும் மீறினால் பிழை.
+async function safeAI(env, prompt, maxTokens) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const text = await callAI(env, prompt, maxTokens);
+    if (!answerIsUnsafe(text)) return text;
+  }
+  throw new Error("unsafe ai output");
+}
+
+// ஆலோசனைக் கேள்விக்கான பதில் — பாதுகாப்பு விதிகளுடன். mode: "engine" | "ai" | "deep".
+async function answerQuestion(env, birth, question, lastTopic, mode) {
+  const screened = screenQuestion(question);
+  if (screened) return { category: "general", label: "", answer: screened.answer, ai: false, safety: screened.kind };
+  const swiss = await fetchSwiss(env, birth);
+  const h = buildHoroscope(birth, swiss);
+  h._name = birth.name;
+  const dashaData = computeDasha(h, birth);
+  const category = classifyQuestion(question, lastTopic);
+  const label = topicLabel(category);
+  const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name }).answer;
+  let answer = engineFindings, ai = false;
+  if (mode !== "engine") {
+    try {
+      // The engine already did the astrology; the LLM only phrases its findings
+      // as an astrologer would. Facts come from the engine. An answer that breaks
+      // the safety rules is dropped in favour of the engine's own wording.
+      const deep = mode === "deep";
+      const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings, deep });
+      const text = await callAI(env, prompt, deep ? 6000 : 4000);
+      if (text && text.trim() && !answerIsUnsafe(text)) { answer = text.trim(); ai = true; }
+    } catch (_) { /* fall back to engine findings */ }
+  }
+  return { category, label, answer: withSafetyNote(answer, category, question), ai };
+}
+
 async function authUser(request, env) {
   const hdr = request.headers.get("Authorization") || "";
   const token = hdr.startsWith("Bearer ") ? hdr.slice(7) : "";
@@ -212,7 +249,7 @@ export default {
           person: { name: birth.name, dob: birth.dob, tob: birth.tob, ampm: birth.ampm, pob: birth.pob },
           horoscope: h, dashaInfo,
         });
-        const text = await callAI(env, prompt, 4000);
+        const text = await safeAI(env, prompt, 4000);
         return json(env, origin, { text });
       }
 
@@ -228,7 +265,7 @@ export default {
         let text = "";
         if (withText) {
           const prompt = buildDailyPrompt({ person: { name: birth.name }, horoscope: h, daily });
-          text = await callAI(env, prompt, 3500);
+          text = await safeAI(env, prompt, 3500);
         }
         return json(env, origin, { daily, text });
       }
@@ -299,6 +336,13 @@ export default {
         return json(env, origin, { result: computeFestivals(year) });
       }
 
+      // ── /api/vratham — ஓர் ஆண்டின் மாத விரத நாட்கள் (அமாவாசை, பௌர்ணமி, ஏகாதசி, பிரதோஷம்…) ──
+      if (url.pathname === "/api/vratham") {
+        const year = body?.year;
+        if (typeof year !== "number" || !Number.isInteger(year) || year < 1950 || year > 2100) return json(env, origin, { error: "bad year" }, 400);
+        return json(env, origin, { result: computeVratham(year) });
+      }
+
       // ── /api/navagraha — நவகிரக வழிபாட்டுக் குறிப்புகள் ──
       if (url.pathname === "/api/navagraha") {
         return json(env, origin, { result: navagrahaReference() });
@@ -331,65 +375,19 @@ export default {
         return json(env, origin, { result: computeAltDashas(h, birth) });
       }
 
-      // ── /api/ask — rule-based astrologer Q&A (free, no LLM) ──
-      if (url.pathname === "/api/ask") {
+      // ── /api/ask, /api/ask-ai, /api/ask-deep — ஆலோசனை அரட்டை ──
+      //   ask      : engine கணக்கிட்ட பதில் (LLM இல்லை)
+      //   ask-ai   : அதே engine முடிவுகளை AI இயல்பு மொழியில் சொல்கிறது
+      //   ask-deep : அதன் விரிவான வடிவம் (கட்டணம் இல்லை)
+      // மூன்றுக்கும் ஒரே பாதுகாப்பு வரிசை (worker/src/safety.js): கேள்விச் சோதனை →
+      // engine பதில் → (AI) → AI பதிலின் சோதனை → எச்சரிக்கைக் குறிப்பு.
+      if (url.pathname === "/api/ask" || url.pathname === "/api/ask-ai" || url.pathname === "/api/ask-deep") {
         const birth = normalizeBirth(body);
         const question = clampStr(body?.question, 300);
         const lastTopic = clampStr(body?.lastTopic, 40);
-        const swiss = await fetchSwiss(env, birth);
-        const h = buildHoroscope(birth, swiss);
-        h._name = birth.name;
-        const dashaData = computeDasha(h, birth);
-        const { category, label } = classifyQuestion(question, lastTopic);
-        const built = buildAskAnswer(h, dashaData, question, { category, name: birth.name });
-        return json(env, origin, { category, label, answer: built.answer });
-      }
-
-      // ── /api/ask-ai — AI-powered astrologer Q&A (Gemini / Claude) ──
-      // Engine finds the facts; the LLM phrases them naturally. If no AI key
-      // is set or the call fails, we fall back to the rule-based answer.
-      if (url.pathname === "/api/ask-ai") {
-        const birth = normalizeBirth(body);
-        const question = clampStr(body?.question, 300);
-        const lastTopic = clampStr(body?.lastTopic, 40);
-        const swiss = await fetchSwiss(env, birth);
-        const h = buildHoroscope(birth, swiss);
-        h._name = birth.name;
-        const dashaData = computeDasha(h, birth);
-        const { category, label } = classifyQuestion(question, lastTopic);
-        const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name }).answer;
-        let answer = engineFindings, ai = false;
-        try {
-          // The engine already did the astrology; Gemini only phrases its
-          // findings as an astrologer would. Facts come from the engine.
-          const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings });
-          const text = await callAI(env, prompt, 4000);
-          if (text && text.trim()) { answer = text.trim(); ai = true; }
-        } catch (_) { /* fall back to engine findings */ }
-        return json(env, origin, { category, label, answer, ai });
-      }
-
-      // ── /api/ask-deep — FREE deep AI answer (no payment) ──
-      // Same grounded flow as /api/ask-premium but without the Razorpay
-      // gate. Used while the app is in free mode; payment can be turned
-      // back on by routing the premium button to /api/ask-premium again.
-      if (url.pathname === "/api/ask-deep") {
-        const birth = normalizeBirth(body);
-        const question = clampStr(body?.question, 300);
-        const lastTopic = clampStr(body?.lastTopic, 40);
-        const swiss = await fetchSwiss(env, birth);
-        const h = buildHoroscope(birth, swiss);
-        h._name = birth.name;
-        const dashaData = computeDasha(h, birth);
-        const { category, label } = classifyQuestion(question, lastTopic);
-        const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name }).answer;
-        let answer = engineFindings, ai = false;
-        try {
-          const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings, deep: true });
-          const text = await callAI(env, prompt, 6000);
-          if (text && text.trim()) { answer = text.trim(); ai = true; }
-        } catch (_) { /* fall back to engine findings */ }
-        return json(env, origin, { category, label, answer, ai });
+        const out = await answerQuestion(env, birth, question, lastTopic,
+          url.pathname === "/api/ask" ? "engine" : url.pathname === "/api/ask-ai" ? "ai" : "deep");
+        return json(env, origin, out);
       }
 
       // ── /api/order — create a Razorpay order for the premium answer ──
@@ -413,16 +411,8 @@ export default {
         const birth = normalizeBirth(body);
         const question = clampStr(body?.question, 300);
         const lastTopic = clampStr(body?.lastTopic, 40);
-        const swiss = await fetchSwiss(env, birth);
-        const h = buildHoroscope(birth, swiss);
-        h._name = birth.name;
-        const dashaData = computeDasha(h, birth);
-        const { category } = classifyQuestion(question, lastTopic);
-        const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name }).answer;
-        // Deep answer — same grounded flow, fuller phrasing.
-        const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings, deep: true });
-        const answer = await callAI(env, prompt, 6000);
-        return json(env, origin, { answer });
+        const out = await answerQuestion(env, birth, question, lastTopic, "deep");
+        return json(env, origin, out);
       }
 
       // ── /api/engine — generic allow-listed engine RPC {fn, args} ──

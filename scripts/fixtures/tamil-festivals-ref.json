@@ -1,5 +1,7 @@
 {
  "source": "Drik Panchang — Tamil Calendar (tamil-calendar.html), years 2025–2028, retrieved 2026-11-20",
+ "location": "Chennai, Tamil Nadu — https://www.drikpanchang.com/tamil/tamil-calendar.html?year=YYYY&geoname-id=1264527 (without geoname-id the page silently defaults to New Delhi)",
+ "chennaiCheck": "2026-11-20: the dates below were first collected from the page without a location, i.e. for New Delhi. Every festival × year here (27 festivals × 2025–2028 = 108, including the years in which a festival does not occur) was then compared with the Chennai pages (geoname-id=1264527) fetched the same day: 107 identical; the one difference, கார்த்திகை தீபம் 2027 (New Delhi 2027-12-12, Chennai 2027-12-11), is corrected to the Chennai date. சரஸ்வதி பூஜை · ஆயுத பூஜை was compared with the union of the page's 'Saraswati Poojai' and 'Ayutha Poojai' rows; கோகுலாஷ்டமி with its 'Gokulastami' rows.",
  "festivals": {
   "வைகுண்ட ஏகாதசி": {
    "2025": [
@@ -330,10 +332,135 @@
     "2026-11-24"
    ],
    "2027": [
-    "2027-12-12"
+    "2027-12-11"
    ],
    "2028": [
     "2028-12-01"
+   ]
+  },
+  "மாசி மகம்": {
+   "2025": [
+    "2025-03-12"
+   ],
+   "2026": [
+    "2026-03-03"
+   ],
+   "2027": [
+    "2027-02-20"
+   ],
+   "2028": [
+    "2028-03-10"
+   ]
+  },
+  "அட்சய திருதியை": {
+   "2025": [
+    "2025-04-30"
+   ],
+   "2026": [
+    "2026-04-19"
+   ],
+   "2027": [
+    "2027-05-09"
+   ],
+   "2028": [
+    "2028-04-27"
+   ]
+  },
+  "நவராத்திரி தொடக்கம்": {
+   "2025": [
+    "2025-09-22"
+   ],
+   "2026": [
+    "2026-10-11"
+   ],
+   "2027": [
+    "2027-09-30"
+   ],
+   "2028": [
+    "2028-09-19"
+   ]
+  }
+ },
+ "extraYearsSource": "Same Chennai page, years 2021–2024 and 2029–2030, retrieved 2026-11-20 — only for the festivals whose rule was added or changed later (மாசி மகம் = Masi Magam, அட்சய திருதியை = Akshaya Thiruthiyai, நவராத்திரி தொடக்கம் = Navarathiri, கார்த்திகை தீபம் = Karthigai Deepam)",
+ "extraYears": {
+  "மாசி மகம்": {
+   "2021": [
+    "2021-02-27"
+   ],
+   "2022": [
+    "2022-02-16"
+   ],
+   "2023": [
+    "2023-03-06"
+   ],
+   "2024": [
+    "2024-02-24"
+   ],
+   "2029": [
+    "2029-02-28"
+   ],
+   "2030": [
+    "2030-02-18"
+   ]
+  },
+  "அட்சய திருதியை": {
+   "2021": [
+    "2021-05-14"
+   ],
+   "2022": [
+    "2022-05-03"
+   ],
+   "2023": [
+    "2023-04-22"
+   ],
+   "2024": [
+    "2024-05-10"
+   ],
+   "2029": [
+    "2029-05-16"
+   ],
+   "2030": [
+    "2030-05-05"
+   ]
+  },
+  "நவராத்திரி தொடக்கம்": {
+   "2021": [
+    "2021-10-07"
+   ],
+   "2022": [
+    "2022-09-26"
+   ],
+   "2023": [
+    "2023-10-15"
+   ],
+   "2024": [
+    "2024-10-03"
+   ],
+   "2029": [
+    "2029-10-08"
+   ],
+   "2030": [
+    "2030-09-28"
+   ]
+  },
+  "கார்த்திகை தீபம்": {
+   "2021": [
+    "2021-11-19"
+   ],
+   "2022": [
+    "2022-12-06"
+   ],
+   "2023": [
+    "2023-11-26"
+   ],
+   "2024": [
+    "2024-12-13"
+   ],
+   "2029": [
+    "2029-11-20"
+   ],
+   "2030": [
+    "2030-12-08"
    ]
   }
  }

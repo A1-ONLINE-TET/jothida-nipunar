@@ -58,6 +58,23 @@ service cloud.firestore {
       }
     }
 
+    // ---- reports : wrong-answer reports and feedback -------------
+    // Any signed-in user may CREATE a report about an answer they received
+    // (Google Play's AI-content policy requires in-app reporting) or send
+    // feedback. Nobody can read, change or delete reports from the app —
+    // the developer reads them in the Firebase console.
+    match /reports/{reportId} {
+      allow create: if isSignedIn()
+                    && request.resource.data.owner == request.auth.uid
+                    && request.resource.data.keys().hasOnly(
+                         ['owner','kind','reason','comment','question','answer','mode','app','createdAt'])
+                    && request.resource.data.kind in ['answer','feedback']
+                    && request.resource.data.comment is string && request.resource.data.comment.size() <= 1000
+                    && request.resource.data.question is string && request.resource.data.question.size() <= 400
+                    && request.resource.data.answer is string && request.resource.data.answer.size() <= 3000;
+      allow read, update, delete: if false;
+    }
+
     // ---- subscriptions / access grants ---------------------------
     // The user may READ their own access status, but may NEVER write it —
     // access/entitlements are granted only by the Worker (Admin SDK) after

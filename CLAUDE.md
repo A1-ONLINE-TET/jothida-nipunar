@@ -41,6 +41,7 @@ Browser (thin client, src/)  ──Firebase idToken──▶  Cloudflare Worker 
 | `src/components/panchang-lite.js` | முகப்பு அட்டைக்கான civil தமிழ்த் தேதி (பொதுப் பஞ்சாங்கம்; `festivals.js` விதியுடன் ஒன்றே) | அரிதாக |
 | `src/components/ToolsScreens.jsx` | பொதுச் சேவைகள்: 12 ராசி பலன் (இன்று–ஆண்டு), எண் கணிதம், பெயர் எழுத்துக்கள், பண்டிகைகள், நவகிரக வழிபாடு | புதிய கருவி சேர்க்கும்போது |
 | `src/components/RemedyTab.jsx` | "பரிகாரம்" tab-இன் காட்சி (தரவு `/api/remedy-plan`-இலிருந்து; விற்பனை இல்லை) | பரிகாரத் திரை மாற்றும்போது |
+| `src/components/names-data.js` | குழந்தைப் பெயர்ப் பட்டியல் (ஒலிவாரி ஆண்/பெண், 1107 பெயர்கள்; பொதுத் தரவு) | ⚠ மாற்றினால் `node scripts/test-names.mjs` |
 | `src/components/tools-data.js` | பொது அட்டவணைகள்: கௌரி பஞ்சாங்கம், வார சூலம், நட்சத்திர பாத எழுத்துக்கள், எண் கணிதம் | ⚠ ஆதாரத்துடன் சரிபார்த்தவை — மாற்றும்போது மீண்டும் சரிபார் |
 | `src/almanac.js` | client public panchangam re-exports | அரிதாக |
 | `src/api.js` | server bridge | endpoint சேர்க்கும்போது |
@@ -49,7 +50,16 @@ Browser (thin client, src/)  ──Firebase idToken──▶  Cloudflare Worker 
 | `worker/src/*` | Cloudflare Worker (index, compute, prompt, auth, claude) | server logic/endpoints |
 | `worker/src/remedy.js` | பரிகாரத் திட்ட விதிகள் (வேர்க் காரணம் → தேவை/தேவையில்லை, பலப்படுத்து/சாந்தி, ரத்தினத் தீர்ப்பு) | ⚠ server-only; விதி மாற்றினால் பல ஜாதகங்களில் வெளியீட்டைப் பார் |
 | `worker/src/festivals.js` | தமிழ்ப் பண்டிகை விதிகள் + civil தமிழ்த் தேதி | ⚠ மாற்றினால் `node scripts/test-festivals.mjs` (ஆதாரத் தேதிகளுடன் 4 ஆண்டு ஒப்பீடு) |
-| `index.html`, `public/` | HTML shell, PWA, `_headers` | design/meta |
+| `worker/src/vratham.js` | மாத விரத நாள் விதிகள் (சந்திரோதயக் கணக்கு உட்பட) | ⚠ மாற்றினால் `node scripts/test-vratham.mjs` (Drik சென்னை 2021–2030) |
+| `src/firebase.js` | Auth (பெயரில்லா + Google இணைப்பு), ஜாதகங்களின் மேகப் பிரதி, புகார்/கருத்து, தரவு நீக்கம் (Firestore **lite** SDK) | கணக்கு வசதி மாற்றும்போது |
+| `src/components/AccountExtras.jsx` | கணக்குப் பக்கம்: Google இணைப்பு, தனியுரிமை/விதிமுறை இணைப்புகள், கருத்து, "என் தரவை நீக்கு" | ⚠ Play Store கோரும் பகுதிகள் — நீக்காதே |
+| `src/components/ReportBox.jsx` | AI/தானியங்கி பதிலுக்கான புகார்ப் பெட்டி (`ReportLink`, `AiTextFooter`) | புதிய AI உரை சேர்த்தால் அதன் கீழ் இதை வை |
+| `worker/src/safety.js` | ஆலோசனைப் பாதுகாப்பு விதிகள் (தற்கொலை எண்ணம், ஆயுள்/மரணம், கருவின் பாலினம், மருத்துவ/முதலீட்டுக் குறிப்பு, AI வெளியீட்டுச் சோதனை, `AI_GUARDRAILS`) | ⚠ மாற்றினால் `node scripts/test-safety.mjs` |
+| `src/sw-template.js` | service worker (build-இல் `/sw.js` ஆகும் — `vite.config.js`) | offline நடத்தை மாற்றும்போது |
+| `public/privacy.html`, `terms.html`, `delete-data.html` | Play Store-க்கான சட்டப் பக்கங்கள் (நிலையான HTML) | ⚠ தரவு கையாளும் முறை மாறினால் இவற்றையும் புதுப்பி |
+| `android/` | Play Store-க்கான Android app (Trusted Web Activity) — `android/README.md` | பதிப்பு உயர்த்தும்போது |
+| `docs/PLAY-STORE.md`, `docs/play-store/` | Play வெளியீட்டு வழிகாட்டி, store உரை, Data safety பதில்கள், படங்கள் | வெளியீட்டின்போது |
+| `index.html`, `public/` | HTML shell, PWA (`manifest.json`, icons, `.well-known/assetlinks.json`), `_headers` | design/meta |
 
 ## 🎨 Design வேலை எப்படி (இதுதான் அடிக்கடி தேவை)
 App-ன் **முழு design (colors, layout, fonts, screens, animation)** `src/App.jsx`-ல்
@@ -85,6 +95,9 @@ Design மாற்றம் secure engine-ஐ தொடாது — பாத�
   - "எல்லா சேவைகளும்" பக்கம் நீக்கப்பட்டது. புதிய பொதுச் சேவை = முகப்பில் ஒரு ஓடு மட்டும்; ஜாதகம் சார்ந்தது = ஜாதகப்
     பக்கத்தின் tab / "ஆழம்" பட்டியலில் மட்டும்.
   - முதன்மை tabs-இல் (தினப்பலன், ஜாதகம், ஆலோசனை, கணக்கு) "பின்" பொத்தான் இல்லை; துணைப் பக்கங்களில் "← பின்" மட்டும்.
+- **கைபேசியின் "பின்" பொத்தான்:** `goTo()` ஒவ்வொரு திரை மாற்றத்தையும் உலாவி வரலாற்றில் பதிகிறது (`navStack`): முகப்பு = வேர்,
+  tab → tab = மாற்றீடு, LOADING தங்காது, "ஆழம்" பகுப்பாய்வு = தனிப் பதிவு. திரை மாற்ற `setScreen` நேரடியாக அழைக்காதே —
+  `goTo` மட்டும்; இல்லையேல் Android app-இல் "பின்" அழுத்தினால் app மூடிவிடும்.
 - ஜாதக முடிவுப் பக்கம் 6 உள்-tabs: `resultTab` = summary | chart | palan | dasha | remedy | deep.
   "ஆழம்" tab-இன் 29 பகுப்பாய்வுகள் `DEEP_GROUPS` பட்டியலில் (key = `advancedView`).
 - `openResultView(view)` / `openDailyAuto()` — ஜாதகம் இல்லை அல்லது வேறு சுயவிவரத்துடையது
@@ -100,9 +113,14 @@ Design மாற்றம் secure engine-ஐ தொடாது — பாத�
   கொடுத்தால் தாரா பலம், சந்திராஷ்டமம் (நாட்காட்டி "முக்கிய நாட்கள்").
 - `/api/alt-dashas` — யோகினி, அஷ்டோத்தரி தசை (தசா tab).
 - `/api/rasi-period` — ராசி பலன் வாரம் / மாதம் / ஆண்டு: அந்தக் காலத்தின் கோசாரக் கணக்கு (கட்டுரை அல்ல).
-- `/api/festivals` — ஓர் ஆண்டின் 24 தமிழ்ப் பண்டிகைகள். விதிகள் `scripts/fixtures/tamil-festivals-ref.json`
-  (Drik Panchang 2025–2028) உடன் பொருந்தியவை மட்டும்; பொருந்தாதவை (மாசி மகம், நவராத்திரி தொடக்கம்,
-  அட்சய திருதியை) வேண்டுமென்றே சேர்க்கப்படவில்லை.
+- `/api/festivals` — ஓர் ஆண்டின் 27 தமிழ்ப் பண்டிகைகள். விதிகள் `scripts/fixtures/tamil-festivals-ref.json`
+  (Drik Panchang, **சென்னை** `geoname-id=1264527`, 2025–2028 + சிலவற்றுக்கு 2021–2030) உடன் பொருந்தியவை மட்டும்.
+  ⚠ Drik பக்கங்கள் இடம் கொடுக்காவிட்டால் புது தில்லிக்குக் கணக்கிடும் — ஆதாரம் எடுக்கும்போது சென்னை id கட்டாயம்.
+- `/api/vratham` — ஓர் ஆண்டின் மாத விரத நாட்கள் (`worker/src/vratham.js`): அமாவாசை, பௌர்ணமி, ஏகாதசி (ஸ்மார்த்த), பிரதோஷம்,
+  மாத சிவராத்திரி, சங்கடஹர சதுர்த்தி (சந்திரோதய நேரத்துடன்), சதுர்த்தி, கிருத்திகை. ஒவ்வொரு விதியும் Drik (சென்னை) 2021–2030
+  தேதிகளுடன் பொருந்துகிறது (`scripts/fixtures/vratham-ref.json`, `node scripts/test-vratham.mjs`). **சஷ்டி வேண்டுமென்றே
+  இல்லை** — தமிழ் நாட்காட்டிகள் Drik விதியுடன் மூன்றில் ஒரு மாதம் வேறுபடுகின்றன; எந்த விதியும் முழுமையாகப் பொருந்தவில்லை.
+  நாட்காட்டியின் புள்ளிகள்/குறிகளும் இதே பட்டியலிலிருந்து (`calVratham`); இணையம் இல்லையெனில் உதய காலத் திதிக் குறிகள்.
 - `/api/remedy-plan` — பரிகாரத் திட்டம் (`worker/src/remedy.js`). எல்லாக் கிரகத்துக்கும் பரிகாரம் சொல்வதில்லை:
   (1) கிரகம் உண்மையில் பாதிக்கப்பட்டுள்ளதா, (2) அது ஜாதகருக்கு முக்கியமா (லக்னாதிபதி, நடப்பு/வரும் தசை புக்தி,
   கவனம் கோரும் பகுதியின் அதிபதி/காரகன்), (3) லக்னத்துக்கு சுபனா பாபனா (பலப்படுத்து + ரத்தினம் சரி / சாந்தி + ரத்தினம்
@@ -113,6 +131,25 @@ Design மாற்றம் secure engine-ஐ தொடாது — பாத�
 - `/api/muhurta-month` ஒவ்வொரு நாளுக்கும் civil தமிழ்த் தேதியும் தரும் (சங்கராந்தி அஸ்தமனத்துக்கு முன் = அன்றே
   மாதப் பிறப்பு). `calcTamilDate` பிறப்புக் கணத்துக்கானது — நாட்காட்டிக்கு அதைப் பயன்படுத்தாதே.
 - JSON-இல் `null` → `Number(null) === 0` ஆகும்; விருப்ப எண் புலங்களை `typeof v === "number"` என்று சரிபார்.
+
+## 📱 Play Store / AI கொள்கை விதிகள் (2026-11 — மீறாதே)
+- **AI அறிவிப்பு:** ஆலோசனைப் பகுதி "AI உதவியாளர்; மனித ஜோதிடர் அல்ல" என்று வெளிப்படையாகச் சொல்ல வேண்டும் (Advisory பக்கம்,
+  அரட்டைத் தலைப்பு, முதல் செய்தி, `data-ai-notice` பட்டை). "நேரடி ஜோதிடர்" / மனிதர் போன்ற சொற்களைச் சேர்க்காதே.
+- **புகார் வசதி:** AI அல்லது தானியங்கி எழுதும் ஒவ்வொரு பதிலின் கீழும் `ReportLink` / `AiTextFooter` (→ `submitReport`, Firestore
+  `reports`). புதிய AI உரை சேர்த்தால் இதையும் சேர்.
+- **பாதுகாப்பு:** `/api/ask*` எல்லாம் `answerQuestion()` (index.js) வழியே: `screenQuestion` → engine → (AI) → `answerIsUnsafe` →
+  `withSafetyNote`. AI-ஐ அழைக்கும் புதிய route = `safeAI()` + prompt-இல் `AI_GUARDRAILS`. ஆயுள்/மரணம், கருவின் பாலினம்,
+  மருத்துவ முடிவு பற்றிக் கணிப்பு தரும் எதையும் சேர்க்காதே.
+- **தனியுரிமை:** விளம்பரம், analytics SDK, இருப்பிட/தொடர்பு அனுமதி இல்லை. புதிய மூன்றாம் தரப்புச் சேவை அல்லது புதிய தரவுச்
+  சேகரிப்பு சேர்த்தால் `public/privacy.html` + `docs/PLAY-STORE.md` (Data safety) இரண்டையும் புதுப்பி.
+- **கணக்கு:** பெயரில்லா உள்நுழைவு தொடக்கத்தில்; ஏற்கனவே பயனர் இருந்தால் (Google இணைத்தவர்) மீண்டும் `signInAnonymously`
+  அழைக்காதே (கணக்கை மாற்றிவிடும்). சேமித்த ஜாதகப் பட்டியல் `users/{uid}.profiles` (≤50) — App.jsx-இன் `cloudUidRef` ஒத்திசைவு.
+  "என் தரவை நீக்கு" சாதனம் + Firestore + Auth மூன்றையும் நீக்கும்.
+- **கட்டணம்:** Android app-இல் டிஜிட்டல் சேவைக்கு Google Play Billing மட்டும்; Razorpay-ஐ அப்படியே இயக்காதே.
+- **Offline:** `/sw.js` app shell-ஐச் சேமிக்கும்; பக்கத் திறப்பு network-first (புதிய பதிப்பு உடனே). API அழைப்புகளை SW தொடாது.
+  முகப்பு, நாட்காட்டி இணையம் இல்லாமல் இயங்க வேண்டும் — அவற்றில் கட்டாய API சார்பு சேர்க்காதே.
+- **அளவு:** முகப்பு தவிர மற்ற திரைகள் `lazy()` (App.jsx மேல்); logo படங்கள் ≤760px webp. புதிய பெரிய படம்/நூலகம் சேர்க்கும் முன் யோசி.
+- **Android பதிப்பு:** `android/app/build.gradle`-இல் `versionCode` ஒவ்வொரு Play பதிவேற்றத்துக்கும் +1. keystore repo-வில் வராது.
 
 ## 🚀 Deploy அமைப்பு (LIVE)
 - **Repo:** `A1-ONLINE-TET/jothida-nipunar`
@@ -140,8 +177,8 @@ Pages + Worker இரண்டையும் மீண்டும் build+dep
 ## 🧪 Commands
 - `npm install` — dependencies (root: client; `worker/`: wrangler)
 - `npm run build` — client build (deploy முன் இதை pass செய்ய வேண்டும்)
-- `npm test` — 131 golden engine tests + 1080 ephemeris ஒப்பீடுகள் + 108 பண்டிகைச் சோதனைகள்
-  (engine.js / festivals.js மாற்றினால் இதை ஓட்டு)
+- `npm test` — 131 golden engine tests + 1080 ephemeris ஒப்பீடுகள் + 144 பண்டிகைச் சோதனைகள் + 2120 விரத நாள் சோதனைகள்
+  + 92 பாதுகாப்பு விதிச் சோதனைகள் + பெயர்ப் பட்டியல் சோதனை (engine.js / festivals.js / vratham.js / safety.js மாற்றினால் இதை ஓட்டு)
 - Worker bundle check: `cd worker && npx wrangler deploy --dry-run`
 
 ## 🔭 Engine துல்லியம் & நேரம் (2026-11 audit)

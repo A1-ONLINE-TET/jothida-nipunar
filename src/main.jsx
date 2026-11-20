@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
 import AstrologyApp from './App.jsx'
 
@@ -76,12 +76,39 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// இணையம் இல்லாதபோது ஒரு சிறு அறிவிப்பு — பொதுப் பகுதிகள் (பஞ்சாங்கம், நாட்காட்டி) சாதனத்திலேயே
+// கணக்கிடப்படுவதால் இயங்கும்; ஜாதகக் கணக்குகளுக்கு இணையம் தேவை.
+function OfflineNotice() {
+  const [offline, setOffline] = useState(() => typeof navigator !== "undefined" && navigator.onLine === false);
+  useEffect(() => {
+    const on = () => setOffline(false), off = () => setOffline(true);
+    window.addEventListener("online", on); window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
+  if (!offline) return null;
+  return (
+    <div data-offline-notice role="status" style={{ position: "fixed", left: 0, right: 0, bottom: "calc(92px + env(safe-area-inset-bottom))", zIndex: 200, display: "flex", justifyContent: "center", pointerEvents: "none", padding: "0 16px" }}>
+      <div style={{ maxWidth: 420, padding: "9px 16px", borderRadius: 999, background: "#27303f", color: "#ffffff", fontSize: 12.5, fontWeight: 600, lineHeight: 1.5, textAlign: "center", fontFamily: "'Noto Sans Tamil', system-ui, sans-serif", boxShadow: "0 6px 20px rgba(0,0,0,0.18)" }}>
+        இணையம் இல்லை. பஞ்சாங்கம், நாட்காட்டி இயங்கும்; ஜாதகக் கணக்குக்கு இணையம் தேவை.
+      </div>
+    </div>
+  );
+}
+
+// Service worker — app shell-ஐச் சேமித்து இணையம் இல்லாமலும் திறக்க உதவும் (production build மட்டும்).
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("/sw.js").catch(() => {}); });
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
       <AccessGate>
-        <AstrologyApp />
+        <Suspense fallback={<div style={{ minHeight: "100vh", background: "#ffffff" }} />}>
+          <AstrologyApp />
+        </Suspense>
       </AccessGate>
+      <OfflineNotice />
     </ErrorBoundary>
   </React.StrictMode>
 )

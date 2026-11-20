@@ -229,7 +229,7 @@
 }
 .nav-item {
   display: flex; align-items: center; flex: 1; flex-direction: column; gap: 3px; max-width: 120px;
-  padding: 3px; border: 0; background: transparent; color: var(--h-navy); font-size: 10.5px; cursor: pointer;
+  padding: 3px; border: 0; background: transparent; color: var(--h-navy); font-size: 11px; cursor: pointer;
 }
 .nav-icon { display: grid; place-items: center; width: 40px; height: 30px; border-radius: 16px; }
 .nav-item { font-family: "Noto Sans Tamil", "Latha", system-ui, sans-serif; color: #6b7486; }

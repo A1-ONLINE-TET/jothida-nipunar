@@ -78,6 +78,8 @@ function detectIntent(q) {
 // follow-up கேள்வி — keyword இல்லை ஆனால் முந்தைய தலைப்பைத் தொடர்கிறது
 // ("எப்போது சரியாகும்?", "எப்படி?", "இன்னும் சொல்லுங்க", "அது பற்றி...")
 // index.js இதை வைத்து நிகழ்வு-காலக்கணிப்பு topic-ஐ தேர்வு செய்யும்.
+export const topicLabel = (cat) => (TOPICS[cat] || TOPICS.general).label;
+// Returns the category key (a string) — not an object.
 export function classifyQuestion(q, lastTopic = "") {
   const cat = classify(q);
   if (cat === "general" && VALID_TOPICS.has(lastTopic)) return lastTopic;

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Status bar / theme colour. -->
+    <color name="colorPrimary">#1F3F68</color>
+    <color name="navigationColor">#FFFFFF</color>
+    <!-- Splash screen background, also the adaptive icon background. -->
+    <color name="backgroundColor">#FFFFFF</color>
+</resources>

@@ -1,3 +1,4 @@
+import { NAMES_BY_SOUND } from "./names-data.js";
 import { useEffect, useState } from "react";
 import {
   ChevronRight, Share2, TriangleAlert, CircleCheck, ChevronLeft,
@@ -320,54 +321,132 @@ function PeriodPalan({ p, onNav, onShare }) {
 // ═══════════════════════════════════════════════════════════════════
 // பண்டிகைகள் — ஓர் ஆண்டின் தமிழ்ப் பண்டிகைகள் (server கணக்கு; சரிபார்க்கப்பட்ட விதிகள்)
 // ═══════════════════════════════════════════════════════════════════
-export function FestivalsScreen({ fetchFestivals, onNav, onOpenDate }) {
+// விரத நாட்களின் வடிகட்டி — key → காட்சிப் பெயர்
+const VRATHAM_KINDS = [
+  ["all", "எல்லாம்"], ["amavasai", "அமாவாசை"], ["pournami", "பௌர்ணமி"], ["ekadashi", "ஏகாதசி"], ["pradosham", "பிரதோஷம்"],
+  ["chaturthi", "சதுர்த்தி"], ["sankatahara", "சங்கடஹர சதுர்த்தி"], ["krittikai", "கிருத்திகை"], ["sivaratri", "சிவராத்திரி"],
+];
+const TA_MONTHS_FULL = ["ஜனவரி", "பிப்ரவரி", "மார்ச்", "ஏப்ரல்", "மே", "ஜூன்", "ஜூலை", "ஆகஸ்ட்", "செப்டம்பர்", "அக்டோபர்", "நவம்பர்", "டிசம்பர்"];
+
+export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDate }) {
   const [year, setYear] = useState(new Date().getFullYear());
+  const [mode, setMode] = useState("festivals"); // festivals | vratham
+  const [kind, setKind] = useState("all");
   const [list, setList] = useState(null);
   const [err, setErr] = useState(false);
+  const [vr, setVr] = useState(null);
+  const [vrErr, setVrErr] = useState(false);
   useEffect(() => {
     let alive = true; setList(null); setErr(false);
     fetchFestivals(year).then((r) => { if (alive) setList(r); }).catch(() => { if (alive) setErr(true); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year]);
+  useEffect(() => {
+    if (mode !== "vratham" || !fetchVratham) return undefined;
+    let alive = true; setVr(null); setVrErr(false);
+    fetchVratham(year).then((r) => { if (alive) setVr(r); }).catch(() => { if (alive) setVrErr(true); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, mode]);
   const todayIso = isoOffset(0);
   const next = list ? list.find((f) => f.iso >= todayIso) : null;
   const yearBtn = { width: 40, height: 40, borderRadius: "50%", border: "1px solid #e3e8f2", background: "#ffffff", color: "#1f3f68", cursor: "pointer", display: "grid", placeItems: "center" };
+  const seg = (on) => ({ flex: 1, minHeight: 40, borderRadius: 999, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 700, background: on ? "#1f3f68" : "transparent", color: on ? "#ffffff" : "#4a5365" });
+  const chip = (on) => ({ flexShrink: 0, minHeight: 36, padding: "0 14px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", border: on ? "1px solid #1f3f68" : "1px solid #e3e8f2", background: on ? "#eef1fb" : "#ffffff", color: on ? "#1f3f68" : "#4a5365" });
+  const dateBox = (iso, strong) => (
+    <span style={{ width: 54, flexShrink: 0, textAlign: "center", background: strong ? "#1f3f68" : "#f3f5f9", color: strong ? "#ffffff" : "#1f3f68", borderRadius: 12, padding: "6px 0" }}>
+      <span style={{ display: "block", fontSize: 17, fontWeight: 800, lineHeight: 1.2 }}>{new Date(iso + "T00:00:00").getDate()}</span>
+      <span style={{ display: "block", fontSize: 11 }}>{new Date(iso + "T00:00:00").toLocaleDateString("ta-IN", { month: "short" })}</span>
+    </span>
+  );
+  const rowBtn = (first, past) => ({ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", cursor: "pointer", padding: "11px 0", fontFamily: "inherit",
+    background: "none", borderLeft: "none", borderRight: "none", borderBottom: "none", borderTop: first ? "none" : "1px solid #eef1f6", opacity: past ? 0.55 : 1 });
+  // விரத நாட்கள்: வகைப்படி வடிகட்டி, மாதவாரியாகக் குழுவாக்கு
+  const vrItems = vr ? vr.filter((v) => kind === "all" || v.key === kind) : [];
+  const vrNext = vrItems.find((v) => v.date >= todayIso) || null;
+  // "எல்லாம்" = மாதவாரி அட்டைகள்; ஒரே வகை = ஒரே பட்டியல் (மாதத்துக்கு ஓரிரு வரிகளே வரும்).
+  const vrMonths = [];
+  for (const v of vrItems) {
+    const m = kind === "all" ? Number(v.date.slice(5, 7)) - 1 : -1;
+    if (!vrMonths.length || vrMonths[vrMonths.length - 1].m !== m) vrMonths.push({ m, items: [] });
+    vrMonths[vrMonths.length - 1].items.push(v);
+  }
   return (
     <div style={page}>
       <div style={wrap}>
         <Back onBack={() => onNav("home")} />
-        <h2 style={h2}>பண்டிகைகள் & விசேஷ நாட்கள்</h2>
+        <h2 style={h2}>பண்டிகைகள், விரத நாட்கள்</h2>
         <p style={sub}>தமிழ்நாட்டுப் பஞ்சாங்க வழக்குப்படி</p>
+        {fetchVratham && (
+          <div data-fest-mode style={{ display: "flex", gap: 4, padding: 4, borderRadius: 999, background: "#f3f5f9", marginBottom: 12 }}>
+            <button data-mode="festivals" style={seg(mode === "festivals")} onClick={() => setMode("festivals")}>பண்டிகைகள்</button>
+            <button data-mode="vratham" style={seg(mode === "vratham")} onClick={() => setMode("vratham")}>விரத நாட்கள்</button>
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <button data-year-prev aria-label="முந்தைய ஆண்டு" style={yearBtn} onClick={() => setYear((y) => y - 1)}><ChevronLeft size={20} /></button>
           <div data-year style={{ fontSize: 20, fontWeight: 800, color: "#1f3f68" }}>{year}</div>
           <button data-year-next aria-label="அடுத்த ஆண்டு" style={yearBtn} onClick={() => setYear((y) => y + 1)}><ChevronRight size={20} /></button>
         </div>
-        {err && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>பட்டியலைப் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.</div>}
-        {!err && list === null && <div style={{ ...card, textAlign: "center", color: "#76819a", fontSize: 13 }}>கணக்கிடப்படுகிறது…</div>}
-        {list && (
-          <div style={{ ...card, padding: "4px 14px" }}>
-            {list.map((f, i) => {
-              const isNext = next && f === next;
-              return (
-                <button key={f.iso + f.name} data-festival onClick={() => onOpenDate(f.iso)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", cursor: "pointer", padding: "11px 0",
-                  background: "none", borderLeft: "none", borderRight: "none", borderBottom: "none", borderTop: i ? "1px solid #eef1f6" : "none", opacity: f.iso < todayIso ? 0.55 : 1 }}>
-                  <span style={{ width: 54, flexShrink: 0, textAlign: "center", background: isNext ? "#1f3f68" : "#f3f5f9", color: isNext ? "#ffffff" : "#1f3f68", borderRadius: 12, padding: "6px 0" }}>
-                    <span style={{ display: "block", fontSize: 17, fontWeight: 800, lineHeight: 1.2 }}>{new Date(f.iso + "T00:00:00").getDate()}</span>
-                    <span style={{ display: "block", fontSize: 11 }}>{new Date(f.iso + "T00:00:00").toLocaleDateString("ta-IN", { month: "short" })}</span>
-                  </span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: "block", fontSize: 14.5, fontWeight: 700, color: "#27303f", lineHeight: 1.4 }}>{f.name}</span>
-                    <span style={{ display: "block", fontSize: 12, color: "#76819a", lineHeight: 1.5 }}>{dWeek(f.iso)} · {f.tamil}{isNext ? " · அடுத்து வருவது" : ""}</span>
-                  </span>
-                  <ChevronRight size={16} color="#a3adc2" style={{ flexShrink: 0 }} />
-                </button>
-              );
-            })}
-          </div>
+
+        {mode === "festivals" && (
+          <>
+            {err && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>பட்டியலைப் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.</div>}
+            {!err && list === null && <div style={{ ...card, textAlign: "center", color: "#76819a", fontSize: 13 }}>கணக்கிடப்படுகிறது…</div>}
+            {list && (
+              <div style={{ ...card, padding: "4px 14px" }}>
+                {list.map((f, i) => {
+                  const isNext = next && f === next;
+                  return (
+                    <button key={f.iso + f.name} data-festival onClick={() => onOpenDate(f.iso)} style={rowBtn(i === 0, f.iso < todayIso)}>
+                      {dateBox(f.iso, isNext)}
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 14.5, fontWeight: 700, color: "#27303f", lineHeight: 1.4 }}>{f.name}</span>
+                        <span style={{ display: "block", fontSize: 12, color: "#76819a", lineHeight: 1.5 }}>{dWeek(f.iso)} · {f.tamil}{isNext ? " · அடுத்து வருவது" : ""}</span>
+                      </span>
+                      <ChevronRight size={16} color="#a3adc2" style={{ flexShrink: 0 }} />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <p style={note}>பஞ்சாங்கக் கணக்கின்படி (சென்னை). 2021–2030 ஆண்டுகளுக்கு வெளியிடப்பட்ட பஞ்சாங்கத் தேதிகளுடன் ஒப்பிட்டுச் சரிபார்க்கப்பட்ட விதிகள். ஊர், பஞ்சாங்க மரபைப் பொறுத்து ஒரு நாள் வேறுபடலாம்.</p>
+          </>
         )}
-        <p style={note}>பஞ்சாங்கக் கணக்கின்படி (சென்னை). 2025–2028 ஆண்டுகளுக்கு வெளியிடப்பட்ட பஞ்சாங்கத் தேதிகளுடன் ஒப்பிட்டுச் சரிபார்க்கப்பட்ட விதிகள். கோயில் உற்சவத் தேதிகள் உள்ளூர் வழக்கப்படி மாறலாம்.</p>
+
+        {mode === "vratham" && (
+          <>
+            <div data-vratham-kinds className="jn-tabs" style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 12, paddingBottom: 2 }}>
+              {VRATHAM_KINDS.map(([k, label]) => (
+                <button key={k} data-vkind={k} style={chip(kind === k)} onClick={() => setKind(k)}>{label}</button>
+              ))}
+            </div>
+            {vrErr && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>பட்டியலைப் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.</div>}
+            {!vrErr && vr === null && <div style={{ ...card, textAlign: "center", color: "#76819a", fontSize: 13 }}>கணக்கிடப்படுகிறது…</div>}
+            {vr && vrItems.length === 0 && <div style={{ ...card, textAlign: "center", color: "#76819a", fontSize: 13 }}>இந்த ஆண்டுக்குப் பட்டியல் இல்லை.</div>}
+            {vrMonths.map((g) => (
+              <div key={g.m} data-vratham-month style={{ ...card, padding: g.m < 0 ? "4px 14px" : "10px 14px 4px" }}>
+                {g.m >= 0 && <div style={{ fontSize: 13, fontWeight: 700, color: "#7d6a3f", paddingBottom: 4 }}>{TA_MONTHS_FULL[g.m]}</div>}
+                {g.items.map((v, i) => {
+                  const isNext = vrNext === v;
+                  const extra = [v.paksha, v.note].filter(Boolean).join(" · ");
+                  return (
+                    <button key={v.date + v.key} data-vratham={v.key} onClick={() => onOpenDate(v.date)} style={rowBtn(i === 0, v.date < todayIso)}>
+                      {dateBox(v.date, isNext)}
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 14.5, fontWeight: 700, color: "#27303f", lineHeight: 1.4 }}>{v.name}</span>
+                        <span style={{ display: "block", fontSize: 12, color: "#76819a", lineHeight: 1.5 }}>{dWeek(v.date)}{extra ? ` · ${extra}` : ""}{isNext ? " · அடுத்து வருவது" : ""}</span>
+                      </span>
+                      <ChevronRight size={16} color="#a3adc2" style={{ flexShrink: 0 }} />
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+            <p style={note}>திருக்கணிதக் கணக்கின்படி (சென்னை); ஏகாதசி ஸ்மார்த்த முறை. 2021–2030 ஆண்டுகளுக்கு வெளியிடப்பட்ட பஞ்சாங்கத் தேதிகளுடன் ஒப்பிட்டுச் சரிபார்க்கப்பட்டவை. சில தமிழ் நாட்காட்டிகள் ஒரு நாள் முன் பின் குறிக்கலாம்; சஷ்டி விரதத்தில் மரபு வேறுபாடு அதிகம் என்பதால் அது இங்கே சேர்க்கப்படவில்லை.</p>
+          </>
+        )}
       </div>
       <BottomNav active="" onNav={onNav} />
     </div>
@@ -499,36 +578,65 @@ export function NumerologyScreen({ defaultDob = "", onNav }) {
 // ═══════════════════════════════════════════════════════════════════
 export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = null, onNav }) {
   const [nak, setNak] = useState(defaultNak >= 0 ? defaultNak : 0);
+  const [pada, setPada] = useState(defaultPada || 1);
   const syl = NAME_SYLLABLES[nak] || [];
+  const cur = syl[pada - 1] || syl[0] || ["", ""];
+  const names = NAMES_BY_SOUND[cur[1]] || { m: [], f: [] };
+  const nameChip = { fontSize: 13.5, fontWeight: 600, color: "#27303f", background: "#f5f7fb", border: "1px solid #e3e8f2", borderRadius: 999, padding: "6px 12px", lineHeight: 1.4 };
+  const group = (title, list, attr) => (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: "#7d6a3f", marginBottom: 8 }}>{title}</div>
+      {list.length ? (
+        <div {...{ [attr]: true }} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {list.map((n) => <span key={n} data-name style={nameChip}>{n}</span>)}
+        </div>
+      ) : <div style={{ fontSize: 13, color: "#76819a" }}>இந்த ஒலியில் வழக்கமான பெயர்கள் அரிது.</div>}
+    </div>
+  );
   return (
     <div style={page}>
       <div style={wrap}>
         <Back onBack={() => onNav("home")} />
-        <h2 style={h2}>குழந்தை பெயர் எழுத்துக்கள்</h2>
-        <p style={sub}>பிறந்த நட்சத்திர பாதத்துக்கு உரிய எழுத்தில் பெயர் தொடங்குவது மரபு</p>
+        <h2 style={h2}>குழந்தை பெயர்</h2>
+        <p style={sub}>பிறந்த நட்சத்திர பாதத்துக்கு உரிய எழுத்தில் பெயர் தொடங்குவது மரபு. பாதத்தைத் தட்டினால் அந்த எழுத்தில் தொடங்கும் பெயர்கள்.</p>
         <div style={card}>
           <label style={label}>பிறந்த நட்சத்திரம்</label>
-          <select data-nak value={nak} onChange={(e) => setNak(Number(e.target.value))} style={{ ...input, cursor: "pointer" }}>
+          <select data-nak value={nak} onChange={(e) => { setNak(Number(e.target.value)); setPada(1); }} style={{ ...input, cursor: "pointer" }}>
             {nakshatras.map((n, i) => <option key={i} value={i}>{n}</option>)}
           </select>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
           {syl.map(([ta, en], i) => {
-            const on = defaultPada === i + 1 && nak === defaultNak;
+            const mine = defaultPada === i + 1 && nak === defaultNak;
+            const on = pada === i + 1;
             return (
-              <div key={i} data-pada={i + 1} style={{ ...card, marginBottom: 0, textAlign: "center", border: on ? "1px solid #c9d3ea" : card.border, background: on ? "#eef1fb" : "#ffffff" }}>
-                <div style={{ fontSize: 12, color: "#76819a" }}>{i + 1}ஆம் பாதம்{on ? " · உங்களுடையது" : ""}</div>
+              <button key={i} data-pada={i + 1} aria-pressed={on} onClick={() => setPada(i + 1)}
+                style={{ ...card, marginBottom: 0, textAlign: "center", cursor: "pointer", fontFamily: "inherit", border: on ? "1.5px solid #1f3f68" : card.border, background: on ? "#eef1fb" : "#ffffff" }}>
+                <div style={{ fontSize: 12, color: "#76819a" }}>{i + 1}ஆம் பாதம்{mine ? " · உங்களுடையது" : ""}</div>
                 <div style={{ fontSize: 30, fontWeight: 800, color: "#1f3f68", lineHeight: 1.4 }}>{ta}</div>
                 <div style={{ fontSize: 12.5, color: "#7d6a3f" }}>{en}</div>
-              </div>
+              </button>
             );
           })}
+        </div>
+        <div data-names-card style={card}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#1f3f68" }}>“{cur[0]}” — {cur[1]} ஒலியில் தொடங்கும் பெயர்கள்</div>
+          {(names.m.length || names.f.length) ? (
+            <>
+              {group("ஆண் குழந்தை", names.m, "data-names-m")}
+              {group("பெண் குழந்தை", names.f, "data-names-f")}
+            </>
+          ) : (
+            <div data-names-empty style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.7, marginTop: 8 }}>
+              இந்த ஒலியில் தொடங்கும் வழக்கமான தமிழ்ப் பெயர்கள் அரிது. இதே நட்சத்திரத்தின் மற்ற பாத எழுத்துகளையும் பார்க்கலாம்; பல குடும்பங்கள் நட்சத்திரத்தின் எந்தப் பாத எழுத்தையும் ஏற்கின்றன.
+            </div>
+          )}
         </div>
         <div style={{ ...card, display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "#4a5365", lineHeight: 1.7 }}>
           <CircleCheck size={18} color="#2e7d5b" style={{ flexShrink: 0, marginTop: 3 }} />
           <span>நட்சத்திரமும் பாதமும் தெரியவில்லையா? “ஜாதகம்” பகுதியில் பிறப்பு விவரம் கொடுத்தால் “கட்டம்” tab-இல் நட்சத்திரம், பாதம், உரிய எழுத்து மூன்றும் தெரியும்.</span>
         </div>
-        <p style={note}>பாரம்பரிய அவகஹட சக்கர எழுத்துக்கள். ஒலிப்புக்கு ஆங்கில எழுத்தையும் பார்க்கவும் — தமிழில் சில ஒலிகளுக்குத் தனி எழுத்து இல்லை.</p>
+        <p style={note}>பாரம்பரிய அவகஹட சக்கர எழுத்துக்கள். ஒலிப்புக்கு ஆங்கில எழுத்தையும் பார்க்கவும் — தமிழில் சில ஒலிகளுக்குத் தனி எழுத்து இல்லை. பெயர்கள் பரிந்துரைகள் மட்டுமே.</p>
       </div>
       <BottomNav active="" onNav={onNav} />
     </div>

@@ -1,0 +1,24 @@
+# Build outputs
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+*.ap_
+
+# Local machine config (SDK path)
+local.properties
+
+# Signing material: never commit
+keystore.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+
+# IDE
+.idea/
+*.iml
+.kotlin/
+captures/
+.cxx/

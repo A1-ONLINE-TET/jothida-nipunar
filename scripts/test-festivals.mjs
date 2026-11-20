@@ -21,6 +21,17 @@ for (const year of [2025, 2026, 2027, 2028]) {
   }
   for (const name of Object.keys(got)) if (!ref[name]) bad(`${year} ${name}: no reference entry`);
 }
+// கூடுதல் ஆண்டுகள் (2021–2024, 2029–2030): பின்னர் சேர்த்த பண்டிகைகளுக்கு மட்டும் — அதே பக்கம், சென்னை
+const extra = JSON.parse(readFileSync(new URL("./fixtures/tamil-festivals-ref.json", import.meta.url), "utf8")).extraYears || {};
+const extraYears = [...new Set(Object.values(extra).flatMap((byYear) => Object.keys(byYear)))].sort();
+for (const year of extraYears) {
+  const all = computeFestivals(Number(year));
+  for (const [name, byYear] of Object.entries(extra)) {
+    if (!byYear[year]) continue;
+    const have = all.filter((f) => f.name === name).map((f) => f.iso);
+    if (JSON.stringify(have) === JSON.stringify(byYear[year])) pass++; else bad(`${year} ${name}: computed [${have}] reference [${byYear[year]}]`);
+  }
+}
 // தமிழ்த் தேதி: பொங்கல் = தை 1, புத்தாண்டு = சித்திரை 1 (ஆதாரத் தேதிகளில்)
 for (const [name, mon, day] of [["தைப்பொங்கல்", "தை", 1], ["தமிழ்ப் புத்தாண்டு", "சித்திரை", 1], ["ஆடிப்பெருக்கு", "ஆடி", 18]]) {
   for (const [year, list] of Object.entries(ref[name])) {

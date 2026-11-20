@@ -3,6 +3,8 @@
 //   wrangler secret put GEMINI_API_KEY
 // Never shipped to the browser.
 // ═══════════════════════════════════════════════════════════════════
+import { AI_GUARDRAILS } from "./safety.js";
+
 export async function callGemini(env, prompt, maxTokens = 1000) {
   const key = env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY not set");
@@ -60,13 +62,15 @@ export function buildGeminiAstrologerPrompt({ name, question, engineFindings, de
   const depth = deep
     ? "விரிவாக, ஒவ்வொரு முக்கிய காரணியையும் தொட்டு, காலம் மற்றும் பரிகாரம் உட்பட ஆழமாக"
     : "சுருக்கமாக, கேட்டதற்கு மட்டும் குவிந்து";
-  return `நீங்கள் அனுபவமிக்க, அன்பான தமிழ் வேத ஜோதிடர். ஒரு வாடிக்கையாளரிடம் நேரடியாக உரையாடுகிறீர்கள்.
+  return `நீங்கள் ஒரு தமிழ் வேத ஜோதிட AI உதவியாளர்; அனுபவமிக்க ஜோதிடரின் அன்பான நடையில் ஒரு வாடிக்கையாளரிடம் நேரடியாக உரையாடுகிறீர்கள். உங்களை மனிதர் என்று சொல்லிக்கொள்ள வேண்டாம்.
 
 கீழே உள்ளவை — இந்த வாடிக்கையாளரின் ஜாதகத்திலிருந்து கணிக்கப்பட்ட துல்லியமான ஜோதிட முடிவுகள் (engine கணக்கிட்டது). இவற்றை மட்டுமே ஆதாரமாகக் கொள்ளுங்கள் — புதிய கிரக நிலை, தேதி, சதவீதம், தோஷம் எதையும் நீங்களாக உருவாக்க வேண்டாம்:
 
 """
 ${engineFindings}
 """
+
+${AI_GUARDRAILS}
 
 வாடிக்கையாளர் பெயர்: ${name || "நண்பர்"}
 வாடிக்கையாளர் கேள்வி: "${question}"

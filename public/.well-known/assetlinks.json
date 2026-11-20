@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.topperastro.jothidam",
+      "sha256_cert_fingerprints": [
+        "F5:EC:F3:98:83:E6:1C:A3:4C:62:82:13:B9:B9:73:9C:53:33:02:0D:21:BB:7D:EE:83:7E:C9:3F:5B:4E:31:9D"
+      ]
+    }
+  }
+]

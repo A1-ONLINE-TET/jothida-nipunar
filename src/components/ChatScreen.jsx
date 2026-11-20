@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Sparkles, Send } from "lucide-react";
 import "./chat.css";
+import { ReportLink } from "./ReportBox.jsx";
 
 // Astrologer message that reveals itself character-by-character (typewriter).
 function TypingText({ text, onDone }) {
@@ -46,10 +47,10 @@ function asText(v, fallback) {
   return s.trim() ? s : fallback;
 }
 
-export default function ChatScreen({ ask, askAI, askPremium, onBack, personName, initialQuestion = "", astrologerName = "ஜோதிட குரு", astrologerTagline = "உங்கள் ஜாதகம் சார்ந்த பதில்கள்", premiumLabel = "⭐ ஆழமான AI பதில் · ₹49" }) {
-  const [aiMode, setAiMode] = useState(false); // 🤖 AI இயல்பு மொழி (Gemini) ON/OFF
+export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, personName, initialQuestion = "", astrologerName = "ஜோதிட குரு", astrologerTagline = "AI உதவியாளர் · மனித ஜோதிடர் அல்ல", premiumLabel = "ஆழமான AI பதில்" }) {
+  const [aiMode, setAiMode] = useState(false); // AI இயல்பு மொழி ON/OFF
   const [messages, setMessages] = useState([
-    { role: "astro", text: `வணக்கம்${personName ? " " + personName : ""} — நான் ${astrologerName}. உங்கள் ஜாதகத்தை ஆராய்ந்து பதிலளிக்கிறேன். உங்கள் கேள்வியைக் கேளுங்கள் — திருமணம், தொழில், பணம், ஆரோக்கியம், கல்வி...`, done: true },
+    { role: "astro", intro: true, text: `வணக்கம்${personName ? " " + personName : ""}. நான் ${astrologerName} — உங்கள் ஜாதகக் கணக்கை வைத்துப் பதிலளிக்கும் AI உதவியாளர்; மனித ஜோதிடர் அல்ல. திருமணம், தொழில், பணம், ஆரோக்கியம், கல்வி என எதைப் பற்றியும் கேளுங்கள்.`, done: true },
   ]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -77,12 +78,13 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, personName,
     setMessages((m) => [...m, { role: "user", text: question, done: true }]);
     setBusy(true);
     try {
-      const fn = (aiMode && askAI) ? askAI : ask;
-      const { answer, category } = await fn(question, lastTopicRef.current);
+      const useAI = !!(aiMode && askAI);
+      const fn = useAI ? askAI : ask;
+      const { answer, category, ai } = await fn(question, lastTopicRef.current);
       if (category && category !== "general") lastTopicRef.current = category;
-      setMessages((m) => [...m, { role: "astro", text: asText(answer, "மன்னிக்கவும், இப்போது பதிலளிக்க முடியவில்லை."), done: false }]);
+      setMessages((m) => [...m, { role: "astro", q: question, mode: useAI && ai ? "ai" : "engine", text: asText(answer, "மன்னிக்கவும், இப்போது பதிலளிக்க முடியவில்லை."), done: false }]);
     } catch (e) {
-      setMessages((m) => [...m, { role: "astro", text: "⚠ சர்வர் இப்போது பதிலளிக்கவில்லை. சில வினாடிகள் கழித்து மீண்டும் முயற்சிக்கவும்.", done: true }]);
+      setMessages((m) => [...m, { role: "astro", error: true, text: "சர்வர் இப்போது பதிலளிக்கவில்லை. சில வினாடிகள் கழித்து மீண்டும் முயலுங்கள்.", done: true }]);
     } finally {
       setBusy(false);
     }
@@ -96,11 +98,11 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, personName,
     setBusy(true);
     try {
       const { answer } = await askPremium(question);
-      setMessages((m) => [...m, { role: "astro", text: asText(answer, "மன்னிக்கவும், பதிலளிக்க முடியவில்லை."), done: false, premium: true }]);
+      setMessages((m) => [...m, { role: "astro", q: question, mode: "deep", text: asText(answer, "மன்னிக்கவும், பதிலளிக்க முடியவில்லை."), done: false, premium: true }]);
     } catch (e) {
       const msg = String(e?.message || "");
       if (msg !== "cancelled") {
-        setMessages((m) => [...m, { role: "astro", text: "⚠ பணம் செலுத்துதல்/பதில் தோல்வி. மீண்டும் முயற்சிக்கவும்.", done: true }]);
+        setMessages((m) => [...m, { role: "astro", error: true, text: "பதில் பெற முடியவில்லை. மீண்டும் முயலுங்கள்.", done: true }]);
       }
     } finally {
       setBusy(false);
@@ -137,6 +139,10 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, personName,
         )}
       </header>
 
+      <div className="chat-notice" data-ai-notice>
+        இது தானியங்கி AI உதவியாளர்; மனித ஜோதிடர் அல்ல. பதில்கள் உங்கள் ஜாதகக் கணக்கிலிருந்து உருவாகின்றன — வழிகாட்டலுக்கு மட்டும். மருத்துவம், சட்டம், முதலீடு போன்ற முடிவுகளுக்கு உரிய நிபுணரை அணுகுங்கள்.
+      </div>
+
       <div className="chat-scroll" ref={scrollRef}>
         {messages.map((m, i) => (
           <div key={i} className={`chat-row ${m.role}`}>
@@ -145,6 +151,9 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, personName,
               {m.role === "astro" && !m.done
                 ? <TypingText text={m.text} onDone={() => markDone(i)} />
                 : <span style={{ whiteSpace: "pre-wrap" }}>{m.text}</span>}
+              {m.role === "astro" && m.done && !m.intro && !m.error && onReport && (
+                <ReportLink onReport={(reason, comment) => onReport({ question: m.q || "", answer: m.text, reason, comment, mode: m.mode || "engine" })} />
+              )}
             </div>
           </div>
         ))}
