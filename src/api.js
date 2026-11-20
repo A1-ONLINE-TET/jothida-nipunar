@@ -138,6 +138,21 @@ export async function apiMuhurtaMonth(year, month, geo = null, birthNakIdx = nul
   const { result } = await post("/api/muhurta-month", { year, month, lat: geo?.lat, lon: geo?.lon, birthNakIdx, birthMoonRashi });
   return result || [];
 }
+// ராசி பலன் — "week" | "month" | "year" (கோசாரக் கணக்கு).
+export async function apiRasiPeriod(rashiIdx, period, geo = null, ayanamsaKey = "lahiri") {
+  const { result } = await post("/api/rasi-period", { rashiIdx, period, lat: geo?.lat, lon: geo?.lon, ayanamsaKey });
+  return result;
+}
+// ஒரு ஆண்டின் தமிழ்ப் பண்டிகைகள் → [{ iso, name, basis, tamil }]
+export async function apiFestivals(year) {
+  const { result } = await post("/api/festivals", { year });
+  return result || [];
+}
+// நவகிரக வழிபாட்டுக் குறிப்புகள்.
+export async function apiNavagraha() {
+  const { result } = await post("/api/navagraha", {});
+  return result;
+}
 // யோகினி + அஷ்டோத்தரி தசை.
 export async function apiAltDashas(birth) {
   const { result } = await post("/api/alt-dashas", birth);

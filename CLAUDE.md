@@ -37,13 +37,14 @@ Browser (thin client, src/)  ──Firebase idToken──▶  Cloudflare Worker 
 |------|------|-------------|
 | `src/App.jsx` | **முழு UI + design** (React, styling, screens) | ✅ design வேலைக்கு இதுதான் |
 | `src/components/BottomNav.jsx` | எல்லா பக்கங்களுக்கும் பொதுவான கீழ்ப்பட்டை (5 tabs) | nav மாற்றும்போது |
-| `src/components/ToolsScreens.jsx` | பொதுச் சேவைகள்: எல்லா சேவைகளும், 12 ராசி பலன், எண் கணிதம், பெயர் எழுத்துக்கள் | புதிய கருவி சேர்க்கும்போது |
+| `src/components/ToolsScreens.jsx` | பொதுச் சேவைகள்: எல்லா சேவைகளும், 12 ராசி பலன் (இன்று–ஆண்டு), எண் கணிதம், பெயர் எழுத்துக்கள், பண்டிகைகள், நவகிரக வழிபாடு | புதிய கருவி சேர்க்கும்போது |
 | `src/components/tools-data.js` | பொது அட்டவணைகள்: கௌரி பஞ்சாங்கம், வார சூலம், நட்சத்திர பாத எழுத்துக்கள், எண் கணிதம் | ⚠ ஆதாரத்துடன் சரிபார்த்தவை — மாற்றும்போது மீண்டும் சரிபார் |
 | `src/almanac.js` | client public panchangam re-exports | அரிதாக |
 | `src/api.js` | server bridge | endpoint சேர்க்கும்போது |
 | `src/engine.js` | proprietary engine (server-only) | logic மாற்றும்போது (client-ல் import ❌) |
 | `src/precision.js`, `bhava-phalam.js`, `deep-analysis.js`, `constants.js` | engine helpers (pure) | logic மாற்றம் |
 | `worker/src/*` | Cloudflare Worker (index, compute, prompt, auth, claude) | server logic/endpoints |
+| `worker/src/festivals.js` | தமிழ்ப் பண்டிகை விதிகள் + civil தமிழ்த் தேதி | ⚠ மாற்றினால் `node scripts/test-festivals.mjs` (ஆதாரத் தேதிகளுடன் 4 ஆண்டு ஒப்பீடு) |
 | `index.html`, `public/` | HTML shell, PWA, `_headers` | design/meta |
 
 ## 🎨 Design வேலை எப்படி (இதுதான் அடிக்கடி தேவை)
@@ -70,6 +71,13 @@ Design மாற்றம் secure engine-ஐ தொடாது — பாத�
 - `/api/muhurta-month` — மாதத்தின் ஒவ்வொரு நாளுக்கும் சுப மதிப்பு, பஞ்சகம்; ஜென்ம நட்சத்திரம்/ராசி
   கொடுத்தால் தாரா பலம், சந்திராஷ்டமம் (நாட்காட்டி "முக்கிய நாட்கள்").
 - `/api/alt-dashas` — யோகினி, அஷ்டோத்தரி தசை (தசா tab).
+- `/api/rasi-period` — ராசி பலன் வாரம் / மாதம் / ஆண்டு: அந்தக் காலத்தின் கோசாரக் கணக்கு (கட்டுரை அல்ல).
+- `/api/festivals` — ஓர் ஆண்டின் 24 தமிழ்ப் பண்டிகைகள். விதிகள் `scripts/fixtures/tamil-festivals-ref.json`
+  (Drik Panchang 2025–2028) உடன் பொருந்தியவை மட்டும்; பொருந்தாதவை (மாசி மகம், நவராத்திரி தொடக்கம்,
+  அட்சய திருதியை) வேண்டுமென்றே சேர்க்கப்படவில்லை.
+- `/api/navagraha` — engine-இன் நவகிரக பரிகார அட்டவணை (மந்திரம், கோயில், ரத்தினம், தானம்).
+- `/api/muhurta-month` ஒவ்வொரு நாளுக்கும் civil தமிழ்த் தேதியும் தரும் (சங்கராந்தி அஸ்தமனத்துக்கு முன் = அன்றே
+  மாதப் பிறப்பு). `calcTamilDate` பிறப்புக் கணத்துக்கானது — நாட்காட்டிக்கு அதைப் பயன்படுத்தாதே.
 - JSON-இல் `null` → `Number(null) === 0` ஆகும்; விருப்ப எண் புலங்களை `typeof v === "number"` என்று சரிபார்.
 
 ## 🚀 Deploy அமைப்பு (LIVE)
@@ -98,7 +106,7 @@ Pages + Worker இரண்டையும் மீண்டும் build+dep
 ## 🧪 Commands
 - `npm install` — dependencies (root: client; `worker/`: wrangler)
 - `npm run build` — client build (deploy முன் இதை pass செய்ய வேண்டும்)
-- `npm test` — 130 golden engine tests (engine.js மாற்றினால் இதை ஓட்டு)
+- `npm test` — 130 golden engine tests + 108 பண்டிகைச் சோதனைகள் (engine.js / festivals.js மாற்றினால் இதை ஓட்டு)
 - Worker bundle check: `cd worker && npx wrangler deploy --dry-run`
 
 ## ⚠️ Gotchas

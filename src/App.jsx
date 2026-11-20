@@ -13,7 +13,7 @@ import HomeScreen from "./components/HomeScreen";
 import AdvisoryScreen from "./components/AdvisoryScreen";
 import ChatScreen from "./components/ChatScreen";
 import BottomNav from "./components/BottomNav.jsx";
-import { ServicesScreen, RasiPalanScreen, NumerologyScreen, NameLettersScreen } from "./components/ToolsScreens.jsx";
+import { ServicesScreen, RasiPalanScreen, NumerologyScreen, NameLettersScreen, FestivalsScreen, NavagrahaScreen } from "./components/ToolsScreens.jsx";
 import { NAME_SYLLABLES, VARA_SOOLAM, gowriForDay } from "./components/tools-data.js";
 import { NotebookPen, Share2, Users, Heart, HeartPulse, Briefcase, Coins, GraduationCap, Hourglass, ChevronRight, ChevronDown, FileText, Sparkles, Star, UserRound, Plus, Trash2, Settings } from "lucide-react";
 import { apiAsk, apiAskAI, apiAskDeep } from "./api.js";
@@ -31,6 +31,7 @@ const PAYMENTS_ENABLED = false;
 import {
   apiCompute, apiPredict, apiDaily, apiBacktest, apiEventTiming,
   apiNakBhava, apiPorutham, apiEngine, apiRasiPalan, apiMuhurtaMonth, apiAltDashas,
+  apiRasiPeriod, apiFestivals, apiNavagraha,
 } from "./api.js";
 import { saveProfileCloud, loadProfileCloud, getAuthError } from "./firebase.js";
 import {
@@ -300,8 +301,62 @@ function chartSVGString(planetList, lagnaIdx, chartTitle, isNavamsa=false) {
   </svg>`;
 }
 
-function TraditionalChart({ horoscope, navamsaData, title="ராசி", showNavamsa=true, gulika=null }) {
+function TraditionalChart({ horoscope, navamsaData, title="ராசி", showNavamsa=true, gulika=null, north=false }) {
   const { lagna, placements } = horoscope;
+
+  // ── வட இந்திய (வைர) கட்டம் — வீடுகள் நிலையானவை: 1ஆம் வீடு (லக்னம்) மேல் நடு,
+  //    பின் இடஞ்சுழியாக 2…12. ஒவ்வொரு வீட்டிலும் அதன் ராசி எண் (1 = மேஷம்). ──
+  const renderNorth = (planetList, lagnaIdx, chartTitle, isNavamsa=false) => {
+    const S = 288, q = S/4, h = S/2;
+    const byHouse = {};
+    planetList.forEach(p => {
+      const ri = isNavamsa ? (p.navRashiIdx ?? RASHIS.indexOf(p.navRashi)) : RASHIS.indexOf(p.rashi);
+      if (ri >= 0) { const hs = ((ri - lagnaIdx + 12) % 12) + 1; (byHouse[hs] ||= []).push(P_SHORT[p.ta] || p.ta.slice(0,3)); }
+    });
+    // [கிரகங்கள் மையம் x,y] [ராசி எண் x,y] — வீடு 1..12
+    const POS = [
+      null,
+      [h, q - 6,        h, h - 16],
+      [q, S*0.085,      q, q - 9],
+      [S*0.085, q,      q - 13, q + 4],
+      [q, h - 4,        h - 20, h + 4],
+      [S*0.085, 3*q,    q - 13, 3*q + 4],
+      [q, S*0.915,      q, 3*q + 16],
+      [h, 3*q + 2,      h, h + 24],
+      [3*q, S*0.915,    3*q, 3*q + 16],
+      [S*0.915, 3*q,    3*q + 13, 3*q + 4],
+      [3*q, h - 4,      h + 20, h + 4],
+      [S*0.915, q,      3*q + 13, q + 4],
+      [3*q, S*0.085,    3*q, q - 9],
+    ];
+    const kendra = (n) => n === 1 || n === 4 || n === 7 || n === 10;
+    return (
+      <svg data-north-chart viewBox={`-2 -2 ${S+4} ${S+24}`} style={{width:"100%",maxWidth:300,background:"#fff",borderRadius:4}}>
+        <rect x="0" y="0" width={S} height={S} fill="none" stroke="#35598c" strokeWidth="2.5"/>
+        <line x1="0" y1="0" x2={S} y2={S} stroke="#35598c" strokeWidth="1.2"/>
+        <line x1={S} y1="0" x2="0" y2={S} stroke="#35598c" strokeWidth="1.2"/>
+        <polygon points={`${h},0 ${S},${h} ${h},${S} 0,${h}`} fill="none" stroke="#35598c" strokeWidth="1.2"/>
+        {POS.map((ps, n) => {
+          if (!ps) return null;
+          const [px, py, nx, ny] = ps;
+          const list = byHouse[n] || [];
+          const per = kendra(n) ? 2 : (n === 3 || n === 5 || n === 9 || n === 11) ? 1 : 2; // ஒரு வரியில் எத்தனை
+          const lines = []; for (let i = 0; i < list.length; i += per) lines.push(list.slice(i, i + per).join(" "));
+          const lh = 11, y0 = py - ((lines.length - 1) * lh) / 2 + 3;
+          return (
+            <g key={n}>
+              <text x={nx} y={ny} textAnchor="middle" fill="#a9823c" fontSize="9" fontWeight="700" fontFamily="sans-serif">{((lagnaIdx + n - 1) % 12) + 1}</text>
+              {lines.map((t, i) => (
+                <text key={i} x={px} y={y0 + i*lh} textAnchor="middle" fill="#000" fontSize={lines.length > 3 ? 8 : 9.5} fontWeight="600" fontFamily="'Noto Sans Tamil',sans-serif">{t}</text>
+              ))}
+              {n === 1 && <text x={h} y={q - 28} textAnchor="middle" fill="#c0564f" fontSize="8.5" fontWeight="900" fontFamily="'Noto Sans Tamil',sans-serif">லக்</text>}
+            </g>
+          );
+        })}
+        <text x={h} y={S + 16} textAnchor="middle" fill="#1f3f68" fontSize="11" fontWeight="700" fontFamily="'Noto Sans Tamil',sans-serif">{chartTitle} — லக்னம் {RASHIS[lagnaIdx]} ({lagnaIdx + 1})</text>
+      </svg>
+    );
+  };
   const siPos = [
     {rashi:11,r:0,c:0},{rashi:0,r:0,c:1},{rashi:1,r:0,c:2},{rashi:2,r:0,c:3},
     {rashi:10,r:1,c:0},{rashi:3,r:1,c:3},{rashi:9,r:2,c:0},{rashi:4,r:2,c:3},
@@ -403,11 +458,11 @@ function TraditionalChart({ horoscope, navamsaData, title="ராசி", showNa
   return (
     <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
       <div style={{flex:"1 1 auto",maxWidth:300,minWidth:200}}>
-        {renderChart(placements, lagna, "ராசி")}
+        {north ? renderNorth(placements, lagna, "ராசி") : renderChart(placements, lagna, "ராசி")}
       </div>
       {showNavamsa && navamsaData && (
         <div style={{flex:"1 1 auto",maxWidth:300,minWidth:200}}>
-          {renderChart(navamsaData, navLagna, "நவாம்சம்", true)}
+          {north ? renderNorth(navamsaData, navLagna, "நவாம்சம்", true) : renderChart(navamsaData, navLagna, "நவாம்சம்", true)}
         </div>
       )}
     </div>
@@ -487,7 +542,7 @@ function generateJathagamPDF(formData, horoscope, prediction) {
     </tr>`;
   }).join("");
 
-  const birthTime = formData.tob ? `${formData.tob} ${formData.ampm === "PM" ? "மாலை" : "காலை"}` : "—";
+  const birthTime = formData.tob ? `${formData.tob} ${formData.ampm}` : "—";
   const aiSection = prediction ? `
     <div class="page-break"></div>
     <div class="section" style="border-top:3px double #7b1c1c;padding-top:24px;">
@@ -822,7 +877,7 @@ function markOnboarded() {
   try { localStorage.setItem(ONBOARD_KEY, "1"); } catch (e) { /* storage unavailable — skip */ }
 }
 
-const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8, HOME:9, WELCOME:10, CHAT:11, ADVISORY:12, ACCOUNT:13, SERVICES:14, RASI:15, NUMEROLOGY:16, NAMES:17 };
+const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8, HOME:9, WELCOME:10, CHAT:11, ADVISORY:12, ACCOUNT:13, SERVICES:14, RASI:15, NUMEROLOGY:16, NAMES:17, FESTIVALS:18, NAVAGRAHA:19 };
 
 // முகப்பு கேள்வி அட்டைகள் — தட்டினால் FORM → ஜாதகம் → அந்தப் பகுதிக்கு நேரடி
 const HOME_QUESTIONS = [
@@ -947,6 +1002,9 @@ export default function AstrologyApp() {
   // தற்போது state-இல் உள்ள ஜாதகம் எந்தப் பிறப்பு விவரத்துக்கானது — விவரம்/சுயவிவரம்
   // மாறினால் பழைய ஜாதகம் புதிய பெயருடன் காட்டப்படாமல் மீண்டும் கணக்கிட இது உதவும்.
   const chartKeyRef = useRef("");
+  // கட்ட வடிவம் — தென்னிந்திய (இயல்பு) / வட இந்திய; தேர்வு நினைவில் நிற்கும்
+  const [northChart, setNorthChart] = useState(() => { try { return localStorage.getItem("jn_chart_style") === "north"; } catch (_) { return false; } });
+  const pickChartStyle = (north) => { setNorthChart(north); try { localStorage.setItem("jn_chart_style", north ? "north" : "south"); } catch (_) { /* ignore */ } };
   // தசா tab — விம்சோத்தரி (இயல்பு) | யோகினி | அஷ்டோத்தரி (கேட்கும்போது server கணக்கு)
   const [dashaSystem, setDashaSystem] = useState("vim");
   const [altDashas, setAltDashas] = useState(null);
@@ -1115,6 +1173,14 @@ export default function AstrologyApp() {
   // தற்போதைய ஜாதகம் இருந்தால் அதன் நட்சத்திரம், ராசிக்கு ஏற்ப தனிப்பயன்.
   const [calMuhurta, setCalMuhurta] = useState({ key: "", days: null });
   const [calOpen, setCalOpen] = useState(() => new Set());
+  const [calFestivals, setCalFestivals] = useState({ year: 0, list: [] });
+  useEffect(() => {
+    if (screen !== SCREEN.CALENDAR || calFestivals.year === calYear) return;
+    let alive = true;
+    apiFestivals(calYear).then((list) => { if (alive) setCalFestivals({ year: calYear, list }); }).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen, calYear]);
   useEffect(() => {
     if (screen !== SCREEN.CALENDAR) return;
     const cur = !!(horoscope && chartKeyRef.current === birthKey());
@@ -1591,6 +1657,8 @@ export default function AstrologyApp() {
       case "rasi":        goTo(SCREEN.RASI); break;
       case "numerology":  goTo(SCREEN.NUMEROLOGY); break;
       case "names":       goTo(SCREEN.NAMES); break;
+      case "festivals":   goTo(SCREEN.FESTIVALS); break;
+      case "navagraha":   goTo(SCREEN.NAVAGRAHA); break;
       default: break;
     }
   };
@@ -1823,7 +1891,8 @@ export default function AstrologyApp() {
     const myRashi = chartIsCurrent() ? RASHIS.indexOf(horoscope.moonRashi) : -1;
     const geo = formData.dob ? resolveBirthGeo(formData) : null;
     return <RasiPalanScreen rashis={RASHIS} defaultRashi={myRashi >= 0 ? myRashi : null}
-      fetchPalan={(idx, iso) => apiRasiPalan(idx, iso, geo, ayanamsaKey)} onNav={handleNav} onShare={shareOut} />;
+      fetchPalan={(idx, iso) => apiRasiPalan(idx, iso, geo, ayanamsaKey)}
+      fetchPeriod={(idx, period) => apiRasiPeriod(idx, period, geo, ayanamsaKey)} onNav={handleNav} onShare={shareOut} />;
   }
   if(screen===SCREEN.NUMEROLOGY) return <NumerologyScreen defaultDob={isValidDDMMYYYY(formData.dob) ? formData.dob : ""} onNav={handleNav} />;
   if(screen===SCREEN.NAMES) {
@@ -1831,6 +1900,13 @@ export default function AstrologyApp() {
     return <NameLettersScreen nakshatras={NAKSHATRAS} defaultNak={cur ? Math.max(0, NAKSHATRAS.indexOf(horoscope.nakshatra)) : 0}
       defaultPada={cur ? (horoscope.nakshatraPada || null) : null} onNav={handleNav} />;
   }
+
+  if(screen===SCREEN.FESTIVALS) {
+    // பண்டிகையைத் தட்டினால் நாட்காட்டியில் அந்த நாள் — அன்றைய பஞ்சாங்கம், நல்ல நேரம்
+    const openDate = (iso) => { const [y, m, d] = iso.split("-").map(Number); setCalYear(y); setCalMonth(m - 1); setCalSelected(d); goTo(SCREEN.CALENDAR); };
+    return <FestivalsScreen fetchFestivals={apiFestivals} onNav={handleNav} onOpenDate={openDate} />;
+  }
+  if(screen===SCREEN.NAVAGRAHA) return <NavagrahaScreen fetchNavagraha={apiNavagraha} onNav={handleNav} />;
 
   // ═══════ ACCOUNT — சேமித்த ஜாதகங்கள் + அமைப்புகள் ═══════
   if(screen===SCREEN.ACCOUNT) {
@@ -2221,7 +2297,7 @@ export default function AstrologyApp() {
 
   // ═══════ RESULT — ALL INFO ON ONE PAGE (Professional Software Style) ═══════
   if(screen===SCREEN.RESULT&&horoscope){
-    const birthTime = formData.tob ? `${formData.tob} ${formData.ampm}` : "—";
+    const birthTime = formData.tob ? `${formData.tob} ${formData.ampm === "PM" ? "மாலை" : "காலை"}` : "—";
 
     const downloadPDF = () => {
       const h = horoscope;
@@ -2655,7 +2731,14 @@ ${aiPart}
             </div>
           </div>
           <div style={{...card,marginBottom:10,padding:8}}>
-            <TraditionalChart horoscope={horoscope} navamsaData={navamsaData} title="ராசி" showNavamsa={true} gulika={gulikaData?.rashiIdx ?? null}/>
+            <div style={{display:"flex",gap:6,justifyContent:"center",margin:"4px 0 10px"}}>
+              {[[false,"தென்னிந்திய கட்டம்"],[true,"வட இந்திய கட்டம்"]].map(([v,l])=>(
+                <button key={l} data-chart-style={v?"north":"south"} onClick={()=>pickChartStyle(v)} style={{padding:"6px 14px",borderRadius:999,fontSize: 12.5,fontWeight:northChart===v?700:500,cursor:"pointer",
+                  border:northChart===v?"1px solid #a9823c":"1px solid #e3e8f2",background:northChart===v?"#f6f1e4":"#ffffff",color:northChart===v?"#7d6a3f":"#4a5365"}}>{l}</button>
+              ))}
+            </div>
+            <TraditionalChart horoscope={horoscope} navamsaData={navamsaData} title="ராசி" showNavamsa={true} gulika={gulikaData?.rashiIdx ?? null} north={northChart}/>
+            {northChart && <div style={{fontSize: 11.5,color:"#76819a",textAlign:"center",margin:"6px 8px 4px",lineHeight:1.5}}>மேல் நடு = 1ஆம் வீடு (லக்னம்); இடஞ்சுழியாக 2 முதல் 12 வரை. எண்கள் ராசியைக் குறிக்கும் (1 = மேஷம்).</div>}
           </div>
 
           {/* ═══ 3. PLANETARY POSITIONS TABLE ═══ */}
@@ -5545,9 +5628,16 @@ ${aiPart}
                   </div>
                   <div style={{textAlign:"right"}}>
                     <div style={{fontSize:12,color:"#a9823c"}}>{MONTH_NAMES_TA[calMonth]} {calYear}</div>
-                    <div style={{fontSize:12,color:"#4a5365"}}>{TAMIL_MONTHS[tamilMonthPrevIdx]}/{TAMIL_MONTHS[tamilMonthIdx]}</div>
+                    <div data-tamil-date style={{fontSize:12,color:"#4a5365"}}>{(()=>{ const md = calMuhurta.days ? calMuhurta.days.find(x => x.d === sel.d) : null; return md?.tamil ? `${md.tamil.month} ${md.tamil.day}` : `${TAMIL_MONTHS[tamilMonthPrevIdx]}/${TAMIL_MONTHS[tamilMonthIdx]}`; })()}</div>
                   </div>
                 </div>
+                {(()=>{
+                  const iso = `${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(sel.d).padStart(2,"0")}`;
+                  const fs = calFestivals.year === calYear ? calFestivals.list.filter(f => f.iso === iso) : [];
+                  return fs.length ? (
+                    <div data-day-festival style={{marginTop:8,fontSize: 13.5,fontWeight:700,color:"#99496a"}}>{fs.map(f => f.name).join(" · ")}</div>
+                  ) : null;
+                })()}
                 {(sel.isPournami||sel.isAmavasai||sel.isEkadashi||sel.isPradosham||sel.isChaturthi) && (
                   <div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
                     {sel.isPournami && <span style={{fontSize:11.5,background:"#dcc27e20",color:"#1f3f68",padding:"2px 8px",borderRadius:10,fontWeight:600}}>🌕 பௌர்ணமி</span>}
@@ -5742,7 +5832,25 @@ ${aiPart}
                 {days === null && <div style={{fontSize: 13,color:"#76819a"}}>கணக்கிடப்படுகிறது…</div>}
                 {days && days.length === 0 && <div style={{fontSize: 13,color:"#c0564f"}}>இந்தப் பட்டியலைப் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.</div>}
                 {days && days.length > 0 && (<>
-                  <div style={{fontSize: 12.5,fontWeight:700,color:"#226b66",marginBottom:6}}>விரத & விசேஷ நாட்கள்</div>
+                  {(()=>{
+                    const pre = `${calYear}-${String(calMonth+1).padStart(2,"0")}-`;
+                    const fs = calFestivals.year === calYear ? calFestivals.list.filter(f => f.iso.startsWith(pre)) : [];
+                    return (<>
+                      <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:8,marginBottom:6}}>
+                        <div style={{fontSize: 12.5,fontWeight:700,color:"#99496a"}}>பண்டிகைகள்</div>
+                        <button data-all-festivals onClick={()=>goTo(SCREEN.FESTIVALS)} style={{background:"none",border:"none",padding:0,fontSize: 12.5,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>ஆண்டு முழுவதும் →</button>
+                      </div>
+                      {fs.length === 0 && <div style={{fontSize: 13,color:"#76819a",marginBottom:4}}>இந்த மாதம் முக்கியப் பண்டிகை இல்லை.</div>}
+                      {fs.map((f) => { const d = Number(f.iso.slice(8)); return (
+                        <button key={f.iso + f.name} data-month-festival onClick={()=>setCalSelected(d)} style={{display:"flex",gap:12,width:"100%",textAlign:"left",padding:"7px 0",background:"none",
+                          borderLeft:"none",borderRight:"none",borderBottom:"none",borderTop:"1px solid #f3f5f9",cursor:"pointer",fontSize: 13,lineHeight:1.5}}>
+                          <span style={{width:60,flexShrink:0,fontWeight:700,color:"#27303f"}}>{d} {DAY_SHORT[new Date(calYear, calMonth, d).getDay()]}</span>
+                          <span style={{color:"#99496a",fontWeight:600}}>{f.name}</span>
+                        </button>
+                      ); })}
+                    </>);
+                  })()}
+                  <div style={{fontSize: 12.5,fontWeight:700,color:"#226b66",margin:"14px 0 6px"}}>விரத நாட்கள்</div>
                   {days.filter(x => vratOf(x).length).map((x) => (
                     <button key={x.d} onClick={()=>setCalSelected(x.d)} style={{display:"flex",gap:12,width:"100%",textAlign:"left",padding:"7px 0",background:"none",
                       borderLeft:"none",borderRight:"none",borderBottom:"none",borderTop:"1px solid #f3f5f9",cursor:"pointer",fontSize: 13,lineHeight:1.5}}>

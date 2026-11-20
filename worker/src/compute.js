@@ -26,7 +26,9 @@ import {
   calcDashaSandhi, calcNakshatraBhavaLinks, calcBacktest, calcEventTiming,
   calculate10Porutham, calcDailyLuckyNumbers, GRAHA_FRIENDSHIP,
   calculateYoginiDasha, calculateAshtottariDasha, checkPanchaka, SANI_TRANSIT_EFFECTS,
+  GURU_TRANSIT_EFFECTS, HOUSE_THEMES, PLANET_REMEDIES, DAY_REMEDIES,
 } from "../../src/engine.js";
+import { tamilDatesForMonth } from "./festivals.js";
 
 // Vimshottari dasha for this birth (needed by the daily bundle + prompts).
 export function computeDasha(h, birth) {
@@ -338,6 +340,7 @@ export function computeRasiPalan(rashiIdx, targetDateISO, lat = 13.0827, lon = 8
 // ═══════════════════════════════════════════════════════════════════
 export function computeMonthMuhurta(year, month, lat = 13.0827, lon = 80.2707, birthNakIdx = null, birthMoonRashi = null) {
   const days = new Date(year, month + 1, 0).getDate();
+  const tamil = tamilDatesForMonth(year, month); // சென்னை வழக்கு — civil தமிழ்த் தேதி
   const out = [];
   for (let d = 1; d <= days; d++) {
     const dt = new Date(year, month, d, 6, 0, 0);
@@ -351,7 +354,7 @@ export function computeMonthMuhurta(year, month, lat = 13.0827, lon = 80.2707, b
       d, score: m.score, verdict: m.verdict, vaaram: m.vaaram, tithiName: m.tithiName, tithiIdx: m.tithiIdx,
       paksham: m.tithiIdx <= 15 ? "வளர்பிறை" : "தேய்பிறை",
       nakIdx: m.nakIdx, nakshatra: NAKSHATRAS[m.nakIdx] || "", yogam: m.yogam, isYogaBad: !!m.isYogaBad,
-      moonRashi: h.moonRashi,
+      moonRashi: h.moonRashi, tamil: tamil[d - 1] || null,
       tara, chandrashtama: birthMoonRashi != null && moonRashiIdx >= 0 ? (((moonRashiIdx - birthMoonRashi + 12) % 12) + 1) === 8 : false,
       panchaka: pk && pk.active ? pk.name : null,
     });
@@ -370,4 +373,93 @@ export function computeAltDashas(h, birth) {
   const birthDate = new Date(dY, dM - 1, dD, Number.isFinite(dH) ? dH : 6, Number.isFinite(dMin) ? dMin : 0);
   const slim = (r) => r && r.dashas ? { system: r.system, dashas: r.dashas.map((d) => ({ name: d.name, planet: d.planet || d.name, years: d.years, startDate: d.startDate, endDate: d.endDate, isCurrent: !!d.isCurrent })) } : null;
   return { yogini: slim(calculateYoginiDasha(moonLong, birthDate)), ashtottari: slim(calculateAshtottariDasha(moonLong, birthDate)) };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ராசி பலன் — வாரம் / மாதம் / ஆண்டு. எழுதிய கட்டுரை அல்ல: அந்தக் காலத்தின் உண்மையான
+// கிரக நகர்வை (கோசாரம்) ராசியிலிருந்து எண்ணிக் கணக்கிட்டது.
+// ═══════════════════════════════════════════════════════════════════
+const istToday = () => { const t = new Date(Date.now() + 5.5 * 3600 * 1000); return { y: t.getUTCFullYear(), m: t.getUTCMonth(), d: t.getUTCDate() }; };
+const isoYMD = (y, m, d) => { const x = new Date(Date.UTC(y, m, d)); return `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, "0")}-${String(x.getUTCDate()).padStart(2, "0")}`; };
+const houseFrom = (rashiIdx, planetRashiIdx) => ((planetRashiIdx - rashiIdx + 12) % 12) + 1;
+
+export function computeRasiPeriod(rashiIdx, period, lat = 13.0827, lon = 80.2707, ayanamsaKey = "lahiri") {
+  const { y, m, d } = istToday();
+  const snap = (iso) => {
+    const t = getTodayTranist(lat, lon, new Date(iso + "T06:00:00"), ayanamsaKey);
+    const g = calculateGochara(rashiIdx, t.placements);
+    return { t, g };
+  };
+  const planetRow = (r) => ({ ta: r.ta, rashi: r.rashi, house: r.houseFromMoon, effect: r.effect, theme: HOUSE_THEMES[r.houseFromMoon]?.theme || "" });
+
+  if (period === "year") {
+    // மெதுவான கிரகங்கள் — ஆண்டு முழுவதும் 2 நாள் இடைவெளியில்; ராசி மாறும் நாளைத் துல்லியமாகத் தேடு
+    const SLOW = ["குரு", "சனி", "ராகு", "கேது"];
+    const rashiOn = (iso) => { const t = getTodayTranist(lat, lon, new Date(iso + "T06:00:00"), ayanamsaKey); const o = {}; for (const p of t.placements) if (SLOW.includes(p.ta)) o[p.ta] = RASHIS.indexOf(p.rashi); return o; };
+    const segs = {}; for (const p of SLOW) segs[p] = [];
+    let prev = rashiOn(isoYMD(y, 0, 1));
+    for (const p of SLOW) segs[p].push({ rashiIdx: prev[p], from: isoYMD(y, 0, 1) });
+    const lastDay = Math.round((Date.UTC(y, 11, 31) - Date.UTC(y, 0, 1)) / 86400000);
+    for (let i = 2; i <= lastDay + 1; i += 2) {
+      const k = Math.min(i, lastDay);
+      const cur = rashiOn(isoYMD(y, 0, 1 + k));
+      for (const p of SLOW) {
+        if (cur[p] !== prev[p]) {
+          // மாற்றம் k-1 அல்லது k நாளில் — முந்தைய நாளைச் சோதி
+          const mid = rashiOn(isoYMD(y, 0, k));
+          const changeDay = mid[p] !== prev[p] ? k - 1 : k;
+          const iso = isoYMD(y, 0, 1 + changeDay);
+          segs[p][segs[p].length - 1].to = isoYMD(y, 0, changeDay);
+          segs[p].push({ rashiIdx: cur[p], from: iso });
+        }
+      }
+      prev = cur;
+    }
+    const slow = [];
+    for (const p of SLOW) for (const sg of segs[p]) {
+      const house = houseFrom(rashiIdx, sg.rashiIdx);
+      const table = p === "குரு" ? GURU_TRANSIT_EFFECTS : p === "சனி" ? SANI_TRANSIT_EFFECTS : null;
+      const good = table ? table[house]?.effect === "சுபம்" : [3, 6, 11].includes(house);
+      slow.push({ ta: p, rashi: RASHIS[sg.rashiIdx], house, from: sg.from, to: sg.to || isoYMD(y, 11, 31), effect: good ? "good" : "bad",
+        desc: table ? (table[house]?.desc || "") : "", theme: HOUSE_THEMES[house]?.theme || "",
+        sadeSati: p === "சனி" ? calcSadeSati(rashiIdx, sg.rashiIdx) : null });
+    }
+    slow.sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0));
+    return { rashi: RASHIS[rashiIdx], period, year: y, slow };
+  }
+
+  // வாரம் (7 நாள்) / மாதம் (30 நாள்) — இன்றிலிருந்து
+  const span = period === "month" ? 30 : 7;
+  const days = [], ingresses = [];
+  let prevRashi = null, first = null;
+  for (let i = 0; i < span; i++) {
+    const iso = isoYMD(y, m, d + i);
+    const { t, g } = snap(iso);
+    if (i === 0) first = g;
+    const moon = g.results.find((r) => r.ta === "சந்திரன்");
+    days.push({ iso, dayName: t.dayName, mood: g.overallMood, chandrashtama: !!g.isChandrashtama, moonRashi: moon?.rashi || "", moonHouse: moon?.houseFromMoon || null });
+    const cur = {}; for (const r of g.results) cur[r.ta] = r.rashi;
+    if (prevRashi) for (const r of g.results) {
+      if (r.ta !== "சந்திரன்" && prevRashi[r.ta] !== r.rashi) ingresses.push({ iso, ...planetRow(r) });
+    }
+    prevRashi = cur;
+  }
+  const counts = { good: 0, neutral: 0, caution: 0 };
+  for (const x of days) counts[x.mood] = (counts[x.mood] || 0) + 1;
+  return {
+    rashi: RASHIS[rashiIdx], period, from: days[0].iso, to: days[days.length - 1].iso, days, counts,
+    bestDays: days.filter((x) => x.mood === "good" && !x.chandrashtama).map((x) => x.iso),
+    chandrashtama: days.filter((x) => x.chandrashtama).map((x) => x.iso),
+    planets: first.results.filter((r) => r.ta !== "சந்திரன்").map(planetRow),
+    ingresses,
+  };
+}
+
+// நவகிரக வழிபாட்டுக் குறிப்புகள் — engine-இன் பரிகார அட்டவணை (ரத்தினம், மந்திரம், கோயில், தானம்…)
+export function navagrahaReference() {
+  return {
+    planets: Object.entries(PLANET_REMEDIES).map(([ta, r]) => ({ ta, gem: r.gem, metal: r.metal, mantra: r.mantra, mantraCount: r.mantraCount,
+      temple: r.temple, day: r.day, color: r.color, food: r.food, donate: r.donate, flower: r.flower, direction: r.direction })),
+    weekdays: [0, 1, 2, 3, 4, 5, 6].map((i) => DAY_REMEDIES[i] || null),
+  };
 }

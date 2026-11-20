@@ -12,8 +12,9 @@ import { rateLimit } from "./ratelimit.js";
 import {
   buildHoroscope, computeFullReport, computeDasha, computeDailyBundle,
   computeBacktest, computeEventTiming, computeNakBhava, computePorutham,
-  computeRasiPalan, computeMonthMuhurta, computeAltDashas,
+  computeRasiPalan, computeMonthMuhurta, computeAltDashas, computeRasiPeriod, navagrahaReference,
 } from "./compute.js";
+import { computeFestivals } from "./festivals.js";
 import { buildBirthPrompt, buildDailyPrompt, currentDashaInfo } from "./prompt.js";
 import { classifyQuestion, buildAskAnswer } from "./ask.js";
 import { createOrder, verifyPayment } from "./pay.js";
@@ -257,6 +258,29 @@ export default {
         const okGeo = typeof lat === "number" && typeof lon === "number" && Number.isFinite(lat) && lat >= -90 && lat <= 90 && Number.isFinite(lon) && lon >= -180 && lon <= 180;
         const ayanamsaKey = AYANAMSAS.has(body?.ayanamsaKey) ? body.ayanamsaKey : "lahiri";
         return json(env, origin, { result: computeRasiPalan(rashiIdx, targetDateISO, okGeo ? lat : 13.0827, okGeo ? lon : 80.2707, ayanamsaKey) });
+      }
+
+      // ── /api/rasi-period — ராசி பலன்: வாரம் / மாதம் / ஆண்டு (கோசாரக் கணக்கு) ──
+      if (url.pathname === "/api/rasi-period") {
+        const rashiIdx = body?.rashiIdx;
+        if (typeof rashiIdx !== "number" || !Number.isInteger(rashiIdx) || rashiIdx < 0 || rashiIdx > 11) return json(env, origin, { error: "bad rashiIdx" }, 400);
+        const period = ["week", "month", "year"].includes(body?.period) ? body.period : "week";
+        const lat = body?.lat, lon = body?.lon;
+        const okGeo = typeof lat === "number" && typeof lon === "number" && Number.isFinite(lat) && lat >= -90 && lat <= 90 && Number.isFinite(lon) && lon >= -180 && lon <= 180;
+        const ayanamsaKey = AYANAMSAS.has(body?.ayanamsaKey) ? body.ayanamsaKey : "lahiri";
+        return json(env, origin, { result: computeRasiPeriod(rashiIdx, period, okGeo ? lat : 13.0827, okGeo ? lon : 80.2707, ayanamsaKey) });
+      }
+
+      // ── /api/festivals — ஒரு ஆண்டின் தமிழ்ப் பண்டிகைகள் (சரிபார்க்கப்பட்ட விதிகள்) ──
+      if (url.pathname === "/api/festivals") {
+        const year = body?.year;
+        if (typeof year !== "number" || !Number.isInteger(year) || year < 1950 || year > 2100) return json(env, origin, { error: "bad year" }, 400);
+        return json(env, origin, { result: computeFestivals(year) });
+      }
+
+      // ── /api/navagraha — நவகிரக வழிபாட்டுக் குறிப்புகள் ──
+      if (url.pathname === "/api/navagraha") {
+        return json(env, origin, { result: navagrahaReference() });
       }
 
       // ── /api/muhurta-month — மாத சுப நாட்கள் (+ தாரா பலம் / சந்திராஷ்டமம்) ──
