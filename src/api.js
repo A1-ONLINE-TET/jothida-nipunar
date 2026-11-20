@@ -91,20 +91,20 @@ export async function apiDaily(birth, targetDateISO = null, withText = true) {
 }
 
 // Rule-based astrologer chat — chart-grounded Tamil answer (no LLM).
-export async function apiAsk(birth, question, lastTopic = "") {
-  const { category, label, answer } = await post("/api/ask", { ...birth, question, lastTopic });
+export async function apiAsk(birth, question, lastTopic = "", persona = "") {
+  const { category, label, answer } = await post("/api/ask", { ...birth, question, lastTopic, persona });
   return { category, label, answer };
 }
 
 // Hybrid: engine துல்லியம் + Gemini இயல்பு மொழி. key இல்லையேல் engine பதில் (ai:false).
-export async function apiAskAI(birth, question, lastTopic = "") {
-  const { category, label, answer, ai } = await post("/api/ask-ai", { ...birth, question, lastTopic });
+export async function apiAskAI(birth, question, lastTopic = "", persona = "") {
+  const { category, label, answer, ai } = await post("/api/ask-ai", { ...birth, question, lastTopic, persona });
   return { category, label, answer, ai };
 }
 
 // FREE deep answer (no payment) — engine findings phrased deeply by the LLM.
-export async function apiAskDeep(birth, question, lastTopic = "") {
-  const { answer, ai } = await post("/api/ask-deep", { ...birth, question, lastTopic });
+export async function apiAskDeep(birth, question, lastTopic = "", persona = "") {
+  const { answer, ai } = await post("/api/ask-deep", { ...birth, question, lastTopic, persona });
   return { answer, ai };
 }
 

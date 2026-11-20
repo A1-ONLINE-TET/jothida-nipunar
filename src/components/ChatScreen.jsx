@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import "./chat.css";
 import { ReportLink } from "./ReportBox.jsx";
 
@@ -29,12 +29,6 @@ function TypingText({ text, onDone }) {
   );
 }
 
-const SUGGESTIONS = [
-  "என் திருமணம் எப்போது நடக்கும்?",
-  "தொழிலில் முன்னேற்றம் உண்டா?",
-  "பண வரவு எப்படி இருக்கும்?",
-  "ஆரோக்கியம் பற்றி சொல்லுங்கள்",
-];
 
 // Answers must be plain strings before they become a message — a non-string
 // (object/number) would throw when rendered as a React child or sliced by the
@@ -47,16 +41,17 @@ function asText(v, fallback) {
   return s.trim() ? s : fallback;
 }
 
-export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, personName, initialQuestion = "", astrologerName = "ஜோதிட குரு", astrologerTagline = "AI உதவியாளர் · மனித ஜோதிடர் அல்ல", premiumLabel = "ஆழமான AI பதில்" }) {
+// persona = src/components/personas.js-இன் ஓர் உதவியாளர் (பெயர், படம், அறிமுகம், மாதிரிக் கேள்விகள்).
+// அதன் key தொடக்கத் தலைப்பாகச் சேவையகத்துக்குச் செல்கிறது — தெளிவான தலைப்பு இல்லாத கேள்வி
+// ("எப்போது?") அந்த உதவியாளரின் துறையிலேயே பதிலளிக்கப்படும்.
+export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, persona, personName, initialQuestion = "", premiumLabel = "ஆழமான AI பதில்" }) {
   const [aiMode, setAiMode] = useState(false); // AI இயல்பு மொழி ON/OFF
-  const [messages, setMessages] = useState([
-    { role: "astro", intro: true, text: `வணக்கம்${personName ? " " + personName : ""}. நான் ${astrologerName} — உங்கள் ஜாதகக் கணக்கை வைத்துப் பதிலளிக்கும் AI உதவியாளர்; மனித ஜோதிடர் அல்ல. திருமணம், தொழில், பணம், ஆரோக்கியம், கல்வி என எதைப் பற்றியும் கேளுங்கள்.`, done: true },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef(null);
   const autoSentRef = useRef(false);
-  const lastTopicRef = useRef(""); // follow-up நினைவு — முந்தைய தலைப்பு
+  const lastTopicRef = useRef(persona.key === "general" ? "" : persona.key); // follow-up நினைவு — தொடக்கம்: உதவியாளரின் துறை
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -117,10 +112,10 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, p
       <header className="chat-top">
         <button className="chat-back" onClick={onBack} aria-label="பின்">‹</button>
         <div className="chat-astro">
-          <div className="chat-ava"><Sparkles size={20} strokeWidth={1.8} /></div>
-          <div>
-            <div className="chat-ttl">{astrologerName}</div>
-            <div className="chat-sub">{astrologerTagline}</div>
+          <img className="chat-ava-img" src={persona.image} alt="" width="42" height="42" />
+          <div style={{ minWidth: 0 }}>
+            <div className="chat-ttl">{persona.name}</div>
+            <div className="chat-sub">AI உதவியாளர்</div>
           </div>
         </div>
         {askAI && (
@@ -144,29 +139,39 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, p
       </div>
 
       <div className="chat-scroll" ref={scrollRef}>
+        <div className="chat-hero" data-persona-hero={persona.key}>
+          <img src={persona.image} alt="" width="104" height="104" />
+          <div className="chat-hero-name">{persona.name}</div>
+          <div className="chat-hero-role">{persona.role}</div>
+          <p className="chat-hero-intro">
+            வணக்கம்{personName ? " " + personName : ""}. நான் {persona.name} — உங்கள் ஜாதகக் கணக்கை வைத்துப் பதிலளிக்கும் AI உதவியாளர்; மனித ஜோதிடர் அல்ல. {persona.intro}
+          </p>
+        </div>
         {messages.map((m, i) => (
           <div key={i} className={`chat-row ${m.role}`}>
+            {m.role === "astro" && <img className="chat-row-ava" src={persona.image} alt="" width="28" height="28" />}
             <div className={`chat-bubble ${m.role} ${m.premium ? "premium" : ""}`}>
               {m.premium && <div className="chat-premium-tag">AI ஆழ்ந்த பதில்</div>}
               {m.role === "astro" && !m.done
                 ? <TypingText text={m.text} onDone={() => markDone(i)} />
                 : <span style={{ whiteSpace: "pre-wrap" }}>{m.text}</span>}
-              {m.role === "astro" && m.done && !m.intro && !m.error && onReport && (
-                <ReportLink onReport={(reason, comment) => onReport({ question: m.q || "", answer: m.text, reason, comment, mode: m.mode || "engine" })} />
+              {m.role === "astro" && m.done && !m.error && onReport && (
+                <ReportLink onReport={(reason, comment) => onReport({ question: m.q || "", answer: m.text, reason, comment, mode: `${m.mode || "engine"}:${persona.key}` })} />
               )}
             </div>
           </div>
         ))}
         {busy && (
           <div className="chat-row astro">
+            <img className="chat-row-ava" src={persona.image} alt="" width="28" height="28" />
             <div className="chat-bubble astro chat-typing">
               <span className="dot" /><span className="dot" /><span className="dot" />
             </div>
           </div>
         )}
-        {messages.length <= 1 && (
-          <div className="chat-suggest">
-            {SUGGESTIONS.map((s) => (
+        {messages.length === 0 && !busy && (
+          <div className="chat-suggest" data-suggestions>
+            {persona.suggestions.map((s) => (
               <button key={s} onClick={() => send(s)}>{s}</button>
             ))}
           </div>

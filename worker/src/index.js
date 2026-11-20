@@ -20,7 +20,7 @@ import { computeRemedyPlan } from "./remedy.js";
 import { buildBirthPrompt, buildDailyPrompt, currentDashaInfo } from "./prompt.js";
 import { classifyQuestion, buildAskAnswer, topicLabel } from "./ask.js";
 import { createOrder, verifyPayment } from "./pay.js";
-import { buildGeminiAstrologerPrompt } from "./gemini.js";
+import { buildGeminiAstrologerPrompt, isPersona } from "./gemini.js";
 import { callClaude } from "./claude.js";
 import { callGemini } from "./gemini.js";
 import { screenQuestion, withSafetyNote, answerIsUnsafe } from "./safety.js";
@@ -147,14 +147,17 @@ async function safeAI(env, prompt, maxTokens) {
 }
 
 // ஆலோசனைக் கேள்விக்கான பதில் — பாதுகாப்பு விதிகளுடன். mode: "engine" | "ai" | "deep".
-async function answerQuestion(env, birth, question, lastTopic, mode) {
+// persona = client-இன் உதவியாளர் key (ask.js தலைப்புகளில் ஒன்று) — சரிபார்த்த பின் மட்டும் பயன்படும்:
+// தெளிவான தலைப்பு இல்லாத கேள்விக்கு அதன் துறை; AI நடையில் அதன் பேச்சுத் தொனி.
+async function answerQuestion(env, birth, question, lastTopic, mode, personaRaw = "") {
+  const persona = isPersona(personaRaw) ? personaRaw : "general";
   const screened = screenQuestion(question);
   if (screened) return { category: "general", label: "", answer: screened.answer, ai: false, safety: screened.kind };
   const swiss = await fetchSwiss(env, birth);
   const h = buildHoroscope(birth, swiss);
   h._name = birth.name;
   const dashaData = computeDasha(h, birth);
-  const category = classifyQuestion(question, lastTopic);
+  const category = classifyQuestion(question, lastTopic || (persona !== "general" ? persona : ""));
   const label = topicLabel(category);
   const engineFindings = buildAskAnswer(h, dashaData, question, { category, name: birth.name }).answer;
   let answer = engineFindings, ai = false;
@@ -164,7 +167,7 @@ async function answerQuestion(env, birth, question, lastTopic, mode) {
       // as an astrologer would. Facts come from the engine. An answer that breaks
       // the safety rules is dropped in favour of the engine's own wording.
       const deep = mode === "deep";
-      const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings, deep });
+      const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings, deep, persona });
       const text = await callAI(env, prompt, deep ? 6000 : 4000);
       if (text && text.trim() && !answerIsUnsafe(text)) { answer = text.trim(); ai = true; }
     } catch (_) { /* fall back to engine findings */ }
@@ -386,7 +389,7 @@ export default {
         const question = clampStr(body?.question, 300);
         const lastTopic = clampStr(body?.lastTopic, 40);
         const out = await answerQuestion(env, birth, question, lastTopic,
-          url.pathname === "/api/ask" ? "engine" : url.pathname === "/api/ask-ai" ? "ai" : "deep");
+          url.pathname === "/api/ask" ? "engine" : url.pathname === "/api/ask-ai" ? "ai" : "deep", clampStr(body?.persona, 20));
         return json(env, origin, out);
       }
 
@@ -411,7 +414,7 @@ export default {
         const birth = normalizeBirth(body);
         const question = clampStr(body?.question, 300);
         const lastTopic = clampStr(body?.lastTopic, 40);
-        const out = await answerQuestion(env, birth, question, lastTopic, "deep");
+        const out = await answerQuestion(env, birth, question, lastTopic, "deep", clampStr(body?.persona, 20));
         return json(env, origin, out);
       }
 

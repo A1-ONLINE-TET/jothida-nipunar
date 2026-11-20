@@ -15,6 +15,7 @@ import HomeScreen from "./components/HomeScreen";
 // முகப்பு உடனே தேவை; மற்ற திரைகள் திறக்கும்போது ஏற்றப்படும் (முதல் திறப்பு வேகமாக).
 const AdvisoryScreen = lazy(() => import("./components/AdvisoryScreen"));
 const ChatScreen = lazy(() => import("./components/ChatScreen"));
+import { personaFor, PERSONA_FOR_AREA } from "./components/personas.js";
 import BottomNav from "./components/BottomNav.jsx";
 import { kizhamai } from "./components/tools-data.js";
 import { tamilCivilDate, dayPanchang } from "./components/panchang-lite.js";
@@ -1028,6 +1029,8 @@ export default function AstrologyApp() {
   // சேமித்த ஜாதகங்கள் — lazy initializer: localStorage read ஒருமுறை மட்டும்
   const [profiles, setProfiles] = useState(loadProfiles);
   const [chatInitialQ, setChatInitialQ] = useState(""); // ஆலோசனை தலைப்பிலிருந்து chat-க்கு auto கேள்வி
+  const [chatPersona, setChatPersona] = useState("general"); // அரட்டையில் உள்ள AI உதவியாளர் (personas.js key)
+  const [chatFrom, setChatFrom] = useState("advisory");      // அரட்டை எங்கிருந்து திறந்தது — "பின்" அங்கேயே திரும்பும்
 
   // ஜாதகம் வெற்றிகரமாக உருவானதும் அழைக்கப்படும் — அதே நபர் (பெயர்+தேதி+நேரம்)
   // ஏற்கனவே இருந்தால் புதுப்பிக்கும்; இல்லையேல் பட்டியலின் முதலில் சேர்க்கும்.
@@ -1878,14 +1881,15 @@ export default function AstrologyApp() {
   }
 
   if(screen===SCREEN.ADVISORY) {
-    const pickTopic = (question) => {
+    // உதவியாளரைத் தட்டினால் அவருடன் அரட்டை. பிறப்பு விவரம் இல்லையெனில் முதலில் FORM.
+    const pickPersona = (key) => {
       const ready = formData.name && formData.dob;
-      const go = () => { setChatInitialQ(question || ""); goTo(SCREEN.CHAT); };
+      const go = () => { setChatPersona(key); setChatFrom("advisory"); setChatInitialQ(""); goTo(SCREEN.CHAT); };
       if (ready) go();
       else if (profiles[0]) { loadProfile(profiles[0]); go(); }
       else goTo(SCREEN.FORM);
     };
-    return <AdvisoryScreen onBack={()=>goTo(SCREEN.HOME)} onPick={pickTopic} onNav={handleNav} astrologerName="ஜோதிட குரு" />;
+    return <AdvisoryScreen onPick={pickPersona} onNav={handleNav} />;
   }
 
   // ═══════ CHAT — rule-based ஜோதிடர் உரையாடல் (LLM இல்லை) ═══════
@@ -1901,20 +1905,21 @@ export default function AstrologyApp() {
     };
     // காட்சிக்கு மட்டும்: பதிலில் உள்ள emoji-களை நீக்கு (engine வெளியீடு மாறாது).
     const clean = (r) => (r && typeof r.answer === "string" ? { ...r, answer: stripEmoji(r.answer).replace(/[ \t]+\n/g, "\n").trim() } : r);
-    const askAstrologer = async (question, lastTopic = "") => clean(await apiAsk(chatBirth(), question, lastTopic));
-    const askAstrologerAI = async (question, lastTopic = "") => clean(await apiAskAI(chatBirth(), question, lastTopic));
+    const persona = personaFor(chatPersona);
+    const askAstrologer = async (question, lastTopic = "") => clean(await apiAsk(chatBirth(), question, lastTopic, persona.key));
+    const askAstrologerAI = async (question, lastTopic = "") => clean(await apiAskAI(chatBirth(), question, lastTopic, persona.key));
     const askPremiumAstrologer = async (question) => {
       const birth = chatBirth();
       // FREE mode: deep answer with no payment. When payments are on,
       // route through Razorpay checkout as before.
-      if (!PAYMENTS_ENABLED) return clean(await apiAskDeep(birth, question));
+      if (!PAYMENTS_ENABLED) return clean(await apiAskDeep(birth, question, "", persona.key));
       return payThenAskPremium({ birth, question, name: formData.name, amountPaise: 4900 });
     };
-    return <ChatScreen ask={askAstrologer} askAI={askAstrologerAI} askPremium={askPremiumAstrologer} personName={formData.name || ""}
-      initialQuestion={chatInitialQ} astrologerName="ஜோதிட குரு"
+    return <ChatScreen key={persona.key} persona={persona} ask={askAstrologer} askAI={askAstrologerAI} askPremium={askPremiumAstrologer} personName={formData.name || ""}
+      initialQuestion={chatInitialQ}
       onReport={(r) => submitReport({ ...r, kind: "answer", app: APP_VERSION })}
       premiumLabel={PAYMENTS_ENABLED ? "ஆழமான AI பதில் · ₹49" : "ஆழமான AI பதில்"}
-      onBack={()=>{ setChatInitialQ(""); goTo(SCREEN.ADVISORY); }} />;
+      onBack={()=>{ setChatInitialQ(""); goTo(chatFrom === "result" && chartIsCurrent() ? SCREEN.RESULT : SCREEN.ADVISORY); }} />;
   }
 
   // ═══════ SPLASH ═══════
@@ -3259,6 +3264,23 @@ ${aiPart}
                     )}
                   </div>
                 )}
+
+                {/* இந்தப் பகுதிக்குரிய AI உதவியாளரிடம் மேலும் கேட்க */}
+                {(()=>{
+                  const ps = personaFor(PERSONA_FOR_AREA[area.key]);
+                  return (
+                    <button data-area-ask={ps.key} onClick={()=>{ setChatPersona(ps.key); setChatFrom("result"); setChatInitialQ(""); goTo(SCREEN.CHAT); }}
+                      style={{display:"flex",alignItems:"center",gap:10,width:"100%",marginTop:10,padding:"9px 10px",minHeight:56,textAlign:"left",cursor:"pointer",
+                        background:"#f5f7fb",border:"1px solid #e3e8f2",borderRadius:12,fontFamily:"inherit"}}>
+                      <img src={ps.image} alt="" width="38" height="38" loading="lazy" style={{width:38,height:38,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>
+                      <span style={{flex:1,minWidth:0}}>
+                        <span style={{display:"block",fontSize: 13.5,fontWeight:700,color:"#27303f",lineHeight:1.4}}>{ps.name} · AI</span>
+                        <span style={{display:"block",fontSize: 12,color:"#76819a",lineHeight:1.5}}>இந்தப் பகுதியைப் பற்றி மேலும் கேட்க</span>
+                      </span>
+                      <ChevronRight size={18} color="#a3adc2" style={{flexShrink:0}}/>
+                    </button>
+                  );
+                })()}
               </div>
             );
           })}

@@ -35,7 +35,8 @@ async function staleWhileRevalidate(cacheName, request) {
   const cache = await caches.open(cacheName);
   const hit = await cache.match(request, MATCH);
   const refresh = fetch(request).then((res) => {
-    if (res && (res.ok || res.type === "opaque")) cache.put(request, res.clone());
+    const html = res && res.type !== "opaque" && (res.headers.get("content-type") || "").includes("text/html");
+    if (res && (res.ok || res.type === "opaque") && !html) cache.put(request, res.clone());
     return res;
   }).catch(() => null);
   return hit || (await refresh) || Response.error();
