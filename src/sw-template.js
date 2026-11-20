@@ -71,7 +71,9 @@ self.addEventListener("fetch", (event) => {
         const hit = await cache.match(req, MATCH);
         if (hit) return hit;
         const res = await fetch(req);
-        if (res.ok) cache.put(req, res.clone());
+        // இல்லாத கோப்புக்கு hosting app-இன் HTML-ஐத் திருப்பும் — அதை JS/CSS ஆகச் சேமிக்கக் கூடாது.
+        const type = res.headers.get("content-type") || "";
+        if (res.ok && !type.includes("text/html")) cache.put(req, res.clone());
         return res;
       })());
       return;
