@@ -5,6 +5,7 @@
 // in the actual chart (house occupants, house lord, karaka, running dasha).
 // ═══════════════════════════════════════════════════════════════════
 
+import { civilNow } from "../../src/engine.js";
 const RASHIS = ["மேஷம்","ரிஷபம்","மிதுனம்","கடகம்","சிம்மம்","கன்னி","துலாம்","விருச்சிகம்","தனுசு","மகரம்","கும்பம்","மீனம்"];
 // sign index → ruling planet (Tamil)
 const RASHI_LORD = ["செவ்வாய்","சுக்கிரன்","புதன்","சந்திரன்","சூரியன்","புதன்","சுக்கிரன்","செவ்வாய்","குரு","சனி","சனி","குரு"];
@@ -108,7 +109,7 @@ const inHouse = (h, n) => h.placements.filter((p) => p.house === n && p.ta !== "
 // current Mahadasha + Bhukti lord names from the dasha chain
 function currentLords(dashaData) {
   if (!dashaData || !dashaData.dashas) return { md: null, ad: null };
-  const now = new Date();
+  const now = civilNow();
   const md = dashaData.dashas.find((d) => now >= new Date(d.startDate) && now < new Date(d.endDate));
   if (!md) return { md: null, ad: null };
   const ad = md.antardashas?.find((a) => now >= new Date(a.startDate) && now < new Date(a.endDate));

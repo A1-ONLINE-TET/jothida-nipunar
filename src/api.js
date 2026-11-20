@@ -23,8 +23,17 @@ function onAccessDenied() {
 
 // Revive ISO date strings back into Date objects, recursively.
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+// The Worker runs in UTC and builds its Dates from wall-clock values (birth time, dasha
+// dates, "today") — so the ISO string's UTC fields ARE the intended wall-clock reading.
+// Rebuild them as local wall-clock Dates; `new Date(iso)` would shift everything by the
+// device's UTC offset (+5:30 in India: a dasha ending at 20:00 showed the next day's date).
 export function reviveDates(v) {
-  if (typeof v === "string") return ISO_DATE.test(v) ? new Date(v) : v;
+  if (typeof v === "string") {
+    if (!ISO_DATE.test(v)) return v;
+    const d = new Date(v);
+    if (isNaN(d)) return v;
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds());
+  }
   if (Array.isArray(v)) return v.map(reviveDates);
   if (v && typeof v === "object") {
     const o = {};

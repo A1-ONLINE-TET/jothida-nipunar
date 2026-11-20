@@ -101,6 +101,7 @@ async function searchPlacesOSM(query) {
       displayName: d.display_name,
       lat: parseFloat(d.lat),
       lon: parseFloat(d.lon),
+      countryCode: (d.address?.country_code || "").toLowerCase(), // நேர மண்டலத்தை ஊகிக்க (இந்தியாவுக்கு வெளியே பிறப்பு)
       // Short label: prefer city/town/village + state/country for a cleaner dropdown line
       shortLabel: [
         d.address?.city || d.address?.town || d.address?.village || d.address?.county || d.name,
@@ -217,11 +218,25 @@ function enrichPlacementsWithStates(placements) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// CIVIL TIME ZONE CONTEXT
+// Birth times and "today" are wall-clock times of one civil zone. It defaults to IST
+// (+5.5) and is switched per computation with setEngineTimezone() (birth abroad, or the
+// +6:30 Indian war time of 1942–45). civilNow() returns the current moment as a Date whose
+// LOCAL getters (getHours, getDate, getDay…) read that zone's wall clock, whatever zone the
+// process itself runs in — the server (Cloudflare Workers) runs in UTC, so plain
+// `new Date()` there is 5½ hours behind IST and shows yesterday's date until 05:30 IST.
+// ═══════════════════════════════════════════════════════════════════
+let _tz = 5.5;
+function setEngineTimezone(tz) { _tz = (typeof tz === "number" && Number.isFinite(tz) && tz >= -12 && tz <= 14) ? tz : 5.5; }
+function getEngineTimezone() { return _tz; }
+function civilNow() { const n = new Date(); return new Date(n.getTime() + (_tz * 60 + n.getTimezoneOffset()) * 60000); }
+
+// ═══════════════════════════════════════════════════════════════════
 // VEDIC HOROSCOPE ENGINE — Jean Meeus Astronomical Algorithms
 // Sun: ~0.01° accuracy | Moon: ~0.5° (6 perturbation terms)
 // Lagna: Local Sidereal Time method | Ayanamsa: Lahiri
 // ═══════════════════════════════════════════════════════════════════
-function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false, ayanamsaKey="lahiri") {
+function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false, ayanamsaKey="lahiri", tzOffset=undefined) {
   // Parse Y/M/D directly from "YYYY-MM-DD" string — avoids the classic JS bug where
   // new Date("YYYY-MM-DD") parses as UTC midnight, then local getters (getDate()) can
   // shift the day backward by one for users in negative-UTC-offset timezones (e.g. Americas).
@@ -232,14 +247,17 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false
   // midnight births (00:00-00:59) into 6 AM charts, shifting the lagna ~90°.
   if (tob) { const p = tob.split(':').map(Number); birthH = Number.isFinite(p[0]) ? p[0] : 6; birthM = Number.isFinite(p[1]) ? p[1] : 0; }
   const hourDec = birthH + birthM / 60;
-  const utcHour = hourDec - 5.5; // IST to UTC
+  const tzHours = Number.isFinite(tzOffset) ? tzOffset : _tz; // civil zone of this wall-clock time (default IST)
+  const utcHour = hourDec - tzHours; // local civil time → UTC
 
   // ── Julian Day ──
   let jy = year, jm = month;
   if (jm <= 2) { jy--; jm += 12; }
   const A = Math.floor(jy / 100), B = 2 - A + Math.floor(A / 4);
   const JD = Math.floor(365.25 * (jy + 4716)) + Math.floor(30.6001 * (jm + 1)) + day + utcHour / 24 + B - 1524.5;
-  const T = (JD - 2451545.0) / 36525; // Centuries from J2000
+  // Ephemeris argument is Dynamical Time (TT = UT + ΔT); sidereal time below stays on UT (JD).
+  // ΔT is 24–75 s over 1900–2050 — ignoring it moved the Moon by up to 0.011°.
+  const T = (JD + deltaTSeconds(year + (month - 0.5) / 12) / 86400 - 2451545.0) / 36525; // Centuries from J2000 (TT)
 
   const rad = Math.PI / 180, deg = 180 / Math.PI;
   const norm = (a) => ((a % 360) + 360) % 360;
@@ -259,40 +277,34 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false
   const Mr = M_sun * rad;
   const C_sun = (1.914602 - 0.004817 * T) * Math.sin(Mr)
     + 0.019993 * Math.sin(2 * Mr) + 0.000289 * Math.sin(3 * Mr);
-  const sunLongTropical = norm(L0 + C_sun);
+  // −0.00569° = annual aberration (apparent position). Nutation is not added: it shifts
+  // every tropical longitude and the true ayanamsa equally, so it cancels in sidereal longitude.
+  const sunLongTropical = norm(L0 + C_sun - 0.00569);
   const sunLong = norm(sunLongTropical - ayanamsa);
   const sunRashi = Math.floor(sunLong / 30);
   const sunDeg = Math.floor(sunLong % 30);
 
-  // ══════ MOON (Meeus Ch. 47 — 18 principal terms) ══════
-  // Upgraded from 6 to 18 terms: verified vs Swiss Ephemeris over 300 random
-  // dates (1950-2030) — max error 0.05° (was 3.15°), mean 0.014° (was 1.6°).
-  // Moon accuracy drives rashi, nakshatra, pada and dasha balance.
-  const Lm = norm(218.3164477 + 481267.88123421 * T);  // Mean longitude
-  const Dm = norm(297.8501921 + 445267.1114034 * T);   // Mean elongation
-  const Mm = norm(134.9633964 + 477198.8675055 * T);   // Mean anomaly (Moon)
-  const Fm = norm(93.2720950 + 483202.0175233 * T);    // Argument of latitude
-  const Om = norm(125.0446 - 1934.1363 * T);           // Long. ascending node
+  // ══════ MOON (Meeus Ch. 47 — full 59-term longitude series + 3 additive terms) ══════
+  // Cross-checked against an independent ephemeris (astronomy-engine) over 3000 random
+  // births 1930–2039: mean error 0.002°, max 0.006° (the earlier 18-term series: 0.014° / 0.065°).
+  // Moon accuracy drives rashi, nakshatra, pada and the dasha balance.
+  const Lm = norm(218.3164477 + 481267.88123421 * T - 0.0015786 * T * T + T * T * T / 538841);   // Mean longitude
+  const Dm = norm(297.8501921 + 445267.1114034 * T - 0.0018819 * T * T + T * T * T / 545868);    // Mean elongation
+  const Mm = norm(134.9633964 + 477198.8675055 * T + 0.0087414 * T * T + T * T * T / 69699);     // Mean anomaly (Moon)
+  const Fm = norm(93.2720950 + 483202.0175233 * T - 0.0036539 * T * T - T * T * T / 3526000);    // Argument of latitude
+  const Om = norm(125.0445479 - 1934.1362891 * T + 0.0020754 * T * T + T * T * T / 467441);      // Long. ascending node (mean)
 
-  const moonCorr =
-    + 6.288774 * Math.sin(Mm * rad)
-    + 1.274027 * Math.sin((2*Dm - Mm) * rad)
-    + 0.658314 * Math.sin(2*Dm * rad)
-    + 0.213618 * Math.sin(2*Mm * rad)
-    - 0.185116 * Math.sin(M_sun * rad)
-    - 0.114332 * Math.sin(2*Fm * rad)
-    + 0.058793 * Math.sin((2*Dm - 2*Mm) * rad)
-    + 0.057066 * Math.sin((2*Dm - M_sun - Mm) * rad)
-    + 0.053322 * Math.sin((2*Dm + Mm) * rad)
-    + 0.045758 * Math.sin((2*Dm - M_sun) * rad)
-    - 0.040923 * Math.sin((M_sun - Mm) * rad)
-    - 0.034720 * Math.sin(Dm * rad)
-    - 0.030383 * Math.sin((M_sun + Mm) * rad)
-    + 0.015327 * Math.sin((2*Dm - 2*Fm) * rad)
-    - 0.012528 * Math.sin((2*Fm + Mm) * rad)
-    - 0.010980 * Math.sin((2*Fm - Mm) * rad)
-    + 0.010675 * Math.sin((4*Dm - Mm) * rad)
-    + 0.010034 * Math.sin(3*Mm * rad);
+  const E_ecc = 1 - 0.002516 * T - 0.0000074 * T * T; // Earth-orbit eccentricity factor for terms with M
+  let moonSum = 0;
+  for (let k = 0; k < MOON_LON_TERMS.length; k++) {
+    const t = MOON_LON_TERMS[k];
+    const arg = (t[0] * Dm + t[1] * M_sun + t[2] * Mm + t[3] * Fm) * rad;
+    const ef = t[1] === 0 ? 1 : (Math.abs(t[1]) === 1 ? E_ecc : E_ecc * E_ecc);
+    moonSum += t[4] * ef * Math.sin(arg);
+  }
+  const A1m = norm(119.75 + 131.849 * T), A2m = norm(53.09 + 479264.290 * T);
+  moonSum += 3958 * Math.sin(A1m * rad) + 1962 * Math.sin((Lm - Fm) * rad) + 318 * Math.sin(A2m * rad);
+  const moonCorr = moonSum / 1e6;
 
   const moonLongTropical = norm(Lm + moonCorr);
   const moonLong = norm(moonLongTropical - ayanamsa);
@@ -326,12 +338,15 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false
   // then taking the direction from Earth to planet. This replaces an earlier formula
   // that returned heliocentric longitude directly, which was wrong by up to ~82°
   // (landing planets in the wrong sign). Verified to ~0.3° vs Swiss Ephemeris.
-  const geoPlanetLong = (planetKey) => {
-    const p = keplerHeliocentric(planetKey, T);
-    const e = keplerHeliocentric("Earth", T);
-    const geoLongTropical = norm(Math.atan2(p.y - e.y, p.x - e.x) * deg);
-    return norm(geoLongTropical - ayanamsa);
-  };
+  // JPL Keplerian elements are referred to the mean ecliptic & equinox of J2000, so the
+  // longitude they give is a J2000 longitude. The ayanamsa subtracted below is the
+  // ayanamsa OF DATE, so the longitude must first be precessed to the equinox of date
+  // (general precession in longitude, IAU 2006: 5028.796195"·T + 1.1054348"·T²).
+  // Without this the five planets were off by 1.397° per century from J2000
+  // (≈0.7° for a 1950 birth, ≈0.37° for 2026 transits).
+  // Light-time + annual aberration ("planetary aberration"): the planet is seen where the
+  // Earth–planet vector pointed one light-time ago (0.0057755 day per AU), up to 0.02° for Mercury.
+  const geoPlanetLong = (planetKey) => norm(norm(geocentricPlanetLongJ2000(planetKey, T) + precessionFromJ2000(T)) - ayanamsa);
 
   const marsLong    = geoPlanetLong("Mars");
   const mercuryLong = geoPlanetLong("Mercury");
@@ -339,22 +354,21 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false
   const venusLong   = geoPlanetLong("Venus");
   const saturnLong  = geoPlanetLong("Saturn");
 
-  // Rahu — True Node (mean node + oscillation correction)
-  // Mean longitude of ascending node (verified: matches Swiss MEAN_NODE exactly)
-  const rahuMeanLong = norm(125.0446 - 1934.1363 * T);
-  // True-node oscillation: the principal term follows 2×(node − Sun) — the half
-  // eclipse-year (173.3d) harmonic — NOT the Moon-node angle the previous formula
-  // used. 3-term series least-squares fitted against Swiss Ephemeris TRUE_NODE
-  // over 2000 dates (1940-2040): max error 0.50° (old formula was off up to 3.4°).
-  const Om_r = rahuMeanLong * rad;
-  const Ls = norm(280.4665 + 36000.7698 * T) * rad; // mean Sun longitude
-  const Lm2 = Lm * rad; // mean Moon longitude (already computed above)
-  const F_node = Lm2 - Om_r; // Moon's argument of latitude
-  const trueNodeCorr =
-    - 1.4976 * Math.sin(2 * (Om_r - Ls))
-    + 0.0196 * Math.sin(4 * (Om_r - Ls))
-    + 0.1190 * Math.sin(2 * F_node);
-  const rahuLong = norm(rahuMeanLong + trueNodeCorr - ayanamsa);
+  // Rahu — True (osculating) Node = mean node + periodic terms.
+  // The first five terms are Meeus' true-node series (Astronomical Algorithms ch. 47);
+  // the remaining twelve were least-squares fitted against the Moon's osculating node from an
+  // independent ephemeris (astronomy-engine, 1900–2100): mean error 0.018°, max 0.052°
+  // (the earlier 3-term series: 0.135° / 0.545°).
+  const rahuMeanLong = Om;
+  let trueNodeCorr = -0.00051;
+  for (let k = 0; k < TRUE_NODE_TERMS.length; k++) {
+    const t = TRUE_NODE_TERMS[k];
+    trueNodeCorr += t[4] * Math.sin((t[0] * Dm + t[1] * M_sun + t[2] * Mm + t[3] * Fm) * rad);
+  }
+  // Indian panchangams (Thirukkanitha, the Indian Astronomical Ephemeris) tabulate the MEAN
+  // node, and the published Rahu–Ketu peyarchi dates follow it; the true node can differ by
+  // up to 1.8° (≈ 10 days of peyarchi date). NODE_TYPE selects which one the chart uses.
+  const rahuLong = norm(rahuMeanLong + (NODE_TYPE === "true" ? trueNodeCorr : 0) - ayanamsa);
   const ketuLong = norm(rahuLong + 180);
 
   const allPlanetLongs = [sunLong, moonLong, marsLong, mercuryLong, jupiterLong, venusLong, saturnLong, rahuLong, ketuLong];
@@ -393,13 +407,9 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false
   // Retrograde: compare geocentric longitude with +1 day (retrograde = geocentric
   // longitude decreasing). Uses the same heliocentric→geocentric method as above.
   {
-    const T2 = (JD + 1 - 2451545.0) / 36525;
+    const T2 = T + 1 / 36525;
     const ayanamsa2 = _ayanFn(T2); // same ayanamsa system as the natal chart
-    const geoNext = (planetKey) => {
-      const pp = keplerHeliocentric(planetKey, T2);
-      const ee = keplerHeliocentric("Earth", T2);
-      return norm(norm(Math.atan2(pp.y - ee.y, pp.x - ee.x) * deg) - ayanamsa2);
-    };
+    const geoNext = (planetKey) => norm(norm(geocentricPlanetLongJ2000(planetKey, T2) + precessionFromJ2000(T2)) - ayanamsa2);
     const nextDayLongs = {
       "செவ்வாய்":  geoNext("Mars"),
       "புதன்":     geoNext("Mercury"),
@@ -428,7 +438,9 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false
   const tithiIdx = Math.floor(tithiAngle / 12);
   const TITHIS = ["பிரதமை","த்விதியை","திருதியை","சதுர்த்தி","பஞ்சமி","ஷஷ்டி","சப்தமி",
     "அஷ்டமி","நவமி","தசமி","ஏகாதசி","த்வாதசி","திரயோதசி","சதுர்தசி","பௌர்ணமி/அமாவாசை"];
-  const tithiName = TITHIS[tithiIdx % 15];
+  // 15ஆம் திதி: வளர்பிறையில் பௌர்ணமி, தேய்பிறையில் அமாவாசை (முன்பு இரண்டுக்கும் ஒரே
+  // "பௌர்ணமி/அமாவாசை" பெயர் — அமாவாசையன்று பௌர்ணமிக்கான குறிப்பு காட்டப்பட்டது).
+  const tithiName = tithiIdx === 14 ? "பௌர்ணமி" : tithiIdx === 29 ? "அமாவாசை" : TITHIS[tithiIdx % 15];
   const paksham = tithiIdx < 15 ? "சுக்லபக்ஷம் (வளர்பிறை)" : "கிருஷ்ணபக்ஷம் (தேய்பிறை)";
 
   // ── Yogam (Sun + Moon / 13.333) ──
@@ -457,7 +469,7 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false
   let horaLagna=null, ghatiLagna=null, arudhaLagna=null, upapadaLagna=null, charaKarakas=null;
   if (!lightweight) {
     const birthMin = birthH * 60 + birthM;
-    const { sunrise: sr } = calcSunriseSunset(new Date(year, month-1, day), lat, lon, 5.5);
+    const { sunrise: sr } = calcSunriseSunset(new Date(year, month-1, day), lat, lon, tzHours);
     const srMin = sr.decimal * 60;
     horaLagna = calcHoraLagna(sunLong, birthMin, srMin);
     ghatiLagna = calcGhatiLagna(sunLong, birthMin, srMin);
@@ -533,7 +545,7 @@ const RASHI_LUCKY = [
 function calcDailyLuckyNumbers(birthMoonRashiIdx, todayTithiName, todayNakIdx, todayWeekday) {
   const tithiList = ["பிரதமை","த்விதியை","திருதியை","சதுர்த்தி","பஞ்சமி","ஷஷ்டி","சப்தமி",
     "அஷ்டமி","நவமி","தசமி","ஏகாதசி","த்வாதசி","திரயோதசி","சதுர்தசி","பௌர்ணமி/அமாவாசை"];
-  const tithiIdx = tithiList.indexOf(todayTithiName);
+  const tithiIdx = (todayTithiName === "பௌர்ணமி" || todayTithiName === "அமாவாசை") ? 14 : tithiList.indexOf(todayTithiName);
   const t = tithiIdx >= 0 ? tithiIdx : 0;
   const base = RASHI_LUCKY[birthMoonRashiIdx] ? RASHI_LUCKY[birthMoonRashiIdx].nums : [1,5,9];
 
@@ -588,7 +600,7 @@ function calculateDasha(moonLongitude, birthDate) {
   // எல்லா புக்தி அதிபதிகளும் தேதிகளும் தவறாக இருந்தன.)
   const YEAR_MS = 365.25 * 24 * 3600000;
   const notionalStartMs = bd.getTime() - (lord.years - balanceYears) * YEAR_MS;
-  const now = new Date();
+  const now = civilNow();
   let startIdx = lordIdx;
   for (let i = 0; i < 9; i++) {
     const idx = (startIdx + i) % 9;
@@ -759,7 +771,7 @@ function calculateAshtottariDasha(moonLongitude, birthDate) {
 
   const dashas = [];
   let currentDate = new Date(birthDate);
-  const now = new Date();
+  const now = civilNow();
 
   // 2 சுழற்சிகள் (216 ஆண்டு) — வயதானவர்களுக்கும் current dasha கிடைக்க
   for (let i = 0; i < 16; i++) {
@@ -787,7 +799,7 @@ const YOGINI_LORDS = [
   { name:"மங்களா",  en:"Mangala",  planet:"சந்திரன்",  years:1, symbol:"☽" },
   { name:"பிங்களா", en:"Pingala",  planet:"சூரியன்",   years:2, symbol:"☉" },
   { name:"தன்யா",   en:"Dhanya",   planet:"குரு",      years:3, symbol:"♃" },
-  { name:"பிராம்மி", en:"Bhramari", planet:"செவ்வாய்",  years:4, symbol:"♂" },
+  { name:"பிராமரி", en:"Bhramari", planet:"செவ்வாய்",  years:4, symbol:"♂" },
   { name:"பத்ரிகா", en:"Bhadrika", planet:"புதன்",     years:5, symbol:"☿" },
   { name:"உல்கா",   en:"Ulka",     planet:"சனி",       years:6, symbol:"♄" },
   { name:"சித்தா",  en:"Siddha",   planet:"சுக்கிரன்", years:7, symbol:"♀" },
@@ -809,7 +821,7 @@ function calculateYoginiDasha(moonLongitude, birthDate) {
 
   const dashas = [];
   let currentDate = new Date(birthDate);
-  const now = new Date();
+  const now = civilNow();
 
   // 3 சுழற்சிகள் (108 ஆண்டு) — யோகினி 36 ஆண்டுக்கு மேல் மீண்டும் சுழல்வதால்
   // (இல்லையேல் ~36 வயதுக்கு மேல் current dasha ஏதும் காட்டாது)
@@ -989,7 +1001,7 @@ function calcCharaDasha(lagnaRashiIdx, placements, birthDateObj) {
   const forward = isOdd(lagnaRashiIdx);
   const seq = [];
   for (let i = 0; i < 12; i++) seq.push(forward ? (lagnaRashiIdx + i) % 12 : (lagnaRashiIdx - i + 12) % 12);
-  let cursor = birthDateObj ? new Date(birthDateObj) : new Date();
+  let cursor = birthDateObj ? new Date(birthDateObj) : civilNow();
   const dashas = seq.map(s => {
     const years = signYears(s);
     const start = new Date(cursor);
@@ -997,7 +1009,7 @@ function calcCharaDasha(lagnaRashiIdx, placements, birthDateObj) {
     cursor = end;
     return { rashi: s, rashiName: RASHIS[s], years, startDate: start, endDate: end };
   });
-  const now = new Date();
+  const now = civilNow();
   const current = dashas.find(d => now >= d.startDate && now < d.endDate);
   return { dashas, direction: forward ? "நேர் (zodiacal)" : "மாறு (reverse)", currentRashi: current ? current.rashiName : null };
 }
@@ -1072,7 +1084,7 @@ function calcVarshaphala(natalHoro, dobISO, lat, lon, targetYear, ayanamsaKey = 
 // ═══════════════════════════════════════════════════════════════════
 function calcPrashnaChart(lat, lon) {
   const pad = (n) => String(n).padStart(2, '0');
-  const now = new Date();
+  const now = civilNow();
   const iso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   const tob = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   const h = generateHoroscope(iso, tob, lat, lon, false);
@@ -1122,7 +1134,7 @@ function calcUpapadaLagna(lagnaRashiIdx, placements) {
 const KARAKA_NAMES = [
   { ta:"ஆத்மகாரகன்", en:"Atmakaraka", meaning:"ஆன்மாவின் குறிப்பான் — வாழ்க்கையின் நோக்கம்" },
   { ta:"அமாத்யகாரகன்", en:"Amatyakaraka", meaning:"ஆலோசகன் — தொழில், வழிகாட்டி" },
-  { ta:"பாதிரிகாரகன்", en:"Bhratrikaraka", meaning:"சகோதரன் — உடன்பிறப்புகள்" },
+  { ta:"பிராத்ருகாரகன்", en:"Bhratrikaraka", meaning:"சகோதரன் — உடன்பிறப்புகள்" },
   { ta:"மாத்ருகாரகன்", en:"Matrikaraka", meaning:"தாய் — தாய் வழி உறவுகள்" },
   { ta:"புத்ரகாரகன்", en:"Putrakaraka", meaning:"மகன்/மகள் — குழந்தைகள்" },
   { ta:"ஞாதிகாரகன்", en:"Gnatikaraka", meaning:"உறவினர் — எதிரிகள், நோய்" },
@@ -1451,9 +1463,10 @@ const RAJJU_NAMES = ["பாத ரஜ்ஜு","கடி ரஜ்ஜு","�
 // வேதை ஜோடிகள் — classical அட்டவணை: அசுவினி–கேட்டை, பரணி–அனுஷம்,
 // கார்த்திகை–விசாகம், ரோகிணி–சுவாதி, மிருகசீரிடம்–அவிட்டம், திருவாதிரை–திருவோணம்,
 // புனர்பூசம்–உத்திராடம், பூசம்–பூராடம், ஆயில்யம்–மூலம், மகம்–ரேவதி,
-// பூரம்–உத்திரட்டாதி, உத்திரம்–பூரட்டாதி, அஸ்தம்–சதயம்; சித்திரைக்கு வேதை இல்லை.
+// பூரம்–உத்திரட்டாதி, உத்திரம்–பூரட்டாதி, அஸ்தம்–சதயம்.
 // (பழைய "mirror" அமைப்பு 13-இல் 9 ஜோடிகளில் தவறாக இருந்தது.)
-const VEDHA_PAIRS = [[0,17],[1,16],[2,15],[3,14],[4,22],[5,21],[6,20],[7,19],[8,18],[9,26],[10,25],[11,24],[12,23]];
+// மிருகசீரிடம் – சித்திரை – அவிட்டம் மூன்றும் ஒன்றுக்கொன்று வேதை (தமிழ்ப் பொருத்த மரபு).
+const VEDHA_PAIRS = [[0,17],[1,16],[2,15],[3,14],[4,22],[4,13],[13,22],[5,21],[6,20],[7,19],[8,18],[9,26],[10,25],[11,24],[12,23]];
 
 function calculate10Porutham(nak1, nak2, rashi1, rashi2) {
   const results = [];
@@ -1605,7 +1618,7 @@ function calculateGochara(birthMoonRashi, todayPlacements) {
 
 // Get today's panchangam + transit — reuses the Jean Meeus engine for TODAY's date
 function getTodayTranist(lat=13.0827, lon=80.2707, targetDate=null, ayanamsaKey="lahiri") {
-  const today = targetDate || new Date();
+  const today = targetDate || civilNow();
   // Use LOCAL date components (not toISOString, which is UTC-based and would
   // incorrectly report YESTERDAY's date for IST users between 12:00–5:29 AM,
   // since UTC lags IST by 5:30 hours).
@@ -1619,7 +1632,7 @@ function getTodayTranist(lat=13.0827, lon=80.2707, targetDate=null, ayanamsaKey=
   // transit Lahiri-இல் வந்து கலப்பு-ஒப்பீடு ஆகாமல் இருக்க
   const h = generateHoroscope(dob, `${hh}:${mm}`, lat, lon, false, ayanamsaKey);
   const dayNames = ["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"];
-  const realNow = new Date();
+  const realNow = civilNow();
   const isOtherDate = today.toDateString() !== realNow.toDateString();
   return {
     ...h,
@@ -1680,6 +1693,7 @@ const TITHI_GUIDANCE = [
   { name:"திரயோதசி", note:"சிவ வழிபாட்டிற்கு ஏற்றது", activity:"பிரதோஷம் என்றால் சிவன் கோவில் செல்லவும்" },
   { name:"சதுர்தசி", note:"கவனமாக இருக்க வேண்டிய நாள்", activity:"சர்ச்சைகளைத் தவிர்க்கவும்" },
   { name:"பௌர்ணமி", note:"முழு நிலவு — மிக சுப நாள்", activity:"வழிபாடு, தானம், நல்ல காரியங்களுக்கு சிறந்த நாள்" },
+  { name:"அமாவாசை", note:"முன்னோர் வழிபாட்டுக்கு உரிய நாள்", activity:"தர்ப்பணம், அன்னதானம் செய்யலாம்; புதிய சுப காரியங்களைத் தவிர்க்கவும்" },
 ];
 
 function getPersonalizedRemedy(rashiIdx, dayOfWeek, isChandrashtama, tithiName) {
@@ -1696,7 +1710,7 @@ function getPersonalizedRemedy(rashiIdx, dayOfWeek, isChandrashtama, tithiName) 
 // the genuinely time-varying (hour-to-hour) part of Vedic daily timing.
 // Default location: Chennai (13.08°N, 80.27°E) — pass lat/lon for other cities.
 // ═══════════════════════════════════════════════════════════════════
-function calcSunriseSunset(date, lat=13.0827, lon=80.2707, tzOffset=5.5) {
+function calcSunriseSunset(date, lat=13.0827, lon=80.2707, tzOffset=_tz) {
   const rad = Math.PI/180, deg = 180/Math.PI;
   const start = new Date(date.getFullYear(), 0, 0);
   const N = Math.floor((date - start) / 86400000);
@@ -1729,7 +1743,7 @@ const RAHU_KALAM_SEG  = {0:8, 1:2, 2:7, 3:5, 4:6, 5:4, 6:3};
 const YAMAGANDAM_SEG  = {0:5, 1:4, 2:3, 3:2, 4:1, 5:7, 6:6};
 const KULIGAI_SEG     = {0:7, 1:6, 2:5, 3:4, 4:3, 5:2, 6:1};
 
-function calcMuhurtham(date, lat=13.0827, lon=80.2707, tzOffset=5.5) {
+function calcMuhurtham(date, lat=13.0827, lon=80.2707, tzOffset=_tz) {
   const { sunrise, sunset } = calcSunriseSunset(date, lat, lon, tzOffset);
   const dayLenMin = (sunset.decimal - sunrise.decimal) * 60;
   const segMin = dayLenMin / 8;
@@ -1763,7 +1777,7 @@ const HORA_CYCLE = ["சனி","குரு","செவ்வாய்","ச�
 const HORA_SYMBOLS = {"சனி":"♄","குரு":"♃","செவ்வாய்":"♂","சூரியன்":"☉","சுக்கிரன்":"♀","புதன்":"☿","சந்திரன்":"☽"};
 const DAY_LORD_BY_WEEKDAY = ["சூரியன்","சந்திரன்","செவ்வாய்","புதன்","குரு","சுக்கிரன்","சனி"]; // JS getDay 0-6
 
-function calcCurrentHorai(now, lat=13.0827, lon=80.2707, tzOffset=5.5) {
+function calcCurrentHorai(now, lat=13.0827, lon=80.2707, tzOffset=_tz) {
   const { sunrise, sunset } = calcSunriseSunset(now, lat, lon, tzOffset);
 
   const nowMin = now.getHours()*60 + now.getMinutes() + now.getSeconds()/60;
@@ -2397,7 +2411,7 @@ const BAV_RULES = {
     "சனி":[3,5,6,12], "லக்னம்":[1,2,4,5,6,7,9,10,11]
   },
   "சுக்கிரன்": {
-    "சூரியன்":[8,11,12], "சந்திரன்":[1,2,3,4,5,8,9,11,12], "செவ்வாய்":[3,4,6,9,11,12],
+    "சூரியன்":[8,11,12], "சந்திரன்":[1,2,3,4,5,8,9,11,12], "செவ்வாய்":[3,5,6,9,11,12],
     "புதன்":[3,5,6,9,11], "குரு":[5,8,9,10,11], "சுக்கிரன்":[1,2,3,4,5,8,9,10,11],
     "சனி":[3,4,5,8,9,10,11], "லக்னம்":[1,2,3,4,5,8,9,11]
   },
@@ -2837,7 +2851,7 @@ function detectChevvaiDosham(placements, lagnaIdx) {
     marsRashi: mars.rashi,
     marsHouseFromLagna, marsHouseFromMoon, marsHouseFromVenus,
     severityText: severity >= 3 ? "முழு தோஷம்" : severity === 2 ? "பகுதி தோஷம்" : "லேசான தோஷம்",
-    remedy: "செவ்வாய் தோஷ நிவர்த்தி: செவ்வாய்க்கிழமை விரதம், சுப்பிரமணியர் வழிபாடு, பவள மோதிரம் அணிதல்"
+    remedy: "செவ்வாய் தோஷ நிவர்த்தி: செவ்வாய்க்கிழமை விரதம், சுப்பிரமணியர் வழிபாடு, கந்த சஷ்டி கவசம் பாராயணம்"
   };
 }
 
@@ -3151,8 +3165,8 @@ const BALADI_SEQ = [
   {name:"பால அவஸ்தை",   pct:25,  desc:"குழந்தை நிலை — பலன் மெல்ல, தாமதமாக வெளிப்படும்"},
   {name:"குமார அவஸ்தை", pct:50,  desc:"இளமை நிலை — பாதி பலன்"},
   {name:"யுவ அவஸ்தை",   pct:100, desc:"வாலிப நிலை — முழு பலன் தரும்"},
-  {name:"விருத்த அவஸ்தை",pct:40,  desc:"முதுமை நிலை — பலன் குறைவு"},
-  {name:"மிருத அவஸ்தை",  pct:10,  desc:"இறுதி நிலை — பலன் மிக அற்பம்"}
+  {name:"விருத்த அவஸ்தை",pct:12,  desc:"முதுமை நிலை — பலன் மிகக் குறைவு"},
+  {name:"மிருத அவஸ்தை",  pct:5,   desc:"இறுதி நிலை — பலன் மிக அற்பம்"}
 ];
 function calcAvasthas(placements) {
   return placements.filter(p => CLASSICAL_7.includes(p.ta)).map(p => {
@@ -3360,7 +3374,7 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
     return out;
   };
   const samples = [];
-  const now = new Date();
+  const now = civilNow();
   for (let k = 0; k < 438; k++) {
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + k * 10);
     const t = transitAt(d);
@@ -3743,7 +3757,7 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
 // தசா சந்தி (DASHA SANDHI) — இரு தசைகள்/புக்திகள் மாறும் இடைக்காலம்.
 // மகா தசை மாற்றம் ±30 நாள், புக்தி மாற்றம் ±10 நாள் எச்சரிக்கை.
 // ═══════════════════════════════════════════════════════════════════
-function calcDashaSandhi(dashaData, now = new Date()) {
+function calcDashaSandhi(dashaData, now = civilNow()) {
   if (!dashaData || !dashaData.dashas) return null;
   const md = dashaData.dashas.find(d => now >= d.startDate && now < d.endDate);
   if (!md) return null;
@@ -3773,7 +3787,7 @@ function calcGulikaPosition(dobISO, tob, lat, lon, ayanamsaKey = "lahiri") {
   try {
     const [y, m, d] = dobISO.split('-').map(Number);
     const dateObj = new Date(y, m - 1, d);
-    const { sunrise, sunset } = calcSunriseSunset(dateObj, lat, lon, 5.5);
+    const { sunrise, sunset } = calcSunriseSunset(dateObj, lat, lon, _tz);
     let [bh, bm] = (tob || "06:00").split(':').map(Number);
     // hour 0 (12 AM) is falsy — Number.isFinite guard, not ||
     const birthDec = (Number.isFinite(bh) ? bh : 6) + (Number.isFinite(bm) ? bm : 0) / 60;
@@ -3786,7 +3800,7 @@ function calcGulikaPosition(dobISO, tob, lat, lon, ayanamsaKey = "lahiri") {
     const isPostMidnight = !isDay && birthDec < sunrise.decimal;
     if (isPostMidnight) wd = (wd + 6) % 7;
     const nightBaseDate = isPostMidnight ? new Date(y, m - 1, d - 1) : dateObj;
-    const nightSunset = isPostMidnight ? calcSunriseSunset(nightBaseDate, lat, lon, 5.5).sunset : sunset;
+    const nightSunset = isPostMidnight ? calcSunriseSunset(nightBaseDate, lat, lon, _tz).sunset : sunset;
     const startLordIdx = isDay ? wd : (wd + 4) % 7; // இரவு: பகல் அதிபதியின் 5ஆம் கிரகம்
     let satSeg = -1;
     for (let i = 0; i < 7; i++) { if (WEEK[(startLordIdx + i) % 7] === "சனி") { satSeg = i; break; } }
@@ -4114,7 +4128,7 @@ function calcBacktest(topicKey, eventDate, deps) {
     let startD;
     if (dobISO) { const [by, bm, bd] = dobISO.split('-').map(Number); startD = new Date(by + (topic.minAge || 15), bm - 1, bd); }
     else startD = new Date(eventDate.getFullYear() - 15, 0, 1);
-    const endD = new Date();
+    const endD = civilNow();
     if (startD >= endD) return null;
     const N = 48;
     const step = (endD.getTime() - startD.getTime()) / N;
@@ -4194,7 +4208,7 @@ function calcEventTiming(topicKey, deps) {
   const weights = buildActivationWeights(topicKey, placements, lagnaIdx, functionalNat).weights;
 
   // ═══ 3. தசா windows (இன்று → +12 ஆண்டு) ═══
-  const now = new Date();
+  const now = civilNow();
   const horizon = new Date(now.getFullYear() + 12, now.getMonth(), now.getDate());
   const [by, bm, bd] = (dobISO || "2000-01-01").split('-').map(Number);
   const minAgeDate = new Date(by + topic.minAge, bm - 1, bd);
@@ -4352,7 +4366,7 @@ function calcSequenceLinkages(placements, lagnaIdx, functionalNat, dashaData) {
   const findP = (ta) => placements.find(p => p.ta === ta);
   const houseOf = (p) => ((p.rashiIdx - lagnaIdx + 12) % 12) + 1;
   const drishti = calcGrahaDrishti(placements);
-  const now = new Date();
+  const now = civilNow();
 
   // நடப்பு + அடுத்த மகா தசைகள் — இணைப்பு எப்போது செயல்படும் என்று சொல்ல
   const upcomingMDs = (dashaData?.dashas || []).filter(d => d.endDate > now).slice(0, 3);
@@ -4646,6 +4660,87 @@ const ORBITAL_ELEMENTS = {
   "Jupiter": { a:[5.20288700,-0.00011607], e:[0.04838624,-0.00013253], I:[1.30439695,-0.00183714], L:[34.39644051,3034.74612775], peri:[14.72847983,0.21252668], node:[100.47390909,0.20469106] },
   "Saturn":  { a:[9.53667594,-0.00125060], e:[0.05386179,-0.00050991], I:[2.48599187,0.00193609], L:[49.95424423,1222.49362201], peri:[92.59887831,-0.41897216], node:[113.66242448,-0.28867794] }
 };
+// ΔT = TT − UT in seconds (Espenak & Meeus polynomial fits, NASA eclipse site). y = decimal year.
+function deltaTSeconds(y) {
+  let t;
+  if (y < 1900) { t = (y - 1820) / 100; return -20 + 32 * t * t; }
+  if (y < 1920) { t = y - 1900; return -2.79 + 1.494119 * t - 0.0598939 * t * t + 0.0061966 * t * t * t - 0.000197 * t * t * t * t; }
+  if (y < 1941) { t = y - 1920; return 21.20 + 0.84493 * t - 0.076100 * t * t + 0.0020936 * t * t * t; }
+  if (y < 1961) { t = y - 1950; return 29.07 + 0.407 * t - t * t / 233 + t * t * t / 2547; }
+  if (y < 1986) { t = y - 1975; return 45.45 + 1.067 * t - t * t / 260 - t * t * t / 718; }
+  if (y < 2005) { t = y - 2000; return 63.86 + 0.3345 * t - 0.060374 * t * t + 0.0017275 * t * t * t + 0.000651814 * t * t * t * t + 0.00002373599 * t * t * t * t * t; }
+  if (y < 2050) { t = y - 2000; return 62.92 + 0.32217 * t + 0.005589 * t * t; }
+  t = (y - 1820) / 100; return -20 + 32 * t * t - 0.5628 * (2150 - y);
+}
+
+// Meeus, Astronomical Algorithms, Table 47.A — periodic terms for the Moon's longitude.
+// [D, M, M', F, coefficient in 1e-6 degree]
+const MOON_LON_TERMS = [
+  [0,0,1,0,6288774],[2,0,-1,0,1274027],[2,0,0,0,658314],[0,0,2,0,213618],[0,1,0,0,-185116],[0,0,0,2,-114332],
+  [2,0,-2,0,58793],[2,-1,-1,0,57066],[2,0,1,0,53322],[2,-1,0,0,45758],[0,1,-1,0,-40923],[1,0,0,0,-34720],
+  [0,1,1,0,-30383],[2,0,0,-2,15327],[0,0,1,2,-12528],[0,0,1,-2,10980],[4,0,-1,0,10675],[0,0,3,0,10034],
+  [4,0,-2,0,8548],[2,1,-1,0,-7888],[2,1,0,0,-6766],[1,0,-1,0,-5163],[1,1,0,0,4987],[2,-1,1,0,4036],
+  [2,0,2,0,3994],[4,0,0,0,3861],[2,0,-3,0,3665],[0,1,-2,0,-2689],[2,0,-1,2,-2602],[2,-1,-2,0,2390],
+  [1,0,1,0,-2348],[2,-2,0,0,2236],[0,1,2,0,-2120],[0,2,0,0,-2069],[2,-2,-1,0,2048],[2,0,1,-2,-1773],
+  [2,0,0,2,-1595],[4,-1,-1,0,1215],[0,0,2,2,-1110],[3,0,-1,0,-892],[2,1,1,0,-810],[4,-1,-2,0,759],
+  [0,2,-1,0,-713],[2,2,-1,0,-700],[2,1,-2,0,691],[2,-1,0,-2,596],[4,0,1,0,549],[0,0,4,0,537],
+  [4,-1,0,0,520],[1,0,-2,0,-487],[2,1,0,-2,-399],[0,0,2,-2,-381],[1,1,1,0,351],[3,0,-2,0,-340],
+  [4,0,-3,0,330],[2,-1,2,0,327],[0,2,1,0,-323],[1,1,-1,0,299],[2,0,3,0,294],
+];
+// Which lunar node Rahu/Ketu use: "mean" (Tamil panchangam convention, always retrograde)
+// or "true" (osculating node). One switch for natal charts and transits alike.
+const NODE_TYPE = "mean";
+// True lunar node = mean node + Σ c·sin(a·D + b·M + c·M' + d·F). [D, M, M', F, degrees]
+const TRUE_NODE_TERMS = [
+  [2,0,0,-2,-1.49763],[0,1,0,0,-0.15006],[2,0,0,0,-0.12262],[0,0,0,2,0.11765],[0,0,2,-2,-0.07989],
+  [2,-1,0,-2,-0.06155],[2,0,-1,0,0.04904],[0,0,1,-2,0.04091],[0,0,1,0,0.03266],[2,1,0,-2,0.03234],
+  [4,0,0,-4,0.01965],[2,0,-1,-2,0.01802],[2,0,1,-2,-0.01504],[2,0,-2,0,0.01497],[2,-1,0,0,-0.00786],
+  [2,0,1,0,-0.00439],[0,0,1,2,0.00431],
+];
+
+// Geocentric ecliptic longitude (degrees, mean equinox of J2000) of a planet as seen from
+// Earth, corrected for light-time and annual aberration by evaluating the Earth–planet
+// vector one light-time earlier.
+function geocentricPlanetLongJ2000(planetKey, T) {
+  let p = keplerHeliocentric(planetKey, T), e = keplerHeliocentric("Earth", T);
+  const dist = Math.hypot(p.x - e.x, p.y - e.y, p.z - e.z);
+  const Tl = T - (0.0057755183 * dist) / 36525;
+  p = keplerHeliocentric(planetKey, Tl); e = keplerHeliocentric("Earth", Tl);
+  return ((Math.atan2(p.y - e.y, p.x - e.x) * 180 / Math.PI) % 360 + 360) % 360;
+}
+
+// Jupiter & Saturn: the JPL mean elements leave out their mutual (and Saturn–Uranus)
+// perturbations — up to 0.14° / 0.33° in heliocentric longitude. Correction series
+// least-squares fitted against an independent ephemeris (astronomy-engine) over 1900–2100;
+// residual after correction: max 0.009° (longitude). Arguments are mean longitudes of
+// Jupiter, Saturn, Uranus: [j, s, u, sin coefficient, cos coefficient]. Valid 1900–2100.
+const GIANT_FIX = {
+  Jupiter: {
+    lonP: [0.000381, -0.055498, -0.025820],
+    lonT: [[1,-1,0,-0.03612,0.04520],[2,-2,0,0.05570,-0.00081],[3,-3,0,0.00509,-0.00121],[1,-2,0,-0.02228,0.04248],[2,-3,0,0.01591,-0.01833],[2,-4,0,-0.00287,0.00063],[3,-5,0,-0.00010,-0.00541],[1,-3,0,0.08257,0.07016],[3,-6,0,-0.00841,0.02553],[3,-4,0,-0.00226,0.00368],[1,0,0,0.00318,-0.00857],[0,1,0,-0.00183,-0.00107],[0,2,0,0.00223,-0.00049],[0,1,-1,-0.02618,0.00777],[0,1,-2,-0.00166,0.00777],[0,2,-2,-0.00055,-0.00229],[0,2,-4,-0.05629,0.02997],[1,-4,0,0.00631,0.02163]],
+    rP: [0.0001456, 0.0001765, -0.0001863],
+    rT: [[1,-1,0,0.001151,0.001365],[2,-2,0,-0.000040,-0.002748],[3,-3,0,-0.000045,-0.000307],[1,-2,0,-0.000320,0.000562],[2,-3,0,-0.000696,-0.000598],[3,-5,0,-0.000329,0.000002],[1,-3,0,0.000279,0.001268],[3,-6,0,0.000627,0.000418],[1,0,0,-0.000426,-0.000143],[0,1,-1,-0.000167,0.000350],[0,2,-4,-0.000253,0.000812],[1,-4,0,-0.000565,0.000334]],
+  },
+  Saturn: {
+    lonP: [0.022814, 0.154597, 0.029075],
+    lonT: [[1,-1,0,-0.06690,0.00843],[2,-2,0,-0.00832,-0.00019],[3,-3,0,-0.00186,-0.00011],[1,-2,0,-0.04821,0.01572],[2,-3,0,0.00410,0.00022],[2,-4,0,-0.08872,-0.02749],[1,-3,0,-0.10391,-0.00541],[3,-6,0,-0.04406,-0.00081],[1,0,0,0.00189,0.00295],[0,1,0,-0.06705,-0.05358],[0,2,0,-0.00318,0.00589],[0,1,-1,0.03178,0.03157],[0,1,-2,0.00024,-0.00455],[0,2,-2,0.00864,-0.00289],[0,2,-4,0.07813,0.03901],[1,-4,0,0.03145,0.00112]],
+    rP: [0.0030568, 0.0012603, 0.0035242],
+    rT: [[1,-1,0,0.002084,0.011598],[2,-2,0,0.000013,0.001330],[3,-3,0,0.000006,0.000315],[1,-2,0,0.012640,-0.002750],[2,-3,0,-0.000487,-0.000514],[2,-4,0,-0.001281,0.007779],[1,-3,0,-0.016434,-0.012379],[3,-6,0,0.000813,0.002271],[0,1,0,-0.003904,0.005645],[0,2,0,0.000286,0.000240],[0,1,-1,0.006406,-0.002311],[0,1,-2,0.000641,-0.001073],[0,2,-2,-0.000252,-0.000604],[0,2,-4,0.012625,-0.006986],[1,-4,0,-0.000719,0.001402]],
+  },
+};
+function giantCorrection(planetKey, T) {
+  const fx = GIANT_FIX[planetKey];
+  if (!fx) return null;
+  const Tc = Math.max(-1, Math.min(1, T)); // fitted range 1900–2100
+  const r = Math.PI / 180;
+  const lj = (34.39644051 + 3034.74612775 * Tc) * r, ls = (49.95424423 + 1222.49362201 * Tc) * r, lu = (313.23810451 + 428.48202785 * Tc) * r;
+  const series = (P, terms) => { let v = P[0] + P[1] * Tc + P[2] * Tc * Tc; for (let k = 0; k < terms.length; k++) { const t = terms[k]; const a = t[0] * lj + t[1] * ls + t[2] * lu; v += t[3] * Math.sin(a) + t[4] * Math.cos(a); } return v; };
+  return { dLon: series(fx.lonP, fx.lonT), dR: series(fx.rP, fx.rT) };
+}
+
+// General precession in ecliptic longitude accumulated since J2000 (degrees) — converts a
+// J2000-equinox longitude to the equinox of date. T = Julian centuries from J2000.
+function precessionFromJ2000(T) { return (5028.796195 * T + 1.1054348 * T * T) / 3600; }
 function keplerHeliocentric(planetKey, T) {
   const el = ORBITAL_ELEMENTS[planetKey];
   const a = el.a[0] + el.a[1]*T, e = el.e[0] + el.e[1]*T, I = el.I[0] + el.I[1]*T;
@@ -4666,6 +4761,12 @@ function keplerHeliocentric(planetKey, T) {
   const x = (Math.cos(wr)*Math.cos(nr)-Math.sin(wr)*Math.sin(nr)*Math.cos(ir))*xp + (-Math.sin(wr)*Math.cos(nr)-Math.cos(wr)*Math.sin(nr)*Math.cos(ir))*yp;
   const y = (Math.cos(wr)*Math.sin(nr)+Math.sin(wr)*Math.cos(nr)*Math.cos(ir))*xp + (-Math.sin(wr)*Math.sin(nr)+Math.cos(wr)*Math.cos(nr)*Math.cos(ir))*yp;
   const z = (Math.sin(wr)*Math.sin(ir))*xp + (Math.cos(wr)*Math.sin(ir))*yp;
+  const fix = giantCorrection(planetKey, T);
+  if (fix) {
+    // rotate about the ecliptic pole by dLon and rescale the radius by dR
+    const rr = Math.hypot(x, y, z), k = (rr + fix.dR) / rr, c = Math.cos(fix.dLon * r), sn = Math.sin(fix.dLon * r);
+    return { x: (x * c - y * sn) * k, y: (x * sn + y * c) * k, z: z * k };
+  }
   return {x,y,z};
 }
 const YUDDHA_PLANET_KEY = { "செவ்வாய்":"Mars", "புதன்":"Mercury", "குரு":"Jupiter", "சுக்கிரன்":"Venus", "சனி":"Saturn" };
@@ -4713,7 +4814,7 @@ function calcShadbala(placements, lagnaIdx, dobISO, tob, lat, lon) {
   bh = Number.isFinite(bh) ? bh : 6; bmin = Number.isFinite(bmin) ? bmin : 0;
   const birthDateObj = new Date(by, bm - 1, bd);
   const birthDateTimeObj = new Date(by, bm - 1, bd, bh, bmin);
-  const { sunrise, sunset } = calcSunriseSunset(birthDateObj, lat, lon, 5.5);
+  const { sunrise, sunset } = calcSunriseSunset(birthDateObj, lat, lon, _tz);
   const birthMinutesOfDay = bh * 60 + bmin;
   const sunriseMin = sunrise.decimal * 60, sunsetMin = sunset.decimal * 60;
   const isDayBirth = birthMinutesOfDay >= sunriseMin && birthMinutesOfDay < sunsetMin;
@@ -4782,8 +4883,9 @@ function calcShadbala(placements, lagnaIdx, dobISO, tob, lat, lon) {
 
   // Vara Bala (weekday lord, 45) and Hora Bala (planetary-hour lord, 60) — reuses the
   // app's existing weekday-lord table and Horai engine rather than recomputing them.
-  const varaLord = DAY_LORD_BY_WEEKDAY[birthDateObj.getDay()];
-  const horaLord = calcCurrentHorai(birthDateTimeObj, lat, lon, 5.5).planet;
+  // The Hindu weekday runs sunrise to sunrise: a birth before sunrise belongs to the previous vara.
+  const varaLord = DAY_LORD_BY_WEEKDAY[(birthDateObj.getDay() + (birthMinutesOfDay < sunriseMin ? 6 : 0)) % 7];
+  const horaLord = calcCurrentHorai(birthDateTimeObj, lat, lon, _tz).planet;
 
   // Masa Bala (month lord, 30) and Abda Bala (year lord, 15) — weekday-lord of the most
   // recent solar-month Sankranti and the most recent Mesha (year-start) Sankranti,
@@ -4900,7 +5002,7 @@ function calcShadbala(placements, lagnaIdx, dobISO, tob, lat, lon) {
       if (actual < 0) cheshtaBala = 60;        // வக்ர — retrograde
       else if (rel < 0.15) cheshtaBala = 15;   // விகல — near-stationary
       else if (rel < 0.75) cheshtaBala = 30;   // மந்த — slower than mean
-      else if (rel < 1.25) cheshtaBala = 15;   // சம — mean speed
+      else if (rel < 1.25) cheshtaBala = 7.5;  // சம — mean speed (classical: 7.5 ஷஷ்டியம்சம்)
       else if (rel < 1.75) cheshtaBala = 45;   // சார — faster than mean
       else cheshtaBala = 30;                    // அதிசார — much faster
     }
@@ -5053,12 +5155,12 @@ const RAHU_KALAM_ORDER = [7,1,6,4,5,3,2]; // Sun=7, Mon=1, Tue=6...
 const YAMA_GANDAM_ORDER = [4,3,2,1,0,6,5];
 const GULIKAI_ORDER = [6,5,4,3,2,1,0];
 function calcInauspiciousTimes(date, lat=13.0827, lon=80.2707) {
-  const d = date || new Date();
+  const d = date || civilNow();
   const dayOfWeek = d.getDay(); // 0=Sun
   const dayIdx = dayOfWeek === 0 ? 0 : dayOfWeek;
   // ROOT-FIX: real sunrise/sunset for the location (was hardcoded 6:00/18:00 —
   // Rahu Kalam shifts with the actual day length, same engine as Muhurtham)
-  const sr = calcSunriseSunset(d, lat, lon, 5.5);
+  const sr = calcSunriseSunset(d, lat, lon, _tz);
   const sunriseH = sr.sunrise.h, sunriseM = sr.sunrise.m, sunsetH = sr.sunset.h, sunsetM = sr.sunset.m;
   const dayMinutes = (sunsetH * 60 + sunsetM) - (sunriseH * 60 + sunriseM);
   const slotMin = dayMinutes / 8;
@@ -5099,7 +5201,7 @@ const SUBA_NAKSHATRAS = [0,3,4,6,7,11,12,13,14,16,20,21,25,26];
 const SUBA_TITHIS = [2,3,5,7,10,11,13]; // Dwitiya,Tritiya,Panchami,Saptami,Dasami,Ekadasi,Trayodasi
 const ASUBA_YOGAS = ["Vishkambha","Atiganda","Shoola","Ganda","Vyaghata","Vajra","Vyatipata","Parigha","Vaidhrti"];
 function calcMuhurtha(targetDate, birthMoonNakIdx, lat = 13.0827, lon = 80.2707) {
-  const d = targetDate || new Date();
+  const d = targetDate || civilNow();
   const dayOfWeek = d.getDay();
   const vaaramTa = ["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"][dayOfWeek];
   const goodDays = [1,3,4,5]; // Mon,Wed,Thu,Fri
@@ -5134,7 +5236,7 @@ function calcMuhurtha(targetDate, birthMoonNakIdx, lat = 13.0827, lon = 80.2707)
   const verdict = score >= 80 ? "மிகச் சிறந்த முஹூர்த்தம்" : score >= 60 ? "நல்ல முஹூர்த்தம்" : score >= 40 ? "சுமாரான நாள்" : "தவிர்க்கவும்";
   // சுப நேரங்கள் — உண்மையான சூரிய உதயத்திலிருந்து: பிரம்ம முஹூர்த்தம்
   // (உதயத்திற்கு 96→48 நிமிடம் முன்), அபிஜித் (பகல் நடுவம் ± பகல்/30)
-  const sr = calcSunriseSunset(d, lat, lon, 5.5);
+  const sr = calcSunriseSunset(d, lat, lon, _tz);
   const fmtHM = (dec) => {
     let h = Math.floor(dec), mn = Math.round((dec - h) * 60);
     if (mn === 60) { h += 1; mn = 0; }
@@ -5444,7 +5546,7 @@ function calcBhavaPhalam(horoscope, grahaBala, chevvaiDosham, dashaData, classic
   // Current Dasha context — links the time dimension (4th fundamental component)
   let dashaContext = null;
   if (dashaData && dashaData.dashas) {
-    const now = new Date();
+    const now = civilNow();
     const md = dashaData.dashas.find(d => now >= d.startDate && now < d.endDate);
     if (md) {
       const ad = md.antardashas?.find(a => now >= a.startDate && now < a.endDate);
@@ -5515,6 +5617,7 @@ function getRemedies(placements, grahaBala, unified) {
 
 // ── exports ─────────────────────────────────────────────────────────
 export {
+  setEngineTimezone, getEngineTimezone, civilNow, deltaTSeconds, precessionFromJ2000, NODE_TYPE,
   NAKSHATRAS,
   RASHIS,
   RASHI_EN,

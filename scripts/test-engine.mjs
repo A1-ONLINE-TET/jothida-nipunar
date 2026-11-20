@@ -44,10 +44,13 @@ const eq = (name, got, want) => ok(`${name}: got ${JSON.stringify(got)}, want ${
 {
   const dosham = m.calculate10Porutham(4, 22, 0, 0).results.find(r => r.en === "Vedha");
   ok("Mrigashira+Avittam = vedha dosham", !dosham.ok);
-  const clean = m.calculate10Porutham(4, 13, 0, 0).results.find(r => r.en === "Vedha");
-  ok("Mrigashira+Hasta = no vedha", clean.ok);
+  // தமிழ் மரபு: மிருகசீரிடம் – சித்திரை – அவிட்டம் மூன்றும் ஒன்றுக்கொன்று வேதை.
+  const mc = m.calculate10Porutham(4, 13, 0, 0).results.find(r => r.en === "Vedha");
+  ok("Mrigashira+Chitra = vedha dosham", !mc.ok);
   const chitra = m.calculate10Porutham(13, 22, 0, 0).results.find(r => r.en === "Vedha");
-  ok("Chitra has no vedha", chitra.ok);
+  ok("Chitra+Avittam = vedha dosham", !chitra.ok);
+  const clean = m.calculate10Porutham(4, 12, 0, 0).results.find(r => r.en === "Vedha");
+  ok("Mrigashira+Hasta = no vedha", clean.ok);
 }
 
 // ── 5. Rasi porutham: 2/6/8/12 bad, 7/9/10/11 good (bride→groom count) ──

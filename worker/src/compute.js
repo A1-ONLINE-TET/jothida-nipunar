@@ -27,11 +27,19 @@ import {
   calculate10Porutham, calcDailyLuckyNumbers, GRAHA_FRIENDSHIP,
   calculateYoginiDasha, calculateAshtottariDasha, checkPanchaka, SANI_TRANSIT_EFFECTS,
   GURU_TRANSIT_EFFECTS, HOUSE_THEMES, PLANET_REMEDIES, DAY_REMEDIES,
+  setEngineTimezone, civilNow,
 } from "../../src/engine.js";
 import { tamilDatesForMonth } from "./festivals.js";
 
+// Every entry point sets the engine's civil zone first: the birth place's zone for
+// birth-based work (birth.tzOffset — IST unless the person was born abroad or in the
+// 1942–45 war-time period), IST for everything else. The engine keeps it in module
+// state, so it must be set inside each synchronous computation, never across an await.
+export const useZone = (birth) => setEngineTimezone(birth && Number.isFinite(birth.tzOffset) ? birth.tzOffset : 5.5);
+
 // Vimshottari dasha for this birth (needed by the daily bundle + prompts).
 export function computeDasha(h, birth) {
+  useZone(birth);
   const [dY, dM, dD] = birth.dobISO.split("-").map(Number);
   const [dH, dMin] = (birth.time24 || "06:00").split(":").map(Number);
   const moonP = h.placements.find((p) => p.ta === "சந்திரன்");
@@ -41,9 +49,10 @@ export function computeDasha(h, birth) {
 
 // Daily / specific-date bundle — mirrors the client's openDailyScreen assembly.
 export function computeDailyBundle(h, dashaData, birth, targetDateISO) {
+  useZone(birth);
   const { lat, lon, ayanamsaKey } = birth;
   const targetDate = targetDateISO ? new Date(targetDateISO + "T06:00:00") : null;
-  const refDate = targetDate || new Date();
+  const refDate = targetDate || civilNow();
   const today = getTodayTranist(lat, lon, targetDate, ayanamsaKey);
 
   const bmRaw = RASHIS.indexOf(h.moonRashi);
@@ -82,6 +91,7 @@ export function computeDailyBundle(h, dashaData, birth, targetDateISO) {
 // response) is supplied, parse it into engine shape; otherwise compute
 // locally with the chosen ayanamsa.
 export function buildHoroscope(birth, swissJson) {
+  useZone(birth);
   if (swissJson) {
     const h = parseBackendResponse(swissJson);
     if (h && h.placements) return h;
@@ -90,13 +100,14 @@ export function buildHoroscope(birth, swissJson) {
 }
 
 export function computeFullReport(h, birth) {
+  useZone(birth);
   const placements = h.placements;
   const lagnaIdx = h.lagna;
   const { dobISO, time24: finalTime, lat, lon, ayanamsaKey, gender, name, dob } = birth;
   const geo = { lat, lon };
 
   // transit chart for "now"
-  const now = new Date();
+  const now = civilNow();
   const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const transitH = generateHoroscope(todayISO, `${now.getHours()}:${now.getMinutes()}`, lat, lon, false, ayanamsaKey);
 
@@ -128,9 +139,9 @@ export function computeFullReport(h, birth) {
     R.charaDashaData = calcCharaDasha(lagnaIdx, placements, new Date(cY, cM - 1, cD));
   }
   {
-    const nowY = new Date().getFullYear();
+    const nowY = civilNow().getFullYear();
     let vp = calcVarshaphala(h, dobISO, lat, lon, nowY, ayanamsaKey);
-    if (vp && vp.praveshDate > new Date()) vp = calcVarshaphala(h, dobISO, lat, lon, nowY - 1, ayanamsaKey);
+    if (vp && vp.praveshDate > civilNow()) vp = calcVarshaphala(h, dobISO, lat, lon, nowY - 1, ayanamsaKey);
     R.varshaphalaData = vp;
   }
   const lagnaFullDeg = h.lagnaFullLong != null ? h.lagnaFullLong : lagnaIdx * 30;
@@ -184,8 +195,8 @@ export function computeFullReport(h, birth) {
     R.transitOverlay = calcTransitOverlay(placements, transitH.placements, birthMoon?.rashiIdx || 0);
     R.planetTransitAnalysis = calcPlanetTransitAnalysis(birthMoon?.rashiIdx || 0, transitH.placements, birthMoon && birthMoon.nakIdx >= 0 ? birthMoon.nakIdx : -1);
   }
-  R.inauspiciousTimes = calcInauspiciousTimes(new Date(), lat, lon);
-  R.muhurthaData = calcMuhurtha(new Date(), birthMoon && birthMoon.nakIdx >= 0 ? birthMoon.nakIdx : 0, lat, lon);
+  R.inauspiciousTimes = calcInauspiciousTimes(civilNow(), lat, lon);
+  R.muhurthaData = calcMuhurtha(civilNow(), birthMoon && birthMoon.nakIdx >= 0 ? birthMoon.nakIdx : 0, lat, lon);
 
   // ── 7. verdict engines ──
   const ctx = { ashtakavarga: ashtakavargaR, bhavaBala: bhavaBalaR, unified: unifiedR, marakaBadhaka: marakaBadhakaR, functionalNat: functionalNatR };
@@ -197,7 +208,7 @@ export function computeFullReport(h, birth) {
   R.remediesData = getRemedies(placements, grahaBalaR, unifiedR);
   R.gulikaData = calcGulikaPosition(dobISO, finalTime, lat, lon, ayanamsaKey);
   R.btSensitivity = calcBirthTimeSensitivity(h);
-  R.dashaSandhi = calcDashaSandhi(dashaR, new Date());
+  R.dashaSandhi = calcDashaSandhi(dashaR, civilNow());
   try { R.tamilDate = calcTamilDate(dobISO, finalTime, lat, lon); } catch (_) { R.tamilDate = null; }
 
   return R;
@@ -216,12 +227,14 @@ function reportDeps(r, h, birth) {
 }
 
 export function computeBacktest(h, birth, topic, eventDateISO) {
+  useZone(birth);
   const r = computeFullReport(h, birth);
   const [y, m, d] = eventDateISO.split("-").map(Number);
   return calcBacktest(topic, new Date(y, m - 1, d), reportDeps(r, h, birth));
 }
 
 export function computeEventTiming(h, birth, topic) {
+  useZone(birth);
   const r = computeFullReport(h, birth);
   return calcEventTiming(topic, reportDeps(r, h, birth));
 }
@@ -235,6 +248,7 @@ const CAT_TO_EVENT = {
 // ஆலோசனை chat-க்கான ஆழ்பொருள் bundle — ஒரு முறை முழு report கணக்கிட்டு,
 // topic-க்கான நிகழ்வு windows + தோஷம்/யோகம்/சாதே சாதி சேர்த்துத் தரும்.
 export function computeConsultation(h, birth, category) {
+  useZone(birth);
   const r = computeFullReport(h, birth);
   const evKey = CAT_TO_EVENT[category] || null;
   let eventTiming = null;
@@ -258,6 +272,7 @@ export function computeConsultation(h, birth, category) {
 }
 
 export function computeNakBhava(h, birth) {
+  useZone(birth);
   const r = computeFullReport(h, birth);
   return calcNakshatraBhavaLinks(
     h.placements, h.lagna, r.functionalNature, { lat: birth.lat, lon: birth.lon }, birth.ayanamsaKey,
@@ -267,8 +282,10 @@ export function computeNakBhava(h, birth) {
 
 // Marriage matching — mirrors the client's runPorutham (Chennai default geo).
 export function computePorutham(bride, groom, ayanamsaKey) {
-  const h1 = generateHoroscope(bride.dobISO, bride.time24, 13.0827, 80.2707, false, ayanamsaKey);
-  const h2 = generateHoroscope(groom.dobISO, groom.time24, 13.0827, 80.2707, false, ayanamsaKey);
+  useZone(null);
+  const tzOf = (x) => (Number.isFinite(x.tzOffset) ? x.tzOffset : 5.5);
+  const h1 = generateHoroscope(bride.dobISO, bride.time24, 13.0827, 80.2707, false, ayanamsaKey, tzOf(bride));
+  const h2 = generateHoroscope(groom.dobISO, groom.time24, 13.0827, 80.2707, false, ayanamsaKey, tzOf(groom));
   const nak1 = NAKSHATRAS.indexOf(h1.nakshatra), nak2 = NAKSHATRAS.indexOf(h2.nakshatra);
   const rashi1 = RASHIS.indexOf(h1.moonRashi), rashi2 = RASHIS.indexOf(h2.moonRashi);
   let dashaCompat = null;
@@ -278,7 +295,7 @@ export function computePorutham(bride, groom, ayanamsaKey) {
     const [bh1, bm1] = bride.time24.split(":").map(Number), [bh2, bm2] = groom.time24.split(":").map(Number);
     const ml1 = moonLong(h1), ml2 = moonLong(h2);
     if (ml1 != null && ml2 != null) {
-      const now = new Date();
+      const now = civilNow();
       const d1 = calculateDasha(ml1, new Date(bd1[0], bd1[1] - 1, bd1[2], bh1 || 6, bm1 || 0));
       const d2 = calculateDasha(ml2, new Date(bd2[0], bd2[1] - 1, bd2[2], bh2 || 6, bm2 || 0));
       const md1 = d1.dashas.find((d) => now >= d.startDate && now < d.endDate);
@@ -306,6 +323,7 @@ export function computePorutham(bride, groom, ayanamsaKey) {
 // அன்றைய கோசாரம், குரு/சனி பெயர்ச்சி நிலை, பரிகாரம், அதிர்ஷ்ட எண்கள்.
 // ═══════════════════════════════════════════════════════════════════
 export function computeRasiPalan(rashiIdx, targetDateISO, lat = 13.0827, lon = 80.2707, ayanamsaKey = "lahiri") {
+  useZone(null);
   const targetDate = targetDateISO ? new Date(targetDateISO + "T06:00:00") : null;
   const today = getTodayTranist(lat, lon, targetDate, ayanamsaKey);
   const g = calculateGochara(rashiIdx, today.placements);
@@ -339,6 +357,7 @@ export function computeRasiPalan(rashiIdx, targetDateISO, lat = 13.0827, lon = 8
 // நட்சத்திரம் + யோகம்). ஜென்ம நட்சத்திரம்/ராசி கொடுத்தால் தாரா பலம், சந்திராஷ்டமம்.
 // ═══════════════════════════════════════════════════════════════════
 export function computeMonthMuhurta(year, month, lat = 13.0827, lon = 80.2707, birthNakIdx = null, birthMoonRashi = null) {
+  useZone(null);
   const days = new Date(year, month + 1, 0).getDate();
   const tamil = tamilDatesForMonth(year, month); // சென்னை வழக்கு — civil தமிழ்த் தேதி
   const out = [];
@@ -366,6 +385,7 @@ export function computeMonthMuhurta(year, month, lat = 13.0827, lon = 80.2707, b
 // மாற்று தசை முறைகள் — யோகினி, அஷ்டோத்தரி (ஜோதிடர்களுக்கு ஒப்பீட்டுக்கு)
 // ═══════════════════════════════════════════════════════════════════
 export function computeAltDashas(h, birth) {
+  useZone(birth);
   const [dY, dM, dD] = birth.dobISO.split("-").map(Number);
   const [dH, dMin] = (birth.time24 || "06:00").split(":").map(Number);
   const moonP = h.placements.find((p) => p.ta === "சந்திரன்");
@@ -384,6 +404,7 @@ const isoYMD = (y, m, d) => { const x = new Date(Date.UTC(y, m, d)); return `${x
 const houseFrom = (rashiIdx, planetRashiIdx) => ((planetRashiIdx - rashiIdx + 12) % 12) + 1;
 
 export function computeRasiPeriod(rashiIdx, period, lat = 13.0827, lon = 80.2707, ayanamsaKey = "lahiri") {
+  useZone(null);
   const { y, m, d } = istToday();
   const snap = (iso) => {
     const t = getTodayTranist(lat, lon, new Date(iso + "T06:00:00"), ayanamsaKey);

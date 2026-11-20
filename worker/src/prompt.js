@@ -10,9 +10,10 @@
 
 // Live current dasha chain, recomputed against "now" (ported from the
 // client's getCurrentDashaInfo — never trusts a frozen .isCurrent flag).
+import { civilNow } from "../../src/engine.js";
 export function currentDashaInfo(dashaData) {
   if (!dashaData || !dashaData.dashas) return "";
-  const now = new Date();
+  const now = civilNow();
   const md = dashaData.dashas.find((d) => now >= d.startDate && now < d.endDate);
   if (!md) return "";
   const ad = md.antardashas?.find((a) => now >= a.startDate && now < a.endDate);

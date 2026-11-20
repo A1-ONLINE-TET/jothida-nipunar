@@ -13,6 +13,7 @@ import HomeScreen from "./components/HomeScreen";
 import AdvisoryScreen from "./components/AdvisoryScreen";
 import ChatScreen from "./components/ChatScreen";
 import BottomNav from "./components/BottomNav.jsx";
+import { kizhamai } from "./components/tools-data.js";
 import RemedyTab from "./components/RemedyTab.jsx";
 import { ServicesScreen, RasiPalanScreen, NumerologyScreen, NameLettersScreen, FestivalsScreen, NavagrahaScreen } from "./components/ToolsScreens.jsx";
 import { NAME_SYLLABLES, VARA_SOOLAM, gowriForDay } from "./components/tools-data.js";
@@ -906,6 +907,36 @@ const shareOut = (title, text) => {
 // engine தரும் கடும் நிறங்களை அமைதியான மூன்று பொருள்-நிறங்களாக்கு
 const calmTone = (c) => { const k = String(c || "").toLowerCase(); return k === "#0d7a30" ? "#2e7d5b" : k === "#cc1a1a" ? "#c0564f" : k === "#b8860b" ? "#a9823c" : (c || "#27303f"); };
 const fmtDateTa = (d) => d ? new Date(d).toLocaleDateString("ta-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
+// பிறந்த இடத்தின் நேர மண்டலம் (IANA பெயர்) — "" = இந்தியா. Offset-ஐ server கணக்கிடும்
+// (கோடைக்கால நேரம், வரலாற்று மாற்றங்கள் உட்பட); இங்கே பெயர் மட்டும்.
+const BIRTH_ZONES = [
+  ["", "இந்தியா (IST)"], ["Asia/Colombo", "இலங்கை"], ["Asia/Singapore", "சிங்கப்பூர்"], ["Asia/Kuala_Lumpur", "மலேசியா"],
+  ["Asia/Dubai", "UAE / ஓமன்"], ["Asia/Riyadh", "சவுதி / குவைத் / கத்தார் / பஹ்ரைன்"],
+  ["Europe/London", "இங்கிலாந்து / அயர்லாந்து"], ["Europe/Paris", "மத்திய ஐரோப்பா (பிரான்ஸ், ஜெர்மனி, சுவிஸ், நார்வே…)"],
+  ["America/New_York", "அமெரிக்கா / கனடா — கிழக்கு"], ["America/Chicago", "அமெரிக்கா / கனடா — மத்திய"],
+  ["America/Denver", "அமெரிக்கா / கனடா — மலைப்பகுதி"], ["America/Los_Angeles", "அமெரிக்கா / கனடா — மேற்கு"],
+  ["Australia/Sydney", "ஆஸ்திரேலியா — சிட்னி / மெல்போர்ன்"], ["Australia/Brisbane", "ஆஸ்திரேலியா — பிரிஸ்பேன்"],
+  ["Australia/Adelaide", "ஆஸ்திரேலியா — அடிலெய்ட்"], ["Australia/Perth", "ஆஸ்திரேலியா — பெர்த்"],
+  ["Pacific/Auckland", "நியூசிலாந்து"], ["Africa/Johannesburg", "தென்னாப்பிரிக்கா"], ["Indian/Mauritius", "மொரிஷியஸ்"],
+  ["Asia/Hong_Kong", "ஹாங்காங்"], ["Asia/Tokyo", "ஜப்பான்"], ["Asia/Bangkok", "தாய்லாந்து / வியட்நாம்"],
+  ["Asia/Yangon", "மியான்மர்"], ["Asia/Kathmandu", "நேபாளம்"], ["Asia/Dhaka", "வங்கதேசம்"], ["Asia/Karachi", "பாகிஸ்தான்"],
+];
+const ZONE_BY_COUNTRY = {
+  in: "", lk: "Asia/Colombo", sg: "Asia/Singapore", my: "Asia/Kuala_Lumpur", ae: "Asia/Dubai", om: "Asia/Dubai",
+  sa: "Asia/Riyadh", kw: "Asia/Riyadh", qa: "Asia/Riyadh", bh: "Asia/Riyadh", gb: "Europe/London", ie: "Europe/London",
+  fr: "Europe/Paris", de: "Europe/Paris", ch: "Europe/Paris", it: "Europe/Paris", nl: "Europe/Paris", be: "Europe/Paris",
+  es: "Europe/Paris", no: "Europe/Paris", se: "Europe/Paris", dk: "Europe/Paris", at: "Europe/Paris",
+  nz: "Pacific/Auckland", za: "Africa/Johannesburg", mu: "Indian/Mauritius", hk: "Asia/Hong_Kong", jp: "Asia/Tokyo",
+  th: "Asia/Bangkok", vn: "Asia/Bangkok", mm: "Asia/Yangon", np: "Asia/Kathmandu", bd: "Asia/Dhaka", pk: "Asia/Karachi",
+};
+// நாட்டுக் குறியீடு (+ பல மண்டல நாடுகளுக்குத் தீர்க்கரேகை) → மண்டலம். தெரியாவிட்டால் "" (பயனர் தேர்ந்தெடுப்பார்).
+function guessBirthZone(cc, lat, lon) {
+  if (!cc) return "";
+  if (cc === "us" || cc === "ca") return lon > -85.5 ? "America/New_York" : lon > -101.5 ? "America/Chicago" : lon > -114.5 ? "America/Denver" : "America/Los_Angeles";
+  if (cc === "au") return lon < 129 ? "Australia/Perth" : lon < 141 ? "Australia/Adelaide" : lat > -29 ? "Australia/Brisbane" : "Australia/Sydney";
+  return ZONE_BY_COUNTRY[cc] ?? "";
+}
+
 // வாழ்க்கைப் பகுதி → icon + நிறம் (பலன்கள் / சுருக்கம் இரண்டிலும் ஒன்றே)
 const AREA_STYLE = {
   self:      { icon: UserRound,     color: "#5565b8", tint: "#eef1fb", short: "குணநலன்" },
@@ -940,7 +971,7 @@ export default function AstrologyApp() {
   const [screen, setScreen] = useState(SCREEN.SPLASH);
   const [authMode, setAuthMode] = useState("login");
   const [user, setUser] = useState(null);
-  const [formData, setFormData] = useState({ name:"", dob:"", tob:"", sec:"", pob:"", ampm:"AM", gender:"", pobLat:null, pobLon:null, pobSource:null });
+  const [formData, setFormData] = useState({ name:"", dob:"", tob:"", sec:"", pob:"", ampm:"AM", gender:"", pobLat:null, pobLon:null, pobSource:null, pobTz:"" });
   // சேமித்த ஜாதகங்கள் — lazy initializer: localStorage read ஒருமுறை மட்டும்
   const [profiles, setProfiles] = useState(loadProfiles);
   const [chatInitialQ, setChatInitialQ] = useState(""); // ஆலோசனை தலைப்பிலிருந்து chat-க்கு auto கேள்வி
@@ -957,7 +988,7 @@ export default function AstrologyApp() {
         id: old?.id || Date.now(), notes: old?.notes || "",
         name: formData.name, dob: formData.dob, tob: formData.tob, sec: formData.sec || "", ampm: formData.ampm,
         gender: formData.gender || "",
-        pob: formData.pob, pobLat: formData.pobLat, pobLon: formData.pobLon, pobSource: formData.pobSource,
+        pob: formData.pob, pobLat: formData.pobLat, pobLon: formData.pobLon, pobSource: formData.pobSource, pobTz: formData.pobTz || "",
         savedAt: new Date().toISOString()
       };
       const next = [entry, ...rest].slice(0, 200);
@@ -971,7 +1002,7 @@ export default function AstrologyApp() {
 
   const loadProfile = (p) => {
     setFormData({ name:p.name||"", dob:p.dob||"", tob:p.tob||"", sec:p.sec||"", pob:p.pob||"", ampm:p.ampm||"AM",
-      gender:p.gender||"", pobLat:p.pobLat ?? null, pobLon:p.pobLon ?? null, pobSource:p.pobSource ?? null });
+      gender:p.gender||"", pobLat:p.pobLat ?? null, pobLon:p.pobLon ?? null, pobSource:p.pobSource ?? null, pobTz:p.pobTz || "" });
     setPlaceResults([]); setPlaceDropdownOpen(false);
   };
 
@@ -1008,6 +1039,7 @@ export default function AstrologyApp() {
   const pickChartStyle = (north) => { setNorthChart(north); try { localStorage.setItem("jn_chart_style", north ? "north" : "south"); } catch (_) { /* ignore */ } };
   // தசா tab — விம்சோத்தரி (இயல்பு) | யோகினி | அஷ்டோத்தரி (கேட்கும்போது server கணக்கு)
   const [dashaSystem, setDashaSystem] = useState("vim");
+  const [tzUnknown, setTzUnknown] = useState(false); // வெளிநாட்டு இடம், மண்டலம் ஊகிக்க முடியவில்லை
   const [altDashas, setAltDashas] = useState(null);
   const [remedyPlan, setRemedyPlan] = useState(null); // null | "loading" | "error" | plan
   // கணக்கு — சேமித்த ஜாதகத் தேடல், குறிப்பு திருத்தம்
@@ -1308,7 +1340,7 @@ export default function AstrologyApp() {
 
   // இந்தப் பிறப்பு விவரத்தின் அடையாளம் — ஜாதகம் இதற்கானதுதானா என்று ஒப்பிட.
   const birthKey = () => [formData.name, formData.dob, formData.tob, formData.ampm, formData.pob,
-    formData.pobLat, formData.pobLon, formData.gender, ayanamsaKey].join("|");
+    formData.pobLat, formData.pobLon, formData.pobTz || "", formData.gender, ayanamsaKey].join("|");
   const chartIsCurrent = () => !!(horoscope && dashaData && chartKeyRef.current === birthKey());
   // Form-இன் 12h நேரம் → 24h; ISO தேதி; பிறந்த இட ஆயத்தொலைவு.
   const birthFromForm = () => {
@@ -1316,7 +1348,7 @@ export default function AstrologyApp() {
     let h24 = 6, min24 = 0;
     if (formData.tob) {
       const [hh, mm] = formData.tob.split(':').map(Number);
-      h24 = hh || 6; min24 = mm || 0;
+      h24 = Number.isFinite(hh) ? hh : 6; min24 = Number.isFinite(mm) ? mm : 0; // 0 மணி (நள்ளிரவு) falsy — || பயன்படுத்தக் கூடாது
       if (formData.ampm === "PM" && h24 < 12) h24 += 12;
       if (formData.ampm === "AM" && h24 === 12) h24 = 0;
     }
@@ -1328,6 +1360,7 @@ export default function AstrologyApp() {
   const buildBirth = (dobISO, finalTime, geo) => ({
     dobISO, time24: finalTime, lat: geo.lat, lon: geo.lon,
     ayanamsaKey, gender: formData.gender || null,
+    tz: formData.pobTz || undefined, // இந்தியாவுக்கு வெளியே பிறப்பு மட்டும் (இல்லையேல் server IST கொள்ளும்)
     name: formData.name, dob: formData.dob, tob: formData.tob || "",
     ampm: formData.ampm || "", pob: formData.pob || "",
   });
@@ -1385,7 +1418,7 @@ export default function AstrologyApp() {
     let h24 = 6, min24 = 0;
     if (formData.tob) {
       const [hh, mm] = formData.tob.split(':').map(Number);
-      h24 = hh || 6;
+      h24 = Number.isFinite(hh) ? hh : 6;
       min24 = mm || 0;
       if (formData.ampm === "PM" && h24 < 12) h24 += 12;
       if (formData.ampm === "AM" && h24 === 12) h24 = 0;
@@ -1926,7 +1959,7 @@ export default function AstrologyApp() {
   if(screen===SCREEN.ACCOUNT) {
     const isActive = (p) => p.name===formData.name && p.dob===formData.dob && p.tob===formData.tob && p.ampm===formData.ampm;
     const hasBirth = !!(formData.name && isValidDDMMYYYY(formData.dob));
-    const blank = { name:"", dob:"", tob:"", sec:"", pob:"", ampm:"AM", gender:"", pobLat:null, pobLon:null, pobSource:null };
+    const blank = { name:"", dob:"", tob:"", sec:"", pob:"", ampm:"AM", gender:"", pobLat:null, pobLon:null, pobSource:null, pobTz:"" };
     const cardTitle = { fontSize: 15, fontWeight:700, color:"#1f3f68", marginBottom:10 };
     return (
       <div style={base}>
@@ -2134,7 +2167,7 @@ export default function AstrologyApp() {
                 onChange={e=>{
                   const val = e.target.value;
                   // Typing invalidates any previously-selected precise coordinates
-                  setFormData(d=>({...d, pob:val, pobLat:null, pobLon:null, pobSource:null}));
+                  setFormData(d=>({...d, pob:val, pobLat:null, pobLon:null, pobSource:null, pobTz:""}));
                   setPlaceDropdownOpen(false);
                   if (placeSearchTimer.current) clearTimeout(placeSearchTimer.current);
                   if (val.trim().length < 3) { setPlaceResults([]); return; }
@@ -2161,7 +2194,8 @@ export default function AstrologyApp() {
                   {placeResults.map((r,i)=>(
                     <div key={i}
                       onMouseDown={()=>{
-                        setFormData(d=>({...d, pob:r.shortLabel, pobLat:r.lat, pobLon:r.lon, pobSource:"osm"}));
+                        setFormData(d=>({...d, pob:r.shortLabel, pobLat:r.lat, pobLon:r.lon, pobSource:"osm", pobTz: guessBirthZone(r.countryCode, r.lat, r.lon)}));
+                        setTzUnknown(!!r.countryCode && r.countryCode !== "in" && guessBirthZone(r.countryCode, r.lat, r.lon) === "");
                         setPlaceDropdownOpen(false);
                         setPlaceResults([]);
                       }}
@@ -2188,6 +2222,21 @@ export default function AstrologyApp() {
                   </div>
                 );
               })()}
+
+              {/* நேர மண்டலம் — இந்தியாவுக்கு வெளியே பிறந்தவர்களுக்கு மட்டும் தோன்றும் */}
+              {(formData.pobTz || tzUnknown || showManualGeo) && (
+                <div data-tz-field style={{marginTop:8}}>
+                  <label style={{...labelStyle,fontSize:12.5}}>பிறந்த இடத்தின் நேர மண்டலம்</label>
+                  <select data-tz-select value={formData.pobTz || ""} onChange={e=>{ const v = e.target.value; setFormData(d=>({...d, pobTz:v})); setTzUnknown(false); }}
+                    style={{...inputStyle,fontSize:13,padding:"10px 10px",appearance:"auto"}}>
+                    {BIRTH_ZONES.map(([v,l])=>(<option key={v} value={v}>{l}</option>))}
+                  </select>
+                  <div style={{fontSize:12,marginTop:4,color:tzUnknown?"#c0564f":"#76819a",lineHeight:1.6}}>
+                    {tzUnknown ? "இந்த இடம் இந்தியாவுக்கு வெளியே — சரியான நேர மண்டலத்தைத் தேர்ந்தெடுக்கவும்; இல்லையேல் லக்னம் தவறும்."
+                      : "பிறந்த நேரம் அந்த ஊரின் கடிகார நேரமாகவே உள்ளிடவும். கோடைக்கால நேர மாற்றம் தானாகக் கணக்கிடப்படும்."}
+                  </div>
+                </div>
+              )}
 
               {/* Manual precise lat/lon entry — for advanced users who already know exact coordinates */}
               <button type="button" onClick={()=>setShowManualGeo(v=>!v)} style={{
@@ -2414,8 +2463,8 @@ export default function AstrologyApp() {
 
       // 14. பரிகாரம்
       const remPart = (remediesData && remediesData.length) ? sec("💎","பரிகாரங்கள்",
-        `<table class="pt"><thead><tr><th>கிரகம்</th><th>ரத்தினம்</th><th>மந்திரம்</th><th>கோயில்</th><th>தானம்</th></tr></thead><tbody>` +
-        remediesData.filter(r=>r.needsRemedy).map((r,i)=>`<tr${i%2?' class="alt"':''}><td>${r.ta}</td><td>${r.gem}</td><td style="font-size:9px">${r.mantra}</td><td style="font-size:9px">${r.temple}</td><td style="font-size:9px">${r.donate}</td></tr>`).join("") +
+        `<table class="pt"><thead><tr><th>கிரகம்</th><th>கிழமை</th><th>மந்திரம்</th><th>கோயில்</th><th>தானம்</th></tr></thead><tbody>` +
+        remediesData.filter(r=>r.needsRemedy).map((r,i)=>`<tr${i%2?' class="alt"':''}><td>${r.ta}</td><td>${r.day}</td><td style="font-size:9px">${r.mantra}</td><td style="font-size:9px">${r.temple}</td><td style="font-size:9px">${r.donate}</td></tr>`).join("") +
         `</tbody></table>`, "cGold") : "";
 
       // 15. AI கணிப்பு
@@ -2849,6 +2898,7 @@ ${aiPart}
                     <div style={{fontSize:12.5,fontWeight:700,color:"#a9823c"}}>{lucky.subGem}</div>
                   </div>
                 </div>
+                <div style={{fontSize:11.5,color:"#76819a",lineHeight:1.6,margin:"-4px 0 10px"}}>ராசி ரத்தினம் பொதுக் குறிப்பு மட்டும் — அணியும் முன் "பரிகாரம்" பகுதியில் உங்கள் லக்னத்துக்கான தீர்ப்பைப் பாருங்கள்.</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                   <div style={{background:"#58a97f08",borderRadius:8,padding:"8px 10px"}}>
                     <div style={{fontSize:11.5,color:"#4a5365",marginBottom:2}}>அதிர்ஷ்ட நிறம்</div>
@@ -3594,7 +3644,8 @@ ${aiPart}
                   </div>
                   <div style={{padding:"10px 12px",background:"#f8f8f8",borderRadius:8,border:"1px solid #e8e8e8"}}>
                     <div style={{fontSize:12,fontWeight:700,color:"#1f3f68",marginBottom:6}}>பரிகாரம்</div>
-                    <div style={{fontSize:12,color:"#27303f",lineHeight:1.6}}>{kalaSarpa.remedy}</div>
+                    <div style={{fontSize:12.5,color:"#27303f",lineHeight:1.7}}>{kalaSarpa.remedy}</div>
+                    <button data-dosha-remedy-link="kalasarpa" onClick={()=>{ showResultView("remedy"); window.scrollTo({top:0}); }} style={{marginTop:8,padding:0,background:"none",border:"none",cursor:"pointer",fontSize:12.5,fontWeight:700,color:"#226b66",textAlign:"left"}}>உங்கள் ஜாதகத்துக்கு எந்த அளவு தேவை — "பரிகாரம்" பகுதியில் பார்க்க →</button>
                   </div>
                 </div>
               ) : (
@@ -3631,7 +3682,8 @@ ${aiPart}
                   )}
                   <div style={{padding:"10px 12px",background:"#f8f8f8",borderRadius:8,border:"1px solid #e8e8e8"}}>
                     <div style={{fontSize:12,fontWeight:700,color:"#1f3f68",marginBottom:6}}>பரிகாரம்</div>
-                    <div style={{fontSize:12,color:"#27303f",lineHeight:1.6}}>செவ்வாய்க்கிழமை விரதம் • அங்காரக ஸ்தோத்திரம் • பவள மோதிரம் அணிதல் • செவ்வாய் தோஷ நிவர்த்தி பூஜை</div>
+                    <div style={{fontSize:12.5,color:"#27303f",lineHeight:1.7}}>செவ்வாய்க்கிழமை விரதம் • முருகன் வழிபாடு • கந்த சஷ்டி கவசம் பாராயணம்</div>
+                    <button data-dosha-remedy-link="chevvai" onClick={()=>{ showResultView("remedy"); window.scrollTo({top:0}); }} style={{marginTop:8,padding:0,background:"none",border:"none",cursor:"pointer",fontSize:12.5,fontWeight:700,color:"#226b66",textAlign:"left"}}>ரத்தினம் அணியலாமா, எப்போது தொடங்குவது — "பரிகாரம்" பகுதியில் பார்க்க →</button>
                   </div>
                 </div>
               ) : (
@@ -4146,7 +4198,7 @@ ${aiPart}
                               <div style={{fontSize:11.5,lineHeight:1.7,color:"#5a3a20"}}>
                                 மந்திரம்: {r.mantra} — {r.count}<br/>
                                 கோயில்: {r.temple}<br/>
-                                {r.day} அன்று {r.donate} தானம் • 💎 ரத்தினம்: {r.gem}
+                                {r.day} அன்று {r.donate} தானம்
                               </div>
                             </div>
                           ))}
@@ -5112,7 +5164,7 @@ ${aiPart}
             <h2 style={{fontSize:19,fontWeight:500,color:"#9d5f38",margin:"0 0 2px"}}>
               {today.isFuture?"எதிர்கால பலன்":today.isPast?"கடந்த நாள் பலன்":"இன்றைய பலன்"}
             </h2>
-            <p style={{fontSize:12,color:"#a9823c"}}>{today.dateStr} • {today.dayName}கிழமை</p>
+            <p style={{fontSize:12,color:"#a9823c"}}>{today.dateStr} • {kizhamai(today.dayName)}</p>
             {today.isOtherDate && (
               <div style={{fontSize:11.5,color:today.isFuture?"#58a97f":"#4a5365",marginTop:3,fontWeight:600}}>
                 {today.isFuture?"✨ எதிர்கால கணிப்பு — அன்றைய தசை-புக்தி அடிப்படையில்":"📖 கடந்த நாளின் பலன் பார்வை"}
@@ -5174,7 +5226,7 @@ ${aiPart}
             border:`1.5px solid ${moodColor}40`, background:`${moodColor}10`}}>
             <div style={{fontSize:15,fontWeight:700,color:moodColor}}>{moodText}</div>
             <button data-share onClick={()=>shareOut("இன்றைய பலன்", [
-              `${formData.name} — ${today.dateStr} ${today.dayName}கிழமை`,
+              `${formData.name} — ${today.dateStr} ${kizhamai(today.dayName)}`,
               moodText + (gochara.isChandrashtama ? " (சந்திராஷ்டமம்)" : ""),
               currentDasha?.mahadasha ? `நடப்பு தசை: ${currentDasha.mahadasha.name}${currentDasha.bhukti ? " / " + currentDasha.bhukti.name : ""}` : "",
               muhurtham ? `ராகு காலம்: ${muhurtham.rahuKalam}` : "",
@@ -5404,7 +5456,7 @@ ${aiPart}
               {/* Today's specific remedy */}
               <div style={{borderTop:"1px dashed #c7a56830",paddingTop:10}}>
                 <div style={{fontSize:12.5,fontWeight:700,color:"#27303f",marginBottom:6}}>
-                  இன்று ({today.dayName}கிழமை) செய்ய வேண்டியவை
+                  இன்று ({kizhamai(today.dayName)}) செய்ய வேண்டியவை
                 </div>
                 {remedy.isSpecialDay && (
                   <div style={{fontSize:12,background:"#e6d2d2",color:"#1f3f68",padding:"4px 8px",borderRadius:6,marginBottom:6,fontWeight:600}}>
@@ -5524,8 +5576,8 @@ ${aiPart}
 
       // Paksham calculation
       const paksham = h.paksham || "";
-      const isPournami = h.tithi === "பௌர்ணமி/அமாவாசை" && paksham.includes("சுக்ல");
-      const isAmavasai = h.tithi === "பௌர்ணமி/அமாவாசை" && !paksham.includes("சுக்ல");
+      const isPournami = h.tithi === "பௌர்ணமி" || (h.tithi === "பௌர்ணமி/அமாவாசை" && paksham.includes("சுக்ல"));
+      const isAmavasai = h.tithi === "அமாவாசை" || (h.tithi === "பௌர்ணமி/அமாவாசை" && !paksham.includes("சுக்ல"));
       const isEkadashi = h.tithi === "ஏகாதசி";
       const isPradosham = h.tithi === "திரயோதசி";
       const isChaturthi = h.tithi === "சதுர்த்தி";

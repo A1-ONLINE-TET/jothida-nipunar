@@ -8,7 +8,7 @@
 //
 // இடம்: சென்னை — தமிழ்நாட்டுப் பஞ்சாங்க வழக்கு (பயனர் இடத்தைப் பொறுத்து மாறாது).
 // ═══════════════════════════════════════════════════════════════════
-import { generateHoroscope, calcMuhurtham, NAKSHATRAS } from "../../src/engine.js";
+import { generateHoroscope, calcMuhurtham, NAKSHATRAS, setEngineTimezone } from "../../src/engine.js";
 
 const LAT = 13.0827, LON = 80.2707;
 const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -57,6 +57,7 @@ const TAMIL_MONTHS = ["சித்திரை", "வைகாசி", "ஆன�
 
 // ஒரு மாதத்தின் (0–11) ஒவ்வொரு நாளுக்கும் தமிழ்த் தேதி
 export function tamilDatesForMonth(year, month) {
+  setEngineTimezone(5.5); // பஞ்சாங்கம் எப்போதும் IST
   const at = sampler();
   const start = new Date(year, month, 1), end = new Date(year, month + 1, 0);
   return buildDays(start, end, at).map((x) => (x.tmIdx == null ? null : { month: TAMIL_MONTHS[x.tmIdx], monthIdx: x.tmIdx, day: x.tmDay }));
@@ -98,6 +99,7 @@ const RULES = [
 
 // ஒரு ஆண்டின் பண்டிகைகள் → [{ iso, name, basis, tamil }] (தேதி வரிசை)
 export function computeFestivals(year) {
+  setEngineTimezone(5.5);
   const at = sampler();
   const days = buildDays(new Date(year, 0, 1), new Date(year, 11, 31), at);
   const out = [];

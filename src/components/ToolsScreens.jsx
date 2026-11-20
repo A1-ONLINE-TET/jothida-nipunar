@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 
 import BottomNav from "./BottomNav.jsx";
-import { NAME_SYLLABLES, NUMBER_INFO, numerologyOf } from "./tools-data.js";
+import { NAME_SYLLABLES, NUMBER_INFO, numerologyOf, kizhamai } from "./tools-data.js";
 
 // ── பகிரப்படும் நடை (App.jsx-இன் card/ink tokens-உடன் ஒத்தது) ──
 const page = { minHeight: "100vh", fontFamily: "'Noto Sans Tamil','Segoe UI',system-ui,sans-serif", color: "#27303f" };
@@ -173,7 +173,7 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
 
         {rashi != null && state === "idle" && isDaily && data && (<>
           <div data-palan style={{ ...card, background: mood.bg, border: "none", boxShadow: "none" }}>
-            <div style={{ fontSize: 12.5, color: "#4a5365", marginBottom: 2 }}>{data.rashi} ராசி · {data.date.dateStr} · {data.date.dayName}கிழமை</div>
+            <div style={{ fontSize: 12.5, color: "#4a5365", marginBottom: 2 }}>{data.rashi} ராசி · {data.date.dateStr} · {kizhamai(data.date.dayName)}</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: mood.c, lineHeight: 1.4 }}>{mood.t}</div>
             {g.isChandrashtama && (
               <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 8, fontSize: 13, color: "#c0564f", lineHeight: 1.6 }}>
@@ -458,7 +458,7 @@ export function NavagrahaScreen({ fetchNavagraha, onNav }) {
         {!err && !data && <div style={{ ...card, textAlign: "center", color: "#76819a", fontSize: 13 }}>ஏற்றுகிறது…</div>}
         {today && (
           <div data-today-worship style={{ ...card, background: "#f6f1e4", border: "none", boxShadow: "none" }}>
-            <div style={{ fontSize: 12.5, color: "#7d6a3f", marginBottom: 2 }}>இன்று {dWeek(isoOffset(0))}கிழமை · {today.lord}</div>
+            <div style={{ fontSize: 12.5, color: "#7d6a3f", marginBottom: 2 }}>இன்று {kizhamai(dWeek(isoOffset(0)))} · {today.lord}</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#27303f", lineHeight: 1.5 }}>{today.deity}</div>
             <div style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.7, marginTop: 4 }}>{today.remedy}</div>
             <div style={{ fontSize: 12.5, color: "#76819a", lineHeight: 1.6, marginTop: 4 }}>தானம்: {today.donate}</div>
@@ -471,7 +471,7 @@ export function NavagrahaScreen({ fetchNavagraha, onNav }) {
               <button data-graha={g.ta} onClick={() => setOpen(on ? null : g.ta)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: "14px 16px" }}>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "block", fontSize: 15, fontWeight: 700, color: "#1f3f68" }}>{g.ta}</span>
-                  <span style={{ display: "block", fontSize: 12, color: "#76819a" }}>{g.day}கிழமை · {g.gem}</span>
+                  <span style={{ display: "block", fontSize: 12, color: "#76819a" }}>{kizhamai(g.day)} · {g.gem}</span>
                 </span>
                 <ChevronRight size={18} color="#a3adc2" style={{ flexShrink: 0, transform: on ? "rotate(90deg)" : "none", transition: "transform .2s" }} />
               </button>

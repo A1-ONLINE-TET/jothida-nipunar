@@ -46,7 +46,7 @@ import * as engine from "../../src/engine.js";
 // without shipping the engine. Only functions are exposed; data tables
 // and anything non-function are rejected. Auth + rate-limit still apply.
 const ENGINE_FNS = new Set(
-  Object.keys(engine).filter((k) => typeof engine[k] === "function")
+  Object.keys(engine).filter((k) => typeof engine[k] === "function" && k !== "setEngineTimezone")
 );
 
 const SECURITY_HEADERS = {
@@ -80,6 +80,21 @@ function json(env, origin, body, status = 200) {
 // ── input validation ─────────────────────────────────────────────
 const AYANAMSAS = new Set(["lahiri", "kp", "raman"]);
 function clampStr(s, n) { return typeof s === "string" ? s.slice(0, n) : ""; }
+// Offset (hours east of UTC) of an IANA zone for a LOCAL wall-clock time. The runtime's
+// time-zone database supplies daylight saving and historical changes — including India's
+// +6:30 war time (Sep 1942 – Oct 1945) and Madras time before 1906.
+function zoneOffsetHours(zone, y, m, d, hh, mm) {
+  const fmt = new Intl.DateTimeFormat("en-US", { timeZone: zone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const offAt = (utcMs) => {
+    const p = {}; for (const x of fmt.formatToParts(new Date(utcMs))) p[x.type] = x.value;
+    return (Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - utcMs) / 3600000;
+  };
+  const local = Date.UTC(y, m - 1, d, hh, mm);
+  let off = offAt(local - 5.5 * 3600000);
+  off = offAt(local - off * 3600000);
+  return Math.round(off * 3600) / 3600;
+}
+
 function normalizeBirth(b) {
   if (!b || typeof b !== "object") throw new Error("no body");
   const dobISO = clampStr(b.dobISO, 10);
@@ -94,8 +109,13 @@ function normalizeBirth(b) {
   if (!Number.isFinite(lon) || lon < -180 || lon > 180) throw new Error("bad lon");
   const ayanamsaKey = AYANAMSAS.has(b.ayanamsaKey) ? b.ayanamsaKey : "lahiri";
   const gender = b.gender === "ஆண்" || b.gender === "பெண்" ? b.gender : null;
+  // Birth-place civil zone: the client sends an IANA name only for births outside India.
+  const tz = typeof b.tz === "string" && /^[A-Za-z_]{2,20}\/[A-Za-z_\/-]{2,30}$/.test(b.tz) ? b.tz : "Asia/Kolkata";
+  let tzOffset = 5.5;
+  try { tzOffset = zoneOffsetHours(tz, y, m, d, th, tm); } catch { try { tzOffset = zoneOffsetHours("Asia/Kolkata", y, m, d, th, tm); } catch { tzOffset = 5.5; } }
+  if (!Number.isFinite(tzOffset) || tzOffset < -12 || tzOffset > 14) tzOffset = 5.5;
   return {
-    dobISO, time24, lat, lon, ayanamsaKey, gender,
+    dobISO, time24, lat, lon, ayanamsaKey, gender, tz, tzOffset,
     name: clampStr(b.name, 80), dob: clampStr(b.dob, 20),
     tob: clampStr(b.tob, 8), ampm: clampStr(b.ampm, 2), pob: clampStr(b.pob, 120),
   };
@@ -413,6 +433,7 @@ export default {
         const args = Array.isArray(body?.args) ? body.args : [];
         if (!ENGINE_FNS.has(fn)) return json(env, origin, { error: "unknown fn" }, 400);
         if (args.length > 12) return json(env, origin, { error: "too many args" }, 400);
+        engine.setEngineTimezone(5.5); // பொது engine அழைப்புகள் (பிரச்னம் முதலியன) எப்போதும் IST
         const result = await engine[fn](...args);
         return json(env, origin, { result });
       }

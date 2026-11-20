@@ -114,8 +114,26 @@ Pages + Worker இரண்டையும் மீண்டும் build+dep
 ## 🧪 Commands
 - `npm install` — dependencies (root: client; `worker/`: wrangler)
 - `npm run build` — client build (deploy முன் இதை pass செய்ய வேண்டும்)
-- `npm test` — 130 golden engine tests + 108 பண்டிகைச் சோதனைகள் (engine.js / festivals.js மாற்றினால் இதை ஓட்டு)
+- `npm test` — 131 golden engine tests + 1080 ephemeris ஒப்பீடுகள் + 108 பண்டிகைச் சோதனைகள்
+  (engine.js / festivals.js மாற்றினால் இதை ஓட்டு)
 - Worker bundle check: `cd worker && npx wrangler deploy --dry-run`
+
+## 🔭 Engine துல்லியம் & நேரம் (2026-11 audit)
+- **கிரக நிலை:** `generateHoroscope` — சூரியன் (Meeus), சந்திரன் (Meeus 59-term), 5 கிரகங்கள் (JPL Kepler elements +
+  J2000→நாளின் equinox **precession** + light-time + வியாழன்/சனி perturbation திருத்தம்), ΔT (TT). தனிப்பட்ட
+  ephemeris-உடன் ஒப்பீடு `scripts/test-ephemeris.mjs` (fixture `scripts/fixtures/ephemeris-ref.json`): சந்திரன் ≤0.003°,
+  கிரகங்கள் ≤0.04°, லக்னம் ≤0.002°. வானியல் பகுதியை மாற்றினால் இந்தச் சோதனை கட்டாயம்.
+- **ராகு/கேது:** `NODE_TYPE = "mean"` (engine.js) — திருக்கணிதப் பஞ்சாங்க மரபு; வெளியிடப்படும் பெயர்ச்சித் தேதிகளுடன் பொருந்தும்.
+  `"true"` என மாற்றினால் osculating node (±1.8° வேறுபாடு, பெயர்ச்சி ~10 நாள் முன்/பின்).
+- **நேர மண்டலம்:** engine-இல் module நிலை `_tz` (default IST 5.5). Worker-இன் ஒவ்வொரு compute function-உம் தொடக்கத்தில்
+  `useZone(birth)` அழைக்கும் (birth.tzOffset — `normalizeBirth` Intl வழி கணக்கிடும்: வெளிநாட்டுப் பிறப்புக்கு client அனுப்பும்
+  IANA பெயர் `tz`; இந்தியாவுக்கு `Asia/Kolkata` → 1942–45 போர்க்கால +6:30 தானாக). புதிய compute function சேர்த்தால்
+  `useZone` மறக்காதே; `await`-ஐத் தாண்டி அந்த நிலையை நம்பாதே.
+- **"இப்போது":** server (Workers) UTC-இல் ஓடும் — engine/worker-இல் `new Date()` பயன்படுத்தாதே, **`civilNow()`** பயன்படுத்து
+  (இல்லையேல் IST 05:30 வரை நேற்றைய தேதி). Server அனுப்பும் Date-கள் wall-clock; client `reviveDates()` அவற்றை
+  wall-clock ஆகவே மீட்கும்.
+- **விதி அட்டவணைகள்** (அஷ்டகவர்க்கம், பொருத்தம், வர்க்கங்கள், தசை, கோசார வேதை) classical அட்டவணையுடன் சரிபார்க்கப்பட்டவை.
+  ரத்தினப் பரிந்துரை `worker/src/remedy.js`-இல் மட்டும் — வேறெங்கும் "அணியுங்கள்" என்று சேர்க்காதே.
 
 ## ⚠️ Gotchas
 - Worker JSON-ல் Date → ISO string ஆகும்; `api.js`-ன் `reviveDates()` client-ல்

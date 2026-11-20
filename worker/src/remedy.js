@@ -12,7 +12,7 @@
 // உள்ளீடு: computeFullReport-இன் வெளியீடு (engine கணக்கு மாறாது; இது அதன் மேல் விளக்க அடுக்கு).
 // பரிகார உள்ளடக்கம் (மந்திரம், கோயில், தானம்) engine-இன் PLANET_REMEDIES அட்டவணையிலிருந்து.
 // ═══════════════════════════════════════════════════════════════════
-import { PLANET_REMEDIES, DAY_REMEDIES, RASHIS, generateHoroscope } from "../../src/engine.js";
+import { PLANET_REMEDIES, DAY_REMEDIES, RASHIS, generateHoroscope, setEngineTimezone } from "../../src/engine.js";
 
 const SEVEN = ["சூரியன்", "சந்திரன்", "செவ்வாய்", "புதன்", "குரு", "சுக்கிரன்", "சனி"];
 const NODES = ["ராகு", "கேது"];
@@ -109,6 +109,7 @@ function stepsFor(planet, { light = false } = {}) {
 }
 
 export function computeRemedyPlan(h, R, birth) {
+  setEngineTimezone(5.5); // "இன்று", தொடங்கும் நாள், சனி கோசாரம் — IST நாட்காட்டிப்படி
   const uni = {}; (R.unifiedStrength || []).forEach((u) => { uni[u.ta] = u; });
   const gb = {}; (R.grahaBala || []).forEach((g) => { gb[g.ta] = g; });
   const fn = R.functionalNature || {};
