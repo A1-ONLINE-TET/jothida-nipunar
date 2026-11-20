@@ -10,7 +10,7 @@ import * as m from "../src/engine.js";
 
 const { rows } = JSON.parse(fs.readFileSync(new URL("./fixtures/ephemeris-ref.json", import.meta.url), "utf8"));
 // அனுமதிக்கப்பட்ட அதிகபட்சப் பிழை (பாகை). செவ்வாய்/சுக்கிரன் பூமிக்கு அருகில் வரும்போது சற்று அதிகம்.
-const TOL = { sun: 0.02, moon: 0.012, mars: 0.09, mercury: 0.04, jupiter: 0.04, venus: 0.05, saturn: 0.03, rahuMean: 0.01, lagna: 0.03 };
+const TOL = { sun: 0.002, moon: 0.012, mars: 0.09, mercury: 0.04, jupiter: 0.04, venus: 0.05, saturn: 0.03, rahuMean: 0.002, lagna: 0.03 };
 const TA = { sun: "சூரியன்", moon: "சந்திரன்", mars: "செவ்வாய்", mercury: "புதன்", jupiter: "குரு", venus: "சுக்கிரன்", saturn: "சனி", rahuMean: "ராகு" };
 const diff = (a, b) => { let d = a - b; if (d > 180) d -= 360; if (d < -180) d += 360; return Math.abs(d); };
 

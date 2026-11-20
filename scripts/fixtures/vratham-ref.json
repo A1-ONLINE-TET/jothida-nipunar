@@ -39,13 +39,7 @@
     "2029": ["2029-01-30", "2029-02-28", "2029-03-29", "2029-04-28", "2029-05-27", "2029-06-25", "2029-07-25", "2029-08-23", "2029-09-22", "2029-10-21", "2029-11-20", "2029-12-20"],
     "2030": ["2030-01-19", "2030-02-17", "2030-03-19", "2030-04-17", "2030-05-17", "2030-06-15", "2030-07-14", "2030-08-13", "2030-09-11", "2030-10-11", "2030-11-09", "2030-12-09"]
    },
-   "exceptions": [
-    {
-     "reference": "2022-03-17",
-     "computed": "2022-03-18",
-     "reason": "Borderline within one minute: the source lists Purnima beginning 13:29, the engine computes 13:30:30 and the end of madhyahna that day is 13:30:24 (engine sunrise/sunset are rounded to the minute and its tithi times run about 1 minute later than the source's). The rule is unchanged; the neighbouring day is the vrat for anyone whose tithi time is a minute later."
-    }
-   ]
+   "exceptions": []
   },
   "ekadashi": {
    "name": "ஏகாதசி",

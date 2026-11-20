@@ -279,7 +279,7 @@ function generateHoroscope(dob, tob, lat=13.0827, lon=80.2707, lightweight=false
     + 0.019993 * Math.sin(2 * Mr) + 0.000289 * Math.sin(3 * Mr);
   // −0.00569° = annual aberration (apparent position). Nutation is not added: it shifts
   // every tropical longitude and the true ayanamsa equally, so it cancels in sidereal longitude.
-  const sunLongTropical = norm(L0 + C_sun - 0.00569);
+  const sunLongTropical = norm(L0 + C_sun - 0.00569 + sunCorrection(T));
   const sunLong = norm(sunLongTropical - ayanamsa);
   const sunRashi = Math.floor(sunLong / 30);
   const sunDeg = Math.floor(sunLong % 30);
@@ -694,11 +694,64 @@ function calculateDasha(moonLongitude, birthDate) {
 // for users who follow KP, Raman, or Yukteshwar systems.
 // Each returns the ayanamsa value in degrees for Julian century T.
 // ═══════════════════════════════════════════════════════════════════
+// ── Sun: planetary and lunar perturbations ─────────────────────────────────────────────
+// Meeus' short solar formula (Ch. 25) is good to about 0.01° (measured against an independent
+// ephemeris, astronomy-engine, 1900–2100: rms 12″, max 37″). That moved sankranti / Tamil-month
+// moments by up to ~15 minutes and tithi end times by about a minute. This series adds the
+// main perturbations by Venus, Mars, Jupiter, Saturn and the Moon (the classical 4.8″ / 5.5″ /
+// 7.2″ / 6.5″ terms and the next ones down), least-squares fitted to the same ephemeris:
+// rms 0.55″, max 1.75″ over 23,000 validation dates 1900–2100. Arcseconds.
+// Row = multipliers of [Venus L, Earth L, Mars L, Jupiter L, Saturn L, Moon elongation D,
+// Sun anomaly M, Moon anomaly M′], then cosine and sine amplitudes.
+const SUN_FIX_POLY = [-8.162, -5.542, 1.988, 3.624];
+const SUN_FIX_ARGS = [[181.9798, 58517.8157], [100.4664, 35999.3729], [355.4333, 19140.2993], [34.3515, 3034.9057],
+  [50.0774, 1222.1138], [297.8502, 445267.1114], [357.5291, 35999.0503], [134.9634, 477198.8675]];
+const SUN_FIX = [
+  [1,-1,0,0,0,0,0,0,-0.001,4.829],
+  [2,-2,0,0,0,0,0,0,-0.008,-5.522],
+  [3,-3,0,0,0,0,0,0,-0.006,-0.652],
+  [2,-3,0,0,0,0,0,0,2.473,-0.044],
+  [3,-5,0,0,0,0,0,0,0.116,-0.917],
+  [5,-8,0,0,0,0,0,0,0.524,-0.018],
+  [3,-3,0,0,0,0,-1,0,-0.462,1.367],
+  [0,1,0,-1,0,0,0,0,-0.122,-7.195],
+  [0,2,0,-2,0,0,0,0,0.011,2.737],
+  [0,1,0,-2,0,0,0,0,1.322,-0.936],
+  [0,1,0,-1,0,0,-1,0,-2.628,-0.245],
+  [0,2,-2,0,0,0,0,0,-0.002,-2.044],
+  [0,2,-3,0,0,0,0,0,0.21,-0.37],
+  [0,2,-2,0,0,0,-1,0,1.068,1.421],
+  [0,1,0,0,-1,0,0,0,0.007,-0.413],
+  [0,1,0,0,-1,0,-1,0,-0.08,0.32],
+  [0,0,0,0,0,1,0,0,-0.008,6.468],
+  [0,0,0,0,0,1,0,-1,-0.034,-0.427],
+  [0,0,0,0,0,0,1,0,-0.731,0.105],
+];
+// Correction to the Sun's longitude in DEGREES. T = Julian centuries (TT) from J2000; the
+// polynomial is only valid for 1900–2100, so T is clamped there.
+function sunCorrection(T) {
+  const Tc = Math.max(-1.05, Math.min(1.05, T));
+  let v = SUN_FIX_POLY[0] + SUN_FIX_POLY[1] * Tc + SUN_FIX_POLY[2] * Tc * Tc + SUN_FIX_POLY[3] * Tc * Tc * Tc;
+  for (let k = 0; k < SUN_FIX.length; k++) {
+    const t = SUN_FIX[k];
+    let a = 0;
+    for (let i = 0; i < 8; i++) if (t[i]) a += t[i] * (SUN_FIX_ARGS[i][0] + SUN_FIX_ARGS[i][1] * T);
+    a *= Math.PI / 180;
+    v += t[8] * Math.cos(a) + t[9] * Math.sin(a);
+  }
+  return v / 3600;
+}
+
 const AYANAMSA_SYSTEMS = {
   lahiri: {
     name: "லாஹிரி (சித்ரபக்ஷ)", nameEn: "Lahiri (Chitrapaksha)",
     desc: "IENA standard — most widely used in India",
-    calc: (T) => 23.856 + (T * 100 * 50.29 / 3600) // current formula in the app
+    // Official definition (Indian Astronomical Ephemeris, as implemented by Swiss Ephemeris):
+    // true ayanamsa 23°15′00.658″ on 21 March 1956 0h TT → mean value 23.245524743° at that
+    // epoch, carried by the IAU general precession: 23.857056° at J2000. The earlier constant
+    // (23.856 + 50.29″/yr) was 3.8″ low, which put slow points such as Rahu ~30 minutes late
+    // at a sign boundary.
+    calc: (T) => 23.857056 + precessionFromJ2000(T)
   },
   kp: {
     name: "கிருஷ்ணமூர்த்தி (KP)", nameEn: "Krishnamurti Paddhati",
@@ -4826,7 +4879,7 @@ function calcShadbala(placements, lagnaIdx, dobISO, tob, lat, lon) {
   // (relative to the equinoxes), not the sidereal zodiac — using nirayana longitude
   // directly would give a systematically wrong Kranti.
   const T_ayana = (birthDateObj - new Date(2000,0,1)) / 86400000 / 36525;
-  const ayanamsaAtBirth = 23.856 + (T_ayana * 100 * 50.29 / 3600);
+  const ayanamsaAtBirth = AYANAMSA_SYSTEMS.lahiri.calc(T_ayana);
   const eps = 23.4393 - 0.01300 * T_ayana;
   const epsRad = eps * Math.PI/180;
   function krantiOf(fullLong) {

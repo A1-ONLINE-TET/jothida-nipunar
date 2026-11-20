@@ -190,10 +190,14 @@ Pages + Worker இரண்டையும் மீண்டும் build+dep
 - Worker bundle check: `cd worker && npx wrangler deploy --dry-run`
 
 ## 🔭 Engine துல்லியம் & நேரம் (2026-11 audit)
-- **கிரக நிலை:** `generateHoroscope` — சூரியன் (Meeus), சந்திரன் (Meeus 59-term), 5 கிரகங்கள் (JPL Kepler elements +
-  J2000→நாளின் equinox **precession** + light-time + வியாழன்/சனி perturbation திருத்தம்), ΔT (TT). தனிப்பட்ட
-  ephemeris-உடன் ஒப்பீடு `scripts/test-ephemeris.mjs` (fixture `scripts/fixtures/ephemeris-ref.json`): சந்திரன் ≤0.003°,
-  கிரகங்கள் ≤0.04°, லக்னம் ≤0.002°. வானியல் பகுதியை மாற்றினால் இந்தச் சோதனை கட்டாயம்.
+- **கிரக நிலை:** `generateHoroscope` — சூரியன் (Meeus + `SUN_FIX` கிரக/சந்திர perturbation தொடர்: பிழை ≤2″), சந்திரன் (Meeus 59-term),
+  5 கிரகங்கள் (JPL Kepler elements + J2000→நாளின் equinox **precession** + light-time + வியாழன்/சனி perturbation திருத்தம்), ΔT (TT).
+  தனிப்பட்ட ephemeris-உடன் ஒப்பீடு `scripts/test-ephemeris.mjs` (fixture `scripts/fixtures/ephemeris-ref.json`): சூரியன் ≤0.001°,
+  சந்திரன் ≤0.002°, ராகு (சராசரி) ≤0.001°, கிரகங்கள் ≤0.04°, லக்னம் ≤0.001°. வானியல் பகுதியை மாற்றினால் இந்தச் சோதனை கட்டாயம்.
+- **லாஹிரி அயனாம்சம்:** அதிகாரபூர்வ வரையறை (Indian Astronomical Ephemeris / Swiss Ephemeris: 21.03.1956-இல் true 23°15′00.658″ →
+  J2000-இல் mean 23.857056° + IAU precession). ⚠ Drik Panchang 24″ அதிகமான மதிப்பைப் பயன்படுத்துகிறது (18.05.2025: 24.218311° vs
+  நமது 24.211547°) — அதனால் மெதுவான புள்ளிகளின் ராசி மாற்ற **நேரம்** வேறுபடும் (ராகு ~3 மணி, சூரிய சங்கராந்தி ~10 நிமிடம், சந்திரன்
+  ~45 விநாடி); தேதிகள் பொருந்தும். இது பிழை அல்ல; Drik-உடன் நேரத்தை ஒப்பிடும்போது நினைவில் கொள்.
 - **ராகு/கேது:** `NODE_TYPE = "mean"` (engine.js) — திருக்கணிதப் பஞ்சாங்க மரபு; வெளியிடப்படும் பெயர்ச்சித் தேதிகளுடன் பொருந்தும்.
   `"true"` என மாற்றினால் osculating node (±1.8° வேறுபாடு, பெயர்ச்சி ~10 நாள் முன்/பின்).
 - **நேர மண்டலம்:** engine-இல் module நிலை `_tz` (default IST 5.5). Worker-இன் ஒவ்வொரு compute function-உம் தொடக்கத்தில்
