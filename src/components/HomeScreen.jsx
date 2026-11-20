@@ -1,10 +1,10 @@
 import { useState } from "react";
 import {
-  Menu, Bell, Sun, Grid2X2, Heart, CalendarDays, UserRound,
-  BookOpen, Star, ChevronRight, Compass, Sparkles,
+  Menu, Sun, Grid2X2, Heart, CalendarDays, ChevronRight, Sparkles,
 } from "lucide-react";
 
 import "./home.css";
+import BottomNav, { NAV_ITEMS as navigation } from "./BottomNav.jsx";
 
 const services = [
   { key: "advisory", title: "ஜோதிடரிடம் ஆலோசனை", description: "திருமணம், தொழில், ஆரோக்கியம் — ஜோதிடர் பதில்", icon: Sparkles,     theme: "purple" },
@@ -13,15 +13,8 @@ const services = [
   { key: "calendar", title: "ஜோதிட நாட்கள்",     description: "முகூர்த்தம், ராகு காலம், பஞ்சாங்கம்",         icon: CalendarDays, theme: "blue" },
 ];
 
-const navigation = [
-  { key: "home",    label: "முகப்பு",     icon: Compass },
-  { key: "daily",   label: "ராசிபலன்",   icon: Sun },
-  { key: "chart",   label: "ஜாதகம்",     icon: Grid2X2 },
-  { key: "account", label: "என் கணக்கு", icon: UserRound },
-];
 
 export default function HomeScreen({ handle = () => {} }) {
-  const [activeTab, setActiveTab] = useState("முகப்பு");
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -42,9 +35,7 @@ export default function HomeScreen({ handle = () => {} }) {
           <img src="/logo/topper-text.webp" alt="TOPPER ASTRO" />
         </button>
 
-        <button className="round-button" aria-label="Notifications" onClick={() => handle("notifications")}>
-          <Bell size={23} />
-        </button>
+        <span className="round-button" aria-hidden="true" style={{ visibility: "hidden" }} />
       </header>
 
       {menuOpen && (
@@ -52,7 +43,7 @@ export default function HomeScreen({ handle = () => {} }) {
           {navigation.map((item) => (
             <button
               key={item.key}
-              onClick={() => { setActiveTab(item.label); setMenuOpen(false); handle(item.key); }}
+              onClick={() => { setMenuOpen(false); handle(item.key); }}
             >
               {item.label}
             </button>
@@ -113,25 +104,7 @@ export default function HomeScreen({ handle = () => {} }) {
         })}
       </section>
 
-      <nav className="bottom-nav" aria-label="Main navigation">
-        {navigation.map((item) => {
-          const Icon = item.icon;
-          const active = activeTab === item.label;
-          return (
-            <button
-              key={item.key}
-              className={`nav-item ${active ? "active" : ""}`}
-              onClick={() => { setActiveTab(item.label); handle(item.key); }}
-              aria-current={active ? "page" : undefined}
-            >
-              <span className="nav-icon">
-                <Icon size={24} strokeWidth={active ? 2.3 : 1.7} />
-              </span>
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      <BottomNav active="home" onNav={handle} fixed={false} />
     </main>
   );
 }

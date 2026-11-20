@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 
 import "./home.css";
+import BottomNav from "./BottomNav.jsx";
 
 // நோக்கம் (purpose) அடிப்படை — ஒவ்வொரு தலைப்பும் ஒரு கேள்வியாக engine-க்கு செல்லும்.
 // worker/src/ask.js இந்தக் கேள்விகளை topic-ஆக classify செய்து chart படித்து பதிலளிக்கும்.
@@ -26,7 +27,7 @@ const topics = [
     question: "" },
 ];
 
-export default function AdvisoryScreen({ onBack = () => {}, onPick = () => {}, astrologerName = "ஜோதிட குரு" }) {
+export default function AdvisoryScreen({ onBack = () => {}, onPick = () => {}, onNav = () => {}, astrologerName = "ஜோதிட குரு" }) {
   return (
     <main className="app-shell">
       <div className="sky-stars" aria-hidden="true" />
@@ -46,7 +47,7 @@ export default function AdvisoryScreen({ onBack = () => {}, onPick = () => {}, a
         <span className="round-button" aria-hidden="true" style={{ visibility: "hidden" }} />
       </header>
 
-      <section className="hero" style={{ minHeight: "auto", paddingBottom: 8 }}>
+      <section className="hero" style={{ minHeight: "auto", paddingBottom: 8, flex: "0 0 auto" }}>
         <div className="hero-copy">
           <h1>{astrologerName}</h1>
           <p style={{ color: "#c9a84a", fontSize: 13, marginTop: 6, fontWeight: 600 }}>
@@ -77,6 +78,9 @@ export default function AdvisoryScreen({ onBack = () => {}, onPick = () => {}, a
           );
         })}
       </section>
+
+      <div style={{ flex: "1 1 auto" }} />
+      <BottomNav active="advisory" onNav={onNav} fixed={false} />
     </main>
   );
 }

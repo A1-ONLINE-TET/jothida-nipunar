@@ -192,8 +192,20 @@
   padding: 3px; border: 0; background: transparent; color: var(--h-navy); font-size: 10.5px; cursor: pointer;
 }
 .nav-icon { display: grid; place-items: center; width: 40px; height: 30px; border-radius: 16px; }
-.nav-item.active { color: #bd7b1d; font-weight: 800; }
-.nav-item.active .nav-icon { background: #fff0ce; box-shadow: inset 0 0 0 1px #efc16d; }
+.nav-item { font-family: "Noto Sans Tamil", "Latha", system-ui, sans-serif; color: #6b7486; }
+.nav-item.active { color: #1f3f68; font-weight: 800; }
+.nav-item.active .nav-icon { background: #eef1fb; box-shadow: inset 0 0 0 1px #c9d3ea; }
+
+/* same bar, pinned to the bottom edge — used on every scrolling screen */
+.bottom-nav.bottom-nav-fixed {
+  position: fixed; z-index: 40; left: 50%; bottom: 0; transform: translateX(-50%);
+  width: 100%; max-width: 520px; margin: 0; box-sizing: border-box;
+  padding: 7px 6px calc(7px + env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0; border-bottom: 0;
+  background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(12px);
+  box-shadow: 0 -8px 24px -14px rgba(16, 42, 80, 0.22);
+  color: #5d6678;
+}
 
 /* short screens: trim a little more */
 @media (max-height: 720px) {

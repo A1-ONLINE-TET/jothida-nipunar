@@ -22,23 +22,23 @@ function AccessGate({ children }) {
     setOk(true); // the Worker validates it on the first API call
   };
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: 24, background: "#0b0a1a", color: "#f5efe0", fontFamily: "'Noto Sans Tamil', system-ui, sans-serif", textAlign: "center" }}>
-      <div style={{ fontSize: 46 }}>🔮</div>
-      <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>ஜோதிட நிபுணர்</h2>
-      <p style={{ margin: 0, fontSize: 14, color: "#c9b88a", maxWidth: 300, lineHeight: 1.7 }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 24, background: "#ffffff", color: "#27303f", fontFamily: "'Noto Sans Tamil', system-ui, sans-serif", textAlign: "center" }}>
+      <img src="/logo/logo-full.webp" alt="TOPPER ASTRO" style={{ width: 150, maxWidth: "50vw", height: "auto" }} />
+      <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#1f3f68" }}>ஜோதிட நிபுணர்</h2>
+      <p style={{ margin: 0, fontSize: 14, color: "#4a5365", maxWidth: 300, lineHeight: 1.7 }}>
         தொடர அணுகல் குறியீட்டை (access code) உள்ளிடுங்கள்.
       </p>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 300 }}>
         <input
           type="password" value={code} onChange={(e) => setCode(e.target.value)}
           placeholder="அணுகல் குறியீடு" autoFocus
-          style={{ padding: "12px 16px", borderRadius: 12, border: "1px solid #3a3550", background: "#17142b", color: "#f5efe0", fontSize: 16, textAlign: "center", outline: "none" }}
+          style={{ padding: "13px 16px", borderRadius: 12, border: "1.5px solid #d9e0ee", background: "#fcfdff", color: "#27303f", fontSize: 16, textAlign: "center", outline: "none" }}
         />
-        <button type="submit" style={{ padding: "12px 26px", borderRadius: 999, border: "none", cursor: "pointer", background: "linear-gradient(135deg,#c9a84a,#9a7b2e)", color: "#1a1206", fontSize: 15, fontWeight: 700 }}>
+        <button type="submit" style={{ padding: "12px 26px", borderRadius: 999, border: "none", cursor: "pointer", background: "linear-gradient(135deg,#2a4d7e,#1f3f68 45%,#16304f)", color: "#f6f8fc", fontSize: 15, fontWeight: 700 }}>
           உள்நுழை
         </button>
       </form>
-      <p style={{ margin: 0, fontSize: 11.5, color: "#6b6480", maxWidth: 300 }}>
+      <p style={{ margin: 0, fontSize: 12, color: "#76819a", maxWidth: 300 }}>
         குறியீடு தவறெனில் மீண்டும் கேட்கும்.
       </p>
     </div>
@@ -62,13 +62,13 @@ class ErrorBoundary extends React.Component {
   render() {
     if (!this.state.err) return this.props.children;
     return (
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: 24, background: "#0b0a1a", color: "#f5efe0", fontFamily: "'Noto Sans Tamil', system-ui, sans-serif", textAlign: "center" }}>
-        <div style={{ fontSize: 44 }}>🔮</div>
-        <h2 style={{ margin: 0, fontSize: 19, fontWeight: 700 }}>சிறிய இடையூறு ஏற்பட்டது</h2>
-        <p style={{ margin: 0, fontSize: 14, color: "#c9b88a", maxWidth: 320, lineHeight: 1.7 }}>
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 24, background: "#ffffff", color: "#27303f", fontFamily: "'Noto Sans Tamil', system-ui, sans-serif", textAlign: "center" }}>
+        <img src="/logo/logo-full.webp" alt="TOPPER ASTRO" style={{ width: 120, maxWidth: "45vw", height: "auto" }} />
+        <h2 style={{ margin: 0, fontSize: 19, fontWeight: 700, color: "#1f3f68" }}>சிறிய இடையூறு ஏற்பட்டது</h2>
+        <p style={{ margin: 0, fontSize: 14, color: "#4a5365", maxWidth: 320, lineHeight: 1.7 }}>
           பயன்பாட்டை மீண்டும் ஏற்றினால் சரியாகிவிடும். கீழே உள்ள பொத்தானை அழுத்துங்கள்.
         </p>
-        <button onClick={() => this.hardReload()} style={{ marginTop: 6, padding: "12px 26px", borderRadius: 999, border: "none", cursor: "pointer", background: "linear-gradient(135deg,#c9a84a,#9a7b2e)", color: "#1a1206", fontSize: 15, fontWeight: 700 }}>
+        <button onClick={() => this.hardReload()} style={{ marginTop: 6, padding: "12px 26px", borderRadius: 999, border: "none", cursor: "pointer", background: "linear-gradient(135deg,#2a4d7e,#1f3f68 45%,#16304f)", color: "#f6f8fc", fontSize: 15, fontWeight: 700 }}>
           மீண்டும் ஏற்று
         </button>
       </div>

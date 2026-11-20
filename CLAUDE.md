@@ -36,6 +36,7 @@ Browser (thin client, src/)  ──Firebase idToken──▶  Cloudflare Worker 
 | File | என்ன | யார் தொடலாம் |
 |------|------|-------------|
 | `src/App.jsx` | **முழு UI + design** (React, styling, screens) | ✅ design வேலைக்கு இதுதான் |
+| `src/components/BottomNav.jsx` | எல்லா பக்கங்களுக்கும் பொதுவான கீழ்ப்பட்டை (5 tabs) | nav மாற்றும்போது |
 | `src/almanac.js` | client public panchangam re-exports | அரிதாக |
 | `src/api.js` | server bridge | endpoint சேர்க்கும்போது |
 | `src/engine.js` | proprietary engine (server-only) | logic மாற்றும்போது (client-ல் import ❌) |
@@ -50,6 +51,15 @@ App-ன் **முழு design (colors, layout, fonts, screens, animation)** `
 2. `npm run build` — build pass ஆகிறதா பார்.
 3. branch-க்கு commit + push → website **தானாகவே** update ஆகும் (கீழே பார்).
 Design மாற்றம் secure engine-ஐ தொடாது — பாதுகாப்பானது.
+
+### 🧭 Navigation அமைப்பு (App.jsx)
+- எல்லா பக்க மாற்றங்களும் `handleNav(key)` வழியே (Home cards, `BottomNav`, Advisory).
+- ஜாதக முடிவுப் பக்கம் 5 உள்-tabs: `resultTab` = summary | chart | palan | dasha | deep.
+  "ஆழம்" tab-இன் 29 பகுப்பாய்வுகள் `DEEP_GROUPS` பட்டியலில் (key = `advancedView`).
+- `openResultView(view)` / `openDailyAuto()` — ஜாதகம் இல்லை அல்லது வேறு சுயவிவரத்துடையது
+  எனில் (`chartIsCurrent()` = false) முதலில் கணக்கிட்டுத் திறக்கும். புதிய பக்கம்/இணைப்பு
+  சேர்த்தால் இவற்றையே பயன்படுத்து — `goTo(SCREEN.RESULT/DAILY)` நேரடியாக அழைக்காதே.
+- காட்சிக்கு மட்டுமான உரை மெருகு: `stripEmoji`, `taText`, `calmTone` (engine output மாறாது).
 
 ## 🚀 Deploy அமைப்பு (LIVE)
 - **Repo:** `A1-ONLINE-TET/jothida-nipunar`
