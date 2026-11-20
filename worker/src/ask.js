@@ -34,11 +34,11 @@ const KEYWORDS = [
   ["career",   [
     "தொழில","வேலை","உத்தியோக","பதவி","சம்பள","ஊதிய","பிசினஸ","வியாபார","வணிக","முன்னேற்ற","பதவி உயர்","வேலை வாய்ப்","ராஜினாம","பணி",
     "job","career","business","work","promotion","boss","salary","office","employment",
-    "velai","vேlai","thozhil","thozil","udhyogam","business","sambalam","oodhiyam","padavi","vேlai vaippu"]],
+    "velai","velai","thozhil","thozil","udhyogam","business","sambalam","oodhiyam","padavi","velai vaippu"]],
   ["wealth",   [
     "பண","செல்வ","கடன்","நிதி","சொத்து","வருமான","லாப","நஷ்ட","வறுமை","ஐஸ்வர்ய","லட்சுமி","சேமிப்","முதலீ","பங்கு","கடனில",
     "money","wealth","finance","loan","income","rich","savings","debt","profit","investment",
-    "panam","panakkaran","selvam","kadan","sothu","varumanam","laabam","sேmippu","mudhaleedu"]],
+    "panam","panakkaran","selvam","kadan","sothu","varumanam","laabam","semippu","mudhaleedu"]],
   ["health",   [
     "ஆரோக்கிய","உடல்","உடம்","நோய","மருத்துவ","சுகாதார","சுகம்","ஆயுள்","பலம்","பலஹீன","மன அழுத்த","மனநல","அறுவை","சிகிச்ச","வியாதி",
     "health","disease","sick","body","medical","surgery","stress","illness","fitness","life span","longevity",
@@ -54,7 +54,7 @@ const KEYWORDS = [
   ["travel",   [
     "பயண","வெளிநா","வெளியூர","இடம் மாற்","குடியேற்ற","சொந்த ஊர","ஊர் மாற்","வெளிமாநில","இடமாற்ற",
     "visa","travel","abroad","foreign","migrat","relocat","settle",
-    "payanam","velinadu","veliyur","veliநாடு","kudiyettam","ur maatram","foreign trip"]],
+    "payanam","velinadu","veliyur","velinaadu","kudiyettam","ur maatram","foreign trip"]],
 ];
 
 function classify(q) {
@@ -167,7 +167,7 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
         if (et.windows[1] && !isCaution) foc.push(`பிறகு: ${fmtMonthYear(et.windows[1].start)} – ${fmtMonthYear(et.windows[1].end)} (${et.windows[1].md} தசை).`);
         if (typeof et.promise === "number") foc.push(`ஜாதக வாக்குறுதி: ${et.promise}%${(!isCaution && et.promiseVerdict) ? ` — ${et.promiseVerdict}` : ""}.`);
       } else {
-        foc.push("அடுத்த 12 ஆண்டுகளில் வலுவான தசா activation குறைவு — பொறுமையுடன் முயற்சி தேவை.");
+        foc.push("அடுத்த 12 ஆண்டுகளில் வலுவான தசைத் தூண்டல் குறைவு — பொறுமையுடன் முயற்சி தேவை.");
       }
       foc.push("இந்தக் காலங்களில் முயற்சி செய்தால் பலன் கிடைக்கும். 🙏");
       return { category: cat, label: topic.label, answer: foc.join("\n\n") };

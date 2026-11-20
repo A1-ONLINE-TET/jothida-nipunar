@@ -540,7 +540,7 @@ export function NumerologyScreen({ defaultDob = "", onNav }) {
         <p style={sub}>பிறந்த தேதியும் பெயரும் கொடுத்தால் மூன்று எண்களும் கிடைக்கும்</p>
         <div style={card}>
           <label style={label}>பிறந்த தேதி</label>
-          <input style={{ ...input, letterSpacing: 2, fontFamily: "monospace", marginBottom: 14 }} inputMode="numeric" maxLength={10} placeholder="DD.MM.YYYY"
+          <input style={{ ...input, letterSpacing: 2, fontFamily: "monospace", marginBottom: 14 }} inputMode="numeric" maxLength={10} placeholder="நாள்.மாதம்.ஆண்டு"
             value={dob} onChange={(e) => setDob(fmtDob(e.target.value))} />
           <label style={label}>பெயர் (ஆங்கில எழுத்துக்களில்)</label>
           <input style={input} placeholder="எ.கா. KUMAR" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
@@ -614,13 +614,13 @@ export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = nu
                 style={{ ...card, marginBottom: 0, textAlign: "center", cursor: "pointer", fontFamily: "inherit", border: on ? "1.5px solid #1f3f68" : card.border, background: on ? "#eef1fb" : "#ffffff" }}>
                 <div style={{ fontSize: 12, color: "#76819a" }}>{i + 1}ஆம் பாதம்{mine ? " · உங்களுடையது" : ""}</div>
                 <div style={{ fontSize: 30, fontWeight: 800, color: "#1f3f68", lineHeight: 1.4 }}>{ta}</div>
-                <div style={{ fontSize: 12.5, color: "#7d6a3f" }}>{en}</div>
+                {(() => { const ex = (NAMES_BY_SOUND[en]?.m?.[0]) || (NAMES_BY_SOUND[en]?.f?.[0]); return <div data-pada-example style={{ fontSize: 12.5, color: "#7d6a3f", minHeight: 19 }}>{ex ? `எ.கா. ${ex}` : ""}</div>; })()}
               </button>
             );
           })}
         </div>
         <div data-names-card style={card}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#1f3f68" }}>“{cur[0]}” — {cur[1]} ஒலியில் தொடங்கும் பெயர்கள்</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#1f3f68" }}>“{cur[0]}” எழுத்தில் தொடங்கும் பெயர்கள்</div>
           {(names.m.length || names.f.length) ? (
             <>
               {group("ஆண் குழந்தை", names.m, "data-names-m")}
@@ -634,9 +634,9 @@ export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = nu
         </div>
         <div style={{ ...card, display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "#4a5365", lineHeight: 1.7 }}>
           <CircleCheck size={18} color="#2e7d5b" style={{ flexShrink: 0, marginTop: 3 }} />
-          <span>நட்சத்திரமும் பாதமும் தெரியவில்லையா? “ஜாதகம்” பகுதியில் பிறப்பு விவரம் கொடுத்தால் “கட்டம்” tab-இல் நட்சத்திரம், பாதம், உரிய எழுத்து மூன்றும் தெரியும்.</span>
+          <span>நட்சத்திரமும் பாதமும் தெரியவில்லையா? “ஜாதகம்” பகுதியில் பிறப்பு விவரம் கொடுத்தால் “கட்டம்” பகுதியில் நட்சத்திரம், பாதம், உரிய எழுத்து மூன்றும் தெரியும்.</span>
         </div>
-        <p style={note}>பாரம்பரிய அவகஹட சக்கர எழுத்துக்கள். ஒலிப்புக்கு ஆங்கில எழுத்தையும் பார்க்கவும் — தமிழில் சில ஒலிகளுக்குத் தனி எழுத்து இல்லை. பெயர்கள் பரிந்துரைகள் மட்டுமே.</p>
+        <p style={note}>பாரம்பரிய அவகஹட சக்கர எழுத்துக்கள். ஒரே தமிழ் எழுத்து இரு பாதங்களில் வரும்போது ஒலி வேறுபடும் (எ.கா. க — கண்ணன், கணேஷ்); அந்தப் பாதத்தின் எடுத்துக்காட்டுப் பெயரைப் பாருங்கள். பெயர்கள் பரிந்துரைகள் மட்டுமே.</p>
       </div>
       <BottomNav active="" onNav={onNav} />
     </div>

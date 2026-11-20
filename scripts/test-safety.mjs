@@ -1,7 +1,7 @@
 // ஆலோசனை அரட்டையின் பாதுகாப்பு விதிகளுக்கான சோதனை (worker/src/safety.js).
 // Google Play-இன் AI உள்ளடக்கக் கொள்கை: தீங்கான பதில்களைத் தடுப்பதைச் சோதித்து ஆவணப்படுத்த வேண்டும்.
 //   node scripts/test-safety.mjs
-import { screenQuestion, safetyNote, answerIsUnsafe, withSafetyNote, AI_GUARDRAILS } from "../worker/src/safety.js";
+import { screenQuestion, safetyNote, answerIsUnsafe, withSafetyNote, AI_GUARDRAILS, tamilOnly, latinWords, stripLatin } from "../worker/src/safety.js";
 
 let pass = 0, fail = 0;
 const ok = (cond, label) => { if (cond) pass++; else { fail++; console.log("  FAIL:", label); } };
@@ -66,6 +66,17 @@ const SAFE = [
 for (const t of SAFE) ok(!answerIsUnsafe(t), `safe output: "${t}"`);
 
 ok(/மரணம்/.test(AI_GUARDRAILS) && /மருத்துவ/.test(AI_GUARDRAILS) && /AI உதவியாளர்/.test(AI_GUARDRAILS), "guardrail text covers death, medical, identity");
+
+// ── AI பதில் தமிழில் மட்டும் ──
+const T1 = tamilOnly("உங்களுக்கு **Saturn Mahadasha** நடக்கிறது (current period). Jupiter transit நல்லது; சாடே சாதி இல்லை.");
+ok(T1 === "உங்களுக்கு சனி மகா தசை நடக்கிறது. குரு கோசாரம் நல்லது; ஏழரைச் சனி இல்லை.", "tamilOnly glossary: " + T1);
+ok(latinWords(T1).length === 0, "no Latin words left after glossary");
+ok(latinWords("நான் AI உதவியாளர்").length === 0, "AI is allowed");
+ok(latinWords("இது career growth காலம்").length === 2, "counts remaining English words");
+ok(stripLatin("இது career growth காலம், நல்லது.") === "இது காலம், நல்லது.", "stripLatin removes leftovers: " + stripLatin("இது career growth காலம், நல்லது."));
+ok(stripLatin("நான் AI உதவியாளர் (assistant).") === "நான் AI உதவியாளர்.", "stripLatin keeps AI: " + stripLatin("நான் AI உதவியாளர் (assistant)."));
+ok(tamilOnly("லக்னம் (தனுசு) நல்லது") === "லக்னம் (தனுசு) நல்லது", "Tamil parentheses are kept");
+ok(/தமிழில் மட்டும்/.test(AI_GUARDRAILS), "guardrails demand Tamil only");
 
 console.log(`\nபாதுகாப்பு விதிச் சோதனை: ${pass} தேர்ச்சி, ${fail} தோல்வி`);
 if (fail) process.exit(1);

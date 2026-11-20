@@ -12,7 +12,7 @@ export default function ZodiacWheel() {
       className="zodiac-wheel"
       viewBox="0 0 400 400"
       role="img"
-      aria-label="Decorative zodiac wheel"
+      aria-label="ராசி சக்கரம்"
     >
       <defs>
         <radialGradient id="spaceGradient">

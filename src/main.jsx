@@ -26,7 +26,7 @@ function AccessGate({ children }) {
       <img src="/logo/logo-full.webp" alt="TOPPER ASTRO" style={{ width: 150, maxWidth: "50vw", height: "auto" }} />
       <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#1f3f68" }}>ஜோதிட நிபுணர்</h2>
       <p style={{ margin: 0, fontSize: 14, color: "#4a5365", maxWidth: 300, lineHeight: 1.7 }}>
-        தொடர அணுகல் குறியீட்டை (access code) உள்ளிடுங்கள்.
+        தொடர அணுகல் குறியீட்டை உள்ளிடுங்கள்.
       </p>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 300 }}>
         <input

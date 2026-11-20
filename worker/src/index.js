@@ -23,7 +23,7 @@ import { createOrder, verifyPayment } from "./pay.js";
 import { buildGeminiAstrologerPrompt, isPersona } from "./gemini.js";
 import { callClaude } from "./claude.js";
 import { callGemini } from "./gemini.js";
-import { screenQuestion, withSafetyNote, answerIsUnsafe } from "./safety.js";
+import { screenQuestion, withSafetyNote, answerIsUnsafe, tamilOnly, latinWords, stripLatin } from "./safety.js";
 
 // Route AI calls: set AI_PROVIDER="gemini" in wrangler.toml [vars] to use Gemini.
 // Default is Claude. Falls back to the other if the primary key is missing.
@@ -138,11 +138,17 @@ async function fetchSwiss(env, birth) {
 }
 
 // AI உரை — பாதுகாப்பு விதிகளை மீறினால் ஒருமுறை மீண்டும் கேட்கும்; மீண்டும் மீறினால் பிழை.
+// வெளியீடு தமிழில் மட்டும்: பொதுவான ஆங்கிலச் சொற்கள் தமிழாக்கப்படும்; அதன் பின்னும் ஆங்கிலம் அதிகம் இருந்தால்
+// மீண்டும் கேட்கும்; இரண்டாம் முறையும் இருந்தால் மீதமுள்ள ஆங்கிலச் சொற்கள் நீக்கப்படும்.
 async function safeAI(env, prompt, maxTokens) {
+  let last = null;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const text = await callAI(env, prompt, maxTokens);
-    if (!answerIsUnsafe(text)) return text;
+    const text = tamilOnly(await callAI(env, prompt, maxTokens));
+    if (answerIsUnsafe(text)) continue;
+    if (latinWords(text).length <= 2) return stripLatin(text);
+    last = text;
   }
+  if (last) return stripLatin(last);
   throw new Error("unsafe ai output");
 }
 
@@ -168,8 +174,9 @@ async function answerQuestion(env, birth, question, lastTopic, mode, personaRaw 
       // the safety rules is dropped in favour of the engine's own wording.
       const deep = mode === "deep";
       const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings, deep, persona });
-      const text = await callAI(env, prompt, deep ? 6000 : 4000);
-      if (text && text.trim() && !answerIsUnsafe(text)) { answer = text.trim(); ai = true; }
+      // AI பதில் பாதுகாப்பு விதிகளை மீறினாலோ, ஆங்கிலச் சொற்கள் கலந்திருந்தாலோ engine-இன் தமிழ்ப் பதிலே தரப்படும்.
+      const text = tamilOnly(await callAI(env, prompt, deep ? 6000 : 4000));
+      if (text && !answerIsUnsafe(text) && latinWords(text).length <= 2) { answer = stripLatin(text); ai = true; }
     } catch (_) { /* fall back to engine findings */ }
   }
   return { category, label, answer: withSafetyNote(answer, category, question), ai };

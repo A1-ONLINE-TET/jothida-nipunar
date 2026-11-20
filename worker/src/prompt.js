@@ -32,9 +32,9 @@ export function currentDashaInfo(dashaData) {
 }
 
 export function buildBirthPrompt({ person, horoscope, dashaInfo }) {
-  return `You are a world-class Vedic astrologer. Based on these birth chart details, give a personalized prediction in Tamil (with some English terms).
+  return `You are a world-class Vedic astrologer. Based on these birth chart details, give a personalized prediction written entirely in Tamil — no English words or letters.
 Name: ${person.name}, DOB: ${person.dob}, TOB: ${person.tob ? `${person.tob} ${person.ampm || ""}` : "Unknown"}, POB: ${person.pob || "Unknown"}
-Lagna: ${horoscope.lagnaName} (${horoscope.lagnaEn}), Moon: ${horoscope.moonRashi}, Nakshatra: ${horoscope.nakshatra}
+Lagna: ${horoscope.lagnaName}, Moon: ${horoscope.moonRashi}, Nakshatra: ${horoscope.nakshatra}
 Planets: ${horoscope.placements.map((p) => `${p.ta}:${p.rashi} H${p.house} ${p.degree}°`).join(", ")}
 ${dashaInfo ? `Dasha periods:\n${dashaInfo}` : ""}
 Predict: பொது பலன், தொழில், திருமணம், ஆரோக்கியம், நிதி. Consider the current Mahadasha-Antardasha-Pratyantardasha lords and their combined effects on each life area. 200 words. Warm tone.${RULES}`;
@@ -42,9 +42,9 @@ Predict: பொது பலன், தொழில், திருமணம்
 
 // Premium AI chat — answer the user's OWN question, grounded in their chart.
 export function buildAskPrompt({ person, horoscope, dashaInfo, question }) {
-  return `You are a warm, experienced Tamil Vedic astrologer speaking personally to a client. Answer ONLY the client's specific question below, grounded in their birth chart. Respond in Tamil (a few English astrology terms are fine).
+  return `You are a warm, experienced Tamil Vedic astrologer speaking personally to a client. Answer ONLY the client's specific question below, grounded in their birth chart. Respond entirely in Tamil — no English words or letters.
 Client: ${person.name}, DOB: ${person.dob}, TOB: ${person.tob ? `${person.tob} ${person.ampm || ""}` : "Unknown"}, POB: ${person.pob || "Unknown"}
-Chart: Lagna ${horoscope.lagnaName} (${horoscope.lagnaEn}), Moon ${horoscope.moonRashi}, Nakshatra ${horoscope.nakshatra}
+Chart: Lagna ${horoscope.lagnaName}, Moon ${horoscope.moonRashi}, Nakshatra ${horoscope.nakshatra}
 Planets: ${horoscope.placements.map((p) => `${p.ta}:${p.rashi} H${p.house}`).join(", ")}
 ${dashaInfo ? `Current dasha:\n${dashaInfo}` : ""}
 Client's question: "${question}"

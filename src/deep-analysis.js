@@ -66,7 +66,7 @@ function shadbalaFactor(ctx, planetName, roleLabel, factors) {
   const sb = ctx?.shadBala?.find(s => s.ta === planetName);
   if (!sb) return 0;
   const ratio = sb.total / sb.required;
-  if (ratio >= 1) { factors.push({ text: `${roleLabel} ${planetName} ஷட்பலத்தில் தேவையை எட்டுகிறார் (${Math.round(sb.total)}/${sb.required} ரூபா) — BPHS உறுதிப்பாடு`, weight: +1 }); return 1; }
+  if (ratio >= 1) { factors.push({ text: `${roleLabel} ${planetName} ஷட்பலத்தில் தேவையை எட்டுகிறார் (${Math.round(sb.total)}/${sb.required} ரூபா) — பராசர ஹோரை உறுதிப்பாடு`, weight: +1 }); return 1; }
   if (ratio < 0.6) { factors.push({ text: `${roleLabel} ${planetName} ஷட்பலத்தில் மிகக் குறைவு (${Math.round(sb.total)}/${sb.required} ரூபா)`, weight: -1 }); return -1; }
   return 0;
 }
@@ -212,10 +212,10 @@ export function analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStre
     const venusNav = navamsaStrength.find(p => p.ta === "சுக்கிரன்");
     if (venusNav && (venusNav.d9Status === "நீசம்" || venusNav.d9Status === "பகை")) {
       score -= 1;
-      factors.push({ text: `நவாம்சத்தில் சுக்கிரன் ${venusNav.d9Status} — திருமண சுகம் குறையலாம் (D9 உறுதி)`, weight: -1 });
+      factors.push({ text: `நவாம்சத்தில் சுக்கிரன் ${venusNav.d9Status} — திருமண சுகம் குறையலாம் (நவாம்ச உறுதி)`, weight: -1 });
     } else if (venusNav && venusNav.vargottama) {
       score += 1;
-      factors.push({ text: `சுக்கிரன் வர்கோத்தமம் — திருமண வாழ்வு பலம் (D9 உறுதி)`, weight: +1 });
+      factors.push({ text: `சுக்கிரன் வர்கோத்தமம் — திருமண வாழ்வு பலம் (நவாம்ச உறுதி)`, weight: +1 });
     }
   }
 
@@ -348,7 +348,7 @@ export function analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStre
   let verdict, verdictColor, summary;
   if (score >= 3) {
     verdict = "மிகச் சிறந்த திருமண யோகம்"; verdictColor = "#0d7a30";
-    summary = "வலுவான classical அமைப்பு — நல்ல, நிலையான திருமண வாழ்வு எதிர்பார்க்கலாம்.";
+    summary = "வலுவான பாரம்பரிய அமைப்பு — நல்ல, நிலையான திருமண வாழ்வு எதிர்பார்க்கலாம்.";
   } else if (score >= 1) {
     verdict = "நல்ல திருமண யோகம்"; verdictColor = "#0d7a30";
     summary = "பொதுவாக சாதகமான அமைப்பு — சில கவனம் தேவைப்படலாம்.";
@@ -357,7 +357,7 @@ export function analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStre
     summary = "சாதக-பாதக அம்சங்கள் கலந்துள்ளன. பொருத்தம் கவனமாக பார்க்கவும், பரிகாரம் உதவும்.";
   } else {
     verdict = "⚠ திருமண வாழ்வில் சவால்கள்"; verdictColor = "#cc1a1a";
-    summary = "பல classical factors திருமண வாழ்வில் தடை/பிரிவு சாத்தியத்தை காட்டுகின்றன. பொருத்தம் மிக கவனமாக பார்க்கவும், முழு பரிகாரம் அவசியம். இது ஒரு எச்சரிக்கை — முயற்சி மற்றும் புரிதலால் மேம்படுத்தலாம்.";
+    summary = "பல பாரம்பரியக் காரணிகள் திருமண வாழ்வில் தடை/பிரிவு சாத்தியத்தை காட்டுகின்றன. பொருத்தம் மிக கவனமாக பார்க்கவும், முழு பரிகாரம் அவசியம். இது ஒரு எச்சரிக்கை — முயற்சி மற்றும் புரிதலால் மேம்படுத்தலாம்.";
   }
 
   return { area: "திருமணம்", icon: "💍", score, verdict, verdictColor, summary, factors,
@@ -539,11 +539,11 @@ export function analyzeHealth(horoscope, grahaBala, ctx) {
 
   // ── நோயின் மூலம் (உடல்/மனம்) + காலத் தன்மை ──
   const moonAff = afflicted("சந்திரன்"), mercAff = afflicted("புதன்");
-  const origin = moonAff && mercAff ? "மனம்-சார்ந்த (psychosomatic) சாய்வு வலு — மன அழுத்தமே உடல் நோயாக வெளிப்படலாம்"
+  const origin = moonAff && mercAff ? "மனம்-சார்ந்த சாய்வு வலு — மன அழுத்தமே உடல் நோயாக வெளிப்படலாம்"
     : moonAff || mercAff ? "உடல் + மனம் கலப்பு — மன அமைதி சிகிச்சையின் பாதி"
-    : "பெரும்பாலும் உடல்-சார்ந்தது (physical)";
+    : "பெரும்பாலும் உடல்-சார்ந்தது";
   const chronicity = chronicLink || maleficsIn8.length > 0
-    ? "நீடிக்கும்/மீளும் தன்மை (chronic சாய்வு) — 8ஆம் பாவத் தொடர்பு"
+    ? "நீடிக்கும்/மீளும் தன்மை (நீண்டகாலச் சாய்வு) — 8ஆம் பாவத் தொடர்பு"
     : "பெரும்பாலும் தற்காலிகம் — சரியான சிகிச்சையில் விரைவு மீட்சி";
 
   let verdict, verdictColor, summary;
@@ -558,7 +558,7 @@ export function analyzeHealth(horoscope, grahaBala, ctx) {
     summary = "உடல்நலத்தில் சில பலவீனங்கள். சரியான உணவு, யோகா, மருத்துவ பரிசோதனை உதவும்.";
   } else {
     verdict = "⚠ ஆரோக்கியத்தில் கவனம் அவசியம்"; verdictColor = "#cc1a1a";
-    summary = "பல factors உடல்நலத்தில் கவனம் தேவை என்று காட்டுகின்றன. வழக்கமான மருத்துவ பரிசோதனை, பரிகாரம், ஆரோக்கிய பழக்கம் அவசியம்.";
+    summary = "பல காரணிகள் உடல்நலத்தில் கவனம் தேவை என்று காட்டுகின்றன. வழக்கமான மருத்துவ பரிசோதனை, பரிகாரம், ஆரோக்கிய பழக்கம் அவசியம்.";
   }
 
   const chips = [];
@@ -611,7 +611,7 @@ export function analyzeCareer(horoscope, grahaBala, dashaData, ctx) {
     "சூரியன்": "அரசு பணி, நிர்வாகம், அரசியல், தலைமைப் பொறுப்பு",
     "சந்திரன்": "மக்கள் தொடர்பு, பொது சேவை, திரவம்/பால் தொழில், மனநல துறை",
     "செவ்வாய்": "பொறியியல், ராணுவம், காவல்துறை, அறுவை சிகிச்சை, விளையாட்டு, நிலம்/சொத்து",
-    "புதன்": "வியாபாரம், கணக்கு, எழுத்து, தொடர்பு, IT, ஆசிரியர், ஆலோசனை",
+    "புதன்": "வியாபாரம், கணக்கு, எழுத்து, தொடர்பு, தகவல் தொழில்நுட்பம், ஆசிரியர், ஆலோசனை",
     "குரு": "ஆசிரியர், நீதி, ஆலோசகர், ஆன்மீகம், நிதி, மேலாண்மை",
     "சுக்கிரன்": "கலை, சினிமா, ஊடகம், அழகு, ஆடம்பரம், வடிவமைப்பு, விருந்தோம்பல்",
     "சனி": "சேவை, தொழிலாளர், நிர்வாகம், சட்டம், சுரங்கம்/எண்ணெய், கட்டுமானம்",
@@ -731,9 +731,9 @@ export function analyzeCareer(horoscope, grahaBala, dashaData, ctx) {
     const EXALT = {"சூரியன்":0,"சந்திரன்":1,"செவ்வாய்":9,"புதன்":5,"குரு":3,"சுக்கிரன்":11,"சனி":6};
     const DEBIL = {"சூரியன்":6,"சந்திரன்":7,"செவ்வாய்":3,"புதன்":11,"குரு":9,"சுக்கிரன்":5,"சனி":0};
     const OWN = {"சூரியன்":[4],"சந்திரன்":[3],"செவ்வாய்":[0,7],"புதன்":[2,5],"குரு":[8,11],"சுக்கிரன்":[1,6],"சனி":[9,10]};
-    if (d10Rashi === EXALT[h10LordName]) { score += 1; factors.push({ text: `D10 தசாம்சத்தில் 10ஆம் அதிபதி உச்சம் — தொழில் உயர்வு/பதவி D10 உறுதிப்பாடு`, weight: +1 }); }
-    else if (OWN[h10LordName]?.includes(d10Rashi)) { score += 1; factors.push({ text: `D10 தசாம்சத்தில் 10ஆம் அதிபதி சொந்த ராசி — தொழில் நிலைப்பாடு D10 உறுதிப்பாடு`, weight: +1 }); }
-    else if (d10Rashi === DEBIL[h10LordName]) { score -= 1; factors.push({ text: `D10 தசாம்சத்தில் 10ஆம் அதிபதி நீசம் — தொழிலில் மேடு-பள்ளம்; முயற்சி/பரிகாரம் தேவை`, weight: -1 }); }
+    if (d10Rashi === EXALT[h10LordName]) { score += 1; factors.push({ text: `தசாம்சத்தில் 10ஆம் அதிபதி உச்சம் — தொழில் உயர்வு/பதவி தசாம்ச உறுதிப்பாடு`, weight: +1 }); }
+    else if (OWN[h10LordName]?.includes(d10Rashi)) { score += 1; factors.push({ text: `தசாம்சத்தில் 10ஆம் அதிபதி சொந்த ராசி — தொழில் நிலைப்பாடு தசாம்ச உறுதிப்பாடு`, weight: +1 }); }
+    else if (d10Rashi === DEBIL[h10LordName]) { score -= 1; factors.push({ text: `தசாம்சத்தில் 10ஆம் அதிபதி நீசம் — தொழிலில் மேடு-பள்ளம்; முயற்சி/பரிகாரம் தேவை`, weight: -1 }); }
   }
 
   let verdict, verdictColor, summary;
@@ -785,7 +785,7 @@ function addBalanceNote(area) {
       : area.score > 0
       ? "சாதக காரணிகள் மேலோங்குவதால் மொத்த மதிப்பீடு சாதகமாக உள்ளது"
       : "இரு தரப்பும் சமமாக உள்ளன";
-    area.summary += ` (குறிப்பு: இதில் சாதக (▲) மற்றும் பாதக (▼) — இரண்டு வகை காரணிகளும் உள்ளன; ${lean}. இது முரண் அல்ல — எல்லா காரணிகளையும் நிறுத்திக் கணக்கிட்ட மொத்த சமநிலையே இந்த முடிவு. கீழே தனி classical குறிப்புகள் ஒவ்வொரு காரணியையும் தனித்தனியே விவரிக்கின்றன.)`;
+    area.summary += ` (குறிப்பு: இதில் சாதக (▲) மற்றும் பாதக (▼) — இரண்டு வகை காரணிகளும் உள்ளன; ${lean}. இது முரண் அல்ல — எல்லா காரணிகளையும் நிறுத்திக் கணக்கிட்ட மொத்த சமநிலையே இந்த முடிவு. கீழே தனிப் பாரம்பரியக் குறிப்புகள் ஒவ்வொரு காரணியையும் தனித்தனியே விவரிக்கின்றன.)`;
   }
   return area;
 }
@@ -870,7 +870,7 @@ function analyzeFamilyHealthIndications(horoscope, grahaBala) {
   if (l3p) {
     const dg = l3p.degExact ?? l3p.degree ?? 0;
     const d3r = dg < 10 ? l3p.rashiIdx : dg < 20 ? (l3p.rashiIdx + 4) % 12 : (l3p.rashiIdx + 8) % 12;
-    sibVote(oddSign(d3r) ? "M" : "F", 1, `D3 த்ரேக்காணத்தில் 3ஆம் அதிபதி ${oddSign(d3r) ? "ஒற்றை" : "இரட்டை"} ராசியில்`);
+    sibVote(oddSign(d3r) ? "M" : "F", 1, `த்ரேக்காணத்தில் 3ஆம் அதிபதி ${oddSign(d3r) ? "ஒற்றை" : "இரட்டை"} ராசியில்`);
   }
   const sibDiff = sibF - sibM;
   const siblings = {

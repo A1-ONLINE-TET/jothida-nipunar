@@ -526,18 +526,18 @@ function getNakshatraLord(nakIdx) {
 // Traditional Vedic astrology assignments per Rashi (0=மேஷம்..11=மீனம்)
 // ═══════════════════════════════════════════════════════════════════
 const RASHI_LUCKY = [
-  { nums:[9,1,8], gem:"பவளம் (Coral)", subGem:"கார்னீலியன்", color:"சிவப்பு", dir:"கிழக்கு" },        // மேஷம்
-  { nums:[6,5,8], gem:"வைரம் (Diamond)", subGem:"ஜிர்கான்", color:"வெள்ளை", dir:"தென்கிழக்கு" },     // ரிஷபம்
-  { nums:[5,3,6], gem:"மரகதம் (Emerald)", subGem:"பச்சை ஓனிக்ஸ்", color:"பச்சை", dir:"மேற்கு" },     // மிதுனம்
-  { nums:[2,1,4], gem:"முத்து (Pearl)", subGem:"முண்ஸ்டோன்", color:"வெள்ளை", dir:"வடமேற்கு" },       // கடகம்
-  { nums:[1,4,9], gem:"மாணிக்யம் (Ruby)", subGem:"கார்னெட்", color:"மஞ்சள் சிவப்பு", dir:"கிழக்கு" },// சிம்மம்
-  { nums:[5,2,6], gem:"மரகதம் (Emerald)", subGem:"பச்சை ஓனிக்ஸ்", color:"பச்சை", dir:"தெற்கு" },     // கன்னி
-  { nums:[6,5,8], gem:"வைரம் (Diamond)", subGem:"ஜிர்கான்", color:"வெள்ளை", dir:"மேற்கு" },           // துலாம்
-  { nums:[9,1,8], gem:"பவளம் (Coral)", subGem:"கார்னீலியன்", color:"சிவப்பு", dir:"வடக்கு" },          // விருச்சிகம்
-  { nums:[3,5,8], gem:"புஷ்பராகம் (Yellow Sapphire)", subGem:"சிட்ரின்", color:"மஞ்சள்", dir:"வடகிழக்கு" }, // தனுசு
-  { nums:[8,4,6], gem:"நீலம் (Blue Sapphire)", subGem:"அமிதிஸ்ட்", color:"கருப்பு நீலம்", dir:"தெற்கு" }, // மகரம்
-  { nums:[8,4,6], gem:"நீலம் (Blue Sapphire)", subGem:"அமிதிஸ்ட்", color:"கருப்பு நீலம்", dir:"மேற்கு" }, // கும்பம்
-  { nums:[3,7,9], gem:"புஷ்பராகம் (Yellow Sapphire)", subGem:"சிட்ரின்", color:"மஞ்சள்", dir:"வடகிழக்கு" },// மீனம்
+  { nums:[9,1,8], gem:"பவளம்", subGem:"கார்னீலியன்", color:"சிவப்பு", dir:"கிழக்கு" },        // மேஷம்
+  { nums:[6,5,8], gem:"வைரம்", subGem:"ஜிர்கான்", color:"வெள்ளை", dir:"தென்கிழக்கு" },     // ரிஷபம்
+  { nums:[5,3,6], gem:"மரகதம்", subGem:"பச்சை ஓனிக்ஸ்", color:"பச்சை", dir:"மேற்கு" },     // மிதுனம்
+  { nums:[2,1,4], gem:"முத்து", subGem:"முண்ஸ்டோன்", color:"வெள்ளை", dir:"வடமேற்கு" },       // கடகம்
+  { nums:[1,4,9], gem:"மாணிக்யம்", subGem:"கார்னெட்", color:"மஞ்சள் சிவப்பு", dir:"கிழக்கு" },// சிம்மம்
+  { nums:[5,2,6], gem:"மரகதம்", subGem:"பச்சை ஓனிக்ஸ்", color:"பச்சை", dir:"தெற்கு" },     // கன்னி
+  { nums:[6,5,8], gem:"வைரம்", subGem:"ஜிர்கான்", color:"வெள்ளை", dir:"மேற்கு" },           // துலாம்
+  { nums:[9,1,8], gem:"பவளம்", subGem:"கார்னீலியன்", color:"சிவப்பு", dir:"வடக்கு" },          // விருச்சிகம்
+  { nums:[3,5,8], gem:"புஷ்பராகம்", subGem:"சிட்ரின்", color:"மஞ்சள்", dir:"வடகிழக்கு" }, // தனுசு
+  { nums:[8,4,6], gem:"நீலம்", subGem:"அமிதிஸ்ட்", color:"கருப்பு நீலம்", dir:"தெற்கு" }, // மகரம்
+  { nums:[8,4,6], gem:"நீலம்", subGem:"அமிதிஸ்ட்", color:"கருப்பு நீலம்", dir:"மேற்கு" }, // கும்பம்
+  { nums:[3,7,9], gem:"புஷ்பராகம்", subGem:"சிட்ரின்", color:"மஞ்சள்", dir:"வடகிழக்கு" },// மீனம்
 ];
 
 // இன்றைய அதிர்ஷ்ட எண்கள் — Daily Lucky Numbers (changes every day)
@@ -754,7 +754,7 @@ const AYANAMSA_SYSTEMS = {
     calc: (T) => 23.857056 + precessionFromJ2000(T)
   },
   kp: {
-    name: "கிருஷ்ணமூர்த்தி (KP)", nameEn: "Krishnamurti Paddhati",
+    name: "கிருஷ்ணமூர்த்தி பத்ததி", nameEn: "Krishnamurti Paddhati",
     desc: "KP system — popular for horary astrology",
     // KP Ayanamsa = Lahiri - 0°06' (approximately; KP uses a precession rate of 50.2388475"/year)
     calc: (T) => 23.756 + (T * 100 * 50.2388475 / 3600)
@@ -925,9 +925,9 @@ function calcGhatiLagna(sunLong, birthMinutes, sunriseMin) {
 // lands on H itself → take the 10th from H; if on the 7th from H → take the 4th.
 // A1 (Arudha Lagna) and A12 (Upapada) are the most used; all 12 are provided.
 const ARUDHA_PADA_NAMES = [
-  "A1 (லக்ன பதம்)","A2 (தன பதம்)","A3 (விக்ரம பதம்)","A4 (சுக பதம்)",
-  "A5 (மந்திர பதம்)","A6 (ரோக பதம்)","A7 (தார பதம்)","A8 (மிருத்யு பதம்)",
-  "A9 (பிதுர் பதம்)","A10 (கர்ம பதம்)","A11 (லாப பதம்)","A12 (உபபத பதம்)"
+  "லக்ன பதம்","தன பதம்","விக்ரம பதம்","சுக பதம்",
+  "மந்திர பதம்","ரோக பதம்","தார பதம்","மிருத்யு பதம்",
+  "பிதுர் பதம்","கர்ம பதம்","லாப பதம்","உபபத பதம்"
 ];
 function calcAllArudhaPadas(lagnaRashiIdx, placements) {
   const padas = [];
@@ -1064,7 +1064,7 @@ function calcCharaDasha(lagnaRashiIdx, placements, birthDateObj) {
   });
   const now = civilNow();
   const current = dashas.find(d => now >= d.startDate && now < d.endDate);
-  return { dashas, direction: forward ? "நேர் (zodiacal)" : "மாறு (reverse)", currentRashi: current ? current.rashiName : null };
+  return { dashas, direction: forward ? "நேர் வரிசை" : "மாறு வரிசை", currentRashi: current ? current.rashiName : null };
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1218,9 +1218,9 @@ function getAshtakavargaTransitScore(bavData, savData, planetName, transitRashiI
   return {
     sav: savScore, savGood: savScore >= 28,
     bav: bavScore, bavGood: bavScore >= 4,
-    interpretation: savScore >= 28 && bavScore >= 4 ? "மிகச் சிறந்த transit" :
-      savScore >= 28 ? "பொதுவாக நல்ல transit" :
-      bavScore >= 4 ? "இந்த கிரகத்துக்கு நல்லது" : "பலவீனமான transit"
+    interpretation: savScore >= 28 && bavScore >= 4 ? "மிகச் சிறந்த கோசாரம்" :
+      savScore >= 28 ? "பொதுவாக நல்ல கோசாரம்" :
+      bavScore >= 4 ? "இந்த கிரகத்துக்கு நல்லது" : "பலவீனமான கோசாரம்"
   };
 }
 
@@ -1350,12 +1350,12 @@ function calcPapaSamyam(placements1, lagna1, placements2, lagna2) {
 // D1(6pts), D2(2pts), D3(4pts), D9(5pts), D12(2pts), D30(1pt) = 20 max
 // ═══════════════════════════════════════════════════════════════════
 const SHAD_VARGA_WEIGHTS = [
-  { name:"D1 ராசி",   weight:6 },
-  { name:"D2 ஹோரை",  weight:2 },
-  { name:"D3 திரேக்காணம்", weight:4 },
-  { name:"D9 நவாம்சம்", weight:5 },
-  { name:"D12 துவாதசாம்சம்", weight:2 },
-  { name:"D30 திரிம்சாம்சம்", weight:1 },
+  { name:"ராசி",   weight:6 },
+  { name:"ஹோரை",  weight:2 },
+  { name:"திரேக்காணம்", weight:4 },
+  { name:"நவாம்சம்", weight:5 },
+  { name:"துவாதசாம்சம்", weight:2 },
+  { name:"திரிம்சாம்சம்", weight:1 },
 ];
 
 function calcVimshopakaBala(p, lagnaIdx, placements) {
@@ -3506,13 +3506,13 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
     const tp = tSnapshot[tpName]; if (!tp) return null;
     const hMoon = ((tp.rashiIdx - natalMoon.rashiIdx + 12) % 12) + 1;
     const favMap = GOCHARA_VEDHA[tpName];
-    if (!favMap || !(hMoon in favMap)) return { fav: false, hMoon, text: `சந்திரனிலிருந்து ${hMoon}இல் — கோசாரப்படி சாதக நிலை அல்ல; இத்தொடுகை பாவ-activation மட்டுமே` };
+    if (!favMap || !(hMoon in favMap)) return { fav: false, hMoon, text: `சந்திரனிலிருந்து ${hMoon}இல் — கோசாரப்படி சாதக நிலை அல்ல; இத்தொடுகை பாவத் தூண்டல் மட்டுமே` };
     const vHouse = favMap[hMoon];
     const vRashi = (natalMoon.rashiIdx + vHouse - 1) % 12;
     const blocker = tSnapshot.placements.find(x => x.ta !== tpName && x.rashiIdx === vRashi && CLASSICAL_7.includes(x.ta) && !isVedhaExempt(tpName, x.ta));
     return blocker
       ? { fav: true, vedha: true, by: blocker.ta, hMoon, text: `சந்திரனிலிருந்து ${hMoon} (சாதகம்) — ஆனால் ${blocker.ta} ${vHouse}இல் வேதை செய்கிறார்: பலன் தடைபடும்` }
-      : { fav: true, vedha: false, hMoon, text: `சந்திரனிலிருந்து ${hMoon} (சாதகம்) — வேதையில்லா சுத்த transit ✓` };
+      : { fav: true, vedha: false, hMoon, text: `சந்திரனிலிருந்து ${hMoon} (சாதகம்) — வேதையில்லா சுத்தக் கோசாரம் ✓` };
   };
 
   // ═══ BAV/கக்ஷ்யா annotation — window நடுவில் transit கிரகன் நிற்கும் ராசியில்
@@ -3525,7 +3525,7 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
     const kLord = KAKSHYA_ORDER[kIdx];
     const kBindu = bavContributors(tpName, tp.rashiIdx).includes(kLord);
     return { bindu, kLord, kBindu,
-      text: `${tpName} தன் BAV-இல் ${bindu} பிந்துள்ள ${RASHIS[tp.rashiIdx]}இல்${bindu >= 5 ? " (வலு ✓)" : bindu <= 3 ? " (பலவீனம்)" : ""} • கக்ஷ்யா: ${kLord}${kBindu ? " — பிந்து தந்தவர் ★" : ""}` };
+      text: `${tpName} தன் அஷ்டகவர்க்கத்தில் ${bindu} பிந்துள்ள ${RASHIS[tp.rashiIdx]}இல்${bindu >= 5 ? " (வலு ✓)" : bindu <= 3 ? " (பலவீனம்)" : ""} • கக்ஷ்யா: ${kLord}${kBindu ? " — பிந்து தந்தவர் ★" : ""}` };
   };
 
   // ═══ வக்ர பல-கடப்பு — டிகிரி/நட்சத்திர தொடுகைக்குள் transit கிரகன் நேர்-வக்ரம்-நேர்
@@ -3675,7 +3675,7 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
           const cleanPct = favN ? Math.round(cleanN / vAll.length * 100) : 0;
           vedha = { ...vMid, favPct, cleanPct,
             text: favPct === 0
-              ? `சந்திரனிலிருந்து இக்கால transit சாதக நிலையில் இல்லை — பாவ-activation மட்டுமே`
+              ? `சந்திரனிலிருந்து இக்காலக் கோசாரம் சாதக நிலையில் இல்லை — பாவத் தூண்டல் மட்டுமே`
               : `சாதக நாட்கள் ${favPct}% • அதில் வேதையில்லா சுத்த நாட்கள் ${cleanPct}%${cleanPct >= 60 ? " ✓" : cleanPct === 0 ? " — முழுக்க வேதை, பலன் தடைபடும்" : " — சுத்த நாட்களில் முயற்சி சிறக்கும்"}` };
         }
         const bMid = bavCheck(tpName, tMid);
@@ -3694,14 +3694,14 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
       const jupWindows = windowsFor(t => t && t["குரு"] && targets.some(tg => planetHitsRashi("குரு", t["குரு"].rashiIdx, tg)), 3)
         .map(annotate("குரு"))
         .map(w => ({ ...w, text: linkSubha
-          ? `குரு transit ஆதரவு — இந்த இணைப்பின் சுப பலன்கள் (${star ? star.linkedHouses.join(",") + " பாவங்கள்" : houseNum + "ஆம் பாவம்"}) மலரும் காலம்`
-          : `குரு அருள் transit — அசுப/கலப்பு இணைப்பின் சிக்கல் தணிந்து நல்முடிவு நோக்கி நகரும் காலம்` }));
+          ? `குரு கோசார ஆதரவு — இந்த இணைப்பின் சுப பலன்கள் (${star ? star.linkedHouses.join(",") + " பாவங்கள்" : houseNum + "ஆம் பாவம்"}) மலரும் காலம்`
+          : `குரு அருள் கோசாரம் — அசுப/கலப்பு இணைப்பின் சிக்கல் தணிந்து நல்முடிவு நோக்கி நகரும் காலம்` }));
       const satWindows = windowsFor(t => t && t["சனி"] && targets.some(tg => planetHitsRashi("சனி", t["சனி"].rashiIdx, tg)), 3)
         .map(annotate("சனி"))
         .map(w => {
           let text = isSubhaNature(satNature)
-            ? `சனி transit — உழைப்பு/பொறுப்பு வழியே இப்பலன் உறுதியாகும் காலம்`
-            : `சனி transit — தாமதம்/சோதனை; ${star && star.tone === "அசுபம்" ? "அசுப பலன் உணரப்படக்கூடிய" : "பலன் தாமதமாகக் கூடிய"} காலம் — பரிகாரம் பலன் தரும்`;
+            ? `சனி கோசாரம் — உழைப்பு/பொறுப்பு வழியே இப்பலன் உறுதியாகும் காலம்`
+            : `சனி கோசாரம் — தாமதம்/சோதனை; ${star && star.tone === "அசுபம்" ? "அசுப பலன் உணரப்படக்கூடிய" : "பலன் தாமதமாகக் கூடிய"} காலம் — பரிகாரம் பலன் தரும்`;
           // ஏழரை சனி / அஷ்டம சனி மேற்பொருந்தல் — சந்திர ராசியிலிருந்து சனியின் நிலை
           if (natalMoon) {
             const satMid = transitAt(w.mid)?.["சனி"];
@@ -3728,8 +3728,8 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
             const passes = countPasses(tpName, p.fullLong, w.from, w.to);
             touches.push({ planet: tpName, type: "நட்சத்திரம்", label: w.label, from: w.from, to: w.to, passes,
               text: tpName === "ராகு" || tpName === "கேது"
-                ? `${tpName} ${p.nakshatraTa} நட்சத்திரத்தில் பெயர்ச்சி — ${p.ta} காரகங்களில் திடீர் மாற்றம்/trigger காலம்`
-                : `${tpName} ${p.ta}-இன் ஜென்ம நட்சத்திரத்தையே (${p.nakshatraTa}) கடக்கிறார் — மிகக் கூர்மையான activation${passes >= 3 ? `; ${passes}-கடப்பு (வக்ரத்துடன்) — இறுதி கடப்பில் பலன் நிறைவு` : ""}` });
+                ? `${tpName} ${p.nakshatraTa} நட்சத்திரத்தில் பெயர்ச்சி — ${p.ta} காரகங்களில் திடீர் மாற்றம்/தூண்டல் காலம்`
+                : `${tpName} ${p.ta}-இன் ஜென்ம நட்சத்திரத்தையே (${p.nakshatraTa}) கடக்கிறார் — மிகக் கூர்மையான தூண்டல்${passes >= 3 ? `; ${passes}-கடப்பு (வக்ரத்துடன்) — இறுதி கடப்பில் பலன் நிறைவு` : ""}` });
           });
         });
         // டிகிரி ±1° — உச்சத் தொடுகை (குரு/சனி மட்டும்; மிக அரிதான, மிக வலுவான நாட்கள்)
@@ -3755,7 +3755,7 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
             text: `பாவ மத்தியிலிருந்து ${Math.round(dist * 10) / 10}° — பாவ பலன் திறன் ${pct}%${dist > 12 ? " ⚠ பாவ சந்தி அருகில் — பலன் மிக மெலிதாக வெளிப்படும்" : dist <= 5 ? " ★ பாவ மத்திக்கு அருகில் — முழு வீச்சில் பலன்" : ""}` };
         } else {
           bhavaPos = { dist: Math.round(dist * 10) / 10, pct: 0, sandhi: true,
-            text: `சம-பாவ (equal-house) அளவில் இக்கிரகன் அடுத்த பாவ எல்லைக்குள் — whole-sign/பாவ முறை வேறுபாடு; இரு பாவப் பலனும் கலந்து வரும்` };
+            text: `சம-பாவ அளவில் இக்கிரகன் அடுத்த பாவ எல்லைக்குள் — ராசி-பாவ முறை வேறுபாடு; இரு பாவப் பலனும் கலந்து வரும்` };
         }
       }
 
@@ -3790,7 +3790,7 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
       const subLord = p.fullLong != null ? subLordOf(p.fullLong) : null;
       const subNature = subLord ? natureOf(subLord) : null;
       const kp = subLord ? { subLord, nature: subNature,
-        text: `KP உட்பிரிவு அதிபதி: ${subLord} (${subNature}) — ${isSubhaNature(subNature) ? "நட்சத்திராதிபதி காட்டும் பலன் நிறைவேற உதவுவார் ✓" : isAsubhaNature(subLord, subNature) ? "பலன் நிறைவேற்றத்தில் தடை/திருப்பம் தருவார் — பரிகாரம் முக்கியம்" : "நடுநிலை — சூழல்படி முடிவு"}` } : null;
+        text: `உப நட்சத்திராதிபதி (கிருஷ்ணமூர்த்தி முறை): ${subLord} (${subNature}) — ${isSubhaNature(subNature) ? "நட்சத்திராதிபதி காட்டும் பலன் நிறைவேற உதவுவார் ✓" : isAsubhaNature(subLord, subNature) ? "பலன் நிறைவேற்றத்தில் தடை/திருப்பம் தருவார் — பரிகாரம் முக்கியம்" : "நடுநிலை — சூழல்படி முடிவு"}` } : null;
       // இணைப்புச் செயல்திறன் — ஒருங்கிணைந்த பலத்திலிருந்து (5 அளவுகோல் composite)
       const linkPower = {
         self: unifiedOf(p.ta)?.composite ?? null,
@@ -4056,7 +4056,7 @@ function calcEventPromise(topicKey, deps) {
     }
     const nv = (navStrength || []).find(n => n.ta === pLordName);
     if (nv) {
-      if (nv.vargottama) { promise += 6; pReasons.push(`+ அதிபதி வர்கோத்தமம் (D9 உறுதிப்பாடு)`); }
+      if (nv.vargottama) { promise += 6; pReasons.push(`+ அதிபதி வர்கோத்தமம் (நவாம்ச உறுதிப்பாடு)`); }
       else if (nv.d9Status === "நீசம்") { promise -= 6; pReasons.push(`− அதிபதி நவாம்சத்தில் நீசம்`); }
     }
   }
@@ -4083,8 +4083,8 @@ function calcEventPromise(topicKey, deps) {
   // சர்வாஷ்டகவர்க்கம் — primary வீட்டு ராசியின் SAV பிந்து
   const pSav = ashtakavarga?.sav?.[pRashiIdx];
   if (pSav != null) {
-    if (pSav >= 30) { promise += 8; pReasons.push(`+ ${topic.primary}ஆம் வீட்டு ராசியில் SAV ${pSav} பிந்து (≥30) — அஷ்டகவர்க்க ஆதரவு வலு`); }
-    else if (pSav <= 24) { promise -= 8; pReasons.push(`− ${topic.primary}ஆம் வீட்டு ராசியில் SAV ${pSav} பிந்து (≤24) — அஷ்டகவர்க்க ஆதரவு குறைவு`); }
+    if (pSav >= 30) { promise += 8; pReasons.push(`+ ${topic.primary}ஆம் வீட்டு ராசியில் சர்வாஷ்டகவர்க்கம் ${pSav} பிந்து (≥30) — அஷ்டகவர்க்க ஆதரவு வலு`); }
+    else if (pSav <= 24) { promise -= 8; pReasons.push(`− ${topic.primary}ஆம் வீட்டு ராசியில் சர்வாஷ்டகவர்க்கம் ${pSav} பிந்து (≤24) — அஷ்டகவர்க்க ஆதரவு குறைவு`); }
   }
   // அதிபதியின் அவஸ்தை — BPHS 45
   const pAv = (avasthas || []).find(a => a.ta === pLordName);
@@ -4130,14 +4130,14 @@ function calcBacktest(topicKey, eventDate, deps) {
     let dScore = mdW + adW * 1.6 + Math.min(1.5, pdW * 0.35);
     if (collect) {
       if (md) reasons.push(mdW > 0
-        ? `நிகழ்வு நாளில் ${md.name} தசை — activation எடை ${Math.round(mdW*10)/10} (${weights[md.name].why.join(", ")})`
+        ? `நிகழ்வு நாளில் ${md.name} தசை — தூண்டல் எடை ${Math.round(mdW*10)/10} (${weights[md.name].why.join(", ")})`
         : `நிகழ்வு நாளில் ${md.name} தசை — இக்கேள்வியுடன் நேரடித் தொடர்பில்லை`);
       if (ad) reasons.push(adW > 0
         ? `${ad.name} புக்தி — எடை ${Math.round(adW*10)/10} (${weights[ad.name].why.join(", ")})`
         : `${ad.name} புக்தி — தொடர்பில்லை`);
-      if (pad && pdW > 0) reasons.push(`${pad.name} பிரத்யந்தரம் (${pad.startDate.toLocaleDateString("ta-IN")} → ${pad.endDate.toLocaleDateString("ta-IN")}) — நுண்-நிலை activation ✓`);
+      if (pad && pdW > 0) reasons.push(`${pad.name} பிரத்யந்தரம் (${pad.startDate.toLocaleDateString("ta-IN")} → ${pad.endDate.toLocaleDateString("ta-IN")}) — நுண்-நிலைத் தூண்டல் ✓`);
     }
-    if (mdW > 0 && adW > 0) { dScore += 1; if (collect) reasons.push("தசை + புக்தி இரண்டும் தொடர்புடையவை — engine இதை வலுவான window ஆகக் கொடுத்திருக்கும்"); }
+    if (mdW > 0 && adW > 0) { dScore += 1; if (collect) reasons.push("தசை + புக்தி இரண்டும் தொடர்புடையவை — கணிப்பு முறை இதை வலுவான காலமாகக் காட்டியிருக்கும்"); }
     let tScore = 0;
     try {
       const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -4146,7 +4146,7 @@ function calcBacktest(topicKey, eventDate, deps) {
       const targets = [pRashiIdx, pLord ? pLord.rashiIdx : pRashiIdx];
       const jupHit = tJup && targets.some(tg => planetHitsRashi("குரு", tJup.rashiIdx, tg));
       const satHit = tSat && targets.some(tg => planetHitsRashi("சனி", tSat.rashiIdx, tg));
-      if (jupHit && satHit) { tScore = 2; if (collect) reasons.push(`அன்று குரு (${tJup.rashi}) + சனி (${tSat.rashi}) இருவரும் ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடுகின்றனர் — இரட்டை transit ✓`); }
+      if (jupHit && satHit) { tScore = 2; if (collect) reasons.push(`அன்று குரு (${tJup.rashi}) + சனி (${tSat.rashi}) இருவரும் ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடுகின்றனர் — இரட்டைக் கோசார ஆதரவு ✓`); }
       else if (jupHit) { tScore = 1; if (collect) reasons.push(`அன்று குரு (${tJup.rashi}) ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடுகிறார் ✓`); }
       else if (satHit) { tScore = 0.5; if (collect) reasons.push(`அன்று சனி (${tSat.rashi}) ${topic.primary}ஆம் வீடு/அதிபதி தொடர்பில்`); }
       else if (collect) reasons.push("அன்று குரு/சனி இருவரும் நேரடித் தொடர்பில் இல்லை");
@@ -4214,25 +4214,25 @@ function calcBacktest(topicKey, eventDate, deps) {
   if (percentile) {
     if (hit === "உயர்" && percentile.topPct > 40) {
       hit = "நடுத்தரம்";
-      discNote = `மதிப்பெண் ${ev.score} உயர்வாக இருந்தும், வாழ்நாளின் ~${percentile.beatPct <= 50 ? 100 - percentile.topPct : percentile.beatPct}% நாட்களும் இதே அளவை எட்டுகின்றன (top ${percentile.topPct}% மட்டுமே) — இச்சூழலில் காலம்-பிரித்தறியும் கூர்மை குறைவு; தரம் நேர்மையாக இறக்கப்பட்டது`;
+      discNote = `மதிப்பெண் ${ev.score} உயர்வாக இருந்தும், வாழ்நாளின் ~${percentile.beatPct <= 50 ? 100 - percentile.topPct : percentile.beatPct}% நாட்களும் இதே அளவை எட்டுகின்றன (முதல் ${percentile.topPct}% மட்டுமே) — இச்சூழலில் காலம்-பிரித்தறியும் கூர்மை குறைவு; தரம் நேர்மையாக இறக்கப்பட்டது`;
     } else if (hit === "நடுத்தரம்" && percentile.topPct > 60) {
       hit = "குறை";
-      discNote = `மதிப்பெண் நடுத்தரமெனினும் வாழ்நாளின் பெரும்பாலான நாட்கள் இதைவிட உயர்வு (top ${percentile.topPct}%) — பொருத்தமாகக் கருத முடியாது`;
+      discNote = `மதிப்பெண் நடுத்தரமெனினும் வாழ்நாளின் பெரும்பாலான நாட்கள் இதைவிட உயர்வு (முதல் ${percentile.topPct}%) — பொருத்தமாகக் கருத முடியாது`;
     } else if (hit === "நடுத்தரம்" && percentile.topPct <= 10) {
       hit = "உயர்";
-      discNote = `மதிப்பெண் நடுத்தரமே எனினும் வாழ்நாள் ஒப்பீட்டில் top ${percentile.topPct}% — இச்சூழலின் அரிதான உச்சம்; தரம் உயர்த்தப்பட்டது`;
+      discNote = `மதிப்பெண் நடுத்தரமே எனினும் வாழ்நாள் ஒப்பீட்டில் முதல் ${percentile.topPct}% — இச்சூழலின் அரிதான உச்சம்; தரம் உயர்த்தப்பட்டது`;
     }
   }
-  let verdict = hit === "உயர்" ? "✅ Engine இக்காலத்தை வலுவான window ஆக முன்கூட்டியே காட்டியிருக்கும்"
+  let verdict = hit === "உயர்" ? "✅ கணிப்பு முறை இக்காலத்தை வலுவான காலமாக முன்கூட்டியே காட்டியிருக்கும்"
     : hit === "நடுத்தரம்" ? "🟡 ஓரளவு அடையாளம் — காலம் தொடர்புடையதே, ஆனால் மேலும் கூர்மை தேவை"
-    : "❌ Engine விதிகள் இந்நிகழ்வைப் பிடிக்கவில்லை — இதுவே விதி மேம்பாட்டுக்கான மதிப்புமிக்க தரவு";
-  if (percentile && percentile.topPct <= 10 && hit === "உயர்") verdict += ` — வாழ்நாள் ஒப்பீட்டில் top ${percentile.topPct}% நாள் ★`;
+    : "❌ கணிப்பு விதிகள் இந்நிகழ்வைப் பிடிக்கவில்லை — இதுவே விதி மேம்பாட்டுக்கான மதிப்புமிக்க தரவு";
+  if (percentile && percentile.topPct <= 10 && hit === "உயர்") verdict += ` — வாழ்நாள் ஒப்பீட்டில் முதல் ${percentile.topPct}% நாள் ★`;
 
   return { topic: topic.ta, icon: topic.icon, score: ev.score, dScore: ev.dScore, tScore: ev.tScore,
     hit, verdict, discNote, reasons: ev.reasons, md: ev.md, ad: ev.ad, windows: ev.windows, percentile,
     promise: promiseR.promise, promiseVerdict: promiseR.promiseVerdict,
     promiseNote: hit === "குறை" && promiseR.promise < 45
-      ? `குறிப்பு: இக்கேள்விக்கு ஜாதக வாக்குறுதியே ${promiseR.promise}/100 (பலவீனம்) — miss என்பது காலவிதி-தவறு மட்டுமல்ல, வாக்குறுதிச் சூழலும் சேர்ந்த முடிவு`
+      ? `குறிப்பு: இக்கேள்விக்கு ஜாதக வாக்குறுதியே ${promiseR.promise}/100 (பலவீனம்) — கணிப்பு தவறியது என்பது காலவிதி-தவறு மட்டுமல்ல, வாக்குறுதிச் சூழலும் சேர்ந்த முடிவு`
       : null };
 }
 
@@ -4277,7 +4277,7 @@ function calcEventTiming(topicKey, deps) {
       const reasons = [];
       if (mdW > 0) reasons.push(`தசாநாதன் ${md.name}: ${weights[md.name].why.join(", ")}`);
       if (adW > 0) reasons.push(`புக்திநாதன் ${ad.name}: ${weights[ad.name].why.join(", ")}`);
-      if (mdW > 0 && adW > 0) { score += 1; reasons.push("தசை+புக்தி இரண்டும் தொடர்புடையவை — வலுவான activation"); }
+      if (mdW > 0 && adW > 0) { score += 1; reasons.push("தசை+புக்தி இரண்டும் தொடர்புடையவை — வலுவான தூண்டல்"); }
       if (score <= 0.5) return;
       windows.push({
         start: ad.startDate < now ? now : ad.startDate, end: ad.endDate > horizon ? horizon : ad.endDate,
@@ -4322,8 +4322,8 @@ function calcEventTiming(topicKey, deps) {
       const anyBoth = months.some(x => x.jup && x.sat);
       const anyJup = months.some(x => x.jup);
       const anySat = months.some(x => x.sat);
-      if (anyBoth) { w.score += 2; w.reasons.push(`குரு + சனி இருவரும் ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடும் மாதங்கள் இவ்வீச்சில் உள்ளன — இரட்டை transit ஆதரவு`); }
-      else if (anyJup) { w.score += 1; w.reasons.push(`குரு ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடும் மாதங்கள் இவ்வீச்சில் உள்ளன — transit ஆதரவு`); }
+      if (anyBoth) { w.score += 2; w.reasons.push(`குரு + சனி இருவரும் ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடும் மாதங்கள் இவ்வீச்சில் உள்ளன — இரட்டைக் கோசார ஆதரவு`); }
+      else if (anyJup) { w.score += 1; w.reasons.push(`குரு ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடும் மாதங்கள் இவ்வீச்சில் உள்ளன — கோசார ஆதரவு`); }
       else if (anySat) { w.score += 0.5; w.reasons.push(`சனி ${topic.primary}ஆம் வீடு/அதிபதி தொடர்பில் வரும் மாதங்கள் உள்ளன`); }
       // குரு பெயர்ச்சி bonus சுப-நிகழ்வு topics-க்கு மட்டும் (caution topics —
       // நோய் போன்றவற்றில் — "சுபம்" bonus அபத்தமாகும்)
@@ -4617,7 +4617,7 @@ function calcPlanetContext(placements, lagnaIdx, functionalNat, unified) {
     // ── ஒருங்கிணைந்த பலம் — மற்ற எல்லா பல-engine-களின் கூட்டு முடிவு (தகவல்; net-ஐ மாற்றாது:
     //    சூழல் (இந்த section) வேறு, உள்ளார்ந்த பலம் (அந்த section) வேறு — இரண்டையும் அருகருகே காட்ட) ──
     const uEntry = (unified || []).find(x => x.ta === p.ta);
-    if (uEntry) chain.push({ k: "ஒருங்கிணைந்த பலம்", score: 0, text: `${uEntry.composite}/100 (${uEntry.tier}) — கிரக பலம் + ஷட்பலம் + விம்ஷோபகம் + D9 + அவஸ்தை இணைந்த மதிப்பு` });
+    if (uEntry) chain.push({ k: "ஒருங்கிணைந்த பலம்", score: 0, text: `${uEntry.composite}/100 (${uEntry.tier}) — கிரக பலம் + ஷட்பலம் + விம்ஷோபகம் + நவாம்சம் + அவஸ்தை இணைந்த மதிப்பு` });
 
     const verdict = net >= 2 ? "பலன் மேம்படும் சூழல்" : net <= -2 ? "பலன் சவால்களுடன்" : "கலப்பு சூழல்";
     return { ta: p.ta, symbol: p.symbol, rashi: p.rashi, house: pHouse,
@@ -5386,63 +5386,63 @@ function calcPlanetTransitAnalysis(birthMoonRashiIdx, transitPlacements, birthNa
 // ═══════════════════════════════════════════════════════════════════
 const PLANET_REMEDIES = {
   "சூரியன்": {
-    gem:"மாணிக்கம் (Ruby)", gemColor:"#e53e3e", metal:"தங்கம்",
+    gem:"மாணிக்கம்", gemColor:"#e53e3e", metal:"தங்கம்",
     mantra:"ஓம் ஹ்ராம் ஹ்ரீம் ஹ்ரௌம் ஸஃ சூர்யாய நமஃ", mantraCount:"7000 ஜெபம்",
     temple:"சூரியனார் கோயில், கும்பகோணம்", day:"ஞாயிறு",
     color:"சிவப்பு", food:"கோதுமை, வெல்லம்", donate:"கோதுமை, செம்பு",
     flower:"செந்தாமரை", direction:"கிழக்கு"
   },
   "சந்திரன்": {
-    gem:"முத்து (Pearl)", gemColor:"#f0f0f0", metal:"வெள்ளி",
+    gem:"முத்து", gemColor:"#f0f0f0", metal:"வெள்ளி",
     mantra:"ஓம் ஷ்ராம் ஷ்ரீம் ஷ்ரௌம் ஸஃ சந்த்ராய நமஃ", mantraCount:"11000 ஜெபம்",
     temple:"திங்களூர் கைலாசநாதர் கோயில் (சந்திரன் ஸ்தலம்)", day:"திங்கள்",
     color:"வெள்ளை", food:"அரிசி, பால்", donate:"வெள்ளை துணி, பால்",
     flower:"வெண் தாமரை", direction:"வடமேற்கு"
   },
   "செவ்வாய்": {
-    gem:"பவளம் (Red Coral)", gemColor:"#e85d26", metal:"செம்பு",
+    gem:"பவளம்", gemColor:"#e85d26", metal:"செம்பு",
     mantra:"ஓம் க்ராம் க்ரீம் க்ரௌம் ஸஃ பௌமாய நமஃ", mantraCount:"7000 ஜெபம்",
     temple:"வைத்தீஸ்வரன் கோயில்", day:"செவ்வாய்",
     color:"சிவப்பு, பவள நிறம்", food:"துவரம் பருப்பு", donate:"சிவப்பு துணி, கோதுமை",
     flower:"செவ்வரளி", direction:"தெற்கு"
   },
   "புதன்": {
-    gem:"மரகதம் (Emerald)", gemColor:"#22c55e", metal:"வெங்கலம்",
+    gem:"மரகதம்", gemColor:"#22c55e", metal:"வெங்கலம்",
     mantra:"ஓம் ப்ராம் ப்ரீம் ப்ரௌம் ஸஃ புதாய நமஃ", mantraCount:"9000 ஜெபம்",
     temple:"திருவெண்காடு புதன் ஸ்தலம்", day:"புதன்",
     color:"பச்சை", food:"பாசிப் பருப்பு", donate:"பச்சை துணி, பாசிப் பருப்பு",
     flower:"வில்வம்", direction:"வடக்கு"
   },
   "குரு": {
-    gem:"புஷ்பராகம் (Yellow Sapphire)", gemColor:"#eab308", metal:"தங்கம்",
+    gem:"புஷ்பராகம்", gemColor:"#eab308", metal:"தங்கம்",
     mantra:"ஓம் க்ராம் க்ரீம் க்ரௌம் ஸஃ குரவே நமஃ", mantraCount:"19000 ஜெபம்",
     temple:"ஆலங்குடி குரு ஸ்தலம்", day:"வியாழன்",
     color:"மஞ்சள்", food:"கடலைப் பருப்பு", donate:"மஞ்சள் துணி, வாழைப்பழம்",
     flower:"முல்லை", direction:"வடகிழக்கு"
   },
   "சுக்கிரன்": {
-    gem:"வைரம் (Diamond)", gemColor:"#e2e8f0", metal:"வெள்ளி",
+    gem:"வைரம்", gemColor:"#e2e8f0", metal:"வெள்ளி",
     mantra:"ஓம் த்ராம் த்ரீம் த்ரௌம் ஸஃ சுக்ராய நமஃ", mantraCount:"16000 ஜெபம்",
     temple:"கஞ்சனூர் சுக்ர ஸ்தலம்", day:"வெள்ளி",
     color:"வெள்ளை, பன்னீர் நிறம்", food:"மொச்சைப் பருப்பு", donate:"வெள்ளை பட்டு, வெண்ணெய்",
     flower:"வெண் தாமரை", direction:"தென்கிழக்கு"
   },
   "சனி": {
-    gem:"நீலம் (Blue Sapphire)", gemColor:"#1e3a5f", metal:"இரும்பு",
+    gem:"நீலம்", gemColor:"#1e3a5f", metal:"இரும்பு",
     mantra:"ஓம் ப்ராம் ப்ரீம் ப்ரௌம் ஸஃ சனைஸ்சராய நமஃ", mantraCount:"23000 ஜெபம்",
     temple:"திருநள்ளாறு சனி ஸ்தலம்", day:"சனி",
     color:"கருப்பு, நீலம்", food:"எள், கருப்பு உளுந்து", donate:"எள் எண்ணெய், கருப்பு துணி",
     flower:"எருக்கு", direction:"மேற்கு"
   },
   "ராகு": {
-    gem:"கோமேதகம் (Hessonite)", gemColor:"#a78bfa", metal:"பஞ்சலோகம்",
+    gem:"கோமேதகம்", gemColor:"#a78bfa", metal:"பஞ்சலோகம்",
     mantra:"ஓம் ப்ராம் ப்ரீம் ப்ரௌம் ஸஃ ராஹவே நமஃ", mantraCount:"18000 ஜெபம்",
     temple:"திருநாகேஸ்வரம்", day:"சனி / ராகு காலம்",
     color:"கருநீலம்", food:"உளுந்து", donate:"நீல துணி, கருப்பு உளுந்து",
     flower:"மந்தாரை", direction:"தென்மேற்கு"
   },
   "கேது": {
-    gem:"வைடூரியம் (Cat's Eye)", gemColor:"#6b7280", metal:"பஞ்சலோகம்",
+    gem:"வைடூரியம்", gemColor:"#6b7280", metal:"பஞ்சலோகம்",
     mantra:"ஓம் ஸ்ராம் ஸ்ரீம் ஸ்ரௌம் ஸஃ கேதவே நமஃ", mantraCount:"7000 ஜெபம்",
     temple:"கீழ்ப்பெரும்பள்ளம் கேது ஸ்தலம்", day:"செவ்வாய் / கேது ஹோரை",
     color:"சாம்பல், புகை நிறம்", food:"குதிரைவாலி", donate:"போர்வை, எள்",
@@ -5553,9 +5553,9 @@ function calcBhavaPhalam(horoscope, grahaBala, chevvaiDosham, dashaData, classic
       // இவ்வீட்டு ராசியின் சர்வாஷ்டகவர்க்க பிந்து — வீட்டின் அடிப்படை ஆதரவு அளவு
       const savPoints = savArr ? savArr[houseRashiIdx] : null;
       const savVerdict = savPoints == null ? "" :
-        savPoints >= 30 ? `SAV ${savPoints} பிந்து — வலுவான ஆதரவு` :
-        savPoints >= 25 ? `SAV ${savPoints} பிந்து — நடுத்தர ஆதரவு` :
-        `SAV ${savPoints} பிந்து — ஆதரவு குறைவு (28 சராசரிக்குக் கீழ்)`;
+        savPoints >= 30 ? `சர்வாஷ்டகவர்க்கம் ${savPoints} பிந்து — வலுவான ஆதரவு` :
+        savPoints >= 25 ? `சர்வாஷ்டகவர்க்கம் ${savPoints} பிந்து — நடுத்தர ஆதரவு` :
+        `சர்வாஷ்டகவர்க்கம் ${savPoints} பிந்து — ஆதரவு குறைவு (28 சராசரிக்குக் கீழ்)`;
       // பாவ பலத்துடன் இணைப்பு (அதிபதி ஷட்பலம் + திக் + திருஷ்டி கூட்டு)
       const bb = bhavaBalaOf[houseNum] || null;
 
