@@ -576,23 +576,37 @@ export function NumerologyScreen({ defaultDob = "", onNav }) {
 // ═══════════════════════════════════════════════════════════════════
 // குழந்தை பெயர் எழுத்துக்கள் — நட்சத்திர பாதப்படி
 // ═══════════════════════════════════════════════════════════════════
+// பெயர் நடை: n = நவீனம், c = நடுத்தரம், t = பாரம்பரியம் (names-data.js)
+const NAME_STYLES = [["n", "நவீனம்"], ["c", "நடுத்தரம்"], ["t", "பாரம்பரியம்"]];
+const namesOf = (sound, g, style) => { const v = NAMES_BY_SOUND[sound]?.[g]; if (!v) return []; return style === "all" ? [...v.n, ...v.c, ...v.t] : (v[style] || []); };
+
 export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = null, onNav }) {
   const [nak, setNak] = useState(defaultNak >= 0 ? defaultNak : 0);
   const [pada, setPada] = useState(defaultPada || 1);
+  const [style, setStyle] = useState("all");
   const syl = NAME_SYLLABLES[nak] || [];
   const cur = syl[pada - 1] || syl[0] || ["", ""];
-  const names = NAMES_BY_SOUND[cur[1]] || { m: [], f: [] };
+  const total = namesOf(cur[1], "m", "all").length + namesOf(cur[1], "f", "all").length;
   const nameChip = { fontSize: 13.5, fontWeight: 600, color: "#27303f", background: "#f5f7fb", border: "1px solid #e3e8f2", borderRadius: 999, padding: "6px 12px", lineHeight: 1.4 };
-  const group = (title, list, attr) => (
-    <div style={{ marginTop: 12 }}>
-      <div style={{ fontSize: 12.5, fontWeight: 700, color: "#7d6a3f", marginBottom: 8 }}>{title}</div>
-      {list.length ? (
-        <div {...{ [attr]: true }} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {list.map((n) => <span key={n} data-name style={nameChip}>{n}</span>)}
-        </div>
-      ) : <div style={{ fontSize: 13, color: "#76819a" }}>இந்த ஒலியில் வழக்கமான பெயர்கள் அரிது.</div>}
-    </div>
-  );
+  const styleChip = (on) => ({ flexShrink: 0, minHeight: 36, padding: "0 14px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", border: on ? "1px solid #1f3f68" : "1px solid #e3e8f2", background: on ? "#eef1fb" : "#ffffff", color: on ? "#1f3f68" : "#4a5365" });
+  // ஒரு பாலினத்தின் பெயர்கள்: "எல்லாம்" எனில் நடைவாரியாகத் துணைத் தலைப்புடன்; ஒரு நடை எனில் அது மட்டும்.
+  const group = (title, g, attr) => {
+    const parts = (style === "all" ? NAME_STYLES : NAME_STYLES.filter(([k]) => k === style)).map(([k, label]) => [k, label, namesOf(cur[1], g, k)]).filter(([, , list]) => list.length);
+    const count = parts.reduce((a, [, , l]) => a + l.length, 0);
+    return (
+      <div style={{ marginTop: 14 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: "#1f3f68", marginBottom: 8 }}>{title}{count ? ` (${count})` : ""}</div>
+        {parts.length ? parts.map(([k, label, list]) => (
+          <div key={k} {...{ [attr]: k }} style={{ marginBottom: 10 }}>
+            {style === "all" && <div style={{ fontSize: 12, fontWeight: 700, color: "#7d6a3f", marginBottom: 6 }}>{label}</div>}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {list.map((n) => <span key={n} data-name style={nameChip}>{n}</span>)}
+            </div>
+          </div>
+        )) : <div style={{ fontSize: 13, color: "#76819a" }}>இந்த நடையில் இந்த எழுத்தில் வழக்கமான பெயர்கள் அரிது.</div>}
+      </div>
+    );
+  };
   return (
     <div style={page}>
       <div style={wrap}>
@@ -609,22 +623,27 @@ export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = nu
           {syl.map(([ta, en], i) => {
             const mine = defaultPada === i + 1 && nak === defaultNak;
             const on = pada === i + 1;
+            const ex = namesOf(en, "m", "all")[0] || namesOf(en, "f", "all")[0];
             return (
               <button key={i} data-pada={i + 1} aria-pressed={on} onClick={() => setPada(i + 1)}
                 style={{ ...card, marginBottom: 0, textAlign: "center", cursor: "pointer", fontFamily: "inherit", border: on ? "1.5px solid #1f3f68" : card.border, background: on ? "#eef1fb" : "#ffffff" }}>
                 <div style={{ fontSize: 12, color: "#76819a" }}>{i + 1}ஆம் பாதம்{mine ? " · உங்களுடையது" : ""}</div>
                 <div style={{ fontSize: 30, fontWeight: 800, color: "#1f3f68", lineHeight: 1.4 }}>{ta}</div>
-                {(() => { const ex = (NAMES_BY_SOUND[en]?.m?.[0]) || (NAMES_BY_SOUND[en]?.f?.[0]); return <div data-pada-example style={{ fontSize: 12.5, color: "#7d6a3f", minHeight: 19 }}>{ex ? `எ.கா. ${ex}` : ""}</div>; })()}
+                <div data-pada-example style={{ fontSize: 12.5, color: "#7d6a3f", minHeight: 19 }}>{ex ? `எ.கா. ${ex}` : ""}</div>
               </button>
             );
           })}
         </div>
         <div data-names-card style={card}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#1f3f68" }}>“{cur[0]}” எழுத்தில் தொடங்கும் பெயர்கள்</div>
-          {(names.m.length || names.f.length) ? (
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#1f3f68" }}>“{cur[0]}” எழுத்தில் தொடங்கும் பெயர்கள்{total ? ` (${total})` : ""}</div>
+          {total > 0 ? (
             <>
-              {group("ஆண் குழந்தை", names.m, "data-names-m")}
-              {group("பெண் குழந்தை", names.f, "data-names-f")}
+              <div data-name-styles className="jn-tabs" style={{ display: "flex", gap: 6, overflowX: "auto", marginTop: 10, paddingBottom: 2 }}>
+                <button data-name-style="all" style={styleChip(style === "all")} onClick={() => setStyle("all")}>எல்லாம்</button>
+                {NAME_STYLES.map(([k, label]) => <button key={k} data-name-style={k} style={styleChip(style === k)} onClick={() => setStyle(k)}>{label}</button>)}
+              </div>
+              {group("ஆண் குழந்தை", "m", "data-names-m")}
+              {group("பெண் குழந்தை", "f", "data-names-f")}
             </>
           ) : (
             <div data-names-empty style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.7, marginTop: 8 }}>

@@ -8,7 +8,7 @@ let pass = 0, fail = 0;
 const bad = (msg) => { fail++; console.log("✗ " + msg); };
 const ok = () => { pass++; };
 
-const MAX_PER_LIST = 12;
+const STYLES = ["n", "c", "t"]; // நவீனம், நடுத்தரம், பாரம்பரியம்
 const VIRAMA = "்";
 const isConsonant = (ch) => ch >= "க" && ch <= "ஹ";
 // உயிர் எழுத்து / உயிர்க்குறி → ஒலி வகை (குறில், நெடில் இரண்டும் ஒரே வகை)
@@ -59,47 +59,38 @@ const keys = Object.keys(NAMES_BY_SOUND);
 for (const roman of expected.keys()) {
   if (Object.prototype.hasOwnProperty.call(NAMES_BY_SOUND, roman)) ok(); else bad(`missing key "${roman}"`);
 }
-for (const k of keys) {
-  if (expected.has(k)) ok(); else bad(`extra key "${k}" (not a sound in NAME_SYLLABLES)`);
-}
+for (const k of keys) { if (expected.has(k)) ok(); else bad(`extra key "${k}" (not a sound in NAME_SYLLABLES)`); }
 
-// ── 2. ஒவ்வொரு பட்டியலும், ஒவ்வொரு பெயரும் ──
-let boys = 0, girls = 0, soundsWithNames = 0;
-const empty = [];
-for (const k of keys) {
-  const e = expected.get(k);
-  const v = NAMES_BY_SOUND[k];
-  if (!v || typeof v !== "object" || !Array.isArray(v.m) || !Array.isArray(v.f)) { bad(`"${k}": value must be { m: [...], f: [...] }`); continue; }
-  const extraProps = Object.keys(v).filter((p) => p !== "m" && p !== "f");
-  if (extraProps.length) bad(`"${k}": unexpected properties ${extraProps.join(", ")}`); else ok();
-  if (v.m.length + v.f.length > 0) soundsWithNames++; else empty.push(k);
-  boys += v.m.length; girls += v.f.length;
+// ── 2. ஒவ்வொரு பெயரும்: தமிழ் எழுத்து மட்டும், சரியான தொடக்க ஒலி, மறுபடி வராதது ──
+const count = { m: { n: 0, c: 0, t: 0 }, f: { n: 0, c: 0, t: 0 } };
+let withNames = 0; const empty = [];
+for (const [roman, v] of Object.entries(NAMES_BY_SOUND)) {
+  const e = expected.get(roman); if (!e) continue;
+  const all = { m: [], f: [] };
   for (const g of ["m", "f"]) {
-    const list = v[g];
-    if (list.length > MAX_PER_LIST) bad(`"${k}".${g}: ${list.length} names (limit ${MAX_PER_LIST})`); else ok();
-    const seen = new Set();
-    for (const name of list) {
-      const where = `"${k}".${g} "${name}"`;
-      if (typeof name !== "string" || !name) { bad(`"${k}".${g}: empty or non-string entry`); continue; }
-      if (seen.has(name)) bad(`${where}: duplicate in list`); else ok();
-      seen.add(name);
-      if (name !== name.trim()) bad(`${where}: leading/trailing space`);
-      if (name !== name.normalize("NFC")) bad(`${where}: not NFC-normalized`);
-      if (/[A-Za-z0-9]/.test(name)) bad(`${where}: contains Latin letters or digits`);
-      if (!TAMIL_NAME.test(name)) { bad(`${where}: contains characters outside the Tamil letters/signs`); continue; }
-      if ([...name].length < 2) { bad(`${where}: too short to be a name`); continue; }
-      if (!e) continue; // கூடுதல் திறவுகோல் — மேலே ஏற்கெனவே பிழை
-      const fs = firstSyllable(name);
-      if (!e.heads.has(fs.head)) { bad(`${where}: starts with "${fs.head}", expected one of ${[...e.heads].join(" ")}`); continue; }
-      if (fs.vowel !== e.vowel) { bad(`${where}: first-syllable vowel "${fs.vowel}" does not fit sound ${k} (expected "${e.vowel}" as in ${[...e.syllables].join(", ")})`); continue; }
-      ok();
+    if (!v || !v[g] || typeof v[g] !== "object" || Array.isArray(v[g])) { bad(`${roman}.${g} must be an object with n/c/t lists`); continue; }
+    const extra = Object.keys(v[g]).filter((k) => !STYLES.includes(k)); if (extra.length) bad(`${roman}.${g}: unknown style keys ${extra.join(", ")}`); else ok();
+    for (const st of STYLES) {
+      const list = v[g][st];
+      if (!Array.isArray(list)) { bad(`${roman}.${g}.${st} must be an array`); continue; }
+      for (const name of list) {
+        count[g][st]++; all[g].push(name);
+        if (typeof name !== "string" || !name || name !== name.trim() || name !== name.normalize("NFC") || !TAMIL_NAME.test(name)) { bad(`${roman}.${g}.${st}: "${name}" is not a plain Tamil name`); continue; }
+        const fs = firstSyllable(name);
+        if (!e.heads.has(fs.head)) bad(`${roman}.${g}.${st}: "${name}" starts with "${fs.head}", expected ${[...e.heads].join("/")}`);
+        else if (fs.vowel !== e.vowel) bad(`${roman}.${g}.${st}: "${name}" has first vowel "${fs.vowel}", expected "${e.vowel}"`);
+        else ok();
+      }
     }
-    // ஒரே பெயர் ஒரே ஒலியின் ஆண், பெண் இரு பட்டியலிலும் இருக்கக் கூடாது
-    if (g === "f") for (const name of list) if (v.m.includes(name)) bad(`"${k}": "${name}" is in both m and f`);
+    if (new Set(all[g]).size === all[g].length) ok(); else bad(`${roman}.${g}: duplicate names — ${all[g].filter((n, i) => all[g].indexOf(n) !== i).join(", ")}`);
   }
+  const both = all.m.filter((n) => all.f.includes(n));
+  if (both.length) bad(`${roman}: listed for both genders — ${both.join(", ")}`); else ok();
+  if (all.m.length + all.f.length) withNames++; else empty.push(roman);
 }
-
-console.log(`sounds: ${expected.size} · with names: ${soundsWithNames} · boy names: ${boys} · girl names: ${girls} · total: ${boys + girls}`);
-console.log(`empty sounds (${empty.length}): ${empty.join(", ") || "-"}`);
+const sum = (o) => o.n + o.c + o.t;
+console.log(`sounds: ${keys.length} · with names: ${withNames} · boy names: ${sum(count.m)} · girl names: ${sum(count.f)} · total: ${sum(count.m) + sum(count.f)}`);
+console.log(`by style — நவீனம்: ${count.m.n + count.f.n} · நடுத்தரம்: ${count.m.c + count.f.c} · பாரம்பரியம்: ${count.m.t + count.f.t}`);
+if (empty.length) console.log(`empty sounds (${empty.length}): ${empty.join(", ")}`);
 console.log(fail ? `✗ ${fail} NAME CHECKS FAILED (${pass} passed)` : `✓ ALL ${pass} NAME CHECKS PASSED`);
-process.exit(fail ? 1 : 0);
+if (fail) process.exit(1);
