@@ -228,12 +228,19 @@ export default {
       try { user = await authUser(request, env); }
       catch (_) { return json(env, origin, { error: "unauthorized" }, 401); }
 
-      // ── rate limit per user ──
+      // ── rate limit ──
+      // பொது வரம்பு தாராளம்: ஒரு ஜாதகம் திறப்பதே பல அழைப்புகள்; கைபேசி இணைய நிறுவனங்களில் பலர் ஒரே IP-ஐப் பகிர்கின்றனர்
+      // (CGNAT) — குறுகிய IP வரம்பு உண்மைப் பயனர்களைத் தடுத்துவிடும். செலவுள்ள AI அழைப்புகளுக்கு மட்டும் இறுக்கமான வரம்பு.
       const ip = request.headers.get("CF-Connecting-IP") || "0";
-      if (!(await rateLimit(env, `u:${user.sub}`, 60, 3600))) {
+      const local = ip === "0" || ip === "127.0.0.1" || ip === "::1";   // wrangler dev / சோதனை
+      if (!(await rateLimit(env, `u:${user.sub}`, 600, 3600))) {
         return json(env, origin, { error: "rate limited" }, 429);
       }
-      if (!(await rateLimit(env, `ip:${ip}`, 120, 3600))) {
+      if (!local && !(await rateLimit(env, `ip:${ip}`, 3000, 3600))) {
+        return json(env, origin, { error: "rate limited" }, 429);
+      }
+      const AI_PATHS = ["/api/predict", "/api/ask-ai", "/api/ask-premium", "/api/ask-deep"];   // /api/daily: AI உரை கேட்கும்போது மட்டும் (கீழே)
+      if (AI_PATHS.includes(url.pathname) && !(await rateLimit(env, `ai:${user.sub}`, 40, 3600))) {
         return json(env, origin, { error: "rate limited" }, 429);
       }
 
@@ -281,7 +288,8 @@ export default {
         const dashaData = computeDasha(h, birth);
         const daily = computeDailyBundle(h, dashaData, birth, targetDateISO);
         let text = "";
-        if (withText) {
+        // AI வரம்பு தாண்டினால் கணக்கு மட்டும் திரும்பும் (AI உரை இல்லாமல்) — தினப்பலன் பக்கம் தடைபடாது
+        if (withText && (await rateLimit(env, `ai:${user.sub}`, 40, 3600))) {
           const prompt = buildDailyPrompt({ person: { name: birth.name }, horoscope: h, daily });
           text = await safeAI(env, prompt, 3500);
         }

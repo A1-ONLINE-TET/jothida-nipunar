@@ -23,6 +23,7 @@ export async function rateLimit(env, key, max, windowSec) {
 
 // KV அமைக்கப்படாதபோது: ஒரே isolate-க்குள் மட்டும் எண்ணும் எளிய தடுப்பு. isolate மாறினால் எண்ணிக்கை மீளும் என்பதால் இது
 // முழுமையான பாதுகாப்பு அல்ல; ஒரே பயனர்/IP தொடர்ந்து அடிப்பதை மட்டும் மட்டுப்படுத்தும். முழுத் தடுப்புக்கு KV (RL) அமைக்கவும்.
+// வரம்பு எண்கள் index.js-இல்: பொது 600/பயனர்/மணி, 3000/IP/மணி (பலர் ஒரே IP-ஐப் பகிர்வதால் தாராளம்), AI 40/பயனர்/மணி.
 const _mem = new Map();
 function memLimit(key, max, windowSec) {
   const window = Math.floor(Date.now() / 1000 / windowSec);

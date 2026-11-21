@@ -214,6 +214,8 @@ Design மாற்றம் secure engine-ஐ தொடாது — பாத�
   - Access gate: **இப்போது அணைக்கப்பட்டுள்ளது** (பொது வெளியீடு, உரிமையாளர் கோரிக்கை 2026-11) — `worker/wrangler.toml` `ACCESS_GATE = "off"` +
     `src/main.jsx` `ACCESS_GATE_ON = false`. Cloudflare-இல் `ACCESS_CODE` / `VITE_REQUIRE_ACCESS` இருந்தாலும் கேட்கப்படாது. மீண்டும் மூட
     இரண்டையும் மாற்று. KV (`RL`) அமைக்கப்படாததால் rate limit நினைவக அளவில் மட்டும் (`ratelimit.js` `memLimit`) — AI செலவைக் கட்டுப்படுத்த KV சேர்.
+    வரம்புகள் (`index.js`): பொது 600/பயனர்/மணி, 3000/IP/மணி, AI 40/பயனர்/மணி. ⚠ IP வரம்பைக் குறைக்காதே — கைபேசி இணையத்தில் பலர் ஒரே IP
+    (CGNAT); 2026-11-இல் 120/IP என்று வைத்தபோது சோதனையிலேயே எல்லா அழைப்புகளும் 429 ஆயின.
 - **Firebase:** project `jothidar-d1c8c` — Auth (Anonymous auto sign-in), Firestore (default-deny rules).
 
 ### ⚙️ Auto-deploy
