@@ -221,7 +221,7 @@ Pages + Worker இரண்டையும் மீண்டும் build+dep
 - `npm install` — dependencies (root: client; `worker/`: wrangler)
 - `npm run build` — client build (deploy முன் இதை pass செய்ய வேண்டும்)
 - `npm test` — 131 golden engine tests + 1080 ephemeris ஒப்பீடுகள் + 144 பண்டிகைச் சோதனைகள் + 2120 விரத நாள் சோதனைகள்
-  + 92 பாதுகாப்பு விதிச் சோதனைகள் + பெயர்ப் பட்டியல் சோதனை (engine.js / festivals.js / vratham.js / safety.js மாற்றினால் இதை ஓட்டு)
+  + 104 பாதுகாப்பு விதிச் சோதனைகள் + பெயர்ப் பட்டியல் சோதனை (engine.js / festivals.js / vratham.js / safety.js மாற்றினால் இதை ஓட்டு)
 - Worker bundle check: `cd worker && npx wrangler deploy --dry-run`
 
 ## 🔭 Engine துல்லியம் & நேரம் (2026-11 audit)
