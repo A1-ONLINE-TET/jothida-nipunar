@@ -120,6 +120,41 @@
 .today-cell:nth-child(even) { padding-left: 10px; padding-right: 0; border-left: 1px solid #e6ece9; }
 .today-cell > svg { flex-shrink: 0; margin-top: 2px; color: #e58a1f; }
 .today-cell > span { display: flex; flex-direction: column; min-width: 0; }
+/* இன்றைய விசேஷம் / இப்போது நடப்பது */
+.today-special, .today-now { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 8px 11px; border-radius: 12px; }
+.today-special { background: #f8f3e6; border: 1px solid #e9dcc0; color: #7d6a3f; }
+.today-special > svg, .today-now > svg { flex-shrink: 0; margin-top: 2px; }
+.today-special span { display: flex; flex-direction: column; min-width: 0; }
+.today-special b { font-size: 13.5px; font-weight: 800; line-height: 1.45; color: #5d4b1f; }
+.today-special i { font-style: normal; font-size: 12px; line-height: 1.5; }
+.today-now { align-items: center; flex-wrap: wrap; row-gap: 0; }
+.today-now.good { background: #eaf5ef; border: 1px solid #cfe6da; color: #2e7d5b; }
+.today-now.bad { background: #fbeeed; border: 1px solid #f0d6d3; color: #c0564f; }
+.today-now b { font-size: 13.5px; font-weight: 800; line-height: 1.45; }
+.today-now i { font-style: normal; font-size: 12px; margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* நல்ல நேரம் (பச்சை) / தவிர்க்க வேண்டிய நேரம் (சிவப்பு) */
+.today-block { margin-top: 10px; padding: 9px 11px 10px; border-radius: 14px; }
+.today-block.good { background: #eaf5ef; border: 1px solid #cfe6da; }
+.today-block.bad { background: #fbeeed; border: 1px solid #f0d6d3; }
+.today-block-title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; line-height: 1.4; margin-bottom: 5px; }
+.today-block.good .today-block-title { color: #2e7d5b; }
+.today-block.bad .today-block-title { color: #c0564f; }
+.today-times { display: flex; align-items: baseline; gap: 8px; padding: 1px 0; }
+.today-times small { flex: 0 0 52px; font-size: 11.5px; color: var(--t-muted); }
+.today-times b { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; color: var(--t-ink); line-height: 1.5; font-variant-numeric: tabular-nums; }
+.today-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.today-three span { display: flex; flex-direction: column; min-width: 0; }
+.today-three small { font-size: 11.5px; color: var(--t-muted); line-height: 1.4; }
+.today-three b { font-size: clamp(12px, 3.3vw, 14px); font-weight: 800; color: var(--t-ink); line-height: 1.45; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* சூலம், சந்திராஷ்டமம், உதயம் – அஸ்தமனம் */
+.today-foot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e6ece9; }
+.today-foot span { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.today-foot svg { color: #e58a1f; margin-bottom: 2px; }
+.today-foot small { font-size: 11px; color: var(--t-muted); line-height: 1.4; }
+.today-foot b { font-size: clamp(12px, 3.3vw, 14px); font-weight: 800; color: var(--t-ink); line-height: 1.45; font-variant-numeric: tabular-nums; }
+
 .today-grid small { font-size: 11px; color: var(--t-muted); line-height: 1.4; }
 .today-grid b { font-size: clamp(13.5px, 3.7vw, 15.5px); font-weight: 800; color: var(--t-ink); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 .today-grid i { font-style: normal; font-size: 11px; color: var(--t-muted); line-height: 1.35; }
@@ -252,6 +287,7 @@
 @media (max-width: 360px) {
   .home-body { padding: 0 12px; gap: 8px; }
   .today-date b, .today-grid b { white-space: normal; overflow-wrap: anywhere; }
+  .today-three b { white-space: normal; }
   .service-title, .service-description { overflow-wrap: anywhere; }
   .services-grid { gap: 8px; }
   .today-card { padding: 10px 11px 11px; }

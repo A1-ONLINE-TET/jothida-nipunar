@@ -23,7 +23,7 @@ function AccessGate({ children }) {
   };
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 24, background: "#ffffff", color: "#27303f", fontFamily: "'Noto Sans Tamil', system-ui, sans-serif", textAlign: "center" }}>
-      <img src="/logo/logo-full.webp" alt="TOPPER ASTRO" style={{ width: 150, maxWidth: "50vw", height: "auto" }} />
+      <img src="/logo/topper-astro.webp" alt="TOPPER ASTRO" style={{ width: 280, maxWidth: "84vw", height: "auto", WebkitMaskImage: "radial-gradient(ellipse 50% 50% at 50% 50%, #000 76%, transparent 100%)", maskImage: "radial-gradient(ellipse 50% 50% at 50% 50%, #000 76%, transparent 100%)" }} />
       <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#1f3f68" }}>ஜோதிட நிபுணர்</h2>
       <p style={{ margin: 0, fontSize: 14, color: "#4a5365", maxWidth: 300, lineHeight: 1.7 }}>
         தொடர அணுகல் குறியீட்டை உள்ளிடுங்கள்.
@@ -63,7 +63,7 @@ class ErrorBoundary extends React.Component {
     if (!this.state.err) return this.props.children;
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 24, background: "#ffffff", color: "#27303f", fontFamily: "'Noto Sans Tamil', system-ui, sans-serif", textAlign: "center" }}>
-        <img src="/logo/logo-full.webp" alt="TOPPER ASTRO" style={{ width: 120, maxWidth: "45vw", height: "auto" }} />
+        <img src="/logo/topper-astro.webp" alt="TOPPER ASTRO" style={{ width: 280, maxWidth: "84vw", height: "auto", WebkitMaskImage: "radial-gradient(ellipse 50% 50% at 50% 50%, #000 76%, transparent 100%)", maskImage: "radial-gradient(ellipse 50% 50% at 50% 50%, #000 76%, transparent 100%)" }} />
         <h2 style={{ margin: 0, fontSize: 19, fontWeight: 700, color: "#1f3f68" }}>சிறிய இடையூறு ஏற்பட்டது</h2>
         <p style={{ margin: 0, fontSize: 14, color: "#4a5365", maxWidth: 320, lineHeight: 1.7 }}>
           பயன்பாட்டை மீண்டும் ஏற்றினால் சரியாகிவிடும். கீழே உள்ள பொத்தானை அழுத்துங்கள்.

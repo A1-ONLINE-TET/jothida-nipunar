@@ -916,10 +916,52 @@ export default function AstrologyApp() {
         tithi: h.tithi, waxing: (h.paksham || "").includes("சுக்ல"), nakshatra: h.nakshatra,
         dp: dayPanchang(now, g.lat, g.lon),
         rahuKalam: (muh.rahuKalam || "").replace(" — ", "–"), sunrise: muh.sunrise, sunset: muh.sunset,
+        // தினசரித் தேவைகள் (பொதுப் பஞ்சாங்கம்): யோகம், கரணம், தவிர்க்க வேண்டிய நேரங்கள், கௌரி நல்ல நேரம், சூலம், சந்திராஷ்டமம்
+        yogam: h.yogam, karanam: h.karanam, moonRashi: h.moonRashi,
+        yamagandam: (muh.yamagandam || "").replace(" — ", "–"), kuligai: (muh.kuligai || "").replace(" — ", "–"), abhijit: (muh.abhijit || "").replace(" — ", "–"),
+        gowri: gowriForDay(now.getDay(), muh.sunrise, muh.sunset, calcMuhurtham(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1), g.lat, g.lon, 5.5).sunrise),
+        soolam: VARA_SOOLAM[now.getDay()],
+        // இன்றைய சந்திரன் எந்த ராசிக்கு 8ஆம் இடத்தில் உள்ளாரோ அந்த ராசிக்குச் சந்திராஷ்டமம்
+        chandrashtama: RASHIS.indexOf(h.moonRashi) >= 0 ? RASHIS[(RASHIS.indexOf(h.moonRashi) + 5) % 12] : "",
       };
     } catch(e) { return null; }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [new Date().toDateString(), formData.pob, formData.pobLat, formData.pobLon]);
+  // முகப்பு: இன்றைய விசேஷமும் வரும் ஒரு வாரத்தின் விரத/பண்டிகை நாட்களும். ஆண்டுப் பட்டியல் (பண்டிகைகள் பக்கத்தின் அதே
+  // சேவையகக் கணக்கு) ஒரு முறை பெற்றுச் சாதனத்தில் சேமிக்கப்படும்; இணையம் இல்லையெனில் சேமித்ததே — இல்லாவிட்டால் இப்பகுதி வராது.
+  const [homeSpecials, setHomeSpecials] = useState(() => {
+    try { const c = JSON.parse(localStorage.getItem("jn_specials") || "null"); return c && c.year === new Date().getFullYear() && Array.isArray(c.list) ? c : null; } catch (_) { return null; }
+  });
+  useEffect(() => {
+    const year = new Date().getFullYear();
+    if (screen !== SCREEN.HOME || (homeSpecials && homeSpecials.year === year)) return;
+    let alive = true;
+    Promise.all([apiFestivals(year), apiVratham(year)]).then(([fest, vr]) => {
+      if (!alive) return;
+      const list = [
+        ...(fest || []).map((f) => ({ iso: f.iso, name: f.name, fest: true })),
+        ...(vr || []).map((v) => ({ iso: v.date, name: v.key === "pradosham" && v.note ? v.note : v.name })),
+      ].filter((x) => x.iso && x.name);
+      if (!list.length) return;
+      const c = { year, list };
+      setHomeSpecials(c);
+      try { localStorage.setItem("jn_specials", JSON.stringify(c)); } catch (_) { /* ignore */ }
+    }).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
+  const homeSpecial = useMemo(() => {
+    if (!homeSpecials) return null;
+    const now = new Date(), isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const names = (iso) => { const xs = homeSpecials.list.filter((x) => x.iso === iso); return [...new Set([...xs.filter((x) => x.fest), ...xs.filter((x) => !x.fest)].map((x) => x.name))]; };
+    const upcoming = [];
+    for (let i = 1; i <= 7 && upcoming.length < 3; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i), n = names(isoOf(d));
+      if (n.length) upcoming.push({ when: i === 1 ? "நாளை" : d.toLocaleDateString("ta-IN", { day: "numeric", month: "short" }), names: n });
+    }
+    return { today: names(isoOf(now)), upcoming };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [homeSpecials, new Date().toDateString()]);
   const [tamilDate, setTamilDate] = useState(null);
   const [showTamilDate, setShowTamilDate] = useState(false);
   const [expandedDasha, setExpandedDasha] = useState(null);
@@ -1562,7 +1604,7 @@ export default function AstrologyApp() {
   }, [screen, resultTab, remedyPlan, horoscope]);
 
   if(screen===SCREEN.HOME) {
-    return <HomeScreen handle={handleNav} today={homeToday} hasProfile={profiles.length > 0 || !!(formData.name && isValidDDMMYYYY(formData.dob))} name={formData.name} />;
+    return <HomeScreen handle={handleNav} today={homeToday} special={homeSpecial} hasProfile={profiles.length > 0 || !!(formData.name && isValidDDMMYYYY(formData.dob))} name={formData.name} />;
   }
 
   if(screen===SCREEN.ADVISORY) {
@@ -1682,21 +1724,9 @@ export default function AstrologyApp() {
         style={{display:"flex", flexDirection:"column", alignItems:"center", cursor:"pointer",
           animation:"splashIn 1.0s ease-out"}}>
 
-        {/* 1. புதிய zodiac சக்கரம் — மேலே, சுழலும் */}
-        <div style={{position:"relative", width:"min(72vw,300px)", aspectRatio:"1/1"}}>
-          {/* golden glow halo */}
-          <div aria-hidden="true" style={{position:"absolute", top:"50%", left:"50%", width:"70%", height:"70%",
-            transform:"translate(-50%,-50%)", borderRadius:"50%", pointerEvents:"none",
-            background:"radial-gradient(circle, rgba(226,235,250,0.55) 0%, transparent 70%)"}}/>
-          <img src={newZodiacWheelImg} alt="ராசி சக்கரம்" className="jn-spin-cw"
-            style={{width:"100%", height:"100%", objectFit:"contain",
-              filter:"drop-shadow(0 8px 28px rgba(170,140,85,0.30)) drop-shadow(0 0 12px rgba(176,150,95,0.20))"}}/>
-        </div>
-
-        {/* 2. TopperAstro logo — கீழே, centered, நிலையாக */}
-        <img src={newTopperLogoImg} alt="TOPPER ASTRO" className="jn-topper-slide"
-          style={{width:"min(82vw,360px)", objectFit:"contain", marginTop:-8,
-            filter:"drop-shadow(0 6px 22px rgba(170,140,85,0.28))"}}/>
+        {/* புதிய சின்னம் (முகப்பின் தலைப்புப் படத்திலுள்ள அதே "Topper Astro") — விளிம்புகள் மெல்லக் கரையும் */}
+        <img src="/logo/topper-astro.webp" alt="TOPPER ASTRO" width="780" height="254"
+          style={{width:"min(94vw,430px)", height:"auto", objectFit:"contain", WebkitMaskImage: "radial-gradient(ellipse 50% 50% at 50% 50%, #000 76%, transparent 100%)", maskImage: "radial-gradient(ellipse 50% 50% at 50% 50%, #000 76%, transparent 100%)"}}/>
       </div>
 
       {/* tagline + loader */}

@@ -18,7 +18,7 @@ export default function AdvisoryScreen({ onPick = () => {}, onNav = () => {} }) 
 
       <header className="topbar topbar-center">
         <span className="brand brand-logo">
-          <img src="/logo/topper-text.webp" alt="TOPPER ASTRO" />
+          <img src="/logo/topper-astro.webp" alt="TOPPER ASTRO" width="780" height="254" style={{ maxWidth: 270, maxHeight: "none", WebkitMaskImage: "radial-gradient(ellipse 50% 50% at 50% 50%, #000 76%, transparent 100%)", maskImage: "radial-gradient(ellipse 50% 50% at 50% 50%, #000 76%, transparent 100%)" }} />
         </span>
       </header>
 
