@@ -49,6 +49,7 @@ Browser (thin client, src/)  ──Firebase idToken──▶  Cloudflare Worker 
 | `src/precision.js`, `bhava-phalam.js`, `deep-analysis.js`, `constants.js` | engine helpers (pure) | logic மாற்றம் |
 | `worker/src/*` | Cloudflare Worker (index, compute, prompt, auth, claude) | server logic/endpoints |
 | `worker/src/remedy.js` | பரிகாரத் திட்ட விதிகள் (வேர்க் காரணம் → தேவை/தேவையில்லை, பலப்படுத்து/சாந்தி, ரத்தினத் தீர்ப்பு) | ⚠ server-only; விதி மாற்றினால் பல ஜாதகங்களில் வெளியீட்டைப் பார் |
+| `worker/src/notify.js` | பயனரின் கருத்து/புகாரை உரிமையாளரின் WhatsApp-க்கு அறிவிப்பாக அனுப்புதல் (`/api/report-notify`; client: `src/report.js` `sendReport`) — எண் Worker ரகசியத்தில் மட்டும் | ⚠ மாற்றினால் `node scripts/test-notify.mjs`; கருத்து உரை + வகை தவிர வேறு தரவு அனுப்பாதே |
 | `worker/src/festivals.js` | தமிழ்ப் பண்டிகை விதிகள் + civil தமிழ்த் தேதி | ⚠ மாற்றினால் `node scripts/test-festivals.mjs` (ஆதாரத் தேதிகளுடன் 4 ஆண்டு ஒப்பீடு) |
 | `worker/src/vratham.js` | மாத விரத நாள் விதிகள் (சந்திரோதயக் கணக்கு உட்பட) | ⚠ மாற்றினால் `node scripts/test-vratham.mjs` (Drik சென்னை 2021–2030) |
 | `src/firebase.js` | Auth (பெயரில்லா + Google இணைப்பு), ஜாதகங்களின் மேகப் பிரதி, புகார்/கருத்து, தரவு நீக்கம் (Firestore **lite** SDK) | கணக்கு வசதி மாற்றும்போது |
@@ -207,6 +208,8 @@ Design மாற்றம் secure engine-ஐ தொடாது — பாத�
     - Gemini: `GEMINI_API_KEY` secret (set ✅). Model var `GEMINI_MODEL` (default `gemini-flash-latest`).
     - Claude (alt): `ANTHROPIC_API_KEY` secret. key இல்லாவிட்டால் தானாக மற்றதற்கு fallback.
   - Premium ₹49 ஆழமான பதில்: `RAZORPAY_KEY_ID` + `RAZORPAY_KEY_SECRET` secrets (optional — இல்லாவிட்டால் /api/order 503).
+  - கருத்து/புகார் → உரிமையாளரின் WhatsApp (விருப்பம்): `WHATSAPP_PHONE` + `CALLMEBOT_APIKEY` secrets (`docs/PLAY-STORE.md` 6அ). இல்லாவிட்டால் எதுவும்
+    அனுப்பப்படாது. **உரிமையாளரின் எண்ணை நிரலிலோ, client-இலோ, பதிலிலோ ஒருபோதும் வைக்காதே** (`wa.me` இணைப்பும் கூடாது — எண் தெரிந்துவிடும்).
   - CORS allow-list `ALLOWED_ORIGINS` in `worker/wrangler.toml` — புதிய domain சேர்த்தால் இங்கே சேர்.
   - Access gate: **இப்போது அணைக்கப்பட்டுள்ளது** (பொது வெளியீடு, உரிமையாளர் கோரிக்கை 2026-11) — `worker/wrangler.toml` `ACCESS_GATE = "off"` +
     `src/main.jsx` `ACCESS_GATE_ON = false`. Cloudflare-இல் `ACCESS_CODE` / `VITE_REQUIRE_ACCESS` இருந்தாலும் கேட்கப்படாது. மீண்டும் மூட
@@ -221,7 +224,7 @@ Pages + Worker இரண்டையும் மீண்டும் build+dep
 - `npm install` — dependencies (root: client; `worker/`: wrangler)
 - `npm run build` — client build (deploy முன் இதை pass செய்ய வேண்டும்)
 - `npm test` — 131 golden engine tests + 1080 ephemeris ஒப்பீடுகள் + 144 பண்டிகைச் சோதனைகள் + 2120 விரத நாள் சோதனைகள்
-  + 104 பாதுகாப்பு விதிச் சோதனைகள் + பெயர்ப் பட்டியல் சோதனை (engine.js / festivals.js / vratham.js / safety.js மாற்றினால் இதை ஓட்டு)
+  + 104 பாதுகாப்பு விதிச் சோதனைகள் + பெயர்ப் பட்டியல் சோதனை + 12 அறிவிப்புச் சோதனைகள் (engine.js / festivals.js / vratham.js / safety.js மாற்றினால் இதை ஓட்டு)
 - Worker bundle check: `cd worker && npx wrangler deploy --dry-run`
 
 ## 🔭 Engine துல்லியம் & நேரம் (2026-11 audit)

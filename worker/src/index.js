@@ -9,6 +9,7 @@
 // ═══════════════════════════════════════════════════════════════════
 import { verifyIdToken } from "./auth.js";
 import { rateLimit } from "./ratelimit.js";
+import { notifyOwner } from "./notify.js";
 import {
   buildHoroscope, computeFullReport, computeDasha, computeDailyBundle,
   computeBacktest, computeEventTiming, computeNakBhava, computePorutham,
@@ -354,6 +355,15 @@ export default {
       }
 
       // ── /api/vratham — ஓர் ஆண்டின் மாத விரத நாட்கள் (அமாவாசை, பௌர்ணமி, ஏகாதசி, பிரதோஷம்…) ──
+      // ── /api/report-notify : பயனரின் கருத்து/புகாரை உரிமையாளரின் WhatsApp-க்கு அறிவிப்பாக அனுப்புதல் ──
+      // உரிமையாளரின் எண்ணும் சாவியும் Worker ரகசியங்களில் மட்டும் (WHATSAPP_PHONE, CALLMEBOT_APIKEY); அவை எந்தப் பதிலிலும்
+      // வெளியே போவதில்லை. ரகசியங்கள் இல்லையெனில் எதுவும் அனுப்பப்படாது ({ sent:false }). புகாரின் முழு விவரம் Firestore `reports`-இல்.
+      if (url.pathname === "/api/report-notify") {
+        if (!(await rateLimit(env, `rn:${user.sub}`, 6, 3600))) return json(env, origin, { sent: false }, 200);
+        const sent = await notifyOwner(env, body || {});
+        return json(env, origin, { sent }, 200);
+      }
+
       if (url.pathname === "/api/vratham") {
         const year = body?.year;
         if (typeof year !== "number" || !Number.isInteger(year) || year < 1950 || year > 2100) return json(env, origin, { error: "bad year" }, 400);

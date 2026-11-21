@@ -46,7 +46,8 @@ import {
   apiNakBhava, apiPorutham, apiEngine, apiRasiPalan, apiMuhurtaMonth, apiAltDashas, apiRemedyPlan,
   apiRasiPeriod, apiFestivals, apiNavagraha, apiVratham,
 } from "./api.js";
-import { saveProfilesCloud, loadProfilesCloud, getAuthError, onUser, submitReport } from "./firebase.js";
+import { saveProfilesCloud, loadProfilesCloud, getAuthError, onUser } from "./firebase.js";
+import { sendReport } from "./report.js";
 const AccountExtras = lazy(() => import("./components/AccountExtras.jsx"));
 import { AiTextFooter } from "./components/ReportBox.jsx";
 import {
@@ -1644,7 +1645,7 @@ export default function AstrologyApp() {
     };
     return <ChatScreen key={persona.key} persona={persona} ask={askAstrologer} askAI={askAstrologerAI} askPremium={askPremiumAstrologer} personName={formData.name || ""}
       initialQuestion={chatInitialQ}
-      onReport={(r) => submitReport({ ...r, kind: "answer", app: APP_VERSION })}
+      onReport={(r) => sendReport({ ...r, kind: "answer", app: APP_VERSION })}
       premiumLabel={PAYMENTS_ENABLED ? "ஆழமான AI பதில் · ₹49" : "ஆழமான AI பதில்"}
       onBack={()=>{ setChatInitialQ(""); goTo(chatFrom === "result" && chartIsCurrent() ? SCREEN.RESULT : SCREEN.ADVISORY); }} />;
   }
@@ -2615,7 +2616,7 @@ ${aiPart}
             {prediction&&(<div style={{...card,marginBottom:10,padding:"16px"}}>
               <div style={secTitle}>AI ஜோதிட பலன்</div>
               <div style={{fontSize: 14,lineHeight:1.85,color:"#27303f",whiteSpace:"pre-wrap"}}>{prediction}</div>
-              <AiTextFooter onReport={(reason, comment) => submitReport({ kind: "answer", mode: "predict", question: "AI ஜோதிட பலன்", answer: prediction, reason, comment, app: APP_VERSION })} />
+              <AiTextFooter onReport={(reason, comment) => sendReport({ kind: "answer", mode: "predict", question: "AI ஜோதிட பலன்", answer: prediction, reason, comment, app: APP_VERSION })} />
             </div>)}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
               <button data-pdf onClick={downloadPDF} style={{...btnOutline,display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontSize: 13.5,padding:"13px 0"}}>
@@ -5250,7 +5251,7 @@ ${aiPart}
             ) : dailyPrediction ? (
               <>
                 <div style={{fontSize:13,lineHeight:1.9,color:"#27303f",whiteSpace:"pre-wrap"}}>{dailyPrediction}</div>
-                {dailyAiOk && <AiTextFooter onReport={(reason, comment) => submitReport({ kind: "answer", mode: "daily", question: "AI தினப்பலன்", answer: dailyPrediction, reason, comment, app: APP_VERSION })} />}
+                {dailyAiOk && <AiTextFooter onReport={(reason, comment) => sendReport({ kind: "answer", mode: "daily", question: "AI தினப்பலன்", answer: dailyPrediction, reason, comment, app: APP_VERSION })} />}
               </>
             ) : (
               <button style={{...btnGold,width:"auto",padding:"10px 24px",display:"inline-block",fontSize:13}} onClick={fetchDailyPrediction}>

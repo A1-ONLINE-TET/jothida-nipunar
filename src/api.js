@@ -163,6 +163,11 @@ export async function apiVratham(year) {
   const { result } = await post("/api/vratham", { year });
   return (result && Array.isArray(result.items)) ? result.items : [];
 }
+// கருத்து / புகார் பதிவானதும் உரிமையாளருக்கு அறிவிப்பு (சேவையகம் WhatsApp வழியாக அனுப்பும்; எண் அங்கேயே உள்ளது).
+// கருத்து உரையும் வகையும் மட்டும் செல்லும். தோல்வி அமைதியாக விடப்படும் — புகார் ஏற்கனவே Firestore-இல் பதிவாகிவிட்டது.
+export function apiNotifyReport(report) {
+  return post("/api/report-notify", { kind: report?.kind || "answer", reason: report?.reason || "", comment: report?.comment || "" }).catch(() => null);
+}
 // நவகிரக வழிபாட்டுக் குறிப்புகள்.
 export async function apiNavagraha() {
   const { result } = await post("/api/navagraha", {});

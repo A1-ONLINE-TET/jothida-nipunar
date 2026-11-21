@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { CloudUpload, ShieldCheck, FileText, MessageSquare, Trash2, ChevronRight, LogOut } from "lucide-react";
 import {
-  accountInfo, googleLinkAvailable, linkGoogle, signOutToAnonymous, deleteAccountData, submitReport, onUser,
+  accountInfo, googleLinkAvailable, linkGoogle, signOutToAnonymous, deleteAccountData, onUser,
 } from "../firebase.js";
+import { sendReport } from "../report.js";
 
 // கணக்குப் பக்கத்தின் கீழ்ப் பகுதி: சாதனம் மாறினாலும் ஜாதகங்களைக் காக்கும் Google இணைப்பு,
 // தனியுரிமை / விதிமுறைகள், கருத்து அனுப்புதல், "என் தரவை நீக்கு". (Play Store கோரும் பகுதிகள்.)
@@ -63,7 +64,7 @@ export default function AccountExtras({ card, cardTitle, profileCount = 0, onWip
     const text = fbText.trim();
     if (!text || busy) return;
     setBusy("fb"); setFbMsg(null);
-    const ok = await submitReport({ kind: "feedback", comment: text, app: "1.0.0" });
+    const ok = await sendReport({ kind: "feedback", comment: text, app: "1.0.0" });
     setBusy("");
     if (ok) { setFbText(""); setFbMsg({ kind: "good", text: "நன்றி. உங்கள் கருத்து பதிவாகிவிட்டது." }); }
     else setFbMsg({ kind: "bad", text: "அனுப்ப முடியவில்லை. இணையத்தைச் சரிபார்த்து மீண்டும் முயலுங்கள்." });

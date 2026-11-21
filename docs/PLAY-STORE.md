@@ -148,7 +148,8 @@ AI ஜோதிட உதவியாளர்
 
 - சேகரிக்காதவை: Location, Financial info, Health and fitness, Photos/Videos, Audio, Files, Calendar, Contacts,
   App activity, Web browsing, App info and performance (crash/diagnostics SDK இல்லை), Device or other IDs.
-- "Shared = No" என்பதன் அடிப்படை: Firebase, Cloudflare, AI வழங்குநர் (Gemini/Claude), OpenStreetMap ஆகியவை நம் சார்பாகத்
+- "Shared = No" என்பதன் அடிப்படை: Firebase, Cloudflare, AI வழங்குநர் (Gemini/Claude), OpenStreetMap, WhatsApp அறிவிப்புச் சேவை
+  (CallMeBot — கருத்து/புகார் உரை மட்டும்) ஆகியவை நம் சார்பாகத்
   தரவைச் செயலாக்கும் *service providers*; Play-இன் வரையறையில் அது "sharing" அல்ல. இந்த வழங்குநர்கள் தனியுரிமைக்
   கொள்கையில் பட்டியலிடப்பட்டுள்ளனர்.
 - "Data is processed ephemerally?" — கணக்கீட்டுச் சேவையகத்தில் ஆம்; ஆனால் சேமித்த ஜாதகங்கள் Firestore-இல் நிலையாக
@@ -179,6 +180,21 @@ Play-இன் *AI-Generated Content* கொள்கை கோருபவை, 
 விரும்பினால் Google Play Billing தேவை; இப்போதுள்ள Razorpay குறியீட்டை Android app-இல் அப்படியே இயக்கக் கூடாது.
 
 ---
+
+## 6அ. கருத்து / புகார் → உரிமையாளரின் WhatsApp (விருப்பம்)
+
+பயனர் செயலியில் அனுப்பும் கருத்து / புகார் Firestore `reports`-இல் பதிவாவதுடன், உரிமையாளரின் WhatsApp-க்கும் அறிவிப்பாக
+வரும். உரிமையாளரின் எண் Worker ரகசியத்தில் மட்டும் இருப்பதால் பயனருக்குத் தெரியாது. இயக்கும் முறை:
+
+1. CallMeBot-இன் அதிகாரபூர்வப் பக்கத்தில் (callmebot.com → "Free API WhatsApp messages") தற்போதைய எண்ணையும் அனுப்ப வேண்டிய
+   வாசகத்தையும் பாருங்கள்; அந்த எண்ணைத் தொடர்புகளில் சேமித்து, உங்கள் WhatsApp-இலிருந்து அந்த வாசகத்தை அனுப்புங்கள்.
+   பதிலாக ஒரு **API key** வரும்.
+2. Cloudflare → Workers → `jothidarjothi` → Settings → Variables and Secrets → **Add** (வகை: Secret):
+   - `WHATSAPP_PHONE` = நாட்டுக் குறியீட்டுடன் உங்கள் எண் (எ.கா. `919876543210`)
+   - `CALLMEBOT_APIKEY` = வந்த சாவி
+3. Deploy. செயலியின் கணக்கு → "கருத்து அல்லது புகார் அனுப்ப" வழியாக ஒரு சோதனைச் செய்தி அனுப்பிப் பாருங்கள்.
+
+அனுப்பப்படுவது: கருத்து உரை + புகார் வகை மட்டும் (`worker/src/notify.js`). ரகசியங்கள் இல்லையெனில் எதுவும் அனுப்பப்படாது.
 
 ## 7. இன்னும் செய்யப்படாதவை
 
