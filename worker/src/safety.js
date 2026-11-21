@@ -145,7 +145,17 @@ export function tamilOnly(text) {
   t = t.replace(/\*\*|__|^#{1,6}\s*/gm, "");                              // markdown குறிகள்
   t = t.replace(/\s*\((?=[^)]*[A-Za-z])[^)\u0B80-\u0BFF]*\)/g, "");        // (English only) அடைப்புக்குறிகள்
   for (const [re, to] of TAMIL_GLOSS) t = t.replace(re, to);
+  t = dropMeta(t);
   return t.replace(/[ \t]{2,}/g, " ").trim();
+}
+// முறை விளக்க வாக்கியங்களை நீக்கும் ("…நேரடியாகப் பதில் சொல்கிறேன்.", "…ஜாதகக் கணிப்பின் அடிப்படையில் பேசுகிறேன்.") — பயனர் கோரிக்கை:
+// AI தன் செயல்முறையை விவரிக்கக் கூடாது; முடிவை மட்டும் சொல்ல வேண்டும். வாக்கிய அளவில் நீக்குவதால் மற்ற உரை மாறாது.
+const META_SENTENCE = /(நேரடியாக(?:ப்)? பதில் சொல்கிறேன்|ஆராய்ந்து (?:சொல்கிறேன்|பார்த்தேன்|பார்க்கிறேன்)|அடிப்படையில் (?:பேசுகிறேன்|சொல்கிறேன்|பதிலளிக்கிறேன்)|கணிப்பின்படி சொல்கிறேன்)/;
+export function dropMeta(text) {
+  return String(text || "").split("\n").map((line) => {
+    if (!META_SENTENCE.test(line)) return line;
+    return line.split(/(?<=[.!?])\s+/).filter((sn) => !META_SENTENCE.test(sn)).join(" ");
+  }).join("\n").replace(/^\s*\n+/, "").replace(/\n{3,}/g, "\n\n");
 }
 export const latinWords = (text) => (String(text || "").match(/[A-Za-z]{2,}/g) || []).filter((w) => w !== "AI");
 export function stripLatin(text) {

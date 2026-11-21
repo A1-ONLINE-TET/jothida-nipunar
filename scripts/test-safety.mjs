@@ -1,7 +1,7 @@
 // ஆலோசனை அரட்டையின் பாதுகாப்பு விதிகளுக்கான சோதனை (worker/src/safety.js).
 // Google Play-இன் AI உள்ளடக்கக் கொள்கை: தீங்கான பதில்களைத் தடுப்பதைச் சோதித்து ஆவணப்படுத்த வேண்டும்.
 //   node scripts/test-safety.mjs
-import { screenQuestion, safetyNote, answerIsUnsafe, withSafetyNote, AI_GUARDRAILS, tamilOnly, latinWords, stripLatin } from "../worker/src/safety.js";
+import { screenQuestion, safetyNote, answerIsUnsafe, withSafetyNote, AI_GUARDRAILS, tamilOnly, latinWords, stripLatin, dropMeta } from "../worker/src/safety.js";
 
 let pass = 0, fail = 0;
 const ok = (cond, label) => { if (cond) pass++; else { fail++; console.log("  FAIL:", label); } };
@@ -77,6 +77,14 @@ ok(stripLatin("இது career growth காலம், நல்லது.") ==
 ok(stripLatin("நான் AI உதவியாளர் (assistant).") === "நான் AI உதவியாளர்.", "stripLatin keeps AI: " + stripLatin("நான் AI உதவியாளர் (assistant)."));
 ok(tamilOnly("லக்னம் (தனுசு) நல்லது") === "லக்னம் (தனுசு) நல்லது", "Tamil parentheses are kept");
 ok(/தமிழில் மட்டும்/.test(AI_GUARDRAILS), "guardrails demand Tamil only");
+
+// ── முறை விளக்க வாக்கியங்கள் நீக்கம் ──
+const M1 = dropMeta("குமார், வேலை பற்றிய உங்கள் கேள்விக்கு நேரடியாகப் பதில் சொல்கிறேன்.\n\nஇப்போது சனி தசை நடக்கிறது. இந்தக் காலம் சாதகமானது.");
+ok(M1 === "இப்போது சனி தசை நடக்கிறது. இந்தக் காலம் சாதகமானது.", "meta opener removed: " + M1);
+const M2 = dropMeta("நான் AI உதவியாளர்; மனித ஜோதிடர் அல்ல. ஆனாலும் உங்கள் ஜாதக கணிப்பின் அடிப்படையில் பேசுகிறேன். தொழில் அமைப்பு சாதகமாக உள்ளது.");
+ok(M2 === "நான் AI உதவியாளர்; மனித ஜோதிடர் அல்ல. தொழில் அமைப்பு சாதகமாக உள்ளது.", "meta sentence removed, rest kept: " + M2);
+ok(dropMeta("குரு தசையில் திருமண வாய்ப்பு வலுவாக உள்ளது.") === "குரு தசையில் திருமண வாய்ப்பு வலுவாக உள்ளது.", "ordinary text untouched");
+ok(/முறை விளக்க வரி/.test(AI_GUARDRAILS), "guardrails forbid method narration");
 
 console.log(`\nபாதுகாப்பு விதிச் சோதனை: ${pass} தேர்ச்சி, ${fail} தோல்வி`);
 if (fail) process.exit(1);
