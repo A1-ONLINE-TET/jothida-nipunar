@@ -1,4 +1,4 @@
-import { NAMES_BY_SOUND } from "./names-data.js";
+import { NAMES_BY_SOUND, SOUND_FAMILIES } from "./names-data.js";
 import { useEffect, useState } from "react";
 import {
   ChevronRight, Share2, TriangleAlert, CircleCheck, ChevronLeft,
@@ -578,7 +578,19 @@ export function NumerologyScreen({ defaultDob = "", onNav }) {
 // ═══════════════════════════════════════════════════════════════════
 // பெயர் நடை: n = நவீனம், c = நடுத்தரம், t = பாரம்பரியம் (names-data.js)
 const NAME_STYLES = [["n", "நவீனம்"], ["c", "நடுத்தரம்"], ["t", "பாரம்பரியம்"]];
-const namesOf = (sound, g, style) => { const v = NAMES_BY_SOUND[sound]?.[g]; if (!v) return []; return style === "all" ? [...v.n, ...v.c, ...v.t] : (v[style] || []); };
+// தமிழில் ஒரே எழுத்து பல ஒலிகளைக் குறிக்கும் (கா — கார்த்திக், காயத்ரி; பா — பாண்டியன், பாரதி). அந்த எழுத்தில் தொடங்கும்
+// எல்லாப் பெயர்களும் காட்டப்படும்: பாதத்துக்கு உரிய ஒலியின் பெயர்கள் முதலில், பின் அதே எழுத்தின் மற்ற ஒலிகளுடையவை.
+// "ஸ" என்று தொடங்கும் பெயர்கள் ஸ-வரிசை எழுத்துகளில் மட்டும்.
+const RELATED_SOUNDS = {};
+for (const fam of SOUND_FAMILIES) for (const s of fam) RELATED_SOUNDS[s] = fam.filter((x) => x !== s);
+const namesOf = (sound, g, style, letter = "") => {
+  const pick = (s) => { const v = NAMES_BY_SOUND[s]?.[g]; if (!v) return []; return style === "all" ? [...v.n, ...v.c, ...v.t] : (v[style] || []); };
+  const own = pick(sound), rel = RELATED_SOUNDS[sound];
+  if (!rel) return own;
+  const seen = new Set(own), out = [...own], sLetter = letter.startsWith("ஸ");
+  for (const s of rel) for (const n of pick(s)) if (!seen.has(n) && (sLetter || !n.startsWith("ஸ"))) { seen.add(n); out.push(n); }
+  return out;
+};
 
 export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = null, onNav }) {
   const [nak, setNak] = useState(defaultNak >= 0 ? defaultNak : 0);
@@ -586,12 +598,12 @@ export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = nu
   const [style, setStyle] = useState("all");
   const syl = NAME_SYLLABLES[nak] || [];
   const cur = syl[pada - 1] || syl[0] || ["", ""];
-  const total = namesOf(cur[1], "m", "all").length + namesOf(cur[1], "f", "all").length;
+  const total = namesOf(cur[1], "m", "all", cur[0]).length + namesOf(cur[1], "f", "all", cur[0]).length;
   const nameChip = { fontSize: 13.5, fontWeight: 600, color: "#27303f", background: "#f5f7fb", border: "1px solid #e3e8f2", borderRadius: 999, padding: "6px 12px", lineHeight: 1.4 };
   const styleChip = (on) => ({ flexShrink: 0, minHeight: 36, padding: "0 14px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", border: on ? "1px solid #1f3f68" : "1px solid #e3e8f2", background: on ? "#eef1fb" : "#ffffff", color: on ? "#1f3f68" : "#4a5365" });
   // ஒரு பாலினத்தின் பெயர்கள்: "எல்லாம்" எனில் நடைவாரியாகத் துணைத் தலைப்புடன்; ஒரு நடை எனில் அது மட்டும்.
   const group = (title, g, attr) => {
-    const parts = (style === "all" ? NAME_STYLES : NAME_STYLES.filter(([k]) => k === style)).map(([k, label]) => [k, label, namesOf(cur[1], g, k)]).filter(([, , list]) => list.length);
+    const parts = (style === "all" ? NAME_STYLES : NAME_STYLES.filter(([k]) => k === style)).map(([k, label]) => [k, label, namesOf(cur[1], g, k, cur[0])]).filter(([, , list]) => list.length);
     const count = parts.reduce((a, [, , l]) => a + l.length, 0);
     return (
       <div style={{ marginTop: 14 }}>
@@ -623,7 +635,7 @@ export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = nu
           {syl.map(([ta, en], i) => {
             const mine = defaultPada === i + 1 && nak === defaultNak;
             const on = pada === i + 1;
-            const ex = namesOf(en, "m", "all")[0] || namesOf(en, "f", "all")[0];
+            const ex = namesOf(en, "m", "all", ta)[0] || namesOf(en, "f", "all", ta)[0];
             return (
               <button key={i} data-pada={i + 1} aria-pressed={on} onClick={() => setPada(i + 1)}
                 style={{ ...card, marginBottom: 0, textAlign: "center", cursor: "pointer", fontFamily: "inherit", border: on ? "1.5px solid #1f3f68" : card.border, background: on ? "#eef1fb" : "#ffffff" }}>
@@ -635,10 +647,10 @@ export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = nu
           })}
         </div>
         <div data-names-card style={card}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#1f3f68" }}>“{cur[0]}” எழுத்தில் தொடங்கும் பெயர்கள்{total ? ` (${total})` : ""}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#1f3f68" }}>“{cur[0]}” எழுத்துக்கு உரிய பெயர்கள்{total ? ` (${total})` : ""}</div>
           {total > 0 ? (
             <>
-              <div data-name-styles className="jn-tabs" style={{ display: "flex", gap: 6, overflowX: "auto", marginTop: 10, paddingBottom: 2 }}>
+              <div data-name-styles style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
                 <button data-name-style="all" style={styleChip(style === "all")} onClick={() => setStyle("all")}>எல்லாம்</button>
                 {NAME_STYLES.map(([k, label]) => <button key={k} data-name-style={k} style={styleChip(style === k)} onClick={() => setStyle(k)}>{label}</button>)}
               </div>
@@ -647,7 +659,7 @@ export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = nu
             </>
           ) : (
             <div data-names-empty style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.7, marginTop: 8 }}>
-              இந்த ஒலியில் தொடங்கும் வழக்கமான தமிழ்ப் பெயர்கள் அரிது. இதே நட்சத்திரத்தின் மற்ற பாத எழுத்துகளையும் பார்க்கலாம்; பல குடும்பங்கள் நட்சத்திரத்தின் எந்தப் பாத எழுத்தையும் ஏற்கின்றன.
+              இந்த எழுத்தில் தொடங்கும் வழக்கமான தமிழ்ப் பெயர்கள் அரிது. இதே நட்சத்திரத்தின் மற்ற பாத எழுத்துகளையும் பார்க்கலாம்; பல குடும்பங்கள் நட்சத்திரத்தின் எந்தப் பாத எழுத்தையும் ஏற்கின்றன.
             </div>
           )}
         </div>
@@ -655,7 +667,7 @@ export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = nu
           <CircleCheck size={18} color="#2e7d5b" style={{ flexShrink: 0, marginTop: 3 }} />
           <span>நட்சத்திரமும் பாதமும் தெரியவில்லையா? “ஜாதகம்” பகுதியில் பிறப்பு விவரம் கொடுத்தால் “கட்டம்” பகுதியில் நட்சத்திரம், பாதம், உரிய எழுத்து மூன்றும் தெரியும்.</span>
         </div>
-        <p style={note}>பாரம்பரிய அவகஹட சக்கர எழுத்துக்கள். ஒரே தமிழ் எழுத்து இரு பாதங்களில் வரும்போது ஒலி வேறுபடும் (எ.கா. க — கண்ணன், கணேஷ்); அந்தப் பாதத்தின் எடுத்துக்காட்டுப் பெயரைப் பாருங்கள். பெயர்கள் பரிந்துரைகள் மட்டுமே.</p>
+        <p style={note}>பாரம்பரிய அவகஹட சக்கர எழுத்துக்கள். தமிழில் ஒரே எழுத்து பல ஒலிகளைக் குறிக்கும் (எ.கா. க — கண்ணன், கணேஷ்); அதனால் அந்த எழுத்தில் தொடங்கும் எல்லாப் பெயர்களும் காட்டப்படுகின்றன — பாதத்துக்கு உரிய ஒலியின் பெயர்கள் முதலில். “நவீனம்”, “நடுத்தரம்”, “பாரம்பரியம்” என்று வடிகட்டலாம். பெயர்கள் பரிந்துரைகள் மட்டுமே.</p>
       </div>
       <BottomNav active="" onNav={onNav} />
     </div>

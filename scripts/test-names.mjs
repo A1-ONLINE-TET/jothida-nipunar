@@ -2,7 +2,7 @@
 // (src/components/tools-data.js → NAME_SYLLABLES) பொருந்துகின்றனவா என்ற சோதனை.
 // ஓட்ட: node scripts/test-names.mjs
 import { NAME_SYLLABLES } from "../src/components/tools-data.js";
-import { NAMES_BY_SOUND } from "../src/components/names-data.js";
+import { NAMES_BY_SOUND, SOUND_FAMILIES } from "../src/components/names-data.js";
 
 let pass = 0, fail = 0;
 const bad = (msg) => { fail++; console.log("✗ " + msg); };
@@ -88,9 +88,30 @@ for (const [roman, v] of Object.entries(NAMES_BY_SOUND)) {
   if (both.length) bad(`${roman}: listed for both genders — ${both.join(", ")}`); else ok();
   if (all.m.length + all.f.length) withNames++; else empty.push(roman);
 }
+// ── 3. ஒரே தமிழ் எழுத்தைப் பகிரும் ஒலிக் குடும்பங்கள் (திரையில் இணைத்துக் காட்டப்படுபவை) ──
+const famSeen = new Set(); let emptyLetters = [];
+for (const fam of SOUND_FAMILIES) {
+  const es = fam.map((r) => expected.get(r));
+  if (es.some((e) => !e)) { bad(`SOUND_FAMILIES: unknown sound in ${fam.join(", ")}`); continue; }
+  for (const r of fam) { if (famSeen.has(r)) bad(`SOUND_FAMILIES: "${r}" is in two families`); else ok(); famSeen.add(r); }
+  // எல்லா ஒலிகளும் ஒரே உயிர் வகை, பொதுவான தொடக்க எழுத்துடன்
+  if (es.every((e) => e.vowel === es[0].vowel && [...e.heads].some((h) => es[0].heads.has(h)))) ok(); else bad(`SOUND_FAMILIES: ${fam.join(", ")} do not share a Tamil letter`);
+  // ஒரு பெயர் குடும்பத்தில் ஒரு முறை மட்டும், ஒரே பாலினத்தில்
+  const where = new Map();
+  for (const r of fam) for (const g of ["m", "f"]) for (const st of STYLES) for (const name of NAMES_BY_SOUND[r]?.[g]?.[st] || []) {
+    if (where.has(name)) bad(`family ${fam.join("/")}: "${name}" is in ${where.get(name)} and ${r}.${g}`); else { ok(); where.set(name, `${r}.${g}`); }
+  }
+}
+// எந்தத் தமிழ் எழுத்துக்கும் பெயர் இல்லாமல் போகிறதா (குடும்பத்தையும் சேர்த்துப் பார்த்து)
+const famOf = (r) => SOUND_FAMILIES.find((f) => f.includes(r)) || [r];
+for (const r of expected.keys()) {
+  const n = famOf(r).reduce((a, x) => a + ["m", "f"].reduce((b, g) => b + STYLES.reduce((c, st) => c + (NAMES_BY_SOUND[x]?.[g]?.[st] || []).length, 0), 0), 0);
+  if (!n) emptyLetters.push(r);
+}
 const sum = (o) => o.n + o.c + o.t;
 console.log(`sounds: ${keys.length} · with names: ${withNames} · boy names: ${sum(count.m)} · girl names: ${sum(count.f)} · total: ${sum(count.m) + sum(count.f)}`);
 console.log(`by style — நவீனம்: ${count.m.n + count.f.n} · நடுத்தரம்: ${count.m.c + count.f.c} · பாரம்பரியம்: ${count.m.t + count.f.t}`);
 if (empty.length) console.log(`empty sounds (${empty.length}): ${empty.join(", ")}`);
+console.log(`letters with no names even with related sounds (${emptyLetters.length}): ${emptyLetters.join(", ") || "—"}`);
 console.log(fail ? `✗ ${fail} NAME CHECKS FAILED (${pass} passed)` : `✓ ALL ${pass} NAME CHECKS PASSED`);
 if (fail) process.exit(1);

@@ -41,7 +41,7 @@ Browser (thin client, src/)  ──Firebase idToken──▶  Cloudflare Worker 
 | `src/components/panchang-lite.js` | முகப்பு அட்டைக்கான civil தமிழ்த் தேதி (பொதுப் பஞ்சாங்கம்; `festivals.js` விதியுடன் ஒன்றே) | அரிதாக |
 | `src/components/ToolsScreens.jsx` | பொதுச் சேவைகள்: 12 ராசி பலன் (இன்று–ஆண்டு), எண் கணிதம், பெயர் எழுத்துக்கள், பண்டிகைகள், நவகிரக வழிபாடு | புதிய கருவி சேர்க்கும்போது |
 | `src/components/RemedyTab.jsx` | "பரிகாரம்" tab-இன் காட்சி (தரவு `/api/remedy-plan`-இலிருந்து; விற்பனை இல்லை) | பரிகாரத் திரை மாற்றும்போது |
-| `src/components/names-data.js` | குழந்தைப் பெயர்ப் பட்டியல் (ஒலிவாரி ஆண்/பெண், 1107 பெயர்கள்; பொதுத் தரவு) | ⚠ மாற்றினால் `node scripts/test-names.mjs` |
+| `src/components/names-data.js` | குழந்தைப் பெயர்ப் பட்டியல்: ஒலிவாரி ஆண்/பெண், ஒவ்வொன்றிலும் மூன்று நடை (`n` நவீனம், `c` நடுத்தரம், `t` பாரம்பரியம்); `SOUND_FAMILIES` = ஒரே தமிழ் எழுத்தைப் பகிரும் ஒலிகள் (திரை இணைத்துக் காட்டும்; ஒரு பெயர் குடும்பத்தில் ஒரு முறை மட்டும்). பொதுத் தரவு | ⚠ மாற்றினால் `node scripts/test-names.mjs` |
 | `src/components/tools-data.js` | பொது அட்டவணைகள்: கௌரி பஞ்சாங்கம், வார சூலம், நட்சத்திர பாத எழுத்துக்கள், எண் கணிதம் | ⚠ ஆதாரத்துடன் சரிபார்த்தவை — மாற்றும்போது மீண்டும் சரிபார் |
 | `src/almanac.js` | client public panchangam re-exports | அரிதாக |
 | `src/api.js` | server bridge | endpoint சேர்க்கும்போது |
