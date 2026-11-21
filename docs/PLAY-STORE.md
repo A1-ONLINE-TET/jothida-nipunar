@@ -141,6 +141,7 @@ AI ஜோதிட உதவியாளர்
 | Data type | Collected | Shared | Optional? | Purpose |
 |---|---|---|---|---|
 | Personal info → **Name** | Yes | No | Required (ஜாதகத்துக்கு) | App functionality |
+| Personal info → **Phone number** | Yes | No | Required | App functionality (ஆதரவுத் தொடர்பு) |
 | Personal info → **Email address** | Yes | No | Optional (Google இணைத்தால் மட்டும்) | Account management |
 | Personal info → **User IDs** | Yes | No | Required | App functionality, Account management |
 | Personal info → **Other info** (பிறந்த தேதி, நேரம், ஊர், பாலினம்) | Yes | No | Required | App functionality |

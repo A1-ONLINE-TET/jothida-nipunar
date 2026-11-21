@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { CloudUpload, ShieldCheck, FileText, MessageSquare, Trash2, ChevronRight, LogOut } from "lucide-react";
+import { CloudUpload, ShieldCheck, FileText, MessageSquare, Trash2, ChevronRight, LogOut, Languages, Check } from "lucide-react";
 import {
   accountInfo, googleLinkAvailable, linkGoogle, signOutToAnonymous, deleteAccountData, onUser,
 } from "../firebase.js";
 import { sendReport } from "../report.js";
+import { useLang, LANGS } from "../i18n/index.js";
 
 // கணக்குப் பக்கத்தின் கீழ்ப் பகுதி: சாதனம் மாறினாலும் ஜாதகங்களைக் காக்கும் Google இணைப்பு,
 // தனியுரிமை / விதிமுறைகள், கருத்து அனுப்புதல், "என் தரவை நீக்கு". (Play Store கோரும் பகுதிகள்.)
@@ -34,6 +35,7 @@ const LINK_ERRORS = {
 };
 
 export default function AccountExtras({ card, cardTitle, profileCount = 0, onWiped = () => {} }) {
+  const { lang, t, setLang } = useLang();
   const [info, setInfo] = useState(accountInfo);
   const [canLink, setCanLink] = useState(false);
   const [busy, setBusy] = useState("");
@@ -81,6 +83,16 @@ export default function AccountExtras({ card, cardTitle, profileCount = 0, onWip
 
   return (
     <>
+      <div data-lang-card style={{ ...card, marginTop: 14, padding: "16px 16px 6px" }}>
+        <div style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 8 }}><Languages size={17} /> {t("acct.lang.title")}</div>
+        {LANGS.map((l, i) => (
+          <button key={l.code} data-set-lang={l.code} onClick={() => setLang(l.code)} style={{ ...rowBtn, borderTop: i ? "1px solid #e3e8f2" : "none" }}>
+            <span style={{ flex: 1 }} lang={l.code}>{l.label} <span style={{ color: "#76819a", fontWeight: 500, fontSize: 12.5 }}>· {l.sub}</span></span>
+            {lang === l.code ? <Check size={18} color="#2e7d5b" /> : <span style={{ width: 18 }} />}
+          </button>
+        ))}
+      </div>
+
       {(canLink || info.linked) && (
         <div data-sync-card style={{ ...card, marginTop: 14, padding: 16 }}>
           <div style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 8 }}><CloudUpload size={17} /> ஜாதகங்களைப் பாதுகாக்க</div>

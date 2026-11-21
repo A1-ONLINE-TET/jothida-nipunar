@@ -48,6 +48,8 @@ import {
 } from "./api.js";
 import { saveProfilesCloud, loadProfilesCloud, getAuthError, onUser } from "./firebase.js";
 import { sendReport } from "./report.js";
+import Onboarding from "./components/Onboarding.jsx";
+import { getLang, hasLang, setLang as setAppLang } from "./i18n/index.js";
 const AccountExtras = lazy(() => import("./components/AccountExtras.jsx"));
 import { AiTextFooter } from "./components/ReportBox.jsx";
 import {
@@ -571,7 +573,7 @@ function markOnboarded() {
   try { localStorage.setItem(ONBOARD_KEY, "1"); } catch (e) { /* storage unavailable — skip */ }
 }
 
-const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8, HOME:9, WELCOME:10, CHAT:11, ADVISORY:12, ACCOUNT:13, SERVICES:14, RASI:15, NUMEROLOGY:16, NAMES:17, FESTIVALS:18, NAVAGRAHA:19 };
+const SCREEN = { SPLASH:0, AUTH:1, FORM:2, LOADING:3, RESULT:4, PREMIUM:5, PORUTHAM:6, DAILY:7, CALENDAR:8, HOME:9, WELCOME:10, CHAT:11, ADVISORY:12, ONBOARD:20, ACCOUNT:13, SERVICES:14, RASI:15, NUMEROLOGY:16, NAMES:17, FESTIVALS:18, NAVAGRAHA:19 };
 
 // முகப்பு கேள்வி அட்டைகள் — தட்டினால் FORM → ஜாதகம் → அந்தப் பகுதிக்கு நேரடி
 const HOME_QUESTIONS = [
@@ -711,7 +713,7 @@ export default function AstrologyApp() {
   const [screen, setScreen] = useState(SCREEN.SPLASH);
   const [authMode, setAuthMode] = useState("login");
   const [user, setUser] = useState(null);
-  const [formData, setFormData] = useState({ name:"", dob:"", tob:"", sec:"", pob:"", ampm:"AM", gender:"", pobLat:null, pobLon:null, pobSource:null, pobTz:"" });
+  const [formData, setFormData] = useState({ name:"", phone:"", dob:"", tob:"", sec:"", pob:"", ampm:"AM", gender:"", pobLat:null, pobLon:null, pobSource:null, pobTz:"" });
   // சேமித்த ஜாதகங்கள் — lazy initializer: localStorage read ஒருமுறை மட்டும்
   const [profiles, setProfiles] = useState(loadProfiles);
   const [chatInitialQ, setChatInitialQ] = useState(""); // ஆலோசனை தலைப்பிலிருந்து chat-க்கு auto கேள்வி
@@ -728,7 +730,7 @@ export default function AstrologyApp() {
       const rest = prev.filter(p => !same(p));
       const entry = {
         id: old?.id || Date.now(), notes: old?.notes || "",
-        name: formData.name, dob: formData.dob, tob: formData.tob, sec: formData.sec || "", ampm: formData.ampm,
+        name: formData.name, phone: formData.phone || "", dob: formData.dob, tob: formData.tob, sec: formData.sec || "", ampm: formData.ampm,
         gender: formData.gender || "",
         pob: formData.pob, pobLat: formData.pobLat, pobLon: formData.pobLon, pobSource: formData.pobSource, pobTz: formData.pobTz || "",
         savedAt: new Date().toISOString()
@@ -740,7 +742,7 @@ export default function AstrologyApp() {
   };
 
   const loadProfile = (p) => {
-    setFormData({ name:p.name||"", dob:p.dob||"", tob:p.tob||"", sec:p.sec||"", pob:p.pob||"", ampm:p.ampm||"AM",
+    setFormData({ name:p.name||"", phone:p.phone||"", dob:p.dob||"", tob:p.tob||"", sec:p.sec||"", pob:p.pob||"", ampm:p.ampm||"AM",
       gender:p.gender||"", pobLat:p.pobLat ?? null, pobLon:p.pobLon ?? null, pobSource:p.pobSource ?? null, pobTz:p.pobTz || "" });
     setPlaceResults([]); setPlaceDropdownOpen(false);
   };
@@ -1125,7 +1127,13 @@ export default function AstrologyApp() {
 
   useEffect(() => {
     // முதல்-முறை → Welcome; திரும்பும் user → நேரடி HOME (onboarding மீண்டும் காட்டாது)
-    if(screen===SCREEN.SPLASH){ const t=setTimeout(()=>{ const saved=loadProfiles(); if(saved.length>0){loadProfile(saved[0]);} goTo(SCREEN.HOME); },5600); return()=>clearTimeout(t); }
+    if(screen===SCREEN.SPLASH){ const t=setTimeout(()=>{
+      const saved=loadProfiles(); if(saved.length>0){loadProfile(saved[0]);}
+      // முதல்-முறை (விவரம்+மொழி இல்லை) → முழு நுழைவு; மொழி மட்டும் இல்லை (பழைய பயனர்) → மொழிப் படி மட்டும்; இல்லையேல் முகப்பு.
+      if(!isOnboarded()) goTo(SCREEN.ONBOARD);
+      else if(!hasLang()) goTo(SCREEN.ONBOARD);
+      else goTo(SCREEN.HOME);
+    },5600); return()=>clearTimeout(t); }
   }, [screen, goTo]);
 
 
@@ -1660,6 +1668,35 @@ export default function AstrologyApp() {
   // ═══════ WELCOME (first-time onboarding) — premium introduction ═══════
   // முதல்-முறை user-க்கு மட்டும். "தொடங்குங்கள்" → onboarded flag + HOME.
   // (Auth silent-anonymous — தனி sign-in தேவையில்லை; auth logic தொடாதது.)
+  // ── நுழைவு (ஒரு பக்கத்தில் ஒரு கேள்வி; மொழி → … → பிறந்த இடம்) ──
+  if(screen===SCREEN.ONBOARD) {
+    // ஏற்கனவே விவரம் உள்ளவர் (பழைய பயனர்) — மொழிப் படி மட்டும்; புதியவர் — எல்லாப் படிகளும்.
+    const onlyLang = isOnboarded();
+    const existing = (loadProfiles()[0]) || null;
+    return (
+      <Onboarding
+        steps={onlyLang ? ["lang"] : undefined}
+        initial={existing ? { name:existing.name, phone:existing.phone, gender:existing.gender, dob:existing.dob, tob:existing.tob, sec:existing.sec, ampm:existing.ampm, pob:existing.pob, pobLat:existing.pobLat, pobLon:existing.pobLon, pobSource:existing.pobSource, pobTz:existing.pobTz } : {}}
+        searchPlaces={searchPlacesOSM}
+        guessZone={guessBirthZone}
+        onDone={(d)=>{
+          if(d.lang) setAppLang(d.lang);
+          if(!onlyLang){
+            // விவரங்களைச் சேமி (ஜாதகம் இங்கே கணக்கிடப்படுவதில்லை — ஜாதகப் பகுதியில் திறக்கும்போதுதான்)
+            const entry = { id: Date.now(), notes:"", name:d.name, phone:d.phone||"", dob:d.dob, tob:d.tob, sec:d.sec||"", ampm:d.ampm||"AM",
+              gender:d.gender||"", pob:d.pob, pobLat:d.pobLat, pobLon:d.pobLon, pobSource:d.pobSource, pobTz:d.pobTz||"", savedAt:new Date().toISOString() };
+            setFormData({ name:d.name, phone:d.phone||"", dob:d.dob, tob:d.tob, sec:d.sec||"", pob:d.pob, ampm:d.ampm||"AM",
+              gender:d.gender||"", pobLat:d.pobLat, pobLon:d.pobLon, pobSource:d.pobSource, pobTz:d.pobTz||"" });
+            setProfiles(prev=>{ const rest = prev.filter(p=>!(p.name===d.name && p.dob===d.dob && p.tob===d.tob && p.ampm===(d.ampm||"AM")));
+              const next=[entry, ...rest].slice(0,200); persistProfiles(next); return next; });
+          }
+          markOnboarded();
+          goTo(SCREEN.HOME);
+        }}
+      />
+    );
+  }
+
   if(screen===SCREEN.WELCOME) {
     const POINTS = [
       { icon:"🔭", t:"வானியல் துல்லியம்", s:"தனி வானியல் கணக்குடன் சரிபார்த்த கிரக நிலைகள்" },
@@ -1837,7 +1874,7 @@ export default function AstrologyApp() {
   if(screen===SCREEN.ACCOUNT) {
     const isActive = (p) => p.name===formData.name && p.dob===formData.dob && p.tob===formData.tob && p.ampm===formData.ampm;
     const hasBirth = !!(formData.name && isValidDDMMYYYY(formData.dob));
-    const blank = { name:"", dob:"", tob:"", sec:"", pob:"", ampm:"AM", gender:"", pobLat:null, pobLon:null, pobSource:null, pobTz:"" };
+    const blank = { name:"", phone:"", dob:"", tob:"", sec:"", pob:"", ampm:"AM", gender:"", pobLat:null, pobLon:null, pobSource:null, pobTz:"" };
     const cardTitle = { fontSize: 15, fontWeight:700, color:"#1f3f68", marginBottom:10 };
     return (
       <div style={base}>

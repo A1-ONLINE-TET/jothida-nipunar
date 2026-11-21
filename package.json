@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node scripts/test-precision.mjs && node scripts/test-engine.mjs && node scripts/test-ephemeris.mjs && node scripts/test-festivals.mjs && node scripts/test-vratham.mjs && node scripts/test-safety.mjs && node scripts/test-names.mjs && node scripts/test-notify.mjs"
+    "test": "node scripts/test-precision.mjs && node scripts/test-engine.mjs && node scripts/test-ephemeris.mjs && node scripts/test-festivals.mjs && node scripts/test-vratham.mjs && node scripts/test-safety.mjs && node scripts/test-names.mjs && node scripts/test-notify.mjs && node scripts/test-i18n.mjs"
   },
   "dependencies": {
     "firebase": "^11.10.0",
