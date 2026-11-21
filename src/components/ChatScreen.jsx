@@ -135,7 +135,7 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, p
       </header>
 
       <div className="chat-notice" data-ai-notice>
-        இது தானியங்கி AI உதவியாளர்; மனித ஜோதிடர் அல்ல. பதில்கள் உங்கள் ஜாதகக் கணக்கிலிருந்து உருவாகின்றன — வழிகாட்டலுக்கு மட்டும். மருத்துவம், சட்டம், முதலீடு போன்ற முடிவுகளுக்கு உரிய நிபுணரை அணுகுங்கள்.
+        இது AI உதவியாளர்; மனித ஜோதிடர் அல்ல. மருத்துவம், சட்டம், முதலீடு போன்ற முடிவுகளுக்கு உரிய நிபுணரை அணுகுங்கள்.
       </div>
 
       <div className="chat-scroll" ref={scrollRef}>
@@ -144,7 +144,7 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, p
           <div className="chat-hero-name">{persona.name}</div>
           <div className="chat-hero-role">{persona.role}</div>
           <p className="chat-hero-intro">
-            வணக்கம்{personName ? " " + personName : ""}. நான் {persona.name} — உங்கள் ஜாதகக் கணக்கை வைத்துப் பதிலளிக்கும் AI உதவியாளர்; மனித ஜோதிடர் அல்ல. {persona.intro}
+            வணக்கம்{personName ? " " + personName : ""}. நான் {persona.name} — AI உதவியாளர்; மனித ஜோதிடர் அல்ல. {persona.intro}
           </p>
         </div>
         {messages.map((m, i) => (

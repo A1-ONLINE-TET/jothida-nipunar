@@ -1,12 +1,13 @@
 // ═══════════════════════════════════════════════════════════════════
-// பரிகாரம் tab — ஜாதகத்தின் வேர்க் காரணத்திலிருந்து பரிகாரம்.
+// பரிகாரம் tab — ஜாதகத்துக்கான பரிகாரங்கள், நேரடியாக (பயனர் கோரிக்கை 2026-11: "எப்படித் தீர்மானிக்கப்பட்டது",
+// "ஏன் முக்கியம்", "முறை ஏன்" போன்ற விளக்கப் பகுதிகள் வேண்டாம் — என்ன செய்ய வேண்டும் என்பது மட்டும்).
 // எல்லாக் கணக்கும் server-இல் (/api/remedy-plan); இங்கே காட்சி மட்டும்.
 // விற்பனை இல்லை: ரத்தினம்/பூஜை எதுவும் விற்கப்படுவதில்லை — "தேவையா, தேவையில்லையா" என்ற தீர்ப்பு மட்டும்.
 // ═══════════════════════════════════════════════════════════════════
 import { useState } from "react";
 import {
-  ShieldCheck, Gem, CalendarClock, CircleCheck, TriangleAlert, ChevronDown, ChevronRight,
-  Flame, Info, Share2, Sprout, Clock, Star, Heart, Hourglass,
+  Gem, CalendarClock, CircleCheck, TriangleAlert, ChevronDown, ChevronRight,
+  Flame, Share2, Sprout, Clock, Star, Heart, Hourglass,
 } from "lucide-react";
 
 const INK = "#27303f", SOFT = "#4a5365", MUTED = "#76819a", LINE = "#e3e8f2", NAVY = "#1f3f68";
@@ -52,13 +53,8 @@ function ItemCard({ it, card, fmtDate, defaultOpen }) {
         </div>
         <div style={{ fontSize: 16.5, fontWeight: 700, color: NAVY, lineHeight: 1.45, marginBottom: 10 }}>{it.title}</div>
 
-        <div style={label}>வேர்க் காரணம்</div>
+        <div style={label}>காரணம்</div>
         {it.root.map((t, i) => (<div key={i} style={bullet}><span style={dot(st.color)} /><span>{t}</span></div>))}
-
-        {it.role?.length > 0 && (<>
-          <div style={{ ...label, marginTop: 10 }}>உங்களுக்கு ஏன் முக்கியம்</div>
-          {it.role.map((t, i) => (<div key={i} style={{ ...bullet, color: SOFT }}><span style={dot("#a3adc2")} /><span>{t}</span></div>))}
-        </>)}
 
         {it.affects?.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
@@ -66,10 +62,6 @@ function ItemCard({ it, card, fmtDate, defaultOpen }) {
           </div>
         )}
 
-        <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 12, background: TEAL_TINT }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: TEAL_DARK, marginBottom: 3 }}>முறை: {it.approachLabel}</div>
-          <div style={{ fontSize: 13, lineHeight: 1.7, color: INK }}>{it.approachWhy}</div>
-        </div>
       </div>
 
       <button data-remedy-toggle={it.id} onClick={() => setOpen((v) => !v)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "11px 16px 11px 18px", background: "#fafbfe",
@@ -114,7 +106,6 @@ function ItemCard({ it, card, fmtDate, defaultOpen }) {
 }
 
 export default function RemedyTab({ plan, card, fmtDate, onRetry, onNav, onOpenAll, onShare, name }) {
-  const [showWhy, setShowWhy] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const secTitle = { fontSize: 15, fontWeight: 700, color: NAVY, marginBottom: 10 };
 
@@ -123,7 +114,6 @@ export default function RemedyTab({ plan, card, fmtDate, onRetry, onNav, onOpenA
       <div data-remedy-loading style={{ ...card, textAlign: "center", padding: "28px 18px", marginBottom: 12 }}>
         <div style={{ width: 26, height: 26, margin: "0 auto 12px", border: "2px solid #2e8b8425", borderTop: `2px solid ${TEAL}`, borderRadius: "50%", animation: "jnSpin .8s linear infinite" }} />
         <div style={{ fontSize: 14, fontWeight: 600, color: NAVY, marginBottom: 4 }}>பரிகாரத் திட்டம் தயாராகிறது…</div>
-        <div style={{ fontSize: 12.5, color: MUTED, lineHeight: 1.7 }}>உங்கள் ஜாதகத்தில் எது உண்மையில் கவனம் கோருகிறது என்று ஆராயப்படுகிறது.</div>
       </div>
     );
   }
@@ -136,45 +126,28 @@ export default function RemedyTab({ plan, card, fmtDate, onRetry, onNav, onOpenA
     );
   }
 
-  const troubled = (plan.areas || []).filter((a) => !a.ok);
   const good = plan.headline?.tone === "good";
   const shareText = () => [
     `${name || ""} — பரிகாரத் திட்டம்`.trim(),
     `${plan.lagna} லக்னம் · ${plan.moonRashi} ராசி · ${plan.nakshatra}`,
-    plan.headline?.title,
     ...plan.items.map((it, i) => `${i + 1}. ${it.title} (${it.stageLabel}) — ${it.steps[0]?.text || ""}`),
     "— ஜோதிட நிபுணர்",
   ].filter(Boolean).join("\n");
 
   return (
     <div data-remedy-plan>
-      {/* ── தலைப்பு: எத்தனை, எது முதலில் ── */}
-      <div style={{ ...card, marginBottom: 12, padding: "16px", background: good ? "#eaf5ef" : TEAL_TINT, border: `1px solid ${good ? "#cfe6da" : "#cfe6e3"}` }}>
-        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-          <span style={{ width: 42, height: 42, borderRadius: 13, background: "#ffffff", color: good ? GREEN : TEAL, display: "grid", placeItems: "center", flexShrink: 0 }}>
-            {good ? <CircleCheck size={22} strokeWidth={1.9} /> : <ShieldCheck size={22} strokeWidth={1.9} />}
-          </span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: good ? GREEN : TEAL_DARK, marginBottom: 2 }}>உங்கள் ஜாதகத்தின்படி</div>
-            <div data-remedy-headline style={{ fontSize: 17, fontWeight: 700, color: NAVY, lineHeight: 1.45, marginBottom: 5 }}>{plan.headline.title}</div>
-            <div style={{ fontSize: 13.5, lineHeight: 1.75, color: INK }}>{plan.headline.text}</div>
+      {/* ── பரிகாரம் தேவையில்லை என்றால் மட்டும் ஒரு நேரடி அறிவிப்பு ── */}
+      {good && (
+        <div style={{ ...card, marginBottom: 12, padding: "16px", background: "#eaf5ef", border: "1px solid #cfe6da" }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <span style={{ width: 42, height: 42, borderRadius: 13, background: "#ffffff", color: GREEN, display: "grid", placeItems: "center", flexShrink: 0 }}><CircleCheck size={22} strokeWidth={1.9} /></span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div data-remedy-headline style={{ fontSize: 17, fontWeight: 700, color: NAVY, lineHeight: 1.45, marginBottom: 5 }}>{plan.headline.title}</div>
+              <div style={{ fontSize: 13.5, lineHeight: 1.75, color: INK }}>{plan.headline.text}</div>
+            </div>
           </div>
         </div>
-        <button data-remedy-why onClick={() => setShowWhy((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, minHeight: 40, padding: 0, background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, color: TEAL_DARK }}>
-          <Info size={15} />எப்படித் தீர்மானிக்கப்பட்டது?
-          <ChevronDown size={15} style={{ transform: showWhy ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
-        </button>
-        {showWhy && (
-          <div style={{ marginTop: 8, padding: "10px 12px", background: "#ffffff", borderRadius: 12 }}>
-            {plan.principle.map((t, i) => (
-              <div key={i} style={{ display: "flex", gap: 9, fontSize: 13, lineHeight: 1.7, color: INK, marginBottom: i < plan.principle.length - 1 ? 6 : 0 }}>
-                <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 20, background: TEAL_TINT, color: TEAL_DARK, fontSize: 11.5, fontWeight: 700, display: "grid", placeItems: "center", marginTop: 2 }}>{i + 1}</span>
-                <span>{t}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* ── தோஷ / கோசார நிலை ── */}
       {plan.doshas?.length > 0 && (
@@ -191,30 +164,8 @@ export default function RemedyTab({ plan, card, fmtDate, onRetry, onNav, onOpenA
         </div>
       )}
 
-      {/* ── பகுதிவாரி வேர்க் காரணம் ── */}
-      {troubled.length > 0 && (
-        <div style={{ ...card, marginBottom: 12, padding: "16px 16px 8px" }}>
-          <div style={secTitle}>கவனம் கோரும் பகுதிகள் — ஏன்?</div>
-          {troubled.map((a, i) => (
-            <div key={a.key} style={{ padding: "10px 0", borderTop: i ? "1px solid #eef1f6" : "none" }}>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 5 }}>
-                <span style={{ fontSize: 14.5, fontWeight: 700, color: INK }}>{a.name}</span>
-                <span style={{ fontSize: 12, color: "#b5683a", fontWeight: 600, textAlign: "right" }}>{a.verdict}</span>
-              </div>
-              {a.causes.map((t, j) => (<div key={j} style={{ ...bullet, fontSize: 13, color: SOFT }}><span style={dot("#c9b08f")} /><span>{t}</span></div>))}
-              {a.linked.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 6 }}>
-                  <span style={{ fontSize: 12, color: MUTED }}>இதற்கான பரிகாரம்:</span>
-                  {a.linked.map((n) => (<span key={n} style={pill(TEAL_DARK, TEAL_TINT)}>{n}</span>))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* ── பரிகாரங்கள் ── */}
-      {plan.items.length > 0 && <div style={{ ...secTitle, marginTop: 4 }}>செய்ய வேண்டிய பரிகாரங்கள்</div>}
+      {plan.items.length > 0 && <div data-remedy-headline style={{ ...secTitle, marginTop: 4 }}>உங்களுக்கான பரிகாரங்கள்</div>}
       {plan.items.map((it) => (<ItemCard key={it.id} it={it} card={card} fmtDate={fmtDate} defaultOpen={it.primary} />))}
 
       {plan.more?.length > 0 && (
@@ -225,26 +176,23 @@ export default function RemedyTab({ plan, card, fmtDate, onRetry, onNav, onOpenA
           </button>
           {showMore && (
             <div style={{ marginTop: 10 }}>
-              <div style={{ fontSize: 12.5, color: MUTED, lineHeight: 1.7, marginBottom: 10 }}>இவை லேசான அளவிலானவை — மேலுள்ளவற்றைத் தொடங்கிய பிறகு, நேரம் இருந்தால் மட்டும்.</div>
               {plan.more.map((it) => (<ItemCard key={it.id} it={it} card={card} fmtDate={fmtDate} />))}
             </div>
           )}
         </div>
       )}
 
-      {/* ── பரிகாரம் தேவையில்லாதவை ── */}
+      {/* ── பரிகாரம் தேவையில்லாதவை (பெயர்கள் மட்டும்) ── */}
       {plan.noNeed?.length > 0 && (
-        <div style={{ ...card, marginBottom: 12, padding: "16px 16px 8px" }}>
+        <div style={{ ...card, marginBottom: 12, padding: "16px" }}>
           <div style={secTitle}>பரிகாரம் தேவையில்லாதவை</div>
-          {plan.noNeed.map((n, i) => (
-            <div key={i} data-remedy-noneed style={{ display: "flex", gap: 10, padding: "9px 0", borderTop: i ? "1px solid #eef1f6" : "none" }}>
-              <CircleCheck size={18} color={GREEN} style={{ flexShrink: 0, marginTop: 2 }} />
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: INK }}>{n.title}</div>
-                <div style={{ fontSize: 13, lineHeight: 1.7, color: SOFT }}>{n.why}</div>
-              </div>
-            </div>
-          ))}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {plan.noNeed.map((n, i) => (
+              <span key={i} data-remedy-noneed style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: GREEN, background: "#eaf5ef", border: "1px solid #cfe6da", padding: "5px 11px", borderRadius: 999, lineHeight: 1.5 }}>
+                <CircleCheck size={14} style={{ flexShrink: 0 }} />{n.title}
+              </span>
+            ))}
+          </div>
         </div>
       )}
 

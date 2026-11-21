@@ -3790,7 +3790,7 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
       const subLord = p.fullLong != null ? subLordOf(p.fullLong) : null;
       const subNature = subLord ? natureOf(subLord) : null;
       const kp = subLord ? { subLord, nature: subNature,
-        text: `உப நட்சத்திராதிபதி (கிருஷ்ணமூர்த்தி முறை): ${subLord} (${subNature}) — ${isSubhaNature(subNature) ? "நட்சத்திராதிபதி காட்டும் பலன் நிறைவேற உதவுவார் ✓" : isAsubhaNature(subLord, subNature) ? "பலன் நிறைவேற்றத்தில் தடை/திருப்பம் தருவார் — பரிகாரம் முக்கியம்" : "நடுநிலை — சூழல்படி முடிவு"}` } : null;
+        text: `உப நட்சத்திராதிபதி: ${subLord} (${subNature}) — ${isSubhaNature(subNature) ? "நட்சத்திராதிபதி காட்டும் பலன் நிறைவேற உதவுவார் ✓" : isAsubhaNature(subLord, subNature) ? "பலன் நிறைவேற்றத்தில் தடை/திருப்பம் தருவார் — பரிகாரம் முக்கியம்" : "நடுநிலை — சூழல்படி முடிவு"}` } : null;
       // இணைப்புச் செயல்திறன் — ஒருங்கிணைந்த பலத்திலிருந்து (5 அளவுகோல் composite)
       const linkPower = {
         self: unifiedOf(p.ta)?.composite ?? null,

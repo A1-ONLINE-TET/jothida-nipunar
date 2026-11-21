@@ -142,9 +142,8 @@ function timingLines(et, isCaution) {
     const span = running ? `இப்போதிருந்து ${fmtMonthYear(w.end)} வரை` : `${fmtMonthYear(w.start)} – ${fmtMonthYear(w.end)}`;
     const lord = `${w.md} தசை${w.ad ? `/${w.ad} புக்தி` : ""}`;
     if (isCaution) out.push(`${i === 0 ? "கவனம் தேவைப்படும் காலம்" : "அதன் பின்"}: ${span} (${lord}) — உணவு, ஓய்வு, மருத்துவப் பரிசோதனையில் கவனம்.`);
-    else out.push(`${i === 0 ? (running ? "நடப்புக் காலமே சாதகமானது" : "அடுத்த சாதக காலம்") : "அதன் பின்"}: ${span} (${lord}; கணிப்பு வலு: ${w.confidence}).`);
+    else out.push(`${i === 0 ? (running ? "நடப்புக் காலமே சாதகமானது" : "அடுத்த சாதக காலம்") : "அதன் பின்"}: ${span} (${lord}).`);
   });
-  if (top.length && !isCaution && typeof et.promise === "number") out.push(`ஜாதகத்தில் இதற்கான அடிப்படை வலு: ${et.promise}/100${et.promiseVerdict ? ` — ${et.promiseVerdict}` : ""}.`);
   return out;
 }
 
@@ -204,7 +203,7 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
   }
 
   // ── தொடக்கம் — ஜோதிடர் வரவேற்பு ──
-  lines.push(`${greet}உங்கள் லக்னம் ${h.lagnaName}, சந்திர ராசி ${h.moonRashi}, நட்சத்திரம் ${h.nakshatra}. ${topic.label} குறித்து உங்கள் ஜாதகத்தை ஆராய்ந்து சொல்கிறேன்.`);
+  lines.push(`${greet}உங்கள் லக்னம் ${h.lagnaName}, சந்திர ராசி ${h.moonRashi}, நட்சத்திரம் ${h.nakshatra}. ${topic.label} பற்றி:`);
 
   const ka = extras.keyAreas ? extras.keyAreas[cat] : null;
 

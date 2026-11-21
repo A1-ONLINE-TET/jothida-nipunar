@@ -203,7 +203,6 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
               தனிப்பட்ட பலன் →
             </button>
           </div>
-          <p style={note}>இது ராசி (சந்திர ராசி) அடிப்படையிலான பொதுவான கோசார பலன். உங்கள் பிறப்பு ஜாதகம், நடப்பு தசைப்படி தனிப்பட்ட பலன் மாறுபடலாம்.</p>
         </>)}
       </div>
       <BottomNav active="" onNav={onNav} />
@@ -233,7 +232,7 @@ function PeriodPalan({ p, onNav, onShare }) {
     return (<>
       <div data-period="year" style={card}>
         <div style={secTitle}>{p.rashi} ராசி — {p.year} ஆண்டு நிலை</div>
-        <div style={{ fontSize: 12.5, color: "#76819a", lineHeight: 1.6, marginBottom: 6 }}>ஆண்டின் பலனைத் தீர்மானிக்கும் மெதுவான கிரகங்கள்: குரு, சனி, ராகு, கேது.</div>
+        <div style={{ fontSize: 12.5, color: "#76819a", lineHeight: 1.6, marginBottom: 6 }}>குரு, சனி, ராகு, கேது நிலை</div>
         {p.slow.map((s, i) => (
           <div key={i} style={{ padding: "11px 0", borderTop: "1px solid #eef1f6" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
@@ -246,7 +245,6 @@ function PeriodPalan({ p, onNav, onShare }) {
           </div>
         ))}
       </div>
-      <p style={note}>கோசாரக் கணக்கு. கிரகப் பெயர்ச்சி தேதிகள் பஞ்சாங்கத்துக்குப் பஞ்சாங்கம் ஓரிரு நாள் மாறலாம். தனிப்பட்ட பலன் உங்கள் ஜாதகம், தசையைப் பொறுத்தது.</p>
     </>);
   }
   const isWeek = p.period === "week";
@@ -314,7 +312,6 @@ function PeriodPalan({ p, onNav, onShare }) {
       <button data-share onClick={share} style={{ padding: "12px 0", borderRadius: 14, border: "1.5px solid #ccd6e8", background: "#ffffff", color: "#1f3f68", fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Share2 size={16} /> பகிர்</button>
       <button onClick={() => onNav("daily")} style={{ padding: "12px 0", borderRadius: 14, border: "1px solid #1f3f68", background: "#1f3f68", color: "#ffffff", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>தனிப்பட்ட பலன் →</button>
     </div>
-    <p style={note}>ராசி அடிப்படையிலான கோசாரக் கணக்கு — எழுதப்பட்ட கட்டுரை அல்ல. கிரக மாற்றத் தேதிகள் ஓரிரு நாள் மாறலாம்; தனிப்பட்ட பலன் உங்கள் ஜாதகம், தசையைப் பொறுத்தது.</p>
   </>);
 }
 
@@ -411,7 +408,7 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
                 })}
               </div>
             )}
-            <p style={note}>பஞ்சாங்கக் கணக்கின்படி (சென்னை). 2021–2030 ஆண்டுகளுக்கு வெளியிடப்பட்ட பஞ்சாங்கத் தேதிகளுடன் ஒப்பிட்டுச் சரிபார்க்கப்பட்ட விதிகள். ஊர், பஞ்சாங்க மரபைப் பொறுத்து ஒரு நாள் வேறுபடலாம்.</p>
+            <p style={note}>ஊர், பஞ்சாங்க மரபைப் பொறுத்து ஒரு நாள் வேறுபடலாம்.</p>
           </>
         )}
 
@@ -444,7 +441,7 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
                 })}
               </div>
             ))}
-            <p style={note}>திருக்கணிதக் கணக்கின்படி (சென்னை); ஏகாதசி ஸ்மார்த்த முறை. 2021–2030 ஆண்டுகளுக்கு வெளியிடப்பட்ட பஞ்சாங்கத் தேதிகளுடன் ஒப்பிட்டுச் சரிபார்க்கப்பட்டவை. சில தமிழ் நாட்காட்டிகள் ஒரு நாள் முன் பின் குறிக்கலாம்; சஷ்டி விரதத்தில் மரபு வேறுபாடு அதிகம் என்பதால் அது இங்கே சேர்க்கப்படவில்லை.</p>
+            <p style={note}>ஊர், பஞ்சாங்க மரபைப் பொறுத்து ஒரு நாள் வேறுபடலாம்.</p>
           </>
         )}
       </div>
@@ -511,7 +508,7 @@ export function NavagrahaScreen({ fetchNavagraha, onNav }) {
             </div>
           );
         })}
-        <p style={note}>பொதுவான மரபுக் குறிப்புகள். ரத்தினம் அணிவது, ஜெப எண்ணிக்கை போன்றவற்றை உங்கள் ஜாதகப்படி ஜோதிடரிடம் உறுதி செய்யவும் — “ஜாதகம் → ஆழம் → பரிகாரங்கள்” உங்களுக்கானதைக் காட்டும்.</p>
+        <p style={note}>உங்கள் ஜாதகத்துக்கான பரிகாரம்: “ஜாதகம்” பகுதியின் “பரிகாரம்”.</p>
       </div>
       <BottomNav active="" onNav={onNav} />
     </div>
@@ -528,8 +525,8 @@ export function NumerologyScreen({ defaultDob = "", onNav }) {
   const [name, setName] = useState("");
   const n = numerologyOf(dob, name);
   const rows = [
-    ["பிறவி எண்", "பிறந்த தேதியின் கூட்டு — அடிப்படை இயல்பு", n.birth],
-    ["விதி எண்", "முழுப் பிறந்த தேதியின் கூட்டு — வாழ்க்கைப் பாதை", n.destiny],
+    ["பிறவி எண்", "அடிப்படை இயல்பு", n.birth],
+    ["விதி எண்", "வாழ்க்கைப் பாதை", n.destiny],
     ["பெயர் எண்", n.nameTotal ? `பெயர் எழுத்துக்களின் கூட்டு (${n.nameTotal})` : "பெயர் எழுத்துக்களின் கூட்டு", n.name],
   ];
   return (
@@ -544,7 +541,6 @@ export function NumerologyScreen({ defaultDob = "", onNav }) {
             value={dob} onChange={(e) => setDob(fmtDob(e.target.value))} />
           <label style={label}>பெயர் (ஆங்கில எழுத்துக்களில்)</label>
           <input style={input} placeholder="எ.கா. KUMAR" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
-          <div style={{ fontSize: 11.5, color: "#76819a", marginTop: 6, lineHeight: 1.6 }}>பெயர் எண் ஆங்கில எழுத்து மதிப்புகளைக் கொண்டு (கால்டியன் முறை) கணக்கிடப்படுகிறது.</div>
         </div>
 
         {rows.filter(([, , v]) => v != null).map(([title, how, v]) => {
@@ -566,7 +562,6 @@ export function NumerologyScreen({ defaultDob = "", onNav }) {
         {n.birth == null && n.name == null && (
           <div style={{ ...card, textAlign: "center", color: "#76819a", fontSize: 13, lineHeight: 1.7 }}>பிறந்த தேதி அல்லது பெயரை உள்ளிடுங்கள்.</div>
         )}
-        <p style={note}>எண் கணித மரபுப்படியான பொதுவான குறிப்புகள் — ஜாதகப் பலனுக்கு மாற்று அல்ல.</p>
       </div>
       <BottomNav active="" onNav={onNav} />
     </div>
@@ -667,7 +662,7 @@ export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = nu
           <CircleCheck size={18} color="#2e7d5b" style={{ flexShrink: 0, marginTop: 3 }} />
           <span>நட்சத்திரமும் பாதமும் தெரியவில்லையா? “ஜாதகம்” பகுதியில் பிறப்பு விவரம் கொடுத்தால் “கட்டம்” பகுதியில் நட்சத்திரம், பாதம், உரிய எழுத்து மூன்றும் தெரியும்.</span>
         </div>
-        <p style={note}>பாரம்பரிய அவகஹட சக்கர எழுத்துக்கள். தமிழில் ஒரே எழுத்து பல ஒலிகளைக் குறிக்கும் (எ.கா. க — கண்ணன், கணேஷ்); அதனால் அந்த எழுத்தில் தொடங்கும் எல்லாப் பெயர்களும் காட்டப்படுகின்றன — பாதத்துக்கு உரிய ஒலியின் பெயர்கள் முதலில். “நவீனம்”, “நடுத்தரம்”, “பாரம்பரியம்” என்று வடிகட்டலாம். பெயர்கள் பரிந்துரைகள் மட்டுமே.</p>
+        <p style={note}>பெயர்கள் பரிந்துரைகள் மட்டுமே.</p>
       </div>
       <BottomNav active="" onNav={onNav} />
     </div>

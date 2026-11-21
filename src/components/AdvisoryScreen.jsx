@@ -29,7 +29,7 @@ export default function AdvisoryScreen({ onPick = () => {}, onNav = () => {} }) 
             எந்தத் தலைப்பில் ஆலோசனை வேண்டும்?
           </p>
           <p data-ai-notice style={{ fontSize: 12, lineHeight: 1.6, marginTop: 8, color: "#76819a", maxWidth: 330, marginLeft: "auto", marginRight: "auto" }}>
-            பதிலளிப்பது AI உதவியாளர்; மனித ஜோதிடர் அல்ல. உங்கள் ஜாதகக் கணக்கின் அடிப்படையில் பதில்கள் உருவாகின்றன.
+            பதிலளிப்பது AI உதவியாளர்; மனித ஜோதிடர் அல்ல.
           </p>
           <div className="gold-divider">
             <span />

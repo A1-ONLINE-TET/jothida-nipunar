@@ -66,7 +66,7 @@ function shadbalaFactor(ctx, planetName, roleLabel, factors) {
   const sb = ctx?.shadBala?.find(s => s.ta === planetName);
   if (!sb) return 0;
   const ratio = sb.total / sb.required;
-  if (ratio >= 1) { factors.push({ text: `${roleLabel} ${planetName} ஷட்பலத்தில் தேவையை எட்டுகிறார் (${Math.round(sb.total)}/${sb.required} ரூபா) — பராசர ஹோரை உறுதிப்பாடு`, weight: +1 }); return 1; }
+  if (ratio >= 1) { factors.push({ text: `${roleLabel} ${planetName} ஷட்பலத்தில் தேவையை எட்டுகிறார் (${Math.round(sb.total)}/${sb.required} ரூபா)`, weight: +1 }); return 1; }
   if (ratio < 0.6) { factors.push({ text: `${roleLabel} ${planetName} ஷட்பலத்தில் மிகக் குறைவு (${Math.round(sb.total)}/${sb.required} ரூபா)`, weight: -1 }); return -1; }
   return 0;
 }
@@ -718,7 +718,7 @@ export function analyzeCareer(horoscope, grahaBala, dashaData, ctx) {
     const satHouse = ((saturn.rashiIdx - lagnaIdx + 12) % 12) + 1;
     const nadiPlanets = placements.filter(p => p.ta !== "சனி" && [2,5,9,10].includes(((p.rashiIdx - saturn.rashiIdx + 12) % 12) + 1));
     const nadiFields = [...new Set(nadiPlanets.map(p => CAREER_FIELDS[p.ta]).filter(Boolean))];
-    factors.push({ text: `ஜீவன காரகன் சனி ${satHouse}ஆம் வீட்டில்${nadiPlanets.length ? `; சனிக்கு 2/5/9/10-இல் ${nadiPlanets.map(p=>p.ta).join(", ")} — நாடி-விதிப்படி கூடுதல் துறைச் சாய்வு: ${nadiFields.join(" / ")}` : " — சனிக்கு 2/5/9/10-இல் கிரகம் இல்லை; 10ஆம் பாவ விதியே முதன்மை"}`, weight: 0 });
+    factors.push({ text: `ஜீவன காரகன் சனி ${satHouse}ஆம் வீட்டில்${nadiPlanets.length ? `; சனிக்கு 2/5/9/10-இல் ${nadiPlanets.map(p=>p.ta).join(", ")} — கூடுதல் துறைச் சாய்வு: ${nadiFields.join(" / ")}` : " — சனிக்கு 2/5/9/10-இல் கிரகம் இல்லை; 10ஆம் பாவ விதியே முதன்மை"}`, weight: 0 });
   }
 
   // FACTOR 10: D10 தசாம்ச உறுதிப்பாடு — 10ஆம் அதிபதியின் D10 ராசி நிலை
@@ -761,7 +761,7 @@ export function analyzeCareer(horoscope, grahaBala, dashaData, ctx) {
   const aspectors10 = placements.filter(p => p.ta !== h10LordName && !occupants10.includes(p) && planetAspectsHouse(p, lagnaIdx, 10)).map(p => p.ta);
   const fieldSources = [...new Set([h10LordName, ...occupants10.map(p => p.ta), ...aspectors10])];
   const suggestedFields = [...new Set(fieldSources.map(n => CAREER_FIELDS[n]).filter(Boolean).join(" / ").split(" / "))].join(" / ");
-  if (suggestedFields) summary = `🎯 பொருத்தமான துறை (குறியீடு): ${suggestedFields}.\n${summary}`;
+  if (suggestedFields) summary = `🎯 பொருத்தமான துறை: ${suggestedFields}.\n${summary}`;
 
   return { area: "தொழில்", icon: "💼", score, verdict, verdictColor, summary, factors,
            suggestedFields, chips,
@@ -776,17 +776,8 @@ export function analyzeCareer(horoscope, grahaBala, dashaData, ctx) {
 // This appends one reconciliation line to the summary explaining the net balance, so the
 // positives and the verdict are understood as a weighed whole rather than a contradiction.
 function addBalanceNote(area) {
-  if (!area || !area.factors) return area;
-  const pos = area.factors.filter(f => f.weight > 0).length;
-  const neg = area.factors.filter(f => f.weight < 0).length;
-  if (pos > 0 && neg > 0) {
-    const lean = area.score < 0
-      ? "பாதக காரணிகள் சற்று மிகுதி என்பதால் மொத்த மதிப்பீடு கவனம் நோக்கி உள்ளது"
-      : area.score > 0
-      ? "சாதக காரணிகள் மேலோங்குவதால் மொத்த மதிப்பீடு சாதகமாக உள்ளது"
-      : "இரு தரப்பும் சமமாக உள்ளன";
-    area.summary += ` (குறிப்பு: இதில் சாதக (▲) மற்றும் பாதக (▼) — இரண்டு வகை காரணிகளும் உள்ளன; ${lean}. இது முரண் அல்ல — எல்லா காரணிகளையும் நிறுத்திக் கணக்கிட்ட மொத்த சமநிலையே இந்த முடிவு. கீழே தனிப் பாரம்பரியக் குறிப்புகள் ஒவ்வொரு காரணியையும் தனித்தனியே விவரிக்கின்றன.)`;
-  }
+  // (2026-11) முன்பு இங்கே "சாதக/பாதக காரணிகள் எப்படி நிறுக்கப்பட்டன" என்ற விளக்கக் குறிப்பு சேர்க்கப்பட்டது.
+  // பயனர் கோரிக்கைப்படி அத்தகைய விளக்கங்கள் வேண்டாம் — தீர்ப்பு நேரடியாக மட்டும்.
   return area;
 }
 

@@ -2252,14 +2252,14 @@ export default function AstrologyApp() {
       // (ராசி + நவாம்சம் — இரண்டு சக்கரங்கள் மட்டும்; D10 வேண்டுமெனில் app-இல் பார்க்கலாம்)
 
       // 3. லக்னவாரி சுப/பாபர் + மாரக/பாதக
-      const fnPart = functionalNature ? sec("⚖","லக்னவாரி சுப-பாபர் (பராசர ஹோரை அத். 34)",
+      const fnPart = functionalNature ? sec("⚖","லக்னவாரி சுப-பாபர்",
         `<table class="pt"><thead><tr><th>கிரகம்</th><th>இயல்பு</th><th>காரணம்</th></tr></thead><tbody>` +
         Object.entries(functionalNature).map(([ta,fn],i)=>`<tr${i%2?' class="alt"':''}><td>${ta}</td><td style="font-weight:700;color:${fn.nature==="யோககாரகன்"||fn.nature==="சுபன்"?"#1b5e20":fn.nature==="பாபன்"?"#a02020":"#6b5a13"}">${fn.nature==="யோககாரகன்"?"👑 யோககாரகன்":fn.nature}</td><td style="font-size:9px">${fn.reasons.join(" • ")}</td></tr>`).join("") +
         `</tbody></table>` +
         (marakaBadhaka ? `<div class="olainote">☠ <b>மாரகாதிபதிகள் (2,7):</b> ${marakaBadhaka.marakaLords.join(", ")}${marakaBadhaka.occupants27.length?` • மாரக ஸ்தானத்தில்: ${marakaBadhaka.occupants27.join(", ")}`:""} &nbsp;|&nbsp; <b>பாதகாதிபதி:</b> ${marakaBadhaka.badhakaLord} (${marakaBadhaka.lagnaType} → ${marakaBadhaka.badhakaHouse}ஆம் வீடு)</div>` : ""), "cPurple") : "";
 
       // 4. ஷட்பலம்
-      const sbPart = shadBala ? sec("💪","ஷட்பலம் (பராசர ஹோரை அத். 27)",
+      const sbPart = shadBala ? sec("💪","ஷட்பலம்",
         `<table class="pt"><thead><tr><th>கிரகம்</th><th>ஸ்தான</th><th>திக்</th><th>கால</th><th>சேஷ்டா</th><th>நைசர்.</th><th>திருக்</th><th>மொத்தம்/தேவை</th><th>நிலை</th><th>இஷ்ட/கஷ்ட</th></tr></thead><tbody>` +
         shadBala.map((s,i)=>`<tr${i%2?' class="alt"':''}><td>${s.ta}</td><td>${Math.round(s.sthanaBala)}</td><td>${Math.round(s.digBala)}</td><td>${Math.round(s.kalaBala)}</td><td>${Math.round(s.cheshtaBala)}</td><td>${Math.round(s.naisargikaBala)}</td><td>${Math.round(s.drikBala)}</td><td class="mono">${Math.round(s.total)}/${s.required}</td><td style="color:${s.strong?"#1b5e20":"#a02020"};font-weight:700">${s.status}</td><td class="mono">${s.ishtaPhala}/${s.kashtaPhala}</td></tr>`).join("") +
         `</tbody></table>`, "cGreen") : "";
@@ -2271,7 +2271,7 @@ export default function AstrologyApp() {
         `</tr></tbody></table><div class="olainote">30+ பரல் = வலுவான ராசி • 25- = பலவீனம் • மொத்தம் 337</div>`, "cOrange") : "";
 
       // 6. அவஸ்தைகள்
-      const avPart = avasthasData ? sec("🌗","கிரக அவஸ்தைகள் (பராசர ஹோரை அத். 45)",
+      const avPart = avasthasData ? sec("🌗","கிரக அவஸ்தைகள்",
         `<table class="pt"><thead><tr><th>கிரகம்</th><th>பாலாதி</th><th>தீப்தாதி</th><th>ஜாக்ரதாதி</th></tr></thead><tbody>` +
         avasthasData.map((a,i)=>`<tr${i%2?' class="alt"':''}><td>${a.ta} <span style="font-size:8px;color:#888">${a.rashi} ${a.degree}°</span></td><td>${a.baladi.name} (~${a.baladi.pct}%)</td><td>${a.deeptadi} — <span style="font-size:9px">${a.deeptadiDesc}</span></td><td>${a.jagradadi}</td></tr>`).join("") +
         `</tbody></table>`, "cSlate") : "";
@@ -2320,8 +2320,8 @@ export default function AstrologyApp() {
 
       // 13. குடும்பம் & உடல்நலம்
       const fhPart = familyHealthData ? sec("👨‍👩‍👧","குடும்பம் & உடல்நல குறியீடுகள்",
-        `<div class="olabox"><b>👫 சகோதரர்கள்:</b> ${familyHealthData.siblings.lean}<div style="font-size:9px">${familyHealthData.siblings.detail}</div></div>` +
-        `<div class="olabox"><b>👶 குழந்தைகள்:</b> ${familyHealthData.children.restriction?"⚠ சந்ததியில் தடை/குறைவு சாத்தியம்":"சுமூக குறியீடு"}<div style="font-size:9px">${familyHealthData.children.detail} ${familyHealthData.children.note}</div></div>` +
+        `<div class="olabox"><b>👫 சகோதரர்கள்:</b> ${familyHealthData.siblings.lean}</div>` +
+        `<div class="olabox"><b>👶 குழந்தைகள்:</b> ${familyHealthData.children.restriction?"⚠ சந்ததியில் தடை/குறைவு சாத்தியம்":"சுமூக குறியீடு"}<div style="font-size:9px">${familyHealthData.children.detail}</div></div>` +
         (familyHealthData.healthTendencies.length?`<div class="olabox"><b>🩺 நோய் நாட்டம்:</b>${familyHealthData.healthTendencies.map(t=>`<div style="font-size:9.5px">• ${t.planet} பலவீனம் → ${t.area}</div>`).join("")}</div>`:""), "cTeal") : "";
 
       // 14. பரிகாரம்
@@ -2334,10 +2334,10 @@ export default function AstrologyApp() {
       const aiPart = prediction ? sec("🤖","AI ஜோதிட பலன்", `<p style="font-size:11px;line-height:2;white-space:pre-wrap">${escapeHtml(prediction)}</p>`, "cPurple") : "";
 
       // 16. ஒருங்கிணைந்த கிரக பலம் — view-இல் பார்த்திருந்தால்
-      const unifiedPart = unifiedStrength ? sec("🧩","ஒருங்கிணைந்த கிரக பலம் — 5 அளவுகோல்கள் ஒன்றாக",
+      const unifiedPart = unifiedStrength ? sec("🧩","ஒருங்கிணைந்த கிரக பலம்",
         `<table class="pt"><thead><tr><th>கிரகம்</th><th>மதிப்பு</th><th>நிலை</th><th>ஆதாரங்கள்</th><th>குறிப்புகள்</th></tr></thead><tbody>` +
         unifiedStrength.map((u,i)=>`<tr${i%2?' class="alt"':''}><td>${u.symbol} ${u.ta}<div style="font-size:8px;color:#888">${u.rashi}, ${u.house}ஆம் வீடு</div></td><td style="font-weight:700;color:${u.tierColor}">${u.composite}/100</td><td style="font-weight:700;color:${u.tierColor}">${u.tier}</td><td style="font-size:8.5px">${u.reasons.join("<br>")}</td><td style="font-size:8.5px;color:#8a4a00">${u.flags.join(", ")}</td></tr>`).join("") +
-        `</tbody></table><div class="olainote">கிரக பலம் 30% + ஷட்பலம் 25% + விம்ஷோபகம் 15% + நவாம்சம் 15% + அவஸ்தை 15%</div>`, "cTeal") : "";
+        `</tbody></table>`, "cTeal") : "";
 
       // 17. நட்சத்திர-பாவக இணைப்பு — view-இல் பார்த்திருந்தால் (4 உட்பிரிவுகளும் நிறம் பிரிந்து)
       const nakBhavaPart = (nakBhavaData && nakBhavaData!=="loading") ? sec("⭐","நட்சத்திர-பாவக இணைப்பு • பார்வை • கோசார காலம் • பரிகாரம்",
@@ -2355,7 +2355,7 @@ export default function AstrologyApp() {
               ${oc.remedies.length?`<div style="background:#fdeef0;border:1px solid #eabfc7;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:9.5px;line-height:1.7"><b style="color:#a02020">🙏 பரிகாரம்:</b><br>${oc.remedies.map(r=>`<b>${r.planet} கிரக பரிகாரம்</b> <i style="font-size:8.5px;color:#8a5a30">(எதற்காக: ${r.why})</i><br>📿 ${r.mantra} — ${r.count} • 🛕 ${r.temple}<br>🎁 ${r.day} அன்று ${r.donate} தானம் • 💎 ${r.gem}`).join("<br>")}</div>`:`<div style="font-size:8.5px;color:#33691e;margin:3px 0">🙏 பரிகாரம் தேவையில்லை — இணைப்பும் பார்வைகளும் சுபம்</div>`}
             </div>`;
           }).join("") + `</div>`).join("") +
-        `<div class="olainote">🔵 பாவகத் தொடர்பு • 🟡 பார்வைகள் • 🟢 கோசார காலம் • 🔴 பரிகாரம் — நான்கு பகுதிகளும் நிறத்தால் பிரிக்கப்பட்டுள்ளன</div>`, "cIndigo") : "";
+        ``, "cIndigo") : "";
 
       // Extra panchanga row values
       const gulikaRow = gulikaData ? `<tr><td>குளிகன் (மாந்தி)</td><td>: ${gulikaData.rashi} ${gulikaData.degInSign}° — ${gulikaData.nakshatra} (${gulikaData.timeLabel})</td></tr>` : "";
@@ -2444,13 +2444,11 @@ ${(() => {
     ifViewed("sequence", seqPart),
     ifViewed("remedies", remPart),
   ].filter(Boolean).join("");
-  return extras
-    ? `<div class="olainote" style="border-color:#7b1c1c;font-weight:600">📌 கீழே: நீங்கள் செயலியில் திறந்து பார்த்த கூடுதல் ஆழ்பகுதிகள் மட்டும்</div>${extras}`
-    : `<div class="olainote">📌 கூடுதல் ஆழ்பகுதிகள் எதுவும் திறக்கப்படவில்லை — "மேலும் ஆழமான விவரங்கள்" பட்டியலில் பார்த்த பகுதிகள் மட்டுமே PDF-இல் சேரும்</div>`;
+  return extras;
 })()}
 ${aiPart}
 </div>
-<div class="ftr">🕉 ஜோதிட நிபுணர் — முழு ஜாதக ஓலை<br>வானியல் கணக்கு • ${(AYANAMSA_SYSTEMS[ayanamsaKey]||AYANAMSA_SYSTEMS.lahiri).name} அயனாம்சம் • பராசர ஹோரை/சாராவளி பாரம்பரிய விதிகள் • உருவாக்கம்: ${new Date().toLocaleDateString("ta-IN")}<br>இது கணினி-கணித ஜாதகம் — முக்கிய முடிவுகளுக்கு அனுபவ ஜோதிடரை அணுகவும்</div>
+<div class="ftr">🕉 ஜோதிட நிபுணர் — முழு ஜாதக ஓலை<br>${(AYANAMSA_SYSTEMS[ayanamsaKey]||AYANAMSA_SYSTEMS.lahiri).name} அயனாம்சம் • உருவாக்கம்: ${new Date().toLocaleDateString("ta-IN")}</div>
 <div class="ola-edge"></div>
 </div><button class="btn no-print" onclick="window.print()">📄 PDF சேமி / அச்சிடு</button></body></html>`;
       try {
@@ -2871,14 +2869,13 @@ ${aiPart}
                     {/* வாழ்க்கைத் துணை விவரம் (திருமணம் மட்டும்) */}
                     {ka?.spouseProfile && (
                       <div style={{margin:"10px 0",padding:"12px",background:"#f8f9fc",borderRadius:12}}>
-                        <div style={{fontSize: 13,fontWeight:700,color:"#27303f",marginBottom:6}}>வாழ்க்கைத் துணை பற்றிய குறியீடு</div>
+                        <div style={{fontSize: 13,fontWeight:700,color:"#27303f",marginBottom:6}}>வாழ்க்கைத் துணை</div>
                         {ka.spouseProfile.traits.map((t,ti)=>(
                           <div key={ti} style={{fontSize: 12.5,color:"#4a5365",lineHeight:1.7}}><b>{t.planet}</b>: {t.trait}</div>
                         ))}
                         <div style={{fontSize: 12.5,color:"#4a5365",lineHeight:1.7,marginTop:2}}>
                           திசை: <b>{ka.spouseProfile.direction||"—"}</b>{ka.spouseProfile.distance ? ` · ${ka.spouseProfile.distance}` : ""}
                         </div>
-                        <div style={{fontSize: 11.5,color:"#76819a",marginTop:4}}>இவை பாரம்பரியக் குறியீடுகள் — உறுதியான விவரணை அல்ல.</div>
                       </div>
                     )}
                     {/* திரிதோஷம் (ஆரோக்கியம் மட்டும்) */}
@@ -3004,19 +3001,14 @@ ${aiPart}
                 </button>
                 {open && (
                   <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #eef1f6",fontSize: 12.5,color:"#4a5365",lineHeight:1.7}}>
-                    <div style={{marginBottom:8}}><b style={{color:"#27303f"}}>சகோதரர்கள் (3ஆம் வீடு):</b> {fh.siblings.detail}</div>
-                    <div style={{marginBottom:8}}><b style={{color:"#27303f"}}>குழந்தைகள் (5ஆம் வீடு):</b> {fh.children.detail} {fh.children.note}</div>
+                    <div style={{marginBottom:8}}><b style={{color:"#27303f"}}>சகோதரர்கள் (3ஆம் வீடு):</b> {fh.siblings.lean}</div>
+                    <div style={{marginBottom:8}}><b style={{color:"#27303f"}}>குழந்தைகள் (5ஆம் வீடு):</b> {fh.children.detail}</div>
                     <div style={{fontSize: 11.5,color:"#76819a"}}>இவை பாரம்பரியக் குறியீடுகள் மட்டுமே — சரியான எண்ணிக்கை/பாலினம் அல்ல; மருத்துவப் பரிசோதனைக்கு மாற்று அல்ல.</div>
                   </div>
                 )}
               </div>
             );
           })()}
-          {bhavaPhalam && (
-            <div style={{fontSize: 11.5,color:"#a3adc2",textAlign:"center",margin:"4px 0 10px",lineHeight:1.6}}>
-              பாரம்பரிய நூல்களின் (பராசர ஹோரை, சாராவளி) அடிப்படையில் — கிரக நிலை, வீட்டு அதிபதி, கிரக பலம், தசை இணைத்து.
-            </div>
-          )}
           </>)}
 
           {/* ═══ ஆழம் — தேர்ந்த பகுப்பாய்வு ═══ */}
@@ -3043,9 +3035,6 @@ ${aiPart}
                   </div>
                 );
               })}
-              <div style={{fontSize:12.5,color:"#76819a",marginTop:8}}>
-                உச்சம், நீசம், சொந்த வீடு, நட்பு வீடு ஆகியவற்றின் அடிப்படையிலான பலம் (பராசர முறை)
-              </div>
             </div>
           )}
 
@@ -3092,9 +3081,6 @@ ${aiPart}
                       </div>
                     );
                   })}
-                  <div style={{fontSize:12.5,color:"#76819a",marginTop:8}}>
-                    கேந்திர/திரிகோண நாத சேர்க்கை + பார்வை + பரிவர்த்தனை அடிப்படையில் — பராசர ஹோரை பாரம்பரிய விதிகள்
-                  </div>
                 </div>
               )}
               {(!mahapurushaYogas || mahapurushaYogas.length===0) && (!classicalYogas || classicalYogas.length===0) && (
@@ -3128,7 +3114,7 @@ ${aiPart}
                 })}
               </div>
               <div style={{fontSize:12.5,color:"#76819a",marginTop:8,lineHeight:1.5}}>
-                சராசரி: {ashtakavargaData.savAvg} பிந்து/வீடு • பச்சை=வலிமை (கோசாரத்துக்கு நல்லது) • சிவப்பு=பலவீனம் • மொத்தம்: 337 பிந்துக்கள் (7 கிரகங்கள் × 8 ஆதாரப் புள்ளிகள்)
+                சராசரி: {ashtakavargaData.savAvg} பிந்து/வீடு • பச்சை=வலிமை (கோசாரத்துக்கு நல்லது) • சிவப்பு=பலவீனம் • மொத்தம்: 337 பிந்துக்கள்
               </div>
             </div>
           )}
@@ -3154,9 +3140,6 @@ ${aiPart}
                   }}>{a.houseOffset}ஆம் வீடு{a.isSpecial?" (சிறப்பு)":""}</span>
                 </div>
               ))}
-              <div style={{fontSize:12.5,color:"#76819a",marginTop:8}}>
-                எல்லா கிரகங்களும் 7ஆம் வீட்டை பார்க்கும் • செவ்வாய்:4,8 • குரு:5,9 • சனி:3,10
-              </div>
             </div>
           )}
 
@@ -3176,7 +3159,7 @@ ${aiPart}
                 </div>
               ))}
               <div style={{fontSize:12.5,color:"#76819a",marginTop:8}}>
-                தொழில், பதவி, சமூக அந்தஸ்து பற்றிய நுணுக்கமான பலன் — பராசர முறை
+                தொழில், பதவி, சமூக அந்தஸ்து
               </div>
             </div>
           )}
@@ -3211,7 +3194,7 @@ ${aiPart}
                 </div>
               )}
               <div style={{fontSize:12.5,color:"#76819a",marginTop:8,lineHeight:1.5}}>
-                ஹோரை = செல்வம் • திரேக்காணம் = சகோதரர்கள் • சதுர்த்தாம்சம் = சொத்து/வாகனம் • சப்தாம்சம் = குழந்தைகள் • துவாதசாம்சம் = பெற்றோர் • ஷஷ்டியாம்சம் = கர்மம் — பராசர முறை
+                ஹோரை = செல்வம் • திரேக்காணம் = சகோதரர்கள் • சதுர்த்தாம்சம் = சொத்து/வாகனம் • சப்தாம்சம் = குழந்தைகள் • துவாதசாம்சம் = பெற்றோர் • ஷஷ்டியாம்சம் = கர்மம்
               </div>
             </div>
           )}
@@ -3231,7 +3214,7 @@ ${aiPart}
                 ["அக்ஷ.","தந்தைவழி",(i)=>d45Data?.[i]?.d45RashiName],
               ]} />
               <div style={{fontSize:12.5,color:"#76819a",marginTop:8,lineHeight:1.6}}>
-                ஷோடசாம்சம் = வாகனம்/சுகபோகம் • விம்சாம்சம் = ஆன்மீகம்/வழிபாடு • சதுர்விம்சாம்சம் = கல்வி/அறிவு • பம்சாம்சம் = பலம்/பலவீனம் • கவேதாம்சம் = தாய்வழி சுப/அசுபம் • அக்ஷவேதாம்சம் = தந்தைவழி/நடத்தை — பராசர முறை. இவை ராசி, நவாம்சம், தசாம்சம் ஆகியவற்றுடன் சேர்ந்து ஷோடச வர்க்க (16 சக்கரம்) அமைப்பை நிறைவு செய்கின்றன.
+                ஷோடசாம்சம் = வாகனம்/சுகபோகம் • விம்சாம்சம் = ஆன்மீகம்/வழிபாடு • சதுர்விம்சாம்சம் = கல்வி/அறிவு • பம்சாம்சம் = பலம்/பலவீனம் • கவேதாம்சம் = தாய்வழி சுப/அசுபம் • அக்ஷவேதாம்சம் = தந்தைவழி/நடத்தை
               </div>
 
               {/* Vimshopaka Bala (ShadVarga 20-point strength) */}
@@ -3248,9 +3231,6 @@ ${aiPart}
                         {v.classification && v.classification!=="—" && <div style={{color:"#76819a",fontSize:12}}>{v.classification}</div>}
                       </div>
                     ))}
-                  </div>
-                  <div style={{fontSize:12,color:"#76819a",marginTop:6,lineHeight:1.5}}>
-                    ஷட்வர்க்கம் (ராசி×6 + ஹோரை×2 + திரேக்காணம்×4 + நவாம்சம்×5 + துவாதசாம்சம்×2 + திரிம்சாம்சம்×1 = 20) கிரக கண்ணியம் அடிப்படையில் — பராசர ஹோரை அத். 17. 70%+ = மிக பலம், 45%+ = நடுத்தரம்.
                   </div>
                 </div>
               )}
@@ -3353,15 +3333,9 @@ ${aiPart}
                       </tbody>
                     </table>
                   </div>
-                  <div style={{fontSize:12,color:"#76819a",marginTop:5,lineHeight:1.5}}>
-                    <b>முறை (கே.என். ராவ்):</b> லக்னம் ஒற்றை→நேர், இரட்டை→மாறு. கால அளவு = ராசியிலிருந்து அதிபதி வரை எண்ணி −1 (சொந்த வீடு=12), உச்சம்+1/நீசம்−1 (1..12). விருச்சிகம்→செவ்வாய், கும்பம்→சனி. * இது கே.என். ராவ் முறை — ஜைமினி ராசி தசைகளில் ஒன்று; பிற முறைகளும் (நாராயண, ஸ்திர) உண்டு.
-                  </div>
                 </div>
               )}
 
-              <div style={{fontSize:12.5,color:"#76819a",marginTop:6,lineHeight:1.5}}>
-                ராசி திருஷ்டி: சர→ஸ்திர (அடுத்தது தவிர), ஸ்திர→சர (அடுத்தது தவிர), உभய→உभய. அர்கலா: 2/4/11ஆம் வீட்டு கிரகம் தலையீடு, விரோதம் 12/10/3ல் இருந்து — ஜைமினி முறை.
-              </div>
             </div>
           )}
 
@@ -3409,9 +3383,6 @@ ${aiPart}
                 ))}
               </div>
 
-              <div style={{fontSize:12,color:"#76819a",marginTop:6,lineHeight:1.5}}>
-                வர்ஷ பிரவேசம் = சூரியன் ஜன்ம நிலைக்கு திரும்பும் தருணம். முந்தா = ஜன்ம லக்னம் + வயது (ஆண்டுக்கு 1 ராசி). * இறுதி வர்ஷேஸ் பஞ்ச வர்கீய பலத்தால் தீர்மானிக்கப்படும் (நூல்களுக்கிடையே சிறிது வேறுபாடு உண்டு) — எனவே வேட்பாளர்கள் மட்டும் காட்டப்படுகிறது, ஊகிக்கப்படவில்லை.
-              </div>
             </div>
           )}
 
@@ -3422,7 +3393,7 @@ ${aiPart}
                 பிரஸ்னம்
               </div>
               <div style={{fontSize:13,color:"#4a5365",lineHeight:1.6,marginBottom:10}}>
-                மனதில் ஒரு கேள்வியை நினைத்து, <b>இப்போது</b> கீழே பொத்தானை அழுத்துங்கள். அந்த தருணத்துக்கான லக்னம் அமைத்து பலன் பார்க்கப்படும் (தத்கால பிரஸ்ன முறை).
+                மனதில் ஒரு கேள்வியை நினைத்து, <b>இப்போது</b> கீழே பொத்தானை அழுத்துங்கள்.
               </div>
               <button onClick={async ()=>{ const geo=resolveBirthGeo(formData); try{ setPrashnaData(await apiEngine("calcPrashnaChart",[geo.lat, geo.lon])); }catch(e){} }}
                 className="jn-shine" style={{...btnGold, marginBottom:12}}>
@@ -3531,7 +3502,7 @@ ${aiPart}
           {advancedView==="bhava" && bhavaChart && bhavaChart.cusps && (
             <div style={{...card,marginBottom:12,padding:"16px"}}>
               <div style={{fontSize:15,fontWeight:700,color:"#1f3f68",marginBottom:12,paddingLeft:10,borderLeft:"3px solid #b86084",lineHeight:1.4}}>
-                பாவ சக்கரம் (சம வீட்டு முறை)
+                பாவ சக்கரம்
               </div>
               <div data-bhava-rows>
                 {bhavaChart.cusps.map((cusp,i) => {
@@ -3560,9 +3531,6 @@ ${aiPart}
                   </div>
                 </div>
               )}
-              <div style={{fontSize:12.5,color:"#76819a",marginTop:8,lineHeight:1.5}}>
-                சம வீட்டு முறை — லக்ன பாகையிலிருந்து ஒவ்வொரு பாவமும் 30°
-              </div>
             </div>
           )}
 
@@ -3665,9 +3633,6 @@ ${aiPart}
                   </table>
                 </div>
               )}
-              <div style={{fontSize:12.5,color:"#76819a",marginTop:8,lineHeight:1.6}}>
-                மொத்தம் / தேவையான அளவு (விருபா). ஆறு கூறுகள்: ஸ்தான = இருப்பிடம், திக் = திசை, கால = நேரம், சேஷ்டா = இயக்கம், இயற்கை பலம், பார்வை பலம்.
-              </div>
             </div>
           )}
 
@@ -3676,10 +3641,6 @@ ${aiPart}
             <div style={{...card,marginBottom:12,padding:"16px"}}>
               <div style={{fontSize:15,fontWeight:700,color:"#1f3f68",marginBottom:12,paddingLeft:10,borderLeft:"3px solid #5565b8",lineHeight:1.4}}>
                 லக்னவாரி சுப-பாபர்
-              </div>
-              <div style={{fontSize:13,color:"#4a5365",marginBottom:8}}>
-                {horoscope?.lagnaName} லக்னத்திற்கு — வீட்டு அதிபத்யத்தில் இருந்து நேரடியாகக் கணிக்கப்பட்டது.
-                ஒரே கிரகம் ஒரு லக்னத்திற்கு நன்மையும், மற்றொன்றுக்கு தீமையும் தரும் — இதுவே தனிநபர் பலனின் அடிப்படை.
               </div>
               {Object.entries(functionalNature).map(([ta, fn], i) => (
                 <div key={i} style={{padding:"7px 10px",marginBottom:5,borderRadius:10,
@@ -3707,7 +3668,7 @@ ${aiPart}
                     {marakaBadhaka.badhakaLordHouse && <span> — தற்போது {marakaBadhaka.badhakaLordHouse}ஆம் வீட்டில்</span>}
                   </div>
                   <div style={{fontSize:12.5,color:"#7d6a3f",marginTop:4}}>
-                    மாரக/பாதக கிரகங்களின் தசா-புக்திகளில் ஆரோக்கியம், தடைகள் குறித்து கூடுதல் கவனம் தேவை — கீழே தசா பட்டியலுடன் ஒப்பிடவும்.
+                    மாரக/பாதக கிரகங்களின் தசா-புக்திகளில் ஆரோக்கியம், தடைகள் குறித்து கூடுதல் கவனம் தேவை.
                   </div>
                 </div>
               )}
@@ -3719,10 +3680,6 @@ ${aiPart}
             <div style={{...card,marginBottom:12,padding:"16px"}}>
               <div style={{fontSize:15,fontWeight:700,color:"#1f3f68",marginBottom:12,paddingLeft:10,borderLeft:"3px solid #2e8b84",lineHeight:1.4}}>
                 வரிசை-நிபந்தனை பலன்கள் — "எது எதற்குப் பின்?"
-              </div>
-              <div style={{fontSize:13,color:"#4a5365",marginBottom:8,lineHeight:1.6}}>
-                பாரம்பரிய சம்பந்த விதி: இரு வீடுகளின் அதிபதிகள் இணைந்தால் (சேர்க்கை/பரிவர்த்தனை/அமர்வு/பார்வை)
-                அவ்விரு வாழ்க்கைப் பகுதிகளும் பிணைந்தவை — முந்தையது நிகழ்ந்த பின் பிந்தையது மலரும்.
               </div>
               {(!sequenceLinks || sequenceLinks.length === 0) ? (
                 <div style={{padding:"12px",textAlign:"center",fontSize:13.5,color:"#7d6a3f",background:"#f5f7fb",borderRadius:12}}>
@@ -3745,10 +3702,6 @@ ${aiPart}
                   )}
                 </div>
               ))}
-              <div style={{fontSize:12.5,color:"#76819a",marginTop:6,lineHeight:1.5}}>
-                வலிமை: பரிவர்த்தனை/இரட்டை ஆட்சி &gt; சேர்க்கை &gt; அமர்வு &gt; பரஸ்பர பார்வை &gt; ஒருவழிப் பார்வை.
-                தசா குறிப்பு = நடப்பு/அடுத்த 3 மகா தசைகளில் இணைப்பு-அதிபதியின் தசை.
-              </div>
             </div>
           )}
 
@@ -3774,7 +3727,7 @@ ${aiPart}
                 const et = eventTiming[eventTopic];
                 if (!et) return (
                   <div style={{padding:"14px",textAlign:"center",fontSize:13.5,color:"#7d6a3f",background:"#f5f7fb",borderRadius:12}}>
-                    மேலே ஒரு கேள்வியைத் தேர்ந்தெடுக்கவும் — தசா × கோசாரம் × வாக்குறுதி மூன்றையும் இணைத்து கணிக்கப்படும்
+                    மேலே ஒரு கேள்வியைத் தேர்ந்தெடுக்கவும்
                   </div>
                 );
                 const isCaution = EVENT_TOPICS[eventTopic]?.mood === "caution";
@@ -3889,10 +3842,10 @@ ${aiPart}
           {advancedView==="nakbhava" && nakBhavaData && nakBhavaData!=="loading" && (
             <div style={{...card,marginBottom:12,padding:"16px"}}>
               <div style={{fontSize:15,fontWeight:700,color:"#1f3f68",marginBottom:10,paddingLeft:10,borderLeft:"3px solid #b86084",lineHeight:1.4}}>
-                நட்சத்திர-பாவக இணைப்பு — கிரகன் யாருடைய நட்சத்திரத்தில்? எந்தப் பாவப் பலன்? எப்போது?
+                நட்சத்திர-பாவக இணைப்பு
               </div>
               <div style={{fontSize:12.5,color:"#7d6a3f",marginBottom:10,lineHeight:1.6}}>
-                கிரகம் அமர்ந்த நட்சத்திரத்தின் அதிபதி ஆளும் பாவப் பலன்களையும் அக்கிரகம் இணைத்துத் தரும். ஒவ்வொரு கிரகத்தையும் தட்டினால் பார்வை, கோசார காலம், பரிகாரம் விரியும்.
+                ஒவ்வொரு கிரகத்தையும் தட்டினால் பார்வை, கோசார காலம், பரிகாரம் விரியும்.
               </div>
               {nakBhavaData.houses.map((hs,hi)=>(
                 <div key={hi} style={{marginBottom:hs.isEmpty?6:10,padding:hs.isEmpty?"6px 10px":"10px 12px",borderRadius:12,
@@ -4017,11 +3970,6 @@ ${aiPart}
                   ))}
                 </div>
               ))}
-              <div style={{fontSize:12.5,color:"#76819a",marginTop:6,lineHeight:1.5}}>
-                முறை: நட்சத்திராதிபதி விதி (பராசர / கிருஷ்ணமூர்த்தி முறை) → லக்னவாரி சுப-அசுபம் → பராசர பார்வை → குரு/சனி கோசாரம்
-                (கிரக ராசி + நட்சத்திராதிபதி ராசி மீது சேர்க்கை/சிறப்புப் பார்வை, மாத அளவு துல்லியம்).
-                கோசாரக் காலங்கள் பலன் "வெளிப்படும்" நேரம்; பலனின் அளவு ஜாதக வாக்குறுதியையே சார்ந்தது.
-              </div>
             </div>
           )}
 
@@ -4029,7 +3977,7 @@ ${aiPart}
           {advancedView==="backtest" && (
             <div style={{...card,marginBottom:12,padding:"16px"}}>
               <div style={{fontSize:15,fontWeight:700,color:"#1f3f68",marginBottom:10,paddingLeft:10,borderLeft:"3px solid #6b9150",lineHeight:1.4}}>
-                பின்நோக்கு சரிபார்ப்பு — கணிப்பின் துல்லியத்தைச் சோதிக்க
+                பின்நோக்கு சரிபார்ப்பு
               </div>
               <div style={{fontSize:12.5,color:"#7d6a3f",marginBottom:10,lineHeight:1.6}}>
                 வாழ்க்கையில் <b>ஏற்கனவே நடந்த</b> நிகழ்வின் தேதியை உள்ளிடுங்கள் (எ.கா. திருமண நாள்) —
@@ -4167,12 +4115,7 @@ ${aiPart}
           {advancedView==="unified" && unifiedStrength && (
             <div style={{...card,marginBottom:12,padding:"16px"}}>
               <div style={{fontSize:15,fontWeight:700,color:"#1f3f68",marginBottom:10,paddingLeft:10,borderLeft:"3px solid #8a62b0",lineHeight:1.4}}>
-                ஒருங்கிணைந்த கிரக பலம் — 5 அளவுகோல்கள் ஒரே முடிவாக
-              </div>
-              <div style={{fontSize:12.5,color:"#7d6a3f",marginBottom:10,lineHeight:1.6}}>
-                கிரக பலம் (30%) + ஷட்பலம் (25%) + விம்ஷோபகம் (15%) + நவாம்சம் (15%) + அவஸ்தை (15%) —
-                ஒவ்வொரு அளவுகோலின் தனி மதிப்பும் கீழே அப்படியே உள்ளது; மொத்த மதிப்பு எப்படி வந்தது என்பது முழு வெளிப்படை.
-                பாவ பலன், ஆழ்பகுப்பாய்வு, பரிகார முன்னுரிமை அனைத்தும் இதே மதிப்பையே பயன்படுத்துகின்றன.
+                ஒருங்கிணைந்த கிரக பலம்
               </div>
               {unifiedStrength.map((u,i)=>(
                 <div key={i} style={{marginBottom:10,padding:"12px 14px",borderRadius:14,
@@ -4200,10 +4143,6 @@ ${aiPart}
                   )}
                 </div>
               ))}
-              <div style={{fontSize:12.5,color:"#76819a",marginTop:6,lineHeight:1.5}}>
-                குறிப்பு: இயல்புக் குறிகள் (யோககாரகன்/பாபன்/மாரக/பாதக) மதிப்பெண்ணை மாற்றா — பலன் எந்தத் திசையில்
-                விளையும் என்பதைக் காட்டும். பலமான பாபன் தீமையை உறுதியாகவும், பலவீன சுபன் நன்மையை தாமதமாகவும் தருவர்.
-              </div>
             </div>
           )}
 
@@ -4211,7 +4150,7 @@ ${aiPart}
           {advancedView==="planetcontext" && planetContext && (
             <div style={{...card,marginBottom:12,padding:"16px"}}>
               <div style={{fontSize:15,fontWeight:700,color:"#1f3f68",marginBottom:12,paddingLeft:10,borderLeft:"3px solid #5565b8",lineHeight:1.4}}>
-                கிரக சூழல் — ஒரு கிரகத்தின் பலனை மற்ற கிரகங்கள் எப்படி மாற்றுகின்றன
+                கிரக சூழல்
               </div>
               {planetContext[0]?.condNotes?.length > 0 && (
                 <div style={{fontSize:12.5,color:"#7d6a3f",background:"#f5f7fb",border:"1px solid #e3e8f2",borderRadius:10,padding:"6px 8px",marginBottom:8,lineHeight:1.6}}>
@@ -4238,10 +4177,6 @@ ${aiPart}
                   ))}
                 </div>
               ))}
-              <div style={{fontSize:12.5,color:"#76819a",marginTop:6,lineHeight:1.5}}>
-                விதி: கிரகன் தன் ராசிநாதன் & நட்சத்திராதிபதியின் நிலைப்படியும், சேர்க்கை-பார்வைப்படியும் பலன் தருவான் (பராசர / கிருஷ்ணமூர்த்தி முறை அடிப்படை).
-                சுப/பாப இயல்பு லக்னவாரி — இயற்கை அல்ல.
-              </div>
             </div>
           )}
 
@@ -4272,10 +4207,6 @@ ${aiPart}
                   );
                 })}
               </div>
-              <div style={{fontSize:12.5,color:"#76819a",marginTop:8,lineHeight:1.5}}>
-                பாலாதி — ராசியில் பாகை வழி (ஒற்றை நேர்/இரட்டை தலைகீழ்) • தீப்தாதி — உச்ச/சொந்த/நட்பு/பகை/நீச/அஸ்தங்க நிலை •
-                ஜாக்ரதாதி — விழிப்பு நிலை. வீட்டு பலன் இந்த அவஸ்தை சதவீதத்தால் கூடும்/குறையும்.
-              </div>
             </div>
           )}
 
@@ -4300,10 +4231,6 @@ ${aiPart}
                   </div>
                 </div>
               ))}
-              <div style={{fontSize:12.5,color:"#76819a",marginTop:8,lineHeight:1.5}}>
-                அதிபதி பலம் = வீட்டு அதிபதியின் ஷட்பல விகிதம் • திக்பலம் = ராசி இயல்பு (நர/ஜல/கீட/சதுஷ்பத) × கேந்திர இலக்கு •
-                திருஷ்டி பலம் = வீட்டின் மீதான சுப/பாப பார்வைகள். பலமுள்ள வீட்டின் காரகங்கள் வாழ்வில் சிறக்கும்.
-              </div>
             </div>
           )}
 
@@ -4339,8 +4266,6 @@ ${aiPart}
                     })}
                   </div>
                   <div style={{fontSize:12.5,color:"#76819a",marginTop:8,lineHeight:1.5}}>
-                    சந்திர ராசியிலிருந்து கோசாரக் கிரகங்களின் நிலை • வேதை (பிருஹத் சம்ஹிதை விதி) சரிபார்க்கப்பட்டது — வேதை இருந்தால் சுப கோசாரம் தடைபடும்; விலக்கு: சூரியன்↔சனி, சந்திரன்↔புதன்<br/>
-                    தாரை = ஜென்ம நட்சத்திரத்திலிருந்து கோசாரக் கிரகத்தின் நட்சத்திரம் வரை 9-தாரா சுழற்சி — ராசிப் பலனை நட்சத்திர அளவில் நுட்பமாக்குகிறது.
                     பச்சை தாரை = அந்தக் கிரக காரகங்கள் சாதகம் • சிவப்பு தாரை = அக்காலத்தில் கவனம் தேவை
                   </div>
                 </div>
@@ -4526,9 +4451,6 @@ ${aiPart}
                   <div style={{fontSize:13,color:"#27303f",lineHeight:1.6}}>{planetTransitAnalysis.guru.desc}</div>
                 </div>
               )}
-              <div style={{fontSize:12.5,color:"#76819a",marginTop:8,lineHeight:1.5}}>
-                சனி ஒரு ராசியில் 2½ வருடம் • குரு ஒரு ராசியில் 1 வருடம் தங்கும் • சந்திர ராசியிலிருந்து கணிக்கப்பட்டது
-              </div>
             </div>
           )}
 
@@ -4648,7 +4570,6 @@ ${aiPart}
           {dashaSystem!=="vim" && (
             <div data-alt-dasha style={{...card,marginBottom:10,padding:"16px"}}>
               <div style={{...secTitle,marginBottom:2}}>{dashaSystem==="yogini" ? "யோகினி தசை (36 ஆண்டு சுழற்சி)" : "அஷ்டோத்தரி தசை (108 ஆண்டு சுழற்சி)"}</div>
-              <div style={{fontSize: 12,color:"#76819a",marginBottom:8,lineHeight:1.6}}>ஒப்பீட்டுக்கான மாற்று தசை முறை. பலன்களும் காலக்கணிப்புகளும் விம்சோத்தரி அடிப்படையிலேயே.</div>
               {altDashas==="loading" && <div style={{fontSize: 13,color:"#76819a"}}>கணக்கிடப்படுகிறது…</div>}
               {altDashas==="error" && <div style={{fontSize: 13,color:"#c0564f"}}>பெற முடியவில்லை. மீண்டும் முயற்சிக்கவும்.</div>}
               {altDashas && typeof altDashas==="object" && (altDashas[dashaSystem]?.dashas||[]).map((d,i)=>(
@@ -4932,7 +4853,7 @@ ${aiPart}
             <p style={{fontSize:12.5,color:"#76819a",margin:0}}>{formData.name ? `${formData.name} · ` : ""}{horoscope?.moonRashi ? `${horoscope.moonRashi} ராசி` : ""}</p>
             {today.isOtherDate && (
               <div style={{fontSize:11.5,color:today.isFuture?"#58a97f":"#4a5365",marginTop:3,fontWeight:600}}>
-                {today.isFuture?"எதிர்கால கணிப்பு — அன்றைய தசை-புக்தி அடிப்படையில்":"கடந்த நாளின் பலன் பார்வை"}
+                {today.isFuture?"எதிர்கால கணிப்பு":"கடந்த நாளின் பலன் பார்வை"}
               </div>
             )}
           </div>
@@ -5165,7 +5086,6 @@ ${aiPart}
                     <div style={{fontSize:22,fontWeight:800,color:"#1f3f68",letterSpacing:6}}>
                       {dailyNums.join("  ")}
                     </div>
-                    <div style={{fontSize:11,color:"#76819a",marginTop:3}}>திதி + நட்சத்திரம் + கிழமை எண்கணித அடிப்படை (பாரம்பரிய தசை அல்ல)</div>
                   </div>
                   <div style={{background:"linear-gradient(135deg,#a9823c15,#c7a56808)",borderRadius:8,padding:"10px 12px",border:"1px solid #a9823c25"}}>
                     <div style={{fontSize:11.5,color:"#4a5365",marginBottom:4}}>அதிர்ஷ்ட நிறம்</div>
@@ -5676,7 +5596,7 @@ ${aiPart}
                     {days.filter(x => x.score >= 80 && !x.panchaka).map(x => dateChip(x, "#e9f5ee", "#2e7d5b"))}
                     {days.filter(x => x.score >= 80 && !x.panchaka).length === 0 && <span style={{fontSize: 13,color:"#76819a"}}>இந்த மாதம் மிகச் சிறந்த நாள் இல்லை; நல்ல நாட்களை நாள் விவரத்தில் பார்க்கவும்.</span>}
                   </div>
-                  <div style={{fontSize: 11.5,color:"#76819a",marginTop:6,lineHeight:1.6}}>கிழமை, திதி, நட்சத்திரம், யோகம் நான்கும் சுபமாக அமைந்த நாட்கள். திருமணம் போன்ற முகூர்த்தங்களுக்கு இருவர் நட்சத்திரப்படி ஜோதிடரிடம் உறுதி செய்யவும்.</div>
+                  <div style={{fontSize: 11.5,color:"#76819a",marginTop:6,lineHeight:1.6}}>திருமணம் போன்ற முகூர்த்தங்களுக்கு இருவர் நட்சத்திரப்படியும் பார்க்க வேண்டும்.</div>
 
                   <div style={{fontSize: 12.5,fontWeight:700,color:"#99496a",margin:"14px 0 6px"}}>சந்திராஷ்டமம்</div>
                   {personal ? (
@@ -5688,7 +5608,7 @@ ${aiPart}
                     <div style={{fontSize: 13,color:"#76819a",lineHeight:1.6}}>ஜாதகம் உருவாக்கினால் உங்கள் ராசிக்கான சந்திராஷ்டம நாட்களும் தாரா பலமும் இங்கே காட்டப்படும்.</div>
                   )}
                   {personal && <div style={{fontSize: 11.5,color:"#76819a",marginTop:6}}>{formData.name} — {horoscope.moonRashi} ராசி, {horoscope.nakshatra} நட்சத்திரப்படி.</div>}
-                  <div style={{fontSize: 11.5,color:"#a3adc2",marginTop:10,lineHeight:1.6}}>விரத நாட்கள் சென்னைக்கான திருக்கணிதக் கணக்குப்படி; ஏகாதசி ஸ்மார்த்த முறை. உள்ளூர்ப் பஞ்சாங்கத்தில் ஒரு நாள் வேறுபடலாம்.</div>
+                  <div style={{fontSize: 11.5,color:"#a3adc2",marginTop:10,lineHeight:1.6}}>ஊர், பஞ்சாங்க மரபைப் பொறுத்து விரத நாள் ஒரு நாள் வேறுபடலாம்.</div>
                 </>)}
               </div>
             );
