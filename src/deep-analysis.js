@@ -110,7 +110,7 @@ export function analyzeMarriage(horoscope, grahaBala, chevvaiDosham, navamsaStre
     const lStr = strengthLevel(lagnaLordName, grahaBala);
     if (lagnaLordHouse && DUSTHANA.includes(lagnaLordHouse)) {
       score -= 1;
-      factors.push({ text: `லக்னாதிபதி (${lagnaLordName}) ${lagnaLordHouse}ஆம் வீட்டில் — சுய-பலம்/சகிப்புத்தன்மை பக்கம் கவனம் (1+7 அடித்தள விதி)`, weight: -1 });
+      factors.push({ text: `லக்னாதிபதி (${lagnaLordName}) ${lagnaLordHouse}ஆம் வீட்டில் — சுய-பலம்/சகிப்புத்தன்மை பக்கம் கவனம்`, weight: -1 });
     } else if (lStr.level === "strong") {
       score += 1;
       factors.push({ text: `லக்னாதிபதி (${lagnaLordName}) பலம் — விட்டுக்கொடுக்கும் மனப்பான்மை/உறவைத் தாங்கும் திறன் நல்லது`, weight: +1 });
