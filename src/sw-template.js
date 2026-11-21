@@ -10,7 +10,7 @@ const PRECACHE = "__PRECACHE__";
 const MATCH = { ignoreVary: true };
 const STATIC = [
   "/", "/manifest.json", "/favicon.svg", "/icon-192.png", "/icon-512.png",
-  "/logo/compass.webp", "/logo/topper-text.webp", "/logo/logo-full.webp",
+  "/logo/home-banner.webp", "/logo/home-wave.webp", "/logo/compass.webp", "/logo/topper-text.webp", "/logo/logo-full.webp",
   "/logo/zodiac-ring.webp", "/logo/new-zodiac-wheel.webp", "/logo/new-topper-logo.webp",
 ];
 

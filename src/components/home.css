@@ -1,5 +1,4 @@
-/* TOPPER ASTRO home — single-screen (no-scroll) premium index.
-   Scoped under .app-shell so other screens stay untouched. */
+/* TOPPER ASTRO — முகப்பு (.home-v2), ஆலோசனைப் பக்கத்தின் மேற்பகுதி (.app-shell), கீழ்ப்பட்டை, உதவியாளர் அட்டைகள். */
 :root {
   --h-navy: #102a50;
   --h-gold: #e6aa43;
@@ -69,35 +68,73 @@
 .topbar-center .brand { cursor: default; }
 .hero-greeting { margin: 4px 0 0; font-size: 12.5px; font-weight: 600; color: #7d6a3f; }
 
+/* ══ முகப்பு (பயனர் கொடுத்த வடிவமைப்பு, 2026-11): வானம்–மலை தலைப்புப் படம், பச்சை–தங்க நிறங்கள்,
+   வண்ண ஓடுகள், கீழே அலை. இந்தப் பகுதி முகப்புக்கு மட்டும் (.home-v2). ══ */
+.app-shell.home-v2 {
+  --t-teal: #0b5f66; --t-teal-dark: #024b5b; --t-gold: #e9b25a; --t-orange: #d9822b; --t-ink: #0f2233; --t-muted: #55626f;
+  padding: 0; color: var(--t-ink);
+  background: linear-gradient(180deg, #e2eeea 0%, #ecf4ef 32%, #f2f8f2 58%, #f4f9f3 100%);
+}
+.home-banner { position: relative; flex: 0 0 auto; width: 100%; margin: 0; line-height: 0; }
+.home-banner img { display: block; width: 100%; height: auto; aspect-ratio: 1038 / 362; object-fit: cover; }
+/* படத்தின் கீழ் விளிம்பு (ஏரி நிறம்) பக்கப் பின்னணியில் மெல்லக் கரையும் */
+.home-banner::after {
+  content: ""; position: absolute; z-index: -1; left: 0; right: 0; top: calc(100% - 1px); height: 64px; pointer-events: none;
+  background: linear-gradient(180deg, #6cb3b6 0%, rgba(226, 238, 234, 0) 100%);
+}
+.home-body { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; padding: 0 16px; margin-top: -4px; }
+
 /* ── புதிய பயனர் அழைப்பு ── */
 .start-card {
-  flex: 0 0 auto; display: flex; align-items: center; gap: 11px; width: 100%;
-  margin: 6px 0 0; padding: 10px 12px; border: 1px solid #d9c9a0; border-radius: 18px;
-  background: linear-gradient(135deg, #fffaf0, #f8f1de); color: var(--h-navy); cursor: pointer; text-align: left;
-  font-family: inherit; box-shadow: 0 8px 20px rgba(169,130,60,0.12);
+  display: flex; align-items: center; gap: 10px; width: 100%; margin: 0; padding: 10px 11px;
+  border: 1.5px solid var(--t-gold); border-radius: 22px; background: linear-gradient(180deg, #fff7e8, #feecd0);
+  color: var(--t-ink); cursor: pointer; text-align: left; font-family: inherit;
+  box-shadow: 0 8px 20px rgba(150, 105, 30, 0.16), 0 1px 0 #ffffff inset;
 }
-.start-icon { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px; background: #1f3f68; color: #f7e2a6; }
+.start-icon {
+  display: grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px; border-radius: 13px;
+  background: linear-gradient(145deg, #028490, var(--t-teal-dark)); color: #f6cf7a; box-shadow: 0 4px 10px rgba(2, 75, 91, 0.3);
+}
 .start-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.start-copy b { font-size: clamp(13.5px, 3.7vw, 15.5px); font-weight: 800; line-height: 1.35; }
-.start-copy small { font-size: 11.5px; color: #6b7486; line-height: 1.45; }
+.start-copy b { font-size: clamp(12.5px, 3.3vw, 16px); letter-spacing: -0.2px; font-weight: 800; line-height: 1.35; }
+.start-copy small { font-size: 11.5px; color: #3b4654; line-height: 1.45; }
+.start-go {
+  display: grid; place-items: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(145deg, #e9962f, #b9580d); color: #ffffff; box-shadow: 0 4px 10px rgba(185, 88, 13, 0.32);
+}
 
 /* ── இன்றைய பஞ்சாங்கம் ── */
 .today-card {
-  flex: 0 0 auto; display: block; width: 100%; margin: 6px 0 0; padding: 10px 12px 11px;
-  border: 1px solid #eceefb; border-radius: 18px; background: #ffffff; color: var(--h-navy);
-  box-shadow: 0 10px 26px rgba(16,42,80,0.07); cursor: pointer; text-align: left; font-family: inherit;
+  display: block; width: 100%; margin: 0; padding: 12px 14px 13px;
+  border: 1px solid #ffffff; border-radius: 22px; background: #ffffff; color: var(--t-ink);
+  box-shadow: 0 10px 26px rgba(20, 70, 70, 0.10); cursor: pointer; text-align: left; font-family: inherit;
 }
 .today-head { display: flex; align-items: center; gap: 10px; }
-.today-icon { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 11px; background: #e1f3ff; color: #1685bd; }
+.today-icon { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px; background: #d3f4eb; color: #0a5e5b; }
 .today-date { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.today-date b { font-size: clamp(14px, 3.8vw, 16px); font-weight: 800; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.today-date small { font-size: 11.5px; color: #6b7486; line-height: 1.45; }
-.today-more { display: grid; place-items: center; flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: #fff1df; color: #a85e19; }
-.today-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 9px; padding-top: 9px; border-top: 1px solid #eef1f6; }
-.today-grid span { display: flex; flex-direction: column; min-width: 0; }
-.today-grid small { font-size: 11px; color: #76819a; line-height: 1.4; }
-.today-grid b { font-size: clamp(12.5px, 3.4vw, 14px); font-weight: 700; color: #27303f; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.today-grid i { font-style: normal; font-size: 11px; color: #76819a; line-height: 1.3; }
+.today-date b { font-size: clamp(14.5px, 3.9vw, 17px); font-weight: 800; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.today-date small { font-size: 11.5px; color: var(--t-muted); line-height: 1.45; letter-spacing: -0.1px; }
+.today-more { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: #fdefd4; color: var(--t-orange); }
+.today-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 0; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e6ece9; }
+.today-cell { display: flex; align-items: flex-start; gap: 7px; min-width: 0; padding-right: 6px; }
+.today-cell:nth-child(even) { padding-left: 10px; padding-right: 0; border-left: 1px solid #e6ece9; }
+.today-cell > svg { flex-shrink: 0; margin-top: 2px; color: #e58a1f; }
+.today-cell > span { display: flex; flex-direction: column; min-width: 0; }
+.today-grid small { font-size: 11px; color: var(--t-muted); line-height: 1.4; }
+.today-grid b { font-size: clamp(13.5px, 3.7vw, 15.5px); font-weight: 800; color: var(--t-ink); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.today-grid i { font-style: normal; font-size: 11px; color: var(--t-muted); line-height: 1.35; }
+
+/* ── கீழ் அலை (அலங்காரம்) — நிலையான கீழ்ப்பட்டைக்குப் பின்னால் அதே நிறம் தொடரும் ── */
+.home-wave { flex: 0 0 auto; margin-top: auto; padding-top: 12px; line-height: 0; }
+.home-wave-art {
+  background: linear-gradient(90deg, #046a76 0%, #2a9799 50%, #178d8f 100%) bottom / 100% 45% no-repeat;
+}
+.home-wave img {
+  display: block; width: 100%; height: auto; aspect-ratio: 1038 / 153;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 9%, #000 80%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 9%, #000 80%, transparent 100%);
+}
+.home-wave-fill { height: calc(58px + env(safe-area-inset-bottom)); background: linear-gradient(90deg, #046a76 0%, #2a9799 50%, #178d8f 100%); }
 
 .round-button {
   display: grid; place-items: center; width: 42px; height: 42px; border: 0; border-radius: 50%;
@@ -133,38 +170,6 @@
 .gold-divider span { width: 58px; height: 1px; background: linear-gradient(90deg, transparent, var(--h-gold)); }
 .gold-divider span:last-child { transform: rotate(180deg); }
 
-/* சக்கரம் எல்லாத் திரையிலும் தெரியும் (பயனர் கோரிக்கை 2026-11): குறைந்தது 150px; உயரமான திரையில் மீத இடத்தை
-   நிரப்பும் (280px வரை). குட்டைத் திரையில் பக்கம் உருளும் — சக்கரத்தை மறைக்காதே. */
-.zodiac-stage {
-  position: relative; flex: 1 1 clamp(150px, calc(100dvh - 716px), 280px); min-height: 150px; max-height: 280px; width: 100%;
-  display: flex; align-items: center; justify-content: center;
-}
-.app-shell.has-start .zodiac-stage { flex-basis: clamp(150px, calc(100dvh - 816px), 280px); }
-.zodiac-glow {
-  position: absolute; width: 56%; height: 56%; border-radius: 50%;
-  background: #f4c96f30; filter: blur(32px);
-}
-.zodiac-wheel-img {
-  position: relative; height: 100%; max-height: 100%; width: auto; max-width: 94%;
-  object-fit: contain; filter: drop-shadow(0 12px 22px rgba(16, 42, 80, 0.20));
-  animation: gentle-float 6s ease-in-out infinite;
-}
-@keyframes gentle-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-
-.zodiac-pedestal {
-  position: absolute; bottom: 1%; left: 50%; transform: translateX(-50%);
-  width: 68%; height: 34px; border-radius: 50%;
-  background: linear-gradient(180deg, #ffffff 0%, #eef1f8 55%, #e3e8f3 100%);
-  box-shadow: 0 14px 26px rgba(16,42,80,0.14), 0 2px 0 #fff inset, 0 -3px 8px rgba(255,255,255,0.8) inset;
-  z-index: -1;
-}
-.zodiac-pedestal-top {
-  position: absolute; bottom: 5%; left: 50%; transform: translateX(-50%);
-  width: 52%; height: 20px; border-radius: 50%;
-  background: linear-gradient(180deg, #ffffff 0%, #eef1f8 100%);
-  box-shadow: 0 4px 9px rgba(16,42,80,0.08); z-index: -1;
-}
-
 /* ── horoscope card ── */
 .horoscope-card {
   flex: 0 0 auto; display: flex; align-items: center; gap: 12px; width: 100%;
@@ -185,38 +190,37 @@
   background: linear-gradient(135deg, #f8d88f, #e9ac40); color: #fff; cursor: pointer;
 }
 
-/* ── services (3 cols × 2 rows) ── */
-.services-grid {
-  flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px; width: 100%; margin: 8px 0 0;
-}
+/* ── சேவை ஓடுகள் (3 × 2) — ஒவ்வொன்றுக்கும் மென்மையான தனி நிறம் ── */
+.services-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; margin: 0; }
 .service-card {
-  position: relative; display: flex; align-items: center; flex-direction: column; justify-content: center;
-  min-width: 0; padding: 9px 5px 10px; border: 1px solid #eceefb; border-radius: 16px; font-family: inherit;
-  background: #ffffff; color: var(--h-navy); text-align: center; cursor: pointer;
-  box-shadow: 0 8px 20px rgba(16,42,80,0.06); transition: transform 180ms ease, box-shadow 180ms ease;
+  position: relative; display: flex; align-items: center; flex-direction: column; justify-content: flex-start;
+  min-width: 0; padding: 9px 4px 10px; border: 1px solid rgba(255, 255, 255, 0.95); border-radius: 20px; font-family: inherit;
+  background: #ffffff; color: var(--t-ink, #0f2233); text-align: center; cursor: pointer;
+  box-shadow: 0 8px 18px rgba(20, 70, 70, 0.09); transition: transform 180ms ease, box-shadow 180ms ease;
 }
-.service-card:hover { transform: translateY(-3px); box-shadow: 0 12px 22px #102a5012; }
+.service-card:hover { transform: translateY(-3px); box-shadow: 0 12px 22px rgba(20, 70, 70, 0.14); }
+.service-card:active { transform: scale(0.98); }
 .service-icon {
-  display: grid; place-items: center; width: clamp(38px, 11.5vw, 48px); height: clamp(38px, 11.5vw, 48px);
+  display: grid; place-items: center; width: clamp(44px, 12.6vw, 56px); height: clamp(44px, 12.6vw, 56px);
   flex-shrink: 0; margin-bottom: 6px; border-radius: 50%;
 }
-.service-icon svg { width: 46%; height: 46%; }
-.service-title { font-size: clamp(11.5px, 3.1vw, 13px); line-height: 1.3; font-weight: 800; }
-.service-description { margin-top: 2px; color: #76819a; font-size: 11px; line-height: 1.35; }
-.service-arrow {
-  position: absolute; right: 6px; bottom: 6px; display: grid; place-items: center;
-  width: 19px; height: 19px; border-radius: 50%; background: #fff1df; color: #a85e19;
-}
-.service-arrow svg { width: 13px; height: 13px; }
-.service-card:has(.service-arrow) { padding-bottom: 24px; }
+.service-icon svg { width: 56%; height: 56%; }
+.service-icon.wide svg { width: 84%; height: 84%; }
+.service-title { font-size: clamp(12px, 3.1vw, 14px); line-height: 1.3; font-weight: 800; letter-spacing: -0.15px; }
+.service-description { margin-top: 2px; color: #3f4b58; font-size: 11px; line-height: 1.35; letter-spacing: -0.1px; }
 
-.peach .service-icon { background: #ffead7; color: #b65b22; }
-.rose .service-icon { background: #ffe5eb; color: #d84b65; }
-.blue .service-icon { background: #e1f3ff; color: #1685bd; }
-.green .service-icon { background: #e8f4dc; color: #557b45; }
-.purple .service-icon { background: #f0e5ff; color: #7652aa; }
-.yellow .service-icon { background: #fff1cb; color: #b47a15; }
+.green  { background: linear-gradient(180deg, #fafdf9, #eef7ea); }
+.rose   { background: linear-gradient(180deg, #fef8f3, #fdebe4); }
+.purple { background: linear-gradient(180deg, #f5f5fe, #e8e9fc); }
+.peach  { background: linear-gradient(180deg, #fefaf2, #fdefdb); }
+.yellow { background: linear-gradient(180deg, #fdfcf5, #f6f4e0); }
+.blue   { background: linear-gradient(180deg, #f3fafe, #e3f3fb); }
+.green .service-icon  { background: #dcefd8; color: #2e8b3d; }
+.rose .service-icon   { background: #fbd9d3; color: #e0243f; }
+.purple .service-icon { background: #dedbf9; color: #3b2fd6; }
+.peach .service-icon  { background: #fbdcbb; color: #dd6b1a; }
+.yellow .service-icon { background: #e9efcd; color: #3f8f2f; }
+.blue .service-icon   { background: #cfe8fb; color: #1a8fe3; }
 
 /* ── bottom nav (in-flow, bottom of column) ── */
 .bottom-nav {
@@ -244,13 +248,13 @@
   color: #5d6678;
 }
 
-/* short screens: trim a little more */
-@media (max-height: 720px) {
-  .hero h1 { font-size: clamp(15px, 4.4vw, 20px); }
-  .service-card { padding: 7px 4px 8px; }
-  .zodiac-stage { min-height: 132px; }
-  .today-card { padding: 8px 11px 9px; }
-  .today-grid { margin-top: 7px; padding-top: 7px; gap: 4px 10px; }
+/* குறுகிய திரை (≤ 360px அகலம்): இடைவெளிகளைச் சற்றுக் குறை */
+@media (max-width: 360px) {
+  .home-body { padding: 0 12px; gap: 8px; }
+  .today-date b, .today-grid b { white-space: normal; overflow-wrap: anywhere; }
+  .service-title, .service-description { overflow-wrap: anywhere; }
+  .services-grid { gap: 8px; }
+  .today-card { padding: 10px 11px 11px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
