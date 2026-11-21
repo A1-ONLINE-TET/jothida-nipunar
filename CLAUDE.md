@@ -208,7 +208,9 @@ Design மாற்றம் secure engine-ஐ தொடாது — பாத�
     - Claude (alt): `ANTHROPIC_API_KEY` secret. key இல்லாவிட்டால் தானாக மற்றதற்கு fallback.
   - Premium ₹49 ஆழமான பதில்: `RAZORPAY_KEY_ID` + `RAZORPAY_KEY_SECRET` secrets (optional — இல்லாவிட்டால் /api/order 503).
   - CORS allow-list `ALLOWED_ORIGINS` in `worker/wrangler.toml` — புதிய domain சேர்த்தால் இங்கே சேர்.
-  - Access gate (optional, link misuse தடுக்க): Worker secret `ACCESS_CODE` + Pages var `VITE_REQUIRE_ACCESS=true`. இரண்டும் set ஆனால் app அணுகல் குறியீடு கேட்கும்; X-Access-Code header-ஐ worker enforce செய்யும். இரண்டும் இல்லை = gate இல்லை.
+  - Access gate: **இப்போது அணைக்கப்பட்டுள்ளது** (பொது வெளியீடு, உரிமையாளர் கோரிக்கை 2026-11) — `worker/wrangler.toml` `ACCESS_GATE = "off"` +
+    `src/main.jsx` `ACCESS_GATE_ON = false`. Cloudflare-இல் `ACCESS_CODE` / `VITE_REQUIRE_ACCESS` இருந்தாலும் கேட்கப்படாது. மீண்டும் மூட
+    இரண்டையும் மாற்று. KV (`RL`) அமைக்கப்படாததால் rate limit நினைவக அளவில் மட்டும் (`ratelimit.js` `memLimit`) — AI செலவைக் கட்டுப்படுத்த KV சேர்.
 - **Firebase:** project `jothidar-d1c8c` — Auth (Anonymous auto sign-in), Firestore (default-deny rules).
 
 ### ⚙️ Auto-deploy

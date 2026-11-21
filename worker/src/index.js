@@ -214,7 +214,8 @@ export default {
       // ── access-code gate (optional) ── if ACCESS_CODE is set, every API
       // call must carry the matching X-Access-Code header. Stops a leaked
       // link being used (and running up AI cost) by anyone who lacks the code.
-      if (env.ACCESS_CODE) {
+      // ACCESS_GATE = "off" (wrangler.toml) அணைத்து வைக்கும் — பொது வெளியீட்டுக்கு (உரிமையாளர் கோரிக்கை 2026-11).
+      if (env.ACCESS_CODE && env.ACCESS_GATE !== "off") {
         const supplied = request.headers.get("X-Access-Code") || "";
         if (supplied !== env.ACCESS_CODE) {
           return json(env, origin, { error: "access denied" }, 403);

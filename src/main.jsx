@@ -6,7 +6,10 @@ import AstrologyApp from './App.jsx'
 // Enabled only when VITE_REQUIRE_ACCESS === "true". The entered code is
 // stored and sent on every API call (api.js); the Worker enforces it via
 // the ACCESS_CODE secret, so a leaked link is useless without the code.
-const REQUIRE_ACCESS = import.meta.env.VITE_REQUIRE_ACCESS === "true";
+// பொது வெளியீட்டுக்காக அணைக்கப்பட்டுள்ளது (உரிமையாளர் கோரிக்கை 2026-11). மீண்டும் மூட: இதை true ஆக்கி,
+// worker/wrangler.toml-இல் ACCESS_GATE = "on" ஆக்கவும் (Cloudflare-இல் ACCESS_CODE, VITE_REQUIRE_ACCESS இருக்க வேண்டும்).
+const ACCESS_GATE_ON = false;
+const REQUIRE_ACCESS = ACCESS_GATE_ON && import.meta.env.VITE_REQUIRE_ACCESS === "true";
 const ACCESS_KEY = "jn_access";
 function hasAccess() { try { return !!localStorage.getItem(ACCESS_KEY); } catch (_) { return false; } }
 
