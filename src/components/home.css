@@ -133,16 +133,13 @@
 .gold-divider span { width: 58px; height: 1px; background: linear-gradient(90deg, transparent, var(--h-gold)); }
 .gold-divider span:last-child { transform: rotate(180deg); }
 
-/* wheel takes the remaining vertical space, scaled to fit */
-/* சக்கரம்: உயரமான திரையில் மீத இடத்தை நிரப்பும் (80–280px); இடம் போதாத குட்டைத் திரையில்
-   சுருங்கி உருக்குலையாமல் முழுதாக மறையும் (கீழே media queries). */
+/* சக்கரம் எல்லாத் திரையிலும் தெரியும் (பயனர் கோரிக்கை 2026-11): குறைந்தது 150px; உயரமான திரையில் மீத இடத்தை
+   நிரப்பும் (280px வரை). குட்டைத் திரையில் பக்கம் உருளும் — சக்கரத்தை மறைக்காதே. */
 .zodiac-stage {
-  position: relative; flex: 1 1 clamp(80px, calc(100dvh - 716px), 280px); min-height: 80px; max-height: 280px; width: 100%;
+  position: relative; flex: 1 1 clamp(150px, calc(100dvh - 716px), 280px); min-height: 150px; max-height: 280px; width: 100%;
   display: flex; align-items: center; justify-content: center;
 }
-@media (max-height: 779px) { .zodiac-stage { display: none; } }
-.app-shell.has-start .zodiac-stage { flex-basis: clamp(80px, calc(100dvh - 816px), 280px); }
-@media (max-height: 879px) { .app-shell.has-start .zodiac-stage { display: none; } }
+.app-shell.has-start .zodiac-stage { flex-basis: clamp(150px, calc(100dvh - 816px), 280px); }
 .zodiac-glow {
   position: absolute; width: 56%; height: 56%; border-radius: 50%;
   background: #f4c96f30; filter: blur(32px);
@@ -251,7 +248,7 @@
 @media (max-height: 720px) {
   .hero h1 { font-size: clamp(15px, 4.4vw, 20px); }
   .service-card { padding: 7px 4px 8px; }
-  .service-description { display: none; }
+  .zodiac-stage { min-height: 132px; }
   .today-card { padding: 8px 11px 9px; }
   .today-grid { margin-top: 7px; padding-top: 7px; gap: 4px 10px; }
 }
