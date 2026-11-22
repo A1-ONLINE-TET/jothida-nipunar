@@ -24,6 +24,7 @@ import { createOrder, verifyPayment } from "./pay.js";
 import { buildGeminiAstrologerPrompt, isPersona } from "./gemini.js";
 import { callClaude } from "./claude.js";
 import { callGemini } from "./gemini.js";
+import { translateTexts } from "./translate.js";
 import { screenQuestion, withSafetyNote, answerIsUnsafe, tamilOnly, latinWords, stripLatin, cleanNonTamil } from "./safety.js";
 const okLang = (l) => (l === "en" || l === "hi") ? l : "ta";
 
@@ -311,6 +312,17 @@ export default {
           text = await safeAI(env, prompt, 3500, lang);
         }
         return json(env, origin, { daily, text });
+      }
+
+      // ── /api/translate — engine உருவாக்கிய தமிழ் உரையை en/hi-க்கு (வழி A பகுதி 2) ──
+      if (url.pathname === "/api/translate") {
+        const lang = okLang(body?.lang);
+        const texts = Array.isArray(body?.texts) ? body.texts.slice(0, 80).map((t) => clampStr(t, 600)) : [];
+        if (lang === "ta" || texts.length === 0) return json(env, origin, { translations: texts });
+        // AI வரம்பு தாண்டினால் தமிழ் மூலமே திரும்பும் (UI தடைபடாது)
+        if (!(await rateLimit(env, `ai:${user.sub}`, 40, 3600))) return json(env, origin, { translations: texts });
+        const translations = await translateTexts(env, texts, lang, callAI);
+        return json(env, origin, { translations });
       }
 
       // ── /api/backtest — verify a past event against engine rules ──

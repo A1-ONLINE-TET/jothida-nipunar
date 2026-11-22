@@ -50,6 +50,7 @@ import { saveProfilesCloud, loadProfilesCloud, getAuthError, onUser } from "./fi
 import { sendReport } from "./report.js";
 import Onboarding from "./components/Onboarding.jsx";
 import { getLang, hasLang, setLang as setAppLang, useLang, t as tt, term } from "./i18n/index.js";
+import { useProse } from "./prose.js";
 const AccountExtras = lazy(() => import("./components/AccountExtras.jsx"));
 import { AiTextFooter } from "./components/ReportBox.jsx";
 import {
@@ -733,6 +734,7 @@ const DEEP_GROUPS = [
 
 export default function AstrologyApp() {
   const { lang, t, tList, tNak, tRashi, tPlanet, tTithi, tYogam, tKaranam, tGowri, tWeekday, tDir, tPhase, tMonth, tGem, tColor, tFestival } = useLang();
+  const pr = useProse(); // engine உருவாக்கிய தமிழ் கணிப்பு உரை → தேர்ந்த மொழி (வழி A பகுதி 2; தமிழில் மாற்றம் இல்லை)
   const [screen, setScreen] = useState(SCREEN.SPLASH);
   const [authMode, setAuthMode] = useState("login");
   const [user, setUser] = useState(null);
@@ -2637,7 +2639,7 @@ ${aiPart}
                       <span style={{width:40,height:40,borderRadius:12,background:st.tint,color:st.color,display:"grid",placeItems:"center",flexShrink:0}}><Icon size={20} strokeWidth={1.8}/></span>
                       <span style={{flex:1,minWidth:0}}>
                         <span style={{display:"block",fontSize: 12,color:"#55626f"}}>{t(`area.${k}`)}</span>
-                        <span style={{display:"block",fontSize: 14.5,fontWeight:700,color:calmTone(a.verdictColor),lineHeight:1.45}}>{stripEmoji(a.verdict)}</span>
+                        <span style={{display:"block",fontSize: 14.5,fontWeight:700,color:calmTone(a.verdictColor),lineHeight:1.45}}>{pr(stripEmoji(a.verdict))}</span>
                       </span>
                       <ChevronRight size={18} color="#a3adc2" style={{flexShrink:0}}/>
                     </button>
@@ -2919,7 +2921,7 @@ ${aiPart}
             const factorRow = (f, fi) => (
               <div key={fi} style={{fontSize: 13,color:"#4a5365",marginBottom:6,lineHeight:1.6,display:"flex",gap:8}}>
                 <span style={{color:f.weight>0?"#2e7d5b":f.weight<0?"#c0564f":"#a3adc2",fontWeight:700,flexShrink:0,fontSize: 11,paddingTop:3}}>{f.weight>0?"▲":f.weight<0?"▼":"•"}</span>
-                <span>{plainFactor(f.text)}</span>
+                <span>{pr(plainFactor(f.text))}</span>
               </div>
             );
             const lordLine = (hr) => { if (!hr.lordInfo.lordHouse || !hr.lordVerdict) return null;
@@ -2931,21 +2933,21 @@ ${aiPart}
               <div key={ai} data-area={area.key} style={{...card,marginBottom:10,padding:"16px"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                   <span style={{width:36,height:36,borderRadius:11,background:st.tint,color:st.color,display:"grid",placeItems:"center",flexShrink:0}}><Icon size={18} strokeWidth={1.8}/></span>
-                  <div style={{fontSize: 15,fontWeight:700,color:"#1f3f68",flex:1,lineHeight:1.4}}>{area.ta}</div>
+                  <div style={{fontSize: 15,fontWeight:700,color:"#1f3f68",flex:1,lineHeight:1.4}}>{pr(area.ta)}</div>
                 </div>
 
                 {ka ? (<>
-                  <div style={{fontSize: 14.5,fontWeight:700,color:calmTone(ka.verdictColor),marginBottom:6,lineHeight:1.5}}>{stripEmoji(ka.verdict)}</div>
+                  <div style={{fontSize: 14.5,fontWeight:700,color:calmTone(ka.verdictColor),marginBottom:6,lineHeight:1.5}}>{pr(stripEmoji(ka.verdict))}</div>
                   {ka.chips && ka.chips.length > 0 && (
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
                       {ka.chips.map((c,ci)=>(
                         <span key={ci} style={{...chipBase,
                           background:c.tone==="bad"?"#fbeeed":c.tone==="warn"?"#f6f1e4":c.tone==="good"?"#e9f5ee":"#eef1fb",
-                          color:c.tone==="bad"?"#c0564f":c.tone==="warn"?"#7d6a3f":c.tone==="good"?"#2e7d5b":"#3e4c99"}}>{stripEmoji(c.label).replace(/\s*\d\s*-\s*\d\s*/g," ").replace(/\s{2,}/g," ").trim()}</span>
+                          color:c.tone==="bad"?"#c0564f":c.tone==="warn"?"#7d6a3f":c.tone==="good"?"#2e7d5b":"#3e4c99"}}>{pr(stripEmoji(c.label).replace(/\s*\d\s*-\s*\d\s*/g," ").replace(/\s{2,}/g," ").trim())}</span>
                       ))}
                     </div>
                   )}
-                  <div style={{fontSize: 13,color:"#4a5365",lineHeight:1.7,whiteSpace:"pre-line",marginBottom:10}}>{taText(String(ka.summary||"").split(" (குறிப்பு:")[0])}</div>
+                  <div style={{fontSize: 13,color:"#4a5365",lineHeight:1.7,whiteSpace:"pre-line",marginBottom:10}}>{pr(taText(String(ka.summary||"").split(" (குறிப்பு:")[0]))}</div>
                   {topFactors.map(factorRow)}
                 </>) : (
                   area.houseReadings.map((hr, hi) => (
@@ -2953,7 +2955,7 @@ ${aiPart}
                       <div style={{fontSize: 12,color:"#55626f",marginBottom:3}}>{hr.houseNum}ஆம் வீடு · {hr.houseRashi}</div>
                       {hr.occupants.length > 0 ? hr.occupants.map((occ, oi) => (
                         <div key={oi} style={{fontSize: 13,color:"#4a5365",marginBottom:4,lineHeight:1.65}}>
-                          <b style={{color:"#27303f"}}>{occ.planet}</b> — {taText(occ.effect)}
+                          <b style={{color:"#27303f"}}>{occ.planet}</b> — {pr(taText(occ.effect))}
                         </div>
                       )) : lordLine(hr)}
                     </div>
@@ -2994,7 +2996,7 @@ ${aiPart}
                         <div style={{fontSize: 12.5,color:"#4a5365",lineHeight:1.7}}>சாத்தியப் பாதிப்புகள்: {ka.tridosha.effects}</div>
                         {ka.healthMeta && (
                           <div style={{fontSize: 12.5,color:"#4a5365",lineHeight:1.7,marginTop:2}}>
-                            மூலம்: {ka.healthMeta.origin}<br/>காலத் தன்மை: {taText(ka.healthMeta.chronicity)}
+                            மூலம்: {ka.healthMeta.origin}<br/>காலத் தன்மை: {pr(taText(ka.healthMeta.chronicity))}
                           </div>
                         )}
                         <div style={{fontSize: 11.5,color:"#55626f",marginTop:4}}>இது ஜோதிடக் குறியீடு — மருத்துவ ஆலோசனைக்கு மாற்று அல்ல.</div>
@@ -3014,7 +3016,7 @@ ${aiPart}
                             <div key={oi} style={{fontSize: 12.5,color:"#4a5365",marginBottom:5,lineHeight:1.65}}>
                               <b style={{color:"#27303f"}}>{occ.planet}</b>
                               {occ.condition && <span style={{color:/நீசம்|பகை|அஸ்தங்கம்/.test(occ.condition)?"#c0564f":/உச்சம்|சொந்த|ஆட்சி|மூலத்திரிகோண/.test(occ.condition)?"#2e7d5b":"#55626f"}}> ({occ.condition})</span>}
-                              {ka && <span> — {taText(occ.effect)}</span>}
+                              {ka && <span> — {pr(taText(occ.effect))}</span>}
                               {pc && <div style={{fontSize: 12,color:"#55626f"}}>மற்ற கிரகங்களின் தாக்கம்: <b style={{color:pc.net>=2?"#2e7d5b":pc.net<=-2?"#c0564f":"#4a5365"}}>{pc.verdict}</b></div>}
                             </div>
                           );
@@ -3025,7 +3027,7 @@ ${aiPart}
                         {hr.aspectors && hr.aspectors.length > 0 && hr.aspectors.map((asp, api) => (
                           <div key={api} style={{fontSize: 12.5,color:"#4a5365",lineHeight:1.65,display:"flex",gap:8,marginBottom:3}}>
                             <span style={{color:asp.tone==="benefic"?"#2e7d5b":asp.tone==="malefic"?"#c0564f":"#a3adc2",fontSize: 9,paddingTop:5,flexShrink:0}}>●</span>
-                            <span><b style={{color:"#27303f"}}>{asp.planet}</b> பார்வை ({asp.fromHouse}ஆம் வீட்டிலிருந்து) — {taText(asp.text)}</span>
+                            <span><b style={{color:"#27303f"}}>{asp.planet}</b> பார்வை ({asp.fromHouse}ஆம் வீட்டிலிருந்து) — {pr(taText(asp.text))}</span>
                           </div>
                         ))}
                         {lordLine(hr)}
@@ -4012,7 +4014,7 @@ ${aiPart}
                           <div style={{fontSize:12.5,fontWeight:700,color:"#2e7d5b",marginBottom:2}}>கோசாரத்தில் பலன் வெளிப்படும் காலங்கள் (நாள்-அளவு துல்லியம், அடுத்த 12 ஆண்டு)</div>
                           {[...oc.jupWindows.map(w=>({...w,sym:"♃",col:"#2e7d5b"})), ...oc.satWindows.map(w=>({...w,sym:"♄",col:"#7d6a3f"}))].map((w,wi)=>(
                             <div key={wi} style={{marginBottom:5,paddingBottom:4,borderBottom:"1px dashed #cfe6da"}}>
-                              <div style={{fontSize:12.5,lineHeight:1.6,color:w.col}}>{w.sym} <b>{w.label}</b> — {taText(w.text)}</div>
+                              <div style={{fontSize:12.5,lineHeight:1.6,color:w.col}}>{w.sym} <b>{pr(w.label)}</b> — {pr(taText(w.text))}</div>
                               {w.dasha && (
                                 <div style={{fontSize:12,lineHeight:1.6,color:w.dasha.conf==="மிக உயர்"||w.dasha.conf==="உயர்"?"#2e7d5b":w.dasha.conf==="குறை"?"#c0564f":"#7d6a3f"}}>
                                   தசை-இணைவு <b>[{w.dasha.conf}]</b>: {w.dasha.text}

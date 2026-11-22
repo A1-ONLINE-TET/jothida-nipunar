@@ -10,6 +10,7 @@ import {
   Flame, Share2, Sprout, Clock, Star, Heart, Hourglass,
 } from "lucide-react";
 import { useLang } from "../i18n/index.js";
+import { useProse } from "../prose.js";
 
 const INK = "#27303f", SOFT = "#4a5365", MUTED = "#55626f", LINE = "#e3e8f2", NAVY = "#1f3f68";
 const TEAL = "#2e8b84", TEAL_DARK = "#226b66", TEAL_TINT = "#e9f5f4";
@@ -40,6 +41,7 @@ const pill = (c, t) => ({ display: "inline-flex", alignItems: "center", gap: 5, 
 
 function ItemCard({ it, card, fmtDate, defaultOpen }) {
   const { t, tWeekday, tPhase } = useLang();
+  const pr = useProse();
   const [open, setOpen] = useState(!!defaultOpen);
   const st = STAGE[it.stage] || STAGE.root; const StIcon = st.icon;
   const gem = it.gem ? GEM[it.gem.verdict] : null;
@@ -53,10 +55,10 @@ function ItemCard({ it, card, fmtDate, defaultOpen }) {
           {it.until && <span style={pill(SOFT, "#f2f5fb")}>{t("result.untilDate", { date: fmtDate(it.until) })}</span>}
           {!it.until && it.comingFrom && <span style={pill(SOFT, "#f2f5fb")}>{t("rem.from", { date: fmtDate(it.comingFrom) })}</span>}
         </div>
-        <div style={{ fontSize: 16.5, fontWeight: 700, color: NAVY, lineHeight: 1.45, marginBottom: 10 }}>{it.title}</div>
+        <div style={{ fontSize: 16.5, fontWeight: 700, color: NAVY, lineHeight: 1.45, marginBottom: 10 }}>{pr(it.title)}</div>
 
         <div style={label}>{t("rem.reason")}</div>
-        {it.root.map((t, i) => (<div key={i} style={bullet}><span style={dot(st.color)} /><span>{t}</span></div>))}
+        {it.root.map((t, i) => (<div key={i} style={bullet}><span style={dot(st.color)} /><span>{pr(t)}</span></div>))}
 
         {it.affects?.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
@@ -77,7 +79,7 @@ function ItemCard({ it, card, fmtDate, defaultOpen }) {
           {it.steps.map((s, i) => (
             <div key={s.k} style={{ display: "flex", gap: 10, padding: "8px 0", borderTop: i ? "1px solid #eef1f6" : "none" }}>
               <span style={{ flexShrink: 0, width: 80, fontSize: 12, fontWeight: 700, color: TEAL_DARK, paddingTop: 2 }}>{s.label}</span>
-              <span style={{ fontSize: 13.5, lineHeight: 1.7, color: INK }}>{s.text}</span>
+              <span style={{ fontSize: 13.5, lineHeight: 1.7, color: INK }}>{pr(s.text)}</span>
             </div>
           ))}
 
@@ -98,7 +100,7 @@ function ItemCard({ it, card, fmtDate, defaultOpen }) {
           {gem && (
             <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 12, background: gem.tint }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 700, color: gem.color, marginBottom: 3 }}><Gem size={15} />{t(`rem.gem.${it.gem.verdict}`)}</div>
-              <div style={{ fontSize: 13, lineHeight: 1.7, color: INK }}>{it.gem.note}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.7, color: INK }}>{pr(it.gem.note)}</div>
             </div>
           )}
         </div>
@@ -109,6 +111,7 @@ function ItemCard({ it, card, fmtDate, defaultOpen }) {
 
 export default function RemedyTab({ plan, card, fmtDate, onRetry, onNav, onOpenAll, onShare, name }) {
   const { t, tWeekday, tPlanet } = useLang();
+  const pr = useProse();
   const [showMore, setShowMore] = useState(false);
   const secTitle = { fontSize: 15, fontWeight: 700, color: NAVY, marginBottom: 10 };
 
@@ -145,8 +148,8 @@ export default function RemedyTab({ plan, card, fmtDate, onRetry, onNav, onOpenA
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
             <span style={{ width: 42, height: 42, borderRadius: 13, background: "#ffffff", color: GREEN, display: "grid", placeItems: "center", flexShrink: 0 }}><CircleCheck size={22} strokeWidth={1.9} /></span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div data-remedy-headline style={{ fontSize: 17, fontWeight: 700, color: NAVY, lineHeight: 1.45, marginBottom: 5 }}>{plan.headline.title}</div>
-              <div style={{ fontSize: 13.5, lineHeight: 1.75, color: INK }}>{plan.headline.text}</div>
+              <div data-remedy-headline style={{ fontSize: 17, fontWeight: 700, color: NAVY, lineHeight: 1.45, marginBottom: 5 }}>{pr(plan.headline.title)}</div>
+              <div style={{ fontSize: 13.5, lineHeight: 1.75, color: INK }}>{pr(plan.headline.text)}</div>
             </div>
           </div>
         </div>
@@ -159,7 +162,7 @@ export default function RemedyTab({ plan, card, fmtDate, onRetry, onNav, onOpenA
             const tone = DOSHA_TONE[d.status] || DOSHA_TONE.absent;
             return (
               <div key={d.key} data-dosha={d.key} data-status={d.status} style={{ borderRadius: 14, padding: "10px 8px", textAlign: "center", background: tone.tint, border: `1px solid ${tone.color}22` }}>
-                <div style={{ fontSize: 11.5, color: SOFT, lineHeight: 1.5, marginBottom: 3 }}>{d.name}</div>
+                <div style={{ fontSize: 11.5, color: SOFT, lineHeight: 1.5, marginBottom: 3 }}>{pr(d.name)}</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: tone.color, lineHeight: 1.45 }}>{d.label}</div>
               </div>
             );
@@ -192,7 +195,7 @@ export default function RemedyTab({ plan, card, fmtDate, onRetry, onNav, onOpenA
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {plan.noNeed.map((n, i) => (
               <span key={i} data-remedy-noneed style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: GREEN, background: "#eaf5ef", border: "1px solid #cfe6da", padding: "5px 11px", borderRadius: 999, lineHeight: 1.5 }}>
-                <CircleCheck size={14} style={{ flexShrink: 0 }} />{n.title}
+                <CircleCheck size={14} style={{ flexShrink: 0 }} />{pr(n.title)}
               </span>
             ))}
           </div>
@@ -210,8 +213,8 @@ export default function RemedyTab({ plan, card, fmtDate, onRetry, onNav, onOpenA
             </div>
           </div>
           {plan.today.matches && <div style={{ ...pill("#7d6a3f", "#f6f1e4"), marginBottom: 8 }}>{t("rem.todayMatch", { x: plan.today.matches })}</div>}
-          <div style={{ fontSize: 13.5, lineHeight: 1.75, color: INK }}>{plan.today.remedy}.</div>
-          <div style={{ fontSize: 13, lineHeight: 1.75, color: SOFT, marginTop: 4 }}><b>{t("common.donate")}:</b> {plan.today.donate} · <b>{t("rasi.avoid")}:</b> {plan.today.avoid}</div>
+          <div style={{ fontSize: 13.5, lineHeight: 1.75, color: INK }}>{pr(plan.today.remedy)}.</div>
+          <div style={{ fontSize: 13, lineHeight: 1.75, color: SOFT, marginTop: 4 }}><b>{t("common.donate")}:</b> {pr(plan.today.donate)} · <b>{t("rasi.avoid")}:</b> {pr(plan.today.avoid)}</div>
         </div>
       )}
 
@@ -242,7 +245,7 @@ export default function RemedyTab({ plan, card, fmtDate, onRetry, onNav, onOpenA
       {/* ── நேர்மையான குறிப்பு ── */}
       <div style={{ padding: "12px 14px", borderRadius: 14, background: "#f8f3e6", marginBottom: 6 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 700, color: "#7d6a3f", marginBottom: 5 }}><TriangleAlert size={15} />{t("rem.caution")}</div>
-        {plan.caution.map((t, i) => (<div key={i} style={{ ...bullet, fontSize: 12.5, color: SOFT }}><span style={dot("#c7a568")} /><span>{t}</span></div>))}
+        {plan.caution.map((t, i) => (<div key={i} style={{ ...bullet, fontSize: 12.5, color: SOFT }}><span style={dot("#c7a568")} /><span>{pr(t)}</span></div>))}
       </div>
     </div>
   );

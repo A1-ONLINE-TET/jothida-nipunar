@@ -109,6 +109,14 @@ export async function apiAskDeep(birth, question, lastTopic = "", persona = "") 
   return { answer, ai };
 }
 
+// engine உருவாக்கிய தமிழ் உரையை en/hi-க்கு மொழிபெயர் (வழி A பகுதி 2). பிழையில் மூலமே.
+export async function apiTranslate(texts, lang) {
+  try {
+    const { translations } = await post("/api/translate", { texts, lang });
+    return Array.isArray(translations) && translations.length === texts.length ? translations : texts;
+  } catch (_) { return texts; }
+}
+
 // Create a Razorpay order (amount in paise). Returns {orderId, amount, keyId}.
 export async function apiOrder(amount) {
   return post("/api/order", { amount });

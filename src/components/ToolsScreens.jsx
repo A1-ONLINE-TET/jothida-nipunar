@@ -7,6 +7,7 @@ import {
 import BottomNav from "./BottomNav.jsx";
 import { NAME_SYLLABLES, NUMBER_INFO, numerologyOf, kizhamai } from "./tools-data.js";
 import { useLang } from "../i18n/index.js";
+import { useProse } from "../prose.js";
 
 // ── பகிரப்படும் நடை (App.jsx-இன் card/ink tokens-உடன் ஒத்தது) ──
 const page = { minHeight: "100vh", fontFamily: "'Noto Sans Tamil','Segoe UI',system-ui,sans-serif", color: "#27303f" };
@@ -41,6 +42,7 @@ const moodLabel = (t, k) => t(k === "good" ? "rasi.mood.good" : k === "caution" 
 
 export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetchPeriod, onNav, onShare }) {
   const { lang, t, tRashi, tPlanet, tNak, tTithi, tWeekday, tColor, tGem } = useLang();
+  const pr = useProse();
   const [rashi, setRashi] = useState(defaultRashi);
   const [mode, setMode] = useState("today");
   const [data, setData] = useState(null);     // இன்று / நாளை
@@ -150,12 +152,12 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
             <div style={secTitle}>{t("rasi.longTerm")}</div>
             {data.guruPeyarchi && (
               <div style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.7, marginBottom: 8 }}>
-                <b style={{ color: "#27303f" }}>{tPlanet("குரு")}</b> — {t("rasi.inRashiHouse", { rashi: tRashi(data.guruPeyarchi.rashi), house: t("house.n", { n: data.guruPeyarchi.houseFromMoon }) })}: {data.guruPeyarchi.desc}
+                <b style={{ color: "#27303f" }}>{tPlanet("குரு")}</b> — {t("rasi.inRashiHouse", { rashi: tRashi(data.guruPeyarchi.rashi), house: t("house.n", { n: data.guruPeyarchi.houseFromMoon }) })}: {pr(data.guruPeyarchi.desc)}
               </div>
             )}
             {data.saniTransit && (
               <div style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.7, marginBottom: 8 }}>
-                <b style={{ color: "#27303f" }}>{tPlanet("சனி")}</b> — {t("rasi.inRashiHouse", { rashi: tRashi(data.saniTransit.rashi), house: t("house.n", { n: data.saniTransit.houseFromMoon }) })}: {data.saniTransit.desc}
+                <b style={{ color: "#27303f" }}>{tPlanet("சனி")}</b> — {t("rasi.inRashiHouse", { rashi: tRashi(data.saniTransit.rashi), house: t("house.n", { n: data.saniTransit.houseFromMoon }) })}: {pr(data.saniTransit.desc)}
               </div>
             )}
             {data.sadeSati && (
@@ -173,7 +175,7 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
               data.remedy?.dayInfo?.remedy ? [t("rasi.worship"), data.remedy.dayInfo.remedy] : null,
               data.remedy?.dayInfo?.donate ? [t("common.donate"), data.remedy.dayInfo.donate] : null,
               data.remedy?.dayInfo?.avoid ? [t("rasi.avoid"), data.remedy.dayInfo.avoid] : null,
-              data.panchaka ? [t("rasi.panchakam"), `${data.panchaka.name} — ${data.panchaka.avoid}`] : null,
+              data.panchaka ? [t("rasi.panchakam"), pr(`${data.panchaka.name} — ${data.panchaka.avoid}`)] : null,
             ].filter(Boolean).map(([k, v], i) => (
               <div key={k} style={{ display: "flex", gap: 12, padding: "8px 0", borderTop: i ? "1px solid #eef1f6" : "none", fontSize: 13, lineHeight: 1.6 }}>
                 <span style={{ width: 92, flexShrink: 0, color: "#55626f" }}>{k}</span>
@@ -223,7 +225,7 @@ function PlanetRows({ rows, dated = false }) {
       <div style={{ flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.6, color: "#4a5365" }}>
         {dated && <span style={{ color: "#55626f" }}>{dShort(r.iso)} · </span>}
         <b style={{ color: "#27303f" }}>{tPlanet(r.ta)}</b> {dated ? "→" : "—"} {tRashi(r.rashi)} ({t("house.n", { n: r.house })})
-        {r.theme && <span style={{ display: "block", fontSize: 12, color: "#55626f" }}>{r.theme}</span>}
+        {r.theme && <span style={{ display: "block", fontSize: 12, color: "#55626f" }}>{pr(r.theme)}</span>}
       </div>
       <span style={{ ...chip, flexShrink: 0, background: r.effect === "good" ? "#e9f5ee" : r.effect === "bad" ? "#fbeeed" : "#f3f5f9", color: r.effect === "good" ? "#2e7d5b" : r.effect === "bad" ? "#c0564f" : "#4a5365" }}>
         {r.effect === "good" ? t("rasi.effect.good") : r.effect === "bad" ? t("rasi.mood.caution") : t("rasi.effect.neutral")}
@@ -246,7 +248,7 @@ function PeriodPalan({ p, onNav, onShare }) {
               <span style={{ ...chip, flexShrink: 0, background: s.effect === "good" ? "#e9f5ee" : "#fbeeed", color: s.effect === "good" ? "#2e7d5b" : "#c0564f" }}>{s.effect === "good" ? t("rasi.effect.good") : t("rasi.mood.caution")}</span>
             </div>
             <div style={{ fontSize: 12, color: "#55626f", marginTop: 2 }}>{dShort(s.from)} – {dShort(s.to)}</div>
-            <div style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.65, marginTop: 4 }}>{s.desc || s.theme}</div>
+            <div style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.65, marginTop: 4 }}>{pr(s.desc || s.theme)}</div>
             {s.sadeSati?.active && <span style={{ ...chip, marginTop: 6, background: "#fbeeed", color: "#c0564f" }}>{s.sadeSati.isEzharai ? t("rasi.ezharai") + " — " : ""}{s.sadeSati.phase}{s.sadeSati.stage ? ` (${s.sadeSati.stage})` : ""}</span>}
           </div>
         ))}
