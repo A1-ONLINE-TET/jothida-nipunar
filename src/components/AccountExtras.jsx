@@ -25,13 +25,14 @@ const note = (kind) => ({
     : { background: "#f5f7fb", border: "1px solid #e3e8f2", color: "#4a5365" }),
 });
 
-const LINK_ERRORS = {
-  cancelled: "இணைப்பு நிறுத்தப்பட்டது.",
-  blocked: "உலாவி புதிய சாளரத்தைத் தடுத்தது. மீண்டும் தட்டிப் பாருங்கள்.",
-  network: "இணையம் கிடைக்கவில்லை. சற்றுப் பின் முயலுங்கள்.",
-  "in-use": "இந்த Google கணக்கை இணைக்க முடியவில்லை. சற்றுப் பின் முயலுங்கள்.",
-  unavailable: "Google இணைப்பு இப்போது கிடைக்கவில்லை.",
-  failed: "இணைக்க முடியவில்லை. சற்றுப் பின் முயலுங்கள்.",
+// இணைப்புப் பிழைக் குறியீடு → மொழி key (காட்சி உரை t() வழியே)
+const LINK_ERR_KEY = {
+  cancelled: "acct.err.cancelled",
+  blocked: "acct.err.blocked",
+  network: "acct.err.network",
+  "in-use": "acct.err.inUse",
+  unavailable: "acct.err.unavailable",
+  failed: "acct.err.failed",
 };
 
 export default function AccountExtras({ card, cardTitle, profileCount = 0, onWiped = () => {} }) {
@@ -54,12 +55,12 @@ export default function AccountExtras({ card, cardTitle, profileCount = 0, onWip
     setBusy("link"); setLinkMsg(null);
     const r = await linkGoogle();
     setBusy(""); setInfo(accountInfo());
-    if (r.ok) setLinkMsg({ kind: "good", text: r.switched ? "உங்கள் Google கணக்கில் முன்பு சேமித்த ஜாதகங்கள் இந்தச் சாதனத்தில் சேர்க்கப்படுகின்றன." : "இணைக்கப்பட்டது. இனி வேறு கைபேசியிலும் இதே Google கணக்கால் உங்கள் ஜாதகங்களைத் திறக்கலாம்." });
-    else setLinkMsg({ kind: r.error === "cancelled" ? "plain" : "bad", text: LINK_ERRORS[r.error] || LINK_ERRORS.failed });
+    if (r.ok) setLinkMsg({ kind: "good", text: r.switched ? t("acct.linkSwitched") : t("acct.linkDone") });
+    else setLinkMsg({ kind: r.error === "cancelled" ? "plain" : "bad", text: t(LINK_ERR_KEY[r.error] || LINK_ERR_KEY.failed) });
   };
   const doSignOut = async () => {
     if (busy) return;
-    if (!window.confirm("இந்தச் சாதனத்தில் Google கணக்கிலிருந்து வெளியேறவா? மேகத்தில் உள்ள ஜாதகங்கள் அப்படியே இருக்கும்.")) return;
+    if (!window.confirm(t("acct.signOutConfirm"))) return;
     setBusy("out"); await signOutToAnonymous(); setBusy(""); setInfo(accountInfo()); setLinkMsg(null);
   };
   const sendFeedback = async () => {
@@ -68,15 +69,15 @@ export default function AccountExtras({ card, cardTitle, profileCount = 0, onWip
     setBusy("fb"); setFbMsg(null);
     const ok = await sendReport({ kind: "feedback", comment: text, app: "1.0.0" });
     setBusy("");
-    if (ok) { setFbText(""); setFbMsg({ kind: "good", text: "நன்றி. உங்கள் கருத்து பதிவாகிவிட்டது." }); }
-    else setFbMsg({ kind: "bad", text: "அனுப்ப முடியவில்லை. இணையத்தைச் சரிபார்த்து மீண்டும் முயலுங்கள்." });
+    if (ok) { setFbText(""); setFbMsg({ kind: "good", text: t("acct.fbThanks") }); }
+    else setFbMsg({ kind: "bad", text: t("acct.sendFail") });
   };
   const doDelete = async () => {
     if (busy) return;
     setBusy("del"); setDelMsg(null);
     const r = await deleteAccountData();
     setBusy("");
-    if (!r.ok) { setDelMsg({ kind: "bad", text: "மேகத்தில் உள்ள தரவை நீக்க முடியவில்லை. இணையத்தைச் சரிபார்த்து மீண்டும் முயலுங்கள். இந்தச் சாதனத்தில் உள்ளவை இன்னும் நீக்கப்படவில்லை." }); return; }
+    if (!r.ok) { setDelMsg({ kind: "bad", text: t("acct.delFail") }); return; }
     setDelOpen(false);
     onWiped();
   };
@@ -95,23 +96,23 @@ export default function AccountExtras({ card, cardTitle, profileCount = 0, onWip
 
       {(canLink || info.linked) && (
         <div data-sync-card style={{ ...card, marginTop: 14, padding: 16 }}>
-          <div style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 8 }}><CloudUpload size={17} /> ஜாதகங்களைப் பாதுகாக்க</div>
+          <div style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 8 }}><CloudUpload size={17} /> {t("acct.protect")}</div>
           {info.linked ? (
             <>
               <div style={{ fontSize: 13.5, lineHeight: 1.7, color: "#27303f" }}>
-                Google கணக்குடன் இணைக்கப்பட்டுள்ளது{info.email ? <> — <b style={{ wordBreak: "break-all" }}>{info.email}</b></> : null}. சேமித்த ஜாதகங்கள் இந்தக் கணக்கில் காக்கப்படுகின்றன.
+                {t("acct.linkedTo")}{info.email ? <> — <b style={{ wordBreak: "break-all" }}>{info.email}</b></> : null}. {t("acct.linkedSaved")}
               </div>
               <button data-google-signout onClick={doSignOut} disabled={!!busy} style={{ ...pill(false), marginTop: 12, display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <LogOut size={15} /> வெளியேறு
+                <LogOut size={15} /> {t("acct.signOut")}
               </button>
             </>
           ) : (
             <>
               <div style={{ fontSize: 13.5, lineHeight: 1.7, color: "#4a5365" }}>
-                இப்போது ஜாதகங்கள் இந்தக் கைபேசியில் மட்டும் உள்ளன. Google கணக்குடன் இணைத்தால், கைபேசி மாற்றினாலும் அவை திரும்பக் கிடைக்கும்.
+                {t("acct.linkPrompt")}
               </div>
               <button data-google-link onClick={doLink} disabled={!!busy} style={{ ...pill(true), marginTop: 12, opacity: busy === "link" ? 0.6 : 1 }}>
-                {busy === "link" ? "இணைக்கிறது…" : "Google கணக்குடன் இணை"}
+                {busy === "link" ? t("acct.linking") : t("acct.linkGoogle")}
               </button>
             </>
           )}
@@ -120,40 +121,40 @@ export default function AccountExtras({ card, cardTitle, profileCount = 0, onWip
       )}
 
       <div data-legal-card style={{ ...card, marginTop: 14, padding: "16px 16px 6px" }}>
-        <div style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 8 }}><ShieldCheck size={17} /> தனியுரிமை மற்றும் உதவி</div>
+        <div style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 8 }}><ShieldCheck size={17} /> {t("acct.privacyHelp")}</div>
         <a data-legal="privacy" href="/privacy.html" style={{ ...rowBtn, borderTop: "none" }}>
-          <ShieldCheck size={18} color="#55626f" /><span style={{ flex: 1 }}>தனியுரிமைக் கொள்கை</span><ChevronRight size={18} color="#a3adc2" />
+          <ShieldCheck size={18} color="#55626f" /><span style={{ flex: 1 }}>{t("acct.privacy")}</span><ChevronRight size={18} color="#a3adc2" />
         </a>
         <a data-legal="terms" href="/terms.html" style={rowBtn}>
-          <FileText size={18} color="#55626f" /><span style={{ flex: 1 }}>பயன்பாட்டு விதிமுறைகள்</span><ChevronRight size={18} color="#a3adc2" />
+          <FileText size={18} color="#55626f" /><span style={{ flex: 1 }}>{t("acct.terms")}</span><ChevronRight size={18} color="#a3adc2" />
         </a>
         <button data-feedback-toggle onClick={() => { setFbOpen((v) => !v); setFbMsg(null); }} style={rowBtn}>
-          <MessageSquare size={18} color="#55626f" /><span style={{ flex: 1 }}>கருத்து அல்லது புகார் அனுப்ப</span><ChevronRight size={18} color="#a3adc2" style={{ transform: fbOpen ? "rotate(90deg)" : "none" }} />
+          <MessageSquare size={18} color="#55626f" /><span style={{ flex: 1 }}>{t("acct.feedback")}</span><ChevronRight size={18} color="#a3adc2" style={{ transform: fbOpen ? "rotate(90deg)" : "none" }} />
         </button>
         {fbOpen && (
           <div style={{ padding: "4px 0 12px" }}>
             <textarea data-feedback-input value={fbText} onChange={(e) => setFbText(e.target.value)} rows={4} maxLength={1000}
-              placeholder="தவறான கணக்கு, புரியாத பகுதி, புதிய வசதி — எதுவாயினும் எழுதுங்கள்"
+              placeholder={t("acct.fbPlaceholder")}
               style={{ width: "100%", padding: "11px 13px", borderRadius: 12, border: "1.5px solid #d9e0ee", background: "#fcfdff", color: "#27303f", fontSize: 14, lineHeight: 1.6, resize: "vertical", outline: "none" }} />
             <button data-feedback-send onClick={sendFeedback} disabled={!fbText.trim() || !!busy} style={{ ...pill(true), marginTop: 8, opacity: !fbText.trim() || busy ? 0.5 : 1 }}>
-              {busy === "fb" ? "அனுப்புகிறது…" : "அனுப்பு"}
+              {busy === "fb" ? t("acct.sending") : t("acct.send")}
             </button>
             {fbMsg && <div data-feedback-msg style={note(fbMsg.kind)}>{fbMsg.text}</div>}
           </div>
         )}
         <button data-delete-toggle onClick={() => { setDelOpen((v) => !v); setDelMsg(null); }} style={{ ...rowBtn, color: "#c0564f" }}>
-          <Trash2 size={18} color="#c0564f" /><span style={{ flex: 1 }}>என் தரவை நீக்கு</span><ChevronRight size={18} color="#a3adc2" style={{ transform: delOpen ? "rotate(90deg)" : "none" }} />
+          <Trash2 size={18} color="#c0564f" /><span style={{ flex: 1 }}>{t("acct.deleteData")}</span><ChevronRight size={18} color="#a3adc2" style={{ transform: delOpen ? "rotate(90deg)" : "none" }} />
         </button>
         {delOpen && (
           <div data-delete-box style={{ padding: "4px 0 14px" }}>
             <div style={note("bad")}>
-              சேமித்த ஜாதகங்கள்{profileCount ? ` (${profileCount})` : ""}, குறிப்புகள், சரிபார்ப்புப் பதிவுகள் ஆகியவை இந்தச் சாதனத்திலிருந்தும் மேகத்திலிருந்தும் நிரந்தரமாக நீக்கப்படும்{info.linked ? "; Google இணைப்பும் நீக்கப்படும்" : ""}. இதைத் திரும்பப் பெற முடியாது.
+              {t("acct.deleteWarn", { count: profileCount ? ` (${profileCount})` : "", google: info.linked ? t("acct.deleteWarnGoogle") : "" })}
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
               <button data-delete-confirm onClick={doDelete} disabled={!!busy} style={{ ...pill(true), background: "#c0564f", opacity: busy === "del" ? 0.6 : 1 }}>
-                {busy === "del" ? "நீக்குகிறது…" : "ஆம், எல்லாவற்றையும் நீக்கு"}
+                {busy === "del" ? t("acct.deleting") : t("acct.deleteConfirm")}
               </button>
-              <button data-delete-cancel onClick={() => setDelOpen(false)} disabled={!!busy} style={pill(false)}>வேண்டாம்</button>
+              <button data-delete-cancel onClick={() => setDelOpen(false)} disabled={!!busy} style={pill(false)}>{t("acct.cancel")}</button>
             </div>
             {delMsg && <div style={note(delMsg.kind)}>{delMsg.text}</div>}
           </div>

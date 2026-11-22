@@ -6,6 +6,7 @@ import {
 
 import BottomNav from "./BottomNav.jsx";
 import { NAME_SYLLABLES, NUMBER_INFO, numerologyOf, kizhamai } from "./tools-data.js";
+import { useLang } from "../i18n/index.js";
 
 // ── பகிரப்படும் நடை (App.jsx-இன் card/ink tokens-உடன் ஒத்தது) ──
 const page = { minHeight: "100vh", fontFamily: "'Noto Sans Tamil','Segoe UI',system-ui,sans-serif", color: "#27303f" };
@@ -31,12 +32,15 @@ function Back({ onBack, text = "பின்" }) {
 const RASHI_GLYPH = ["♈", "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐", "♑", "♒", "♓"].map((g) => g + "\uFE0E"); // text presentation
 const isoOffset = (days) => { const d = new Date(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 
-const MODES = [["today", "இன்று"], ["tomorrow", "நாளை"], ["week", "வாரம்"], ["month", "மாதம்"], ["year", "ஆண்டு"]];
+const MODES = ["today", "tomorrow", "week", "month", "year"];
 const dShort = (iso) => new Date(iso + "T00:00:00").toLocaleDateString("ta-IN", { day: "numeric", month: "short" });
 const dWeek = (iso) => ["ஞாயிறு", "திங்கள்", "செவ்வாய்", "புதன்", "வியாழன்", "வெள்ளி", "சனி"][new Date(iso + "T00:00:00").getDay()];
-const MOOD = { good: { t: "நல்ல நாள்", c: "#2e7d5b", bg: "#e9f5ee" }, caution: { t: "கவனம்", c: "#c0564f", bg: "#fbeeed" }, neutral: { t: "சாதாரணம்", c: "#4a5365", bg: "#f3f5f9" } };
+// நிலை நிறங்கள் (நல்லது / கவனம் / நடுநிலை); காட்சிப் பெயர் t() வழியே (moodLabel)
+const MOOD = { good: { c: "#2e7d5b", bg: "#e9f5ee" }, caution: { c: "#c0564f", bg: "#fbeeed" }, neutral: { c: "#4a5365", bg: "#f3f5f9" } };
+const moodLabel = (t, k) => t(k === "good" ? "rasi.mood.good" : k === "caution" ? "rasi.mood.caution" : "rasi.mood.neutral");
 
 export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetchPeriod, onNav, onShare }) {
+  const { lang, t, tRashi, tPlanet, tNak, tTithi, tWeekday, tColor, tGem } = useLang();
   const [rashi, setRashi] = useState(defaultRashi);
   const [mode, setMode] = useState("today");
   const [data, setData] = useState(null);     // இன்று / நாளை
@@ -57,11 +61,11 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
   }, [rashi, mode]);
 
   const g = data?.gochara;
-  const mood = g ? (g.overallMood === "good" ? { t: "நல்ல நாள்", c: "#2e7d5b", bg: "#e9f5ee" } : g.overallMood === "caution" ? { t: "கவனம் தேவைப்படும் நாள்", c: "#c0564f", bg: "#fbeeed" } : { t: "சாதாரண நாள்", c: "#4a5365", bg: "#f3f5f9" }) : null;
+  const mood = g ? (g.overallMood === "good" ? { t: t("rasi.mood.good"), c: "#2e7d5b", bg: "#e9f5ee" } : g.overallMood === "caution" ? { t: t("rasi.mood.cautionDay"), c: "#c0564f", bg: "#fbeeed" } : { t: t("rasi.mood.neutralDay"), c: "#4a5365", bg: "#f3f5f9" }) : null;
   const moon = g?.results.find((r) => r.ta === "சந்திரன்");
   const good = g ? g.results.filter((r) => r.effect === "good").map((r) => r.ta) : [];
   const bad = g ? g.results.filter((r) => r.effect === "bad").map((r) => r.ta) : [];
-  const dayWord = day === 0 ? "இன்று" : "நாளை";
+  const dayWord = t(day === 0 ? "rasi.dayToday" : "rasi.dayTomorrow");
   const shareText = () => data ? [
     `${data.rashi} ராசி — ${dayWord} (${data.date.dateStr})`,
     mood.t + (g.isChandrashtama ? " — சந்திராஷ்டமம்" : ""),
@@ -74,9 +78,9 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
   return (
     <div style={page}>
       <div style={wrap}>
-        <Back onBack={() => onNav("home")} />
-        <h2 style={h2}>12 ராசி பலன்</h2>
-        <p style={sub}>உங்கள் ராசியைத் தேர்ந்தெடுங்கள்</p>
+        <Back onBack={() => onNav("home")} text={t("common.back")} />
+        <h2 style={h2}>{t("svc.rasi.t")}</h2>
+        <p style={sub}>{t("rasi.choose")}</p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 14 }}>
           {rashis.map((r, i) => {
@@ -85,7 +89,7 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
               <button key={i} data-rashi={i} onClick={() => setRashi(i)} style={{ padding: "10px 2px 8px", borderRadius: 14, cursor: "pointer", textAlign: "center",
                 border: on ? "1px solid #1f3f68" : "1px solid #e3e8f2", background: on ? "#1f3f68" : "#ffffff", color: on ? "#ffffff" : "#27303f" }}>
                 <span style={{ display: "block", fontSize: 18, lineHeight: 1.2, color: on ? "#f7e2a6" : "#a9823c" }}>{RASHI_GLYPH[i]}</span>
-                <span style={{ display: "block", fontSize: 12.5, fontWeight: on ? 700 : 500 }}>{r}</span>
+                <span style={{ display: "block", fontSize: 12.5, fontWeight: on ? 700 : 500 }}>{tRashi(r)}</span>
               </button>
             );
           })}
@@ -93,21 +97,21 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
 
         {rashi == null && (
           <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13, lineHeight: 1.7 }}>
-            ராசி தெரியவில்லையா? “ஜாதகம்” பகுதியில் பிறப்பு விவரம் கொடுத்தால் உங்கள் ராசி, நட்சத்திரம் தெரியும்.
+            {t("rasi.dontKnow")}
           </div>
         )}
 
         {rashi != null && (
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-            {MODES.map(([k, t]) => (
+            {MODES.map((k) => (
               <button key={k} data-mode={k} onClick={() => setMode(k)} style={{ flex: "1 1 auto", minHeight: 38, padding: "9px 2px", borderRadius: 999, fontSize: 12.5, fontWeight: mode === k ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap",
-                border: mode === k ? "1px solid #1f3f68" : "1px solid #e3e8f2", background: mode === k ? "#1f3f68" : "#ffffff", color: mode === k ? "#ffffff" : "#4a5365" }}>{t}</button>
+                border: mode === k ? "1px solid #1f3f68" : "1px solid #e3e8f2", background: mode === k ? "#1f3f68" : "#ffffff", color: mode === k ? "#ffffff" : "#4a5365" }}>{t("rasi.mode." + k)}</button>
             ))}
           </div>
         )}
 
-        {rashi != null && state === "loading" && <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13 }}>பலன் கணக்கிடப்படுகிறது…</div>}
-        {rashi != null && state === "error" && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>பலன் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.</div>}
+        {rashi != null && state === "loading" && <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13 }}>{t("common.computing")}</div>}
+        {rashi != null && state === "error" && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>{t("rasi.fetchFail")}</div>}
 
         {rashi != null && state === "idle" && !isDaily && pdata && pdata.period === mode && (
           <PeriodPalan p={pdata} onNav={onNav} onShare={onShare} />
@@ -115,61 +119,61 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
 
         {rashi != null && state === "idle" && isDaily && data && (<>
           <div data-palan style={{ ...card, background: mood.bg, border: "none", boxShadow: "none" }}>
-            <div style={{ fontSize: 12.5, color: "#4a5365", marginBottom: 2 }}>{data.rashi} ராசி · {data.date.dateStr} · {kizhamai(data.date.dayName)}</div>
+            <div style={{ fontSize: 12.5, color: "#4a5365", marginBottom: 2 }}>{tRashi(data.rashi)} {t("result.rashi")} · {data.date.dateStr} · {lang === "ta" ? kizhamai(data.date.dayName) : tWeekday(data.date.dayName)}</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: mood.c, lineHeight: 1.4 }}>{mood.t}</div>
             {g.isChandrashtama && (
               <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 8, fontSize: 13, color: "#c0564f", lineHeight: 1.6 }}>
                 <TriangleAlert size={16} style={{ flexShrink: 0, marginTop: 3 }} />
-                <span><b>சந்திராஷ்டமம்</b> — {dayWord} புதிய முயற்சிகள், முக்கிய முடிவுகள், வாக்குவாதங்களைத் தவிர்ப்பது நல்லது.</span>
+                <span><b>{t("pan.chandrashtama")}</b> — {t("rasi.chandrashtamaNote", { day: dayWord })}</span>
               </div>
             )}
           </div>
 
           <div style={card}>
-            <div style={secTitle}>{dayWord} கிரக நிலை</div>
-            {moon && <div style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.7, marginBottom: 8 }}>சந்திரன் {moon.rashi} ராசியில் — உங்கள் ராசிக்கு {moon.houseFromMoon}ஆம் இடம்.</div>}
+            <div style={secTitle}>{t("rasi.planetState", { day: dayWord })}</div>
+            {moon && <div style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.7, marginBottom: 8 }}>{t("rasi.planetInRashi", { planet: tPlanet("சந்திரன்"), rashi: tRashi(moon.rashi) })} — {t("house.n", { n: moon.houseFromMoon })}</div>}
             {good.length > 0 && (
               <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 12, color: "#55626f", marginBottom: 5 }}>சாதகமான கிரகங்கள்</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{good.map((p) => <span key={p} style={{ ...chip, background: "#e9f5ee", color: "#2e7d5b" }}>{p}</span>)}</div>
+                <div style={{ fontSize: 12, color: "#55626f", marginBottom: 5 }}>{t("rasi.goodPlanets")}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{good.map((p) => <span key={p} style={{ ...chip, background: "#e9f5ee", color: "#2e7d5b" }}>{tPlanet(p)}</span>)}</div>
               </div>
             )}
             {bad.length > 0 && (
               <div>
-                <div style={{ fontSize: 12, color: "#55626f", marginBottom: 5 }}>கவனம் தேவைப்படும் கிரகங்கள்</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{bad.map((p) => <span key={p} style={{ ...chip, background: "#fbeeed", color: "#c0564f" }}>{p}</span>)}</div>
+                <div style={{ fontSize: 12, color: "#55626f", marginBottom: 5 }}>{t("rasi.cautionPlanets")}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{bad.map((p) => <span key={p} style={{ ...chip, background: "#fbeeed", color: "#c0564f" }}>{tPlanet(p)}</span>)}</div>
               </div>
             )}
           </div>
 
           <div style={card}>
-            <div style={secTitle}>நீண்டகால நிலை (குரு · சனி)</div>
+            <div style={secTitle}>{t("rasi.longTerm")}</div>
             {data.guruPeyarchi && (
               <div style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.7, marginBottom: 8 }}>
-                <b style={{ color: "#27303f" }}>குரு</b> — {data.guruPeyarchi.rashi} ராசியில் ({data.guruPeyarchi.houseFromMoon}ஆம் இடம்): {data.guruPeyarchi.desc}
+                <b style={{ color: "#27303f" }}>{tPlanet("குரு")}</b> — {t("rasi.inRashiHouse", { rashi: tRashi(data.guruPeyarchi.rashi), house: t("house.n", { n: data.guruPeyarchi.houseFromMoon }) })}: {data.guruPeyarchi.desc}
               </div>
             )}
             {data.saniTransit && (
               <div style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.7, marginBottom: 8 }}>
-                <b style={{ color: "#27303f" }}>சனி</b> — {data.saniTransit.rashi} ராசியில் ({data.saniTransit.houseFromMoon}ஆம் இடம்): {data.saniTransit.desc}
+                <b style={{ color: "#27303f" }}>{tPlanet("சனி")}</b> — {t("rasi.inRashiHouse", { rashi: tRashi(data.saniTransit.rashi), house: t("house.n", { n: data.saniTransit.houseFromMoon }) })}: {data.saniTransit.desc}
               </div>
             )}
             {data.sadeSati && (
               <span style={{ ...chip, background: data.sadeSati.active ? "#fbeeed" : "#e9f5ee", color: data.sadeSati.active ? "#c0564f" : "#2e7d5b" }}>
-                {data.sadeSati.active ? `${data.sadeSati.isEzharai ? "ஏழரைச் சனி — " : ""}${data.sadeSati.phase}${data.sadeSati.stage ? ` (${data.sadeSati.stage})` : ""}` : "ஏழரைச் சனி இல்லை"}
+                {data.sadeSati.active ? `${data.sadeSati.isEzharai ? t("rasi.ezharai") + " — " : ""}${data.sadeSati.phase}${data.sadeSati.stage ? ` (${data.sadeSati.stage})` : ""}` : t("rasi.noEzharai")}
               </span>
             )}
           </div>
 
           <div style={card}>
-            <div style={secTitle}>{dayWord} செய்ய வேண்டியவை</div>
+            <div style={secTitle}>{t("rasi.todo", { day: dayWord })}</div>
             {[
-              ["திதி", `${data.panchang.tithi} · ${data.panchang.nakshatra} நட்சத்திரம்`],
-              data.remedy?.tithiInfo?.activity ? ["உகந்த செயல்", data.remedy.tithiInfo.activity] : null,
-              data.remedy?.dayInfo?.remedy ? ["வழிபாடு", data.remedy.dayInfo.remedy] : null,
-              data.remedy?.dayInfo?.donate ? ["தானம்", data.remedy.dayInfo.donate] : null,
-              data.remedy?.dayInfo?.avoid ? ["தவிர்க்க", data.remedy.dayInfo.avoid] : null,
-              data.panchaka ? ["பஞ்சகம்", `${data.panchaka.name} — ${data.panchaka.avoid}`] : null,
+              [t("pan.tithi"), t("rasi.tithiNak", { tithi: tTithi(data.panchang.tithi), nak: tNak(data.panchang.nakshatra) })],
+              data.remedy?.tithiInfo?.activity ? [t("rasi.activity"), data.remedy.tithiInfo.activity] : null,
+              data.remedy?.dayInfo?.remedy ? [t("rasi.worship"), data.remedy.dayInfo.remedy] : null,
+              data.remedy?.dayInfo?.donate ? [t("common.donate"), data.remedy.dayInfo.donate] : null,
+              data.remedy?.dayInfo?.avoid ? [t("rasi.avoid"), data.remedy.dayInfo.avoid] : null,
+              data.panchaka ? [t("rasi.panchakam"), `${data.panchaka.name} — ${data.panchaka.avoid}`] : null,
             ].filter(Boolean).map(([k, v], i) => (
               <div key={k} style={{ display: "flex", gap: 12, padding: "8px 0", borderTop: i ? "1px solid #eef1f6" : "none", fontSize: 13, lineHeight: 1.6 }}>
                 <span style={{ width: 92, flexShrink: 0, color: "#55626f" }}>{k}</span>
@@ -179,12 +183,12 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
           </div>
 
           <div style={card}>
-            <div style={secTitle}>{data.rashi} ராசிக்கான குறிப்புகள்</div>
+            <div style={secTitle}>{t("rasi.tipsFor", { rashi: tRashi(data.rashi) })}</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {[
-                ["ராசி அதிபதி", data.remedy?.rashiInfo?.lord], ["வழிபடு தெய்வம்", data.remedy?.rashiInfo?.deity],
-                ["உகந்த நிறம்", data.remedy?.rashiInfo?.color], ["ரத்தினம்", data.remedy?.rashiInfo?.gem],
-                ["அதிர்ஷ்ட எண்கள்", (data.luckyNums || []).join(", ")],
+                [t("rasi.lord"), data.remedy?.rashiInfo?.lord], [t("rasi.deity"), data.remedy?.rashiInfo?.deity],
+                [t("rasi.color"), data.remedy?.rashiInfo?.color ? tColor(data.remedy.rashiInfo.color) : null], [t("common.gem"), data.remedy?.rashiInfo?.gem ? tGem(data.remedy.rashiInfo.gem) : null],
+                [t("lucky.numbers"), (data.luckyNums || []).join(", ")],
               ].filter(([, v]) => v).map(([k, v]) => (
                 <div key={k} style={{ background: "#f8f9fc", borderRadius: 12, padding: "9px 12px" }}>
                   <div style={{ fontSize: 11.5, color: "#55626f" }}>{k}</div>
@@ -192,15 +196,15 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
                 </div>
               ))}
             </div>
-            {data.remedy?.rashiInfo?.mantra && <div style={{ fontSize: 13, color: "#4a5365", marginTop: 10 }}>மந்திரம்: <b style={{ color: "#27303f" }}>{data.remedy.rashiInfo.mantra}</b></div>}
+            {data.remedy?.rashiInfo?.mantra && <div style={{ fontSize: 13, color: "#4a5365", marginTop: 10 }}>{t("common.mantra")}: <b style={{ color: "#27303f" }}>{data.remedy.rashiInfo.mantra}</b></div>}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
             <button data-share onClick={() => onShare(`${data.rashi} ராசி பலன்`, shareText())} style={{ padding: "12px 0", borderRadius: 14, border: "1.5px solid #ccd6e8", background: "#ffffff", color: "#1f3f68", fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <Share2 size={16} /> பகிர்
+              <Share2 size={16} /> {t("common.share")}
             </button>
             <button data-personal onClick={() => onNav("daily")} style={{ padding: "12px 0", borderRadius: 14, border: "1px solid #1f3f68", background: "#1f3f68", color: "#ffffff", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
-              தனிப்பட்ட பலன் →
+              {t("rasi.personal")}
             </button>
           </div>
         </>)}
@@ -213,35 +217,37 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
 
 // ── வாரம் / மாதம் / ஆண்டு — கோசாரக் கணக்கின் காட்சி ──
 function PlanetRows({ rows, dated = false }) {
+  const { t, tPlanet, tRashi } = useLang();
   return rows.map((r, i) => (
     <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "9px 0", borderTop: i ? "1px solid #eef1f6" : "none" }}>
       <div style={{ flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.6, color: "#4a5365" }}>
         {dated && <span style={{ color: "#55626f" }}>{dShort(r.iso)} · </span>}
-        <b style={{ color: "#27303f" }}>{r.ta}</b> {dated ? "→" : "—"} {r.rashi} ({r.house}ஆம் இடம்)
+        <b style={{ color: "#27303f" }}>{tPlanet(r.ta)}</b> {dated ? "→" : "—"} {tRashi(r.rashi)} ({t("house.n", { n: r.house })})
         {r.theme && <span style={{ display: "block", fontSize: 12, color: "#55626f" }}>{r.theme}</span>}
       </div>
       <span style={{ ...chip, flexShrink: 0, background: r.effect === "good" ? "#e9f5ee" : r.effect === "bad" ? "#fbeeed" : "#f3f5f9", color: r.effect === "good" ? "#2e7d5b" : r.effect === "bad" ? "#c0564f" : "#4a5365" }}>
-        {r.effect === "good" ? "சாதகம்" : r.effect === "bad" ? "கவனம்" : "நடுநிலை"}
+        {r.effect === "good" ? t("rasi.effect.good") : r.effect === "bad" ? t("rasi.mood.caution") : t("rasi.effect.neutral")}
       </span>
     </div>
   ));
 }
 
 function PeriodPalan({ p, onNav, onShare }) {
+  const { t, tRashi, tPlanet, tWeekday } = useLang();
   if (p.period === "year") {
     return (<>
       <div data-period="year" style={card}>
-        <div style={secTitle}>{p.rashi} ராசி — {p.year} ஆண்டு நிலை</div>
-        <div style={{ fontSize: 12.5, color: "#55626f", lineHeight: 1.6, marginBottom: 6 }}>குரு, சனி, ராகு, கேது நிலை</div>
+        <div style={secTitle}>{t("rasi.yearState", { rashi: tRashi(p.rashi), year: p.year })}</div>
+        <div style={{ fontSize: 12.5, color: "#55626f", lineHeight: 1.6, marginBottom: 6 }}>{t("rasi.slowPlanets")}</div>
         {p.slow.map((s, i) => (
           <div key={i} style={{ padding: "11px 0", borderTop: "1px solid #eef1f6" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#27303f" }}>{s.ta} — {s.rashi} <span style={{ fontWeight: 500, color: "#55626f" }}>({s.house}ஆம் இடம்)</span></div>
-              <span style={{ ...chip, flexShrink: 0, background: s.effect === "good" ? "#e9f5ee" : "#fbeeed", color: s.effect === "good" ? "#2e7d5b" : "#c0564f" }}>{s.effect === "good" ? "சாதகம்" : "கவனம்"}</span>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#27303f" }}>{tPlanet(s.ta)} — {tRashi(s.rashi)} <span style={{ fontWeight: 500, color: "#55626f" }}>({t("house.n", { n: s.house })})</span></div>
+              <span style={{ ...chip, flexShrink: 0, background: s.effect === "good" ? "#e9f5ee" : "#fbeeed", color: s.effect === "good" ? "#2e7d5b" : "#c0564f" }}>{s.effect === "good" ? t("rasi.effect.good") : t("rasi.mood.caution")}</span>
             </div>
             <div style={{ fontSize: 12, color: "#55626f", marginTop: 2 }}>{dShort(s.from)} – {dShort(s.to)}</div>
             <div style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.65, marginTop: 4 }}>{s.desc || s.theme}</div>
-            {s.sadeSati?.active && <span style={{ ...chip, marginTop: 6, background: "#fbeeed", color: "#c0564f" }}>{s.sadeSati.isEzharai ? "ஏழரைச் சனி — " : ""}{s.sadeSati.phase}{s.sadeSati.stage ? ` (${s.sadeSati.stage})` : ""}</span>}
+            {s.sadeSati?.active && <span style={{ ...chip, marginTop: 6, background: "#fbeeed", color: "#c0564f" }}>{s.sadeSati.isEzharai ? t("rasi.ezharai") + " — " : ""}{s.sadeSati.phase}{s.sadeSati.stage ? ` (${s.sadeSati.stage})` : ""}</span>}
           </div>
         ))}
       </div>
@@ -257,60 +263,60 @@ function PeriodPalan({ p, onNav, onShare }) {
   ].filter(Boolean).join("\n"));
   return (<>
     <div data-period={p.period} style={card}>
-      <div style={secTitle}>{p.rashi} ராசி — {isWeek ? "இந்த வாரம்" : "அடுத்த 30 நாட்கள்"}</div>
-      <div style={{ fontSize: 12.5, color: "#55626f", marginBottom: 10 }}>{dShort(p.from)} முதல் {dShort(p.to)} வரை</div>
+      <div style={secTitle}>{t(isWeek ? "rasi.weekTitle" : "rasi.monthTitle", { rashi: tRashi(p.rashi) })}</div>
+      <div style={{ fontSize: 12.5, color: "#55626f", marginBottom: 10 }}>{t("rasi.range", { from: dShort(p.from), to: dShort(p.to) })}</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-        {[["good", "நல்ல நாட்கள்"], ["neutral", "சாதாரணம்"], ["caution", "கவனம்"]].map(([k, t]) => (
+        {[["good", "rasi.goodDays"], ["neutral", "rasi.mood.neutral"], ["caution", "rasi.mood.caution"]].map(([k, lk]) => (
           <div key={k} style={{ background: MOOD[k].bg, borderRadius: 12, padding: "10px 6px", textAlign: "center" }}>
             <div style={{ fontSize: 22, fontWeight: 800, color: MOOD[k].c, lineHeight: 1.2 }}>{p.counts[k] || 0}</div>
-            <div style={{ fontSize: 11.5, color: "#4a5365" }}>{t}</div>
+            <div style={{ fontSize: 11.5, color: "#4a5365" }}>{t(lk)}</div>
           </div>
         ))}
       </div>
       {p.chandrashtama.length > 0 && (
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 12, fontSize: 13, color: "#c0564f", lineHeight: 1.6 }}>
           <TriangleAlert size={16} style={{ flexShrink: 0, marginTop: 3 }} />
-          <span><b>சந்திராஷ்டமம்:</b> {p.chandrashtama.map((x) => `${dShort(x)} (${dWeek(x)})`).join(", ")} — முக்கிய முடிவுகளைத் தவிர்க்கவும்.</span>
+          <span><b>{t("pan.chandrashtama")}:</b> {t("rasi.chandrashtamaDates", { dates: p.chandrashtama.map((x) => `${dShort(x)} (${tWeekday(dWeek(x))})`).join(", ") })}</span>
         </div>
       )}
     </div>
 
     {isWeek ? (
       <div style={card}>
-        <div style={secTitle}>நாள் வாரியாக</div>
+        <div style={secTitle}>{t("rasi.dayByDay")}</div>
         {p.days.map((x, i) => (
           <div key={x.iso} data-pday style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: i ? "1px solid #eef1f6" : "none" }}>
             <div style={{ width: 92, flexShrink: 0 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: "#27303f" }}>{dWeek(x.iso)}</div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: "#27303f" }}>{tWeekday(dWeek(x.iso))}</div>
               <div style={{ fontSize: 12, color: "#55626f" }}>{dShort(x.iso)}</div>
             </div>
-            <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#4a5365", lineHeight: 1.5 }}>சந்திரன் {x.moonRashi}{x.moonHouse ? ` (${x.moonHouse}ஆம் இடம்)` : ""}</div>
-            <span style={{ ...chip, flexShrink: 0, background: x.chandrashtama ? "#fbeeed" : MOOD[x.mood].bg, color: x.chandrashtama ? "#c0564f" : MOOD[x.mood].c }}>{x.chandrashtama ? "சந்திராஷ்டமம்" : MOOD[x.mood].t}</span>
+            <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#4a5365", lineHeight: 1.5 }}>{t("rasi.planetInRashi", { planet: tPlanet("சந்திரன்"), rashi: tRashi(x.moonRashi) })}{x.moonHouse ? ` (${t("house.n", { n: x.moonHouse })})` : ""}</div>
+            <span style={{ ...chip, flexShrink: 0, background: x.chandrashtama ? "#fbeeed" : MOOD[x.mood].bg, color: x.chandrashtama ? "#c0564f" : MOOD[x.mood].c }}>{x.chandrashtama ? t("pan.chandrashtama") : moodLabel(t, x.mood)}</span>
           </div>
         ))}
       </div>
     ) : (
       <div style={card}>
-        <div style={secTitle}>சிறந்த நாட்கள்</div>
+        <div style={secTitle}>{t("rasi.bestDays")}</div>
         {p.bestDays.length > 0 ? (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{p.bestDays.map((x) => <span key={x} data-best style={{ ...chip, background: "#e9f5ee", color: "#2e7d5b" }}>{dShort(x)} {dWeek(x).slice(0, 2)}</span>)}</div>
-        ) : <div style={{ fontSize: 13, color: "#55626f" }}>இந்தக் காலத்தில் கிரக நிலை பெரும்பாலும் கவனம் தேவைப்படுவதாக உள்ளது.</div>}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{p.bestDays.map((x) => <span key={x} data-best style={{ ...chip, background: "#e9f5ee", color: "#2e7d5b" }}>{dShort(x)} {tWeekday(dWeek(x)).slice(0, 2)}</span>)}</div>
+        ) : <div style={{ fontSize: 13, color: "#55626f" }}>{t("rasi.noBestDays")}</div>}
       </div>
     )}
 
     <div style={card}>
-      <div style={secTitle}>தற்போதைய கிரக நிலை</div>
+      <div style={secTitle}>{t("rasi.currentPlanets")}</div>
       <PlanetRows rows={p.planets} />
     </div>
     {p.ingresses.length > 0 && (
       <div style={card}>
-        <div style={secTitle}>{isWeek ? "இந்த வாரக்" : "இந்தக் காலக்"} கிரக மாற்றங்கள்</div>
+        <div style={secTitle}>{t(isWeek ? "rasi.weekChanges" : "rasi.periodChanges")}</div>
         <PlanetRows rows={p.ingresses} dated />
       </div>
     )}
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-      <button data-share onClick={share} style={{ padding: "12px 0", borderRadius: 14, border: "1.5px solid #ccd6e8", background: "#ffffff", color: "#1f3f68", fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Share2 size={16} /> பகிர்</button>
-      <button onClick={() => onNav("daily")} style={{ padding: "12px 0", borderRadius: 14, border: "1px solid #1f3f68", background: "#1f3f68", color: "#ffffff", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>தனிப்பட்ட பலன் →</button>
+      <button data-share onClick={share} style={{ padding: "12px 0", borderRadius: 14, border: "1.5px solid #ccd6e8", background: "#ffffff", color: "#1f3f68", fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Share2 size={16} /> {t("common.share")}</button>
+      <button onClick={() => onNav("daily")} style={{ padding: "12px 0", borderRadius: 14, border: "1px solid #1f3f68", background: "#1f3f68", color: "#ffffff", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>{t("rasi.personal")}</button>
     </div>
   </>);
 }
@@ -318,14 +324,11 @@ function PeriodPalan({ p, onNav, onShare }) {
 // ═══════════════════════════════════════════════════════════════════
 // பண்டிகைகள் — ஓர் ஆண்டின் தமிழ்ப் பண்டிகைகள் (server கணக்கு; சரிபார்க்கப்பட்ட விதிகள்)
 // ═══════════════════════════════════════════════════════════════════
-// விரத நாட்களின் வடிகட்டி — key → காட்சிப் பெயர்
-const VRATHAM_KINDS = [
-  ["all", "எல்லாம்"], ["amavasai", "அமாவாசை"], ["pournami", "பௌர்ணமி"], ["ekadashi", "ஏகாதசி"], ["pradosham", "பிரதோஷம்"],
-  ["chaturthi", "சதுர்த்தி"], ["sankatahara", "சங்கடஹர சதுர்த்தி"], ["krittikai", "கிருத்திகை"], ["sivaratri", "சிவராத்திரி"],
-];
-const TA_MONTHS_FULL = ["ஜனவரி", "பிப்ரவரி", "மார்ச்", "ஏப்ரல்", "மே", "ஜூன்", "ஜூலை", "ஆகஸ்ட்", "செப்டம்பர்", "அக்டோபர்", "நவம்பர்", "டிசம்பர்"];
+// விரத நாட்களின் வடிகட்டி — key (காட்சிப் பெயர் t("vk."+k) வழியே)
+const VRATHAM_KINDS = ["all", "amavasai", "pournami", "ekadashi", "pradosham", "chaturthi", "sankatahara", "krittikai", "sivaratri"];
 
 export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDate }) {
+  const { t, tList, tWeekday } = useLang();
   const [year, setYear] = useState(new Date().getFullYear());
   const [mode, setMode] = useState("festivals"); // festivals | vratham
   const [kind, setKind] = useState("all");
@@ -372,25 +375,25 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
   return (
     <div style={page}>
       <div style={wrap}>
-        <Back onBack={() => onNav("home")} />
-        <h2 style={h2}>பண்டிகைகள், விரத நாட்கள்</h2>
-        <p style={sub}>தமிழ்நாட்டுப் பஞ்சாங்க வழக்குப்படி</p>
+        <Back onBack={() => onNav("home")} text={t("common.back")} />
+        <h2 style={h2}>{t("fest.title")}</h2>
+        <p style={sub}>{t("fest.sub")}</p>
         {fetchVratham && (
           <div data-fest-mode style={{ display: "flex", gap: 4, padding: 4, borderRadius: 999, background: "#f3f5f9", marginBottom: 12 }}>
-            <button data-mode="festivals" style={seg(mode === "festivals")} onClick={() => setMode("festivals")}>பண்டிகைகள்</button>
-            <button data-mode="vratham" style={seg(mode === "vratham")} onClick={() => setMode("vratham")}>விரத நாட்கள்</button>
+            <button data-mode="festivals" style={seg(mode === "festivals")} onClick={() => setMode("festivals")}>{t("fest.festivals")}</button>
+            <button data-mode="vratham" style={seg(mode === "vratham")} onClick={() => setMode("vratham")}>{t("fest.vrathams")}</button>
           </div>
         )}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <button data-year-prev aria-label="முந்தைய ஆண்டு" style={yearBtn} onClick={() => setYear((y) => y - 1)}><ChevronLeft size={20} /></button>
+          <button data-year-prev aria-label={t("fest.prevYear")} style={yearBtn} onClick={() => setYear((y) => y - 1)}><ChevronLeft size={20} /></button>
           <div data-year style={{ fontSize: 20, fontWeight: 800, color: "#1f3f68" }}>{year}</div>
-          <button data-year-next aria-label="அடுத்த ஆண்டு" style={yearBtn} onClick={() => setYear((y) => y + 1)}><ChevronRight size={20} /></button>
+          <button data-year-next aria-label={t("fest.nextYear")} style={yearBtn} onClick={() => setYear((y) => y + 1)}><ChevronRight size={20} /></button>
         </div>
 
         {mode === "festivals" && (
           <>
-            {err && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>பட்டியலைப் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.</div>}
-            {!err && list === null && <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13 }}>கணக்கிடப்படுகிறது…</div>}
+            {err && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>{t("err.fetchList")}</div>}
+            {!err && list === null && <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13 }}>{t("common.computing")}</div>}
             {list && (
               <div style={{ ...card, padding: "4px 14px" }}>
                 {list.map((f, i) => {
@@ -400,7 +403,7 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
                       {dateBox(f.iso, isNext)}
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: "block", fontSize: 14.5, fontWeight: 700, color: "#27303f", lineHeight: 1.4 }}>{f.name}</span>
-                        <span style={{ display: "block", fontSize: 12, color: "#55626f", lineHeight: 1.5 }}>{dWeek(f.iso)} · {f.tamil}{isNext ? " · அடுத்து வருவது" : ""}</span>
+                        <span style={{ display: "block", fontSize: 12, color: "#55626f", lineHeight: 1.5 }}>{tWeekday(dWeek(f.iso))} · {f.tamil}{isNext ? ` · ${t("fest.next")}` : ""}</span>
                       </span>
                       <ChevronRight size={16} color="#a3adc2" style={{ flexShrink: 0 }} />
                     </button>
@@ -408,23 +411,23 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
                 })}
               </div>
             )}
-            <p style={note}>ஊர், பஞ்சாங்க மரபைப் பொறுத்து ஒரு நாள் வேறுபடலாம்.</p>
+            <p style={note}>{t("fest.note")}</p>
           </>
         )}
 
         {mode === "vratham" && (
           <>
             <div data-vratham-kinds style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-              {VRATHAM_KINDS.map(([k, label]) => (
-                <button key={k} data-vkind={k} style={chip(kind === k)} onClick={() => setKind(k)}>{label}</button>
+              {VRATHAM_KINDS.map((k) => (
+                <button key={k} data-vkind={k} style={chip(kind === k)} onClick={() => setKind(k)}>{t("vk." + k)}</button>
               ))}
             </div>
-            {vrErr && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>பட்டியலைப் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.</div>}
-            {!vrErr && vr === null && <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13 }}>கணக்கிடப்படுகிறது…</div>}
-            {vr && vrItems.length === 0 && <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13 }}>இந்த ஆண்டுக்குப் பட்டியல் இல்லை.</div>}
+            {vrErr && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>{t("err.fetchList")}</div>}
+            {!vrErr && vr === null && <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13 }}>{t("common.computing")}</div>}
+            {vr && vrItems.length === 0 && <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13 }}>{t("fest.emptyYear")}</div>}
             {vrMonths.map((g) => (
               <div key={g.m} data-vratham-month style={{ ...card, padding: g.m < 0 ? "4px 14px" : "10px 14px 4px" }}>
-                {g.m >= 0 && <div style={{ fontSize: 13, fontWeight: 700, color: "#7d6a3f", paddingBottom: 4 }}>{TA_MONTHS_FULL[g.m]}</div>}
+                {g.m >= 0 && <div style={{ fontSize: 13, fontWeight: 700, color: "#7d6a3f", paddingBottom: 4 }}>{tList("months")[g.m]}</div>}
                 {g.items.map((v, i) => {
                   const isNext = vrNext === v;
                   const extra = [v.paksha, v.note].filter(Boolean).join(" · ");
@@ -433,7 +436,7 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
                       {dateBox(v.date, isNext)}
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: "block", fontSize: 14.5, fontWeight: 700, color: "#27303f", lineHeight: 1.4 }}>{v.name}</span>
-                        <span style={{ display: "block", fontSize: 12, color: "#55626f", lineHeight: 1.5 }}>{dWeek(v.date)}{extra ? ` · ${extra}` : ""}{isNext ? " · அடுத்து வருவது" : ""}</span>
+                        <span style={{ display: "block", fontSize: 12, color: "#55626f", lineHeight: 1.5 }}>{tWeekday(dWeek(v.date))}{extra ? ` · ${extra}` : ""}{isNext ? ` · ${t("fest.next")}` : ""}</span>
                       </span>
                       <ChevronRight size={16} color="#a3adc2" style={{ flexShrink: 0 }} />
                     </button>
@@ -441,7 +444,7 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
                 })}
               </div>
             ))}
-            <p style={note}>ஊர், பஞ்சாங்க மரபைப் பொறுத்து ஒரு நாள் வேறுபடலாம்.</p>
+            <p style={note}>{t("fest.note")}</p>
           </>
         )}
       </div>
@@ -454,6 +457,7 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
 // நவகிரக வழிபாடு — மந்திரம், கோயில், ரத்தினம், தானம் (engine பரிகார அட்டவணை)
 // ═══════════════════════════════════════════════════════════════════
 export function NavagrahaScreen({ fetchNavagraha, onNav, onBack }) {
+  const { lang, t, tPlanet, tWeekday, tGem, tColor, tDir } = useLang();
   const [data, setData] = useState(null);
   const [err, setErr] = useState(false);
   const [open, setOpen] = useState(null);
@@ -468,17 +472,17 @@ export function NavagrahaScreen({ fetchNavagraha, onNav, onBack }) {
   return (
     <div style={page}>
       <div style={wrap}>
-        <Back onBack={() => (onBack ? onBack() : onNav("home"))} />
-        <h2 style={h2}>நவகிரக வழிபாடு</h2>
-        <p style={sub}>ஒவ்வொரு கிரகத்துக்கும் மந்திரம், கோயில், ரத்தினம், தானம்</p>
-        {err && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>விவரங்களைப் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.</div>}
-        {!err && !data && <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13 }}>ஏற்றுகிறது…</div>}
+        <Back onBack={() => (onBack ? onBack() : onNav("home"))} text={t("common.back")} />
+        <h2 style={h2}>{t("svc.navagraha.t")}</h2>
+        <p style={sub}>{t("navag.sub")}</p>
+        {err && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>{t("err.fetchInfo")}</div>}
+        {!err && !data && <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13 }}>{t("common.loading")}</div>}
         {today && (
           <div data-today-worship style={{ ...card, background: "#f6f1e4", border: "none", boxShadow: "none" }}>
-            <div style={{ fontSize: 12.5, color: "#7d6a3f", marginBottom: 2 }}>இன்று {kizhamai(dWeek(isoOffset(0)))} · {today.lord}</div>
+            <div style={{ fontSize: 12.5, color: "#7d6a3f", marginBottom: 2 }}>{t("navag.today", { day: lang === "ta" ? kizhamai(dWeek(isoOffset(0))) : tWeekday(dWeek(isoOffset(0))), lord: tPlanet(today.lord) })}</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#27303f", lineHeight: 1.5 }}>{today.deity}</div>
             <div style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.7, marginTop: 4 }}>{today.remedy}</div>
-            <div style={{ fontSize: 12.5, color: "#55626f", lineHeight: 1.6, marginTop: 4 }}>தானம்: {today.donate}</div>
+            <div style={{ fontSize: 12.5, color: "#55626f", lineHeight: 1.6, marginTop: 4 }}>{t("common.donate")}: {today.donate}</div>
           </div>
         )}
         {data && data.planets.map((g) => {
@@ -487,8 +491,8 @@ export function NavagrahaScreen({ fetchNavagraha, onNav, onBack }) {
             <div key={g.ta} style={{ ...card, padding: 0, overflow: "hidden" }}>
               <button data-graha={g.ta} onClick={() => setOpen(on ? null : g.ta)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: "14px 16px" }}>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: 15, fontWeight: 700, color: "#1f3f68" }}>{g.ta}</span>
-                  <span style={{ display: "block", fontSize: 12, color: "#55626f" }}>{kizhamai(g.day)} · {g.gem}</span>
+                  <span style={{ display: "block", fontSize: 15, fontWeight: 700, color: "#1f3f68" }}>{tPlanet(g.ta)}</span>
+                  <span style={{ display: "block", fontSize: 12, color: "#55626f" }}>{lang === "ta" ? kizhamai(g.day) : tWeekday(g.day)} · {tGem(g.gem)}</span>
                 </span>
                 <ChevronRight size={18} color="#a3adc2" style={{ flexShrink: 0, transform: on ? "rotate(90deg)" : "none", transition: "transform .2s" }} />
               </button>
@@ -497,7 +501,7 @@ export function NavagrahaScreen({ fetchNavagraha, onNav, onBack }) {
                   <div style={{ background: "#f8f9fc", borderRadius: 12, padding: "10px 12px", fontSize: 14, fontWeight: 700, color: "#27303f", lineHeight: 1.7, marginBottom: 6 }}>{g.mantra}
                     <span style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#55626f" }}>{g.mantraCount}</span>
                   </div>
-                  {[["கோயில்", g.temple], ["ரத்தினம்", g.gem], ["உலோகம்", g.metal], ["நிறம்", g.color], ["மலர்", g.flower], ["தானம்", g.donate], ["உணவு", g.food], ["திசை", g.direction]].filter(([, v]) => v).map(([k, v], i) => (
+                  {[[t("navag.temple"), g.temple], [t("common.gem"), g.gem ? tGem(g.gem) : null], [t("navag.metal"), g.metal], [t("navag.color"), g.color ? tColor(g.color) : null], [t("navag.flower"), g.flower], [t("common.donate"), g.donate], [t("navag.food"), g.food], [t("navag.direction"), g.direction ? tDir(g.direction) : null]].filter(([, v]) => v).map(([k, v], i) => (
                     <div key={k} style={{ display: "flex", gap: 12, padding: "7px 0", borderTop: i ? "1px solid #eef1f6" : "none", fontSize: 13, lineHeight: 1.6 }}>
                       <span style={{ width: 76, flexShrink: 0, color: "#55626f" }}>{k}</span>
                       <span style={{ color: "#27303f" }}>{v}</span>
@@ -508,7 +512,7 @@ export function NavagrahaScreen({ fetchNavagraha, onNav, onBack }) {
             </div>
           );
         })}
-        <p style={note}>உங்கள் ஜாதகத்துக்கான பரிகாரம்: “ஜாதகம்” பகுதியின் “பரிகாரம்”.</p>
+        <p style={note}>{t("navag.note")}</p>
       </div>
       <BottomNav active="" onNav={onNav} />
     </div>
@@ -521,26 +525,27 @@ export function NavagrahaScreen({ fetchNavagraha, onNav, onBack }) {
 const fmtDob = (raw) => { const d = raw.replace(/\D/g, "").slice(0, 8); return [d.slice(0, 2), d.slice(2, 4), d.slice(4, 8)].filter(Boolean).join("."); };
 
 export function NumerologyScreen({ defaultDob = "", onNav }) {
+  const { t } = useLang();
   const [dob, setDob] = useState(defaultDob);
   const [name, setName] = useState("");
   const n = numerologyOf(dob, name);
   const rows = [
-    ["பிறவி எண்", "அடிப்படை இயல்பு", n.birth],
-    ["விதி எண்", "வாழ்க்கைப் பாதை", n.destiny],
-    ["பெயர் எண்", n.nameTotal ? `பெயர் எழுத்துக்களின் கூட்டு (${n.nameTotal})` : "பெயர் எழுத்துக்களின் கூட்டு", n.name],
+    [t("num.birth"), t("num.birthHow"), n.birth],
+    [t("num.destiny"), t("num.destinyHow"), n.destiny],
+    [t("num.name"), n.nameTotal ? t("num.nameHowTotal", { total: n.nameTotal }) : t("num.nameHow"), n.name],
   ];
   return (
     <div style={page}>
       <div style={wrap}>
-        <Back onBack={() => onNav("home")} />
-        <h2 style={h2}>எண் கணிதம்</h2>
-        <p style={sub}>பிறந்த தேதியும் பெயரும் கொடுத்தால் மூன்று எண்களும் கிடைக்கும்</p>
+        <Back onBack={() => onNav("home")} text={t("common.back")} />
+        <h2 style={h2}>{t("svc.numerology.t")}</h2>
+        <p style={sub}>{t("num.sub")}</p>
         <div style={card}>
-          <label style={label}>பிறந்த தேதி</label>
-          <input style={{ ...input, letterSpacing: 2, fontFamily: "monospace", marginBottom: 14 }} inputMode="numeric" maxLength={10} placeholder="நாள்.மாதம்.ஆண்டு"
+          <label style={label}>{t("ob.dob.title")}</label>
+          <input style={{ ...input, letterSpacing: 2, fontFamily: "monospace", marginBottom: 14 }} inputMode="numeric" maxLength={10} placeholder={t("form.dobHint")}
             value={dob} onChange={(e) => setDob(fmtDob(e.target.value))} />
-          <label style={label}>பெயர் (ஆங்கில எழுத்துக்களில்)</label>
-          <input style={input} placeholder="எ.கா. KUMAR" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
+          <label style={label}>{t("num.nameLabel")}</label>
+          <input style={input} placeholder={t("num.namePlaceholder", { ex: "KUMAR" })} maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
         </div>
 
         {rows.filter(([, , v]) => v != null).map(([title, how, v]) => {
@@ -561,7 +566,7 @@ export function NumerologyScreen({ defaultDob = "", onNav }) {
           );
         })}
         {n.birth == null && n.name == null && (
-          <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13, lineHeight: 1.7 }}>பிறந்த தேதி அல்லது பெயரை உள்ளிடுங்கள்.</div>
+          <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13, lineHeight: 1.7 }}>{t("num.empty")}</div>
         )}
       </div>
       <BottomNav active="" onNav={onNav} />
@@ -572,8 +577,8 @@ export function NumerologyScreen({ defaultDob = "", onNav }) {
 // ═══════════════════════════════════════════════════════════════════
 // குழந்தை பெயர் எழுத்துக்கள் — நட்சத்திர பாதப்படி
 // ═══════════════════════════════════════════════════════════════════
-// பெயர் நடை: n = நவீனம், c = நடுத்தரம், t = பாரம்பரியம் (names-data.js)
-const NAME_STYLES = [["n", "நவீனம்"], ["c", "நடுத்தரம்"], ["t", "பாரம்பரியம்"]];
+// பெயர் நடை: n = நவீனம், c = நடுத்தரம், t = பாரம்பரியம் (names-data.js) — காட்சிப் பெயர் t("names.*") வழியே
+const NAME_STYLES = [["n", "names.modern"], ["c", "names.middle"], ["t", "names.traditional"]];
 // தமிழில் ஒரே எழுத்து பல ஒலிகளைக் குறிக்கும் (கா — கார்த்திக், காயத்ரி; பா — பாண்டியன், பாரதி). அந்த எழுத்தில் தொடங்கும்
 // எல்லாப் பெயர்களும் காட்டப்படும்: பாதத்துக்கு உரிய ஒலியின் பெயர்கள் முதலில், பின் அதே எழுத்தின் மற்ற ஒலிகளுடையவை.
 // "ஸ" என்று தொடங்கும் பெயர்கள் ஸ-வரிசை எழுத்துகளில் மட்டும்.
@@ -589,6 +594,7 @@ const namesOf = (sound, g, style, letter = "") => {
 };
 
 export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = null, onNav }) {
+  const { t, tNak } = useLang();
   const [nak, setNak] = useState(defaultNak >= 0 ? defaultNak : 0);
   const [pada, setPada] = useState(defaultPada || 1);
   const [style, setStyle] = useState("all");
@@ -606,25 +612,25 @@ export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = nu
         <div style={{ fontSize: 13.5, fontWeight: 700, color: "#1f3f68", marginBottom: 8 }}>{title}{count ? ` (${count})` : ""}</div>
         {parts.length ? parts.map(([k, label, list]) => (
           <div key={k} {...{ [attr]: k }} style={{ marginBottom: 10 }}>
-            {style === "all" && <div style={{ fontSize: 12, fontWeight: 700, color: "#7d6a3f", marginBottom: 6 }}>{label}</div>}
+            {style === "all" && <div style={{ fontSize: 12, fontWeight: 700, color: "#7d6a3f", marginBottom: 6 }}>{t(label)}</div>}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {list.map((n) => <span key={n} data-name style={nameChip}>{n}</span>)}
             </div>
           </div>
-        )) : <div style={{ fontSize: 13, color: "#55626f" }}>இந்த நடையில் இந்த எழுத்தில் வழக்கமான பெயர்கள் அரிது.</div>}
+        )) : <div style={{ fontSize: 13, color: "#55626f" }}>{t("names.styleEmpty")}</div>}
       </div>
     );
   };
   return (
     <div style={page}>
       <div style={wrap}>
-        <Back onBack={() => onNav("home")} />
-        <h2 style={h2}>குழந்தை பெயர்</h2>
-        <p style={sub}>பிறந்த நட்சத்திர பாதத்துக்கு உரிய எழுத்தில் பெயர் தொடங்குவது மரபு. பாதத்தைத் தட்டினால் அந்த எழுத்தில் தொடங்கும் பெயர்கள்.</p>
+        <Back onBack={() => onNav("home")} text={t("common.back")} />
+        <h2 style={h2}>{t("svc.names.t")}</h2>
+        <p style={sub}>{t("names.sub")}</p>
         <div style={card}>
-          <label style={label}>பிறந்த நட்சத்திரம்</label>
+          <label style={label}>{t("names.nakLabel")}</label>
           <select data-nak value={nak} onChange={(e) => { setNak(Number(e.target.value)); setPada(1); }} style={{ ...input, cursor: "pointer" }}>
-            {nakshatras.map((n, i) => <option key={i} value={i}>{n}</option>)}
+            {nakshatras.map((n, i) => <option key={i} value={i}>{tNak(n)}</option>)}
           </select>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
@@ -635,35 +641,35 @@ export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = nu
             return (
               <button key={i} data-pada={i + 1} aria-pressed={on} onClick={() => setPada(i + 1)}
                 style={{ ...card, marginBottom: 0, textAlign: "center", cursor: "pointer", fontFamily: "inherit", border: on ? "1.5px solid #1f3f68" : card.border, background: on ? "#eef1fb" : "#ffffff" }}>
-                <div style={{ fontSize: 12, color: "#55626f" }}>{i + 1}ஆம் பாதம்{mine ? " · உங்களுடையது" : ""}</div>
+                <div style={{ fontSize: 12, color: "#55626f" }}>{t("names.pada", { n: i + 1 })}{mine ? ` · ${t("names.mine")}` : ""}</div>
                 <div style={{ fontSize: 30, fontWeight: 800, color: "#1f3f68", lineHeight: 1.4 }}>{ta}</div>
-                <div data-pada-example style={{ fontSize: 12.5, color: "#7d6a3f", minHeight: 19 }}>{ex ? `எ.கா. ${ex}` : ""}</div>
+                <div data-pada-example style={{ fontSize: 12.5, color: "#7d6a3f", minHeight: 19 }}>{ex ? t("names.eg", { ex }) : ""}</div>
               </button>
             );
           })}
         </div>
         <div data-names-card style={card}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#1f3f68" }}>“{cur[0]}” எழுத்துக்கு உரிய பெயர்கள்{total ? ` (${total})` : ""}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#1f3f68" }}>{t("names.forLetter", { letter: cur[0] })}{total ? ` (${total})` : ""}</div>
           {total > 0 ? (
             <>
               <div data-name-styles style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-                <button data-name-style="all" style={styleChip(style === "all")} onClick={() => setStyle("all")}>எல்லாம்</button>
-                {NAME_STYLES.map(([k, label]) => <button key={k} data-name-style={k} style={styleChip(style === k)} onClick={() => setStyle(k)}>{label}</button>)}
+                <button data-name-style="all" style={styleChip(style === "all")} onClick={() => setStyle("all")}>{t("vk.all")}</button>
+                {NAME_STYLES.map(([k, label]) => <button key={k} data-name-style={k} style={styleChip(style === k)} onClick={() => setStyle(k)}>{t(label)}</button>)}
               </div>
-              {group("ஆண் குழந்தை", "m", "data-names-m")}
-              {group("பெண் குழந்தை", "f", "data-names-f")}
+              {group(t("names.boy"), "m", "data-names-m")}
+              {group(t("names.girl"), "f", "data-names-f")}
             </>
           ) : (
             <div data-names-empty style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.7, marginTop: 8 }}>
-              இந்த எழுத்தில் தொடங்கும் வழக்கமான தமிழ்ப் பெயர்கள் அரிது. இதே நட்சத்திரத்தின் மற்ற பாத எழுத்துகளையும் பார்க்கலாம்; பல குடும்பங்கள் நட்சத்திரத்தின் எந்தப் பாத எழுத்தையும் ஏற்கின்றன.
+              {t("names.empty")}
             </div>
           )}
         </div>
         <div style={{ ...card, display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "#4a5365", lineHeight: 1.7 }}>
           <CircleCheck size={18} color="#2e7d5b" style={{ flexShrink: 0, marginTop: 3 }} />
-          <span>நட்சத்திரமும் பாதமும் தெரியவில்லையா? “ஜாதகம்” பகுதியில் பிறப்பு விவரம் கொடுத்தால் “கட்டம்” பகுதியில் நட்சத்திரம், பாதம், உரிய எழுத்து மூன்றும் தெரியும்.</span>
+          <span>{t("names.hint")}</span>
         </div>
-        <p style={note}>பெயர்கள் பரிந்துரைகள் மட்டுமே.</p>
+        <p style={note}>{t("names.note")}</p>
       </div>
       <BottomNav active="" onNav={onNav} />
     </div>
