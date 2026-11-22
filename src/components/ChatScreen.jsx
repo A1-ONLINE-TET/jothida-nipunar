@@ -79,7 +79,7 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, p
       if (category && category !== "general") lastTopicRef.current = category;
       setMessages((m) => [...m, { role: "astro", q: question, mode: useAI && ai ? "ai" : "engine", text: asText(answer, "மன்னிக்கவும், இப்போது பதிலளிக்க முடியவில்லை."), done: false }]);
     } catch (e) {
-      setMessages((m) => [...m, { role: "astro", error: true, text: "சர்வர் இப்போது பதிலளிக்கவில்லை. சில வினாடிகள் கழித்து மீண்டும் முயலுங்கள்.", done: true }]);
+      setMessages((m) => [...m, { role: "astro", error: true, text: "சேவையகம் இப்போது பதிலளிக்கவில்லை. சில வினாடிகள் கழித்து மீண்டும் முயலுங்கள்.", done: true }]);
     } finally {
       setBusy(false);
     }

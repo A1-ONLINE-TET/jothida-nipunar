@@ -197,7 +197,7 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
       if (cat === "marriage" && extras.chevvai && extras.chevvai.present && !extras.chevvai.cancelled) rr.push("• செவ்வாய் தோஷம்: செவ்வாய் பகவான் வழிபாடு, வைதீஸ்வரன் கோயில்; பொருத்தத்தில் சமன் பார்க்கவும்.");
       if (rr.length) foc.push(rr.join("\n") + "\nஎது தேவை, எது தேவையில்லை, ரத்தினம் அணியலாமா என்ற முழுத் திட்டம்: ஜாதகம் → பரிகாரம் பகுதி.");
       else foc.push("உங்கள் ஜாதகத்தில் தனிப் பலவீனம் இல்லை — இஷ்ட தெய்வ வழிபாடு, நல்ல நாளில் காரியம் தொடங்கினால் போதும்.");
-      foc.push("பரிகாரம் முழு மனதுடன் செய்தால் பலன் உண்டு. 🙏");
+      foc.push("பரிகாரம் முழு மனதுடன் செய்தால் பலன் உண்டு.");
       return { category: cat, label: topic.label, answer: foc.join("\n\n") };
     }
   }
@@ -211,7 +211,7 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
     // ── ஆழ் synthesizer உள்ள தலைப்பு (திருமணம்/ஆரோக்கியம்/தொழில்) ──
     sec("◆ மொத்த நிலை", [`${ka.verdict}${ka.summary ? ` — ${cleanTxt(ka.summary)}` : ""}`]);
     const facts = (ka.factors || []).filter((f) => f && f.text).slice(0, 4)
-      .map((f) => `${(f.weight || 0) > 0 ? "✓" : (f.weight || 0) < 0 ? "⚠" : "•"} ${f.text}`);
+      .map((f) => f.text);
     sec("◆ முக்கிய காரணிகள்", facts);
     if (ka.spouseProfile) {
       const sp = ka.spouseProfile;
@@ -304,11 +304,8 @@ export function buildAskAnswer(h, dashaData, question, extras = {}) {
   if (rem.length) rem.push("முழுத் திட்டம் (எது தேவை, எது தேவையில்லை, ரத்தினம்): ஜாதகம் → பரிகாரம் பகுதி.");
   sec("◆ பரிகாரம்", rem);
 
-  // ── நிறைவு ──
-  lines.push(pick([
-    "நம்பிக்கையுடன் முன்னேறுங்கள் — நல்ல நாளில் முக்கிய காரியங்களைத் தொடங்குங்கள். 🙏",
-    "இன்னும் விரிவாக அறிய வேறு கேள்வி கேளுங்கள். வாழ்க வளமுடன். ✨",
-  ], seed + 7));
+  // ── நிறைவு — பயன் தரும் ஒரு வரி (அரட்டை முடிவு / சின்னம் இல்லை) ──
+  lines.push("மேலும் தெரிந்துகொள்ள வேறு கேள்வி கேளுங்கள்.");
 
   return {
     category: cat,

@@ -1342,7 +1342,7 @@ export default function AstrologyApp() {
         setApiSource("");
         const ae = getAuthError();
         const detail = ae ? `\n\nஉள்நுழைவுப் பிழை:\n${ae}` : `\n\n(${String(e?.message || e)})`;
-        alert("⚠ சர்வர் இப்போது பதிலளிக்கவில்லை." + detail);
+        alert("சேவையகம் இப்போது பதிலளிக்கவில்லை." + detail);
         goTo(SCREEN.FORM);
       }
       return;
@@ -1415,7 +1415,7 @@ export default function AstrologyApp() {
         setDailyData(daily); setDailyPrediction("");
         goTo(SCREEN.DAILY);
       } catch (e) {
-        alert("⚠ தினப்பலன் சர்வர் பதிலளிக்கவில்லை. மீண்டும் முயற்சிக்கவும்.");
+        alert("தினப்பலன் சேவையகம் பதிலளிக்கவில்லை. மீண்டும் முயற்சிக்கவும்.");
         goTo(SCREEN.HOME);
       }
       return;
@@ -1558,7 +1558,7 @@ export default function AstrologyApp() {
       setDailyData(daily); setDailyPrediction("");
       goTo(SCREEN.DAILY);
     } catch (e) {
-      alert("⚠ தினப்பலன் சர்வர் பதிலளிக்கவில்லை. மீண்டும் முயற்சிக்கவும்.");
+      alert("தினப்பலன் சேவையகம் பதிலளிக்கவில்லை. மீண்டும் முயற்சிக்கவும்.");
       goTo(SCREEN.HOME);
     }
   };
@@ -2030,8 +2030,8 @@ export default function AstrologyApp() {
             {formData.dob && formData.dob.length === 10 && (
               <div style={{fontSize:12,marginTop:4,color:isValidDDMMYYYY(formData.dob)?"#58a97f":"#c0564f"}}>
                 {isValidDDMMYYYY(formData.dob)
-                  ? `✓ ${formData.dob}`
-                  : "⚠ தவறான தேதி — சரிபார்க்கவும்"}
+                  ? `${formData.dob}`
+                  : "தவறான தேதி — சரிபார்க்கவும்"}
               </div>
             )}</div>
             <div><label style={labelStyle}>பிறந்த நேரம் * <span style={{fontSize:12,color:"#4a5365",fontWeight:400}}>(மணி:நிமிடம்)</span></label>
@@ -2057,7 +2057,7 @@ export default function AstrologyApp() {
                       : "rgba(255,255,255,0.5)",
                     color:formData.ampm===p ? "#fafbfe" : "#4a5365"
                   }}>
-                    {p==="AM"?"☀ காலை":"☽ மாலை"}
+                    {p==="AM"?"காலை":"மாலை"}
                   </button>
                 ))}
               </div>
@@ -2113,7 +2113,7 @@ export default function AstrologyApp() {
                 onFocus={()=>{ if(placeResults.length>0) setPlaceDropdownOpen(true); }}/>
 
               {placeSearching && (
-                <div style={{fontSize:12,marginTop:5,color:"#4a5365"}}>🔍 தேடுகிறது...</div>
+                <div style={{fontSize:12,marginTop:5,color:"#4a5365"}}>தேடுகிறது…</div>
               )}
 
               {/* Search results dropdown */}
@@ -2130,7 +2130,7 @@ export default function AstrologyApp() {
                         setPlaceResults([]);
                       }}
                       style={{padding:"10px 14px",cursor:"pointer",borderBottom:i<placeResults.length-1?"1px solid #e0e0e0":"none"}}>
-                      <div style={{fontSize:12,fontWeight:600,color:"#1f3f68"}}>📍 {r.shortLabel}</div>
+                      <div style={{fontSize:12,fontWeight:600,color:"#1f3f68"}}>{r.shortLabel}</div>
                       <div style={{fontSize:11.5,color:"#4a5365",marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.displayName}</div>
                     </div>
                   ))}
@@ -2140,14 +2140,14 @@ export default function AstrologyApp() {
               {/* Status indicator */}
               {formData.pobLat != null && formData.pobLon != null ? (
                 <div style={{fontSize:12,marginTop:5,color:"#58a97f"}}>
-                  ✓ துல்லியமான இடம் — {formData.pobLat.toFixed(4)}°, {formData.pobLon.toFixed(4)}°
+                  சரியான இடம் தேர்ந்தெடுக்கப்பட்டது
                 </div>
               ) : formData.pob && formData.pob.trim() && !placeSearching && (() => {
                 const geo = geocodeCity(formData.pob);
                 return (
                   <div style={{fontSize:12,marginTop:5,color:geo.matched?"#1f3f68":"#c0564f"}}>
                     {geo.matched
-                      ? `≈ தோராயமான இடம் — பட்டியலில் இருந்து ஊரைத் தேர்ந்தெடுத்தால் துல்லியம் கூடும்`
+                      ? `தோராயமான இடம் — பட்டியலில் இருந்து ஊரைத் தேர்ந்தெடுத்தால் துல்லியம் கூடும்`
                       : `இந்த ஊர் கண்டறியப்படவில்லை — சென்னை இடமாகக் கொள்ளப்படும். பட்டியலில் இருந்து தேர்ந்தெடுக்கவும் அல்லது கீழே அட்சரேகை/தீர்க்கரேகை உள்ளிடவும்`}
                   </div>
                 );
@@ -2194,7 +2194,7 @@ export default function AstrologyApp() {
                   </div>
                   {formData.pobSource==="manual" && ((formData.pobLat!=null && (formData.pobLat<-90||formData.pobLat>90)) || (formData.pobLon!=null && (formData.pobLon<-180||formData.pobLon>180))) && (
                     <div style={{fontSize:12,marginTop:4,color:"#d98aa3"}}>
-                      ⚠ தவறான அட்ச, தீர்க்கரேகை — அட்சரேகை -90 முதல் 90 வரையும், தீர்க்கரேகை -180 முதல் 180 வரையும் மட்டுமே செல்லுபடியாகும். சரிசெய்யும் வரை ஊரின் பதிவு மதிப்பு பயன்படுத்தப்படும்.
+                      தவறான அட்ச, தீர்க்கரேகை — அட்சரேகை -90 முதல் 90 வரையும், தீர்க்கரேகை -180 முதல் 180 வரையும் மட்டுமே செல்லுபடியாகும். சரிசெய்யும் வரை ஊரின் பதிவு மதிப்பு பயன்படுத்தப்படும்.
                     </div>
                   )}
                 </div>
@@ -2228,8 +2228,8 @@ export default function AstrologyApp() {
           </svg>
           <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:36}}>☉</div>
         </div>
-        <p style={{color:"#1f3f68",fontSize:15,fontWeight:500}}>கிரக நிலைகளை கணக்கிடுகிறது...</p>
-        <p style={{color:"#4a5365",fontSize:12.5,marginTop:6}}>வானியல் கணிதம் · பாரம்பரிய ஜோதிட விதிகள்</p>
+        <p style={{color:"#1f3f68",fontSize:15,fontWeight:500}}>உங்கள் ஜாதகம் தயாராகிறது…</p>
+        
         <div style={{display:"flex",justifyContent:"center",gap:6,marginTop:20}}>
           {[0,1,2,3,4].map(i=>(
             <div key={i} style={{width:6,height:6,borderRadius:"50%",background:"#c7a568",
@@ -3480,7 +3480,7 @@ ${aiPart}
 
                   <div style={{fontSize:13.5,color:"#27303f",lineHeight:1.7,marginBottom:10,background:"#f5f7fb",border:"1px solid #e3e8f2",borderRadius:12,padding:"8px 10px"}}>
                     <div><b>பிரஸ்ன லக்னம்:</b> <span style={{color:"#1f3f68",fontWeight:700}}>{prashnaData.lagnaName}</span> — {prashnaData.lagnaNature}</div>
-                    <div>☽ <b>சந்திரன்:</b> {prashnaData.moonSign} ({prashnaData.moonNak}) — {prashnaData.moonHouse}ஆம் வீடு</div>
+                    <div><b>சந்திரன்:</b> {prashnaData.moonSign} ({prashnaData.moonNak}) — {prashnaData.moonHouse}ஆம் வீடு</div>
                   </div>
 
                   <div style={{fontSize:13.5,fontWeight:700,color:"#7d6a3f",marginBottom:4}}>காரணிகள்</div>
@@ -4800,7 +4800,7 @@ ${aiPart}
                     border:`1px solid ${poruthBride.ampm===ap?"#d98aa3":"#d9e0ee"}`,
                     background:poruthBride.ampm===ap?"#d98aa322":"transparent",
                     color:poruthBride.ampm===ap?"#c0564f":"#76819a"}}>
-                    {ap==="AM"?"☀ காலை":"☽ மாலை"}
+                    {ap==="AM"?"காலை":"மாலை"}
                   </button>
                 ))}
               </div>
@@ -4827,7 +4827,7 @@ ${aiPart}
                     border:`1px solid ${poruthGroom.ampm===ap?"#7a93d9":"#d9e0ee"}`,
                     background:poruthGroom.ampm===ap?"#7a93d922":"transparent",
                     color:poruthGroom.ampm===ap?"#7a93d9":"#76819a"}}>
-                    {ap==="AM"?"☀ காலை":"☽ மாலை"}
+                    {ap==="AM"?"காலை":"மாலை"}
                   </button>
                 ))}
               </div>
@@ -4974,7 +4974,7 @@ ${aiPart}
               <div style={{fontSize:11.5,color:"#4a5365"}}>{currentHorai.startLabel} — {currentHorai.endLabel}</div>
             </div>
             <div style={{fontSize:11.5,color:currentHorai.isBenefic?"#58a97f":"#c0564f",fontWeight:600,textAlign:"right"}}>
-              {currentHorai.isBenefic?"✓ சுப நேரம்":"⚠ கவனம்"}
+              {currentHorai.isBenefic?"சுப நேரம்":"கவனம்"}
             </div>
           </div>
           )}
@@ -5063,7 +5063,7 @@ ${aiPart}
                 border:`1px solid ${taraBala.mood==="good"?"#58a97f25":"#d98aa330"}`}}>
                 <div style={{fontSize:11.5,color:"#4a5365",marginBottom:3}}>தாரா பலம்</div>
                 <div style={{fontSize:12.5,fontWeight:700,color:taraBala.mood==="good"?"#58a97f":"#c0564f"}}>
-                  {taraBala.mood==="good"?"✓ ":"⚠ "}{taraBala.name}
+                  {taraBala.name}
                 </div>
               </div>
             )}
@@ -5686,7 +5686,7 @@ ${aiPart}
           {!isCurrentMonth && (
             <button onClick={()=>{setCalMonth(today.getMonth());setCalYear(today.getFullYear());setCalSelected(today.getDate());}}
               style={{...btnOutline,fontSize:12.5,padding:"9px 0",borderColor:"#dcc27e30",color:"#1f3f68"}}>
-              📍 இன்றைய தேதிக்கு செல்
+              இன்றைய தேதிக்கு செல்
             </button>
           )}
         </div>
