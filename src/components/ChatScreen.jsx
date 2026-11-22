@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Send } from "lucide-react";
 import "./chat.css";
 import { ReportLink } from "./ReportBox.jsx";
+import { localizePersona } from "./personas.js";
 import { useLang } from "../i18n/index.js";
 
 // Astrologer message that reveals itself character-by-character (typewriter).
@@ -45,8 +46,9 @@ function asText(v, fallback) {
 // persona = src/components/personas.js-இன் ஓர் உதவியாளர் (பெயர், படம், அறிமுகம், மாதிரிக் கேள்விகள்).
 // அதன் key தொடக்கத் தலைப்பாகச் சேவையகத்துக்குச் செல்கிறது — தெளிவான தலைப்பு இல்லாத கேள்வி
 // ("எப்போது?") அந்த உதவியாளரின் துறையிலேயே பதிலளிக்கப்படும்.
-export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, persona, personName, initialQuestion = "", premiumLabel = "ஆழமான AI பதில்" }) {
-  const { t } = useLang();
+export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, persona: personaRaw, personName, initialQuestion = "", premiumLabel = "ஆழமான AI பதில்" }) {
+  const { t, lang } = useLang();
+  const persona = localizePersona(personaRaw, lang);
   const [aiMode, setAiMode] = useState(false); // AI இயல்பு மொழி ON/OFF
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");

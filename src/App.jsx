@@ -15,7 +15,7 @@ import HomeScreen from "./components/HomeScreen";
 // முகப்பு உடனே தேவை; மற்ற திரைகள் திறக்கும்போது ஏற்றப்படும் (முதல் திறப்பு வேகமாக).
 const AdvisoryScreen = lazy(() => import("./components/AdvisoryScreen"));
 const ChatScreen = lazy(() => import("./components/ChatScreen"));
-import { personaFor, PERSONA_FOR_AREA } from "./components/personas.js";
+import { personaFor, PERSONA_FOR_AREA, localizePersona } from "./components/personas.js";
 import BottomNav from "./components/BottomNav.jsx";
 import { kizhamai } from "./components/tools-data.js";
 import { tamilCivilDate, dayPanchang } from "./components/panchang-lite.js";
@@ -3056,7 +3056,7 @@ ${aiPart}
 
                 {/* இந்தப் பகுதிக்குரிய AI உதவியாளரிடம் மேலும் கேட்க */}
                 {(()=>{
-                  const ps = personaFor(PERSONA_FOR_AREA[area.key]);
+                  const ps = localizePersona(personaFor(PERSONA_FOR_AREA[area.key]), lang);
                   return (
                     <button data-area-ask={ps.key} onClick={()=>{ setChatPersona(ps.key); setChatFrom("result"); setChatInitialQ(""); goTo(SCREEN.CHAT); }}
                       style={{display:"flex",alignItems:"center",gap:10,width:"100%",marginTop:10,padding:"9px 10px",minHeight:56,textAlign:"left",cursor:"pointer",

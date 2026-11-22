@@ -2,13 +2,13 @@ import { Sparkles } from "lucide-react";
 
 import "./home.css";
 import BottomNav from "./BottomNav.jsx";
-import { PERSONAS } from "./personas.js";
+import { PERSONAS, localizePersona } from "./personas.js";
 import { useLang } from "../i18n/index.js";
 
 // ஆலோசனை — ஒவ்வொரு தேவைக்கும் ஓர் AI உதவியாளர் (படம், பெயர், துறை). தட்டினால் அந்த உதவியாளருடன்
 // அரட்டை திறக்கும்; worker/src/ask.js அந்தத் தலைப்பின் வீடுகள், காரகன், தசையை வைத்துப் பதிலளிக்கும்.
 export default function AdvisoryScreen({ onPick = () => {}, onNav = () => {} }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   return (
     <main className="app-shell">
       <div className="sky-stars" aria-hidden="true" />
@@ -42,7 +42,8 @@ export default function AdvisoryScreen({ onPick = () => {}, onNav = () => {} }) 
       </section>
 
       <section className="persona-grid" aria-label={t("adv.assistants")}>
-        {PERSONAS.map((p) => {
+        {PERSONAS.map((p0) => {
+          const p = localizePersona(p0, lang);
           const Icon = p.icon;
           return (
             <button className="persona-card" key={p.key} data-persona={p.key} onClick={() => onPick(p.key)}>
