@@ -453,7 +453,7 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
 // ═══════════════════════════════════════════════════════════════════
 // நவகிரக வழிபாடு — மந்திரம், கோயில், ரத்தினம், தானம் (engine பரிகார அட்டவணை)
 // ═══════════════════════════════════════════════════════════════════
-export function NavagrahaScreen({ fetchNavagraha, onNav }) {
+export function NavagrahaScreen({ fetchNavagraha, onNav, onBack }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState(false);
   const [open, setOpen] = useState(null);
@@ -468,7 +468,7 @@ export function NavagrahaScreen({ fetchNavagraha, onNav }) {
   return (
     <div style={page}>
       <div style={wrap}>
-        <Back onBack={() => onNav("home")} />
+        <Back onBack={() => (onBack ? onBack() : onNav("home"))} />
         <h2 style={h2}>நவகிரக வழிபாடு</h2>
         <p style={sub}>ஒவ்வொரு கிரகத்துக்கும் மந்திரம், கோயில், ரத்தினம், தானம்</p>
         {err && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>விவரங்களைப் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.</div>}

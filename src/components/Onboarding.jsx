@@ -53,7 +53,8 @@ export function dayPart(h12, min, ampm) {
   return "part.night";
 }
 
-export default function Onboarding({ steps = ALL_STEPS, initial = {}, searchPlaces, guessZone = () => "", onDone = () => {} }) {
+export default function Onboarding({ steps = ALL_STEPS, initial = {}, searchPlaces, guessZone = () => "", onDone = () => {},
+  registerStep, onAdvance, onBackStep }) {
   const { lang, t, tList, setLang } = useLang();
   const [i, setI] = useState(0);
   const [err, setErr] = useState("");
@@ -84,6 +85,8 @@ export default function Onboarding({ steps = ALL_STEPS, initial = {}, searchPlac
 
   useEffect(() => { setErr(""); const el = firstField.current; if (el && step !== "lang" && step !== "gender") { try { el.focus({ preventScroll: true }); } catch (_) { /* ignore */ } } }, [step]);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  // கைபேசியின் "பின்" பொத்தானுக்கு: App-இன் வரலாற்று நிர்வாகி நேரடியாக இந்தப் படிக்கு அமைக்கும் (setI).
+  useEffect(() => { if (registerStep) { registerStep(setI); return () => registerStep(null); } return undefined; }, [registerStep]);
 
   const months = tList("months");
   const yearNum = /^\d{4}$/.test(year) ? Number(year) : 0;
@@ -119,9 +122,10 @@ export default function Onboarding({ steps = ALL_STEPS, initial = {}, searchPlac
     const e = check();
     if (e) { setErr(e); return; }
     if (step === "lang") setLang(langPicked);
-    if (i >= steps.length - 1) finish(); else setI(i + 1);
+    if (i >= steps.length - 1) finish(); else { setI(i + 1); onAdvance && onAdvance(i + 1); }
   };
-  const back = () => { if (i > 0) setI(i - 1); };
+  // "பின்" (திரையிலோ கைபேசியிலோ) — ஒரு படி பின்னோக்கி. onBackStep உலாவி வரலாற்றையும் ஒத்திசைக்கும்.
+  const back = () => { if (i > 0) { setI(i - 1); onBackStep && onBackStep(); } };
   const onKey = (e) => { if (e.key === "Enter") { e.preventDefault(); next(); } };
 
   // ── இடத் தேடல் (தட்டச்சு நின்ற அரை வினாடியில்) ──

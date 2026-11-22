@@ -719,6 +719,7 @@ export default function AstrologyApp() {
   const [chatInitialQ, setChatInitialQ] = useState(""); // ஆலோசனை தலைப்பிலிருந்து chat-க்கு auto கேள்வி
   const [chatPersona, setChatPersona] = useState("general"); // அரட்டையில் உள்ள AI உதவியாளர் (personas.js key)
   const [chatFrom, setChatFrom] = useState("advisory");      // அரட்டை எங்கிருந்து திறந்தது — "பின்" அங்கேயே திரும்பும்
+  const [toolFrom, setToolFrom] = useState("home");          // நவகிரக/பொருத்தம் எங்கிருந்து திறந்தது — "பின்" அங்கேயே திரும்பும் (பரிகாரம் அல்லது முகப்பு)
 
   // ஜாதகம் வெற்றிகரமாக உருவானதும் அழைக்கப்படும் — அதே நபர் (பெயர்+தேதி+நேரம்)
   // ஏற்கனவே இருந்தால் புதுப்பிக்கும்; இல்லையேல் பட்டியலின் முதலில் சேர்க்கும்.
@@ -1060,6 +1061,7 @@ export default function AstrologyApp() {
   //   • "ஆழம்" பகுதியின் ஒரு பகுப்பாய்வு = தனிப் பதிவு (view) — "பின்" பட்டியலுக்கு.
   const navStack = useRef([{ jn: SCREEN.HOME }]);
   const skipPop = useRef(0);
+  const obStepCtl = useRef(null);   // நுழைவுப் படி அமைப்பான் — கைபேசியின் "பின்" ஒரு படி பின்னோக்கிச் செல்ல (Onboarding பதிவுசெய்யும்)
   const histOK = typeof window !== "undefined" && !!window.history && typeof window.history.pushState === "function";
   const NAV_TRANSIENT = [SCREEN.SPLASH, SCREEN.LOADING, SCREEN.WELCOME, SCREEN.AUTH];
   const NAV_TABS = [SCREEN.DAILY, SCREEN.RESULT, SCREEN.ADVISORY, SCREEN.ACCOUNT];
@@ -1106,6 +1108,8 @@ export default function AstrologyApp() {
       const g = navGuard.current;
       // தேவையான தரவு இல்லாத திரைக்குத் திரும்ப முடியாது (எ.கா. தரவு நீக்கிய பின்) → முகப்பு.
       if (NAV_TRANSIENT.includes(target) || (target === SCREEN.RESULT && !g.hasChart) || (target === SCREEN.DAILY && !g.hasDaily) || (target === SCREEN.CHAT && !g.hasBirth)) { target = SCREEN.HOME; view = ""; }
+      // நுழைவின் உள்ளே "பின்" — திரையை விடாமல் முந்தைய கேள்விக்கு (fade இல்லை).
+      if (target === SCREEN.ONBOARD && obStepCtl.current) { obStepCtl.current(Number(view) || 0); return; }
       setAdvancedView(view);
       setFadeIn(false);
       setTimeout(() => { setScreen(target); setFadeIn(true); window.scrollTo({ top: 0 }); }, 200);
@@ -1579,7 +1583,7 @@ export default function AstrologyApp() {
       case "backtest":    openResultView("backtest"); break;
       case "eventtiming": openResultView("eventtiming"); break;
       case "sadesati":    openResultView("saniguru"); break;
-      case "porutham":    setHomeQuestion(null); goTo(SCREEN.PORUTHAM); break;
+      case "porutham":    setToolFrom("home"); setHomeQuestion(null); goTo(SCREEN.PORUTHAM); break;
       case "muhurtham":
       case "calendar":    goTo(SCREEN.CALENDAR); break;
       case "account":     goTo(SCREEN.ACCOUNT); break;
@@ -1589,7 +1593,7 @@ export default function AstrologyApp() {
       case "numerology":  goTo(SCREEN.NUMEROLOGY); break;
       case "names":       goTo(SCREEN.NAMES); break;
       case "festivals":   goTo(SCREEN.FESTIVALS); break;
-      case "navagraha":   goTo(SCREEN.NAVAGRAHA); break;
+      case "navagraha":   setToolFrom("home"); goTo(SCREEN.NAVAGRAHA); break;
       case "remedy":      openResultView("remedy"); break;
       default: break;
     }
@@ -1681,6 +1685,9 @@ export default function AstrologyApp() {
         initial={existing ? { name:existing.name, phone:existing.phone, gender:existing.gender, dob:existing.dob, tob:existing.tob, sec:existing.sec, ampm:existing.ampm, pob:existing.pob, pobLat:existing.pobLat, pobLon:existing.pobLon, pobSource:existing.pobSource, pobTz:existing.pobTz } : {}}
         searchPlaces={searchPlacesOSM}
         guessZone={guessBirthZone}
+        registerStep={(fn)=>{ obStepCtl.current = fn; }}
+        onAdvance={(n)=>histWrite("push", { jn: SCREEN.ONBOARD, view: String(n) })}
+        onBackStep={()=>histBack(1)}
         onDone={(d)=>{
           if(d.lang) setAppLang(d.lang);
           if(!onlyLang){
@@ -1870,7 +1877,7 @@ export default function AstrologyApp() {
     const openDate = (iso) => { const [y, m, d] = iso.split("-").map(Number); setCalYear(y); setCalMonth(m - 1); setCalSelected(d); goTo(SCREEN.CALENDAR); };
     return <FestivalsScreen fetchFestivals={apiFestivals} fetchVratham={apiVratham} onNav={handleNav} onOpenDate={openDate} />;
   }
-  if(screen===SCREEN.NAVAGRAHA) return <NavagrahaScreen fetchNavagraha={apiNavagraha} onNav={handleNav} />;
+  if(screen===SCREEN.NAVAGRAHA) return <NavagrahaScreen fetchNavagraha={apiNavagraha} onNav={handleNav} onBack={toolFrom==="remedy" ? ()=>{ setToolFrom("home"); openResultView("remedy"); } : ()=>goTo(SCREEN.HOME)} />;
 
   // ═══════ ACCOUNT — சேமித்த ஜாதகங்கள் + அமைப்புகள் ═══════
   if(screen===SCREEN.ACCOUNT) {
@@ -4568,7 +4575,8 @@ ${aiPart}
           {/* ═══ பரிகாரம் — வேர்க் காரணத்திலிருந்து (server கணக்கு) ═══ */}
           {resultTab==="remedy" && (
             <RemedyTab plan={remedyPlan} card={card} fmtDate={fmtDateTa} name={formData.name}
-              onRetry={()=>setRemedyPlan(null)} onNav={handleNav} onShare={shareOut}
+              onRetry={()=>setRemedyPlan(null)} onShare={shareOut}
+              onNav={(k)=>{ if(k==="navagraha"||k==="porutham"){ setToolFrom("remedy"); if(k==="porutham") setHomeQuestion(null); goTo(k==="navagraha"?SCREEN.NAVAGRAHA:SCREEN.PORUTHAM); } else handleNav(k); }}
               onOpenAll={()=>{ showResultView("remedies"); window.scrollTo({top:0}); }} />
           )}
 
@@ -4775,7 +4783,7 @@ ${aiPart}
     return(
       <div style={base}>
         <div style={{...container,paddingTop:24,paddingBottom:104}}>
-          <BackLink onClick={()=>goTo(SCREEN.HOME)} />
+          <BackLink onClick={()=>{ if(toolFrom==="remedy"){ setToolFrom("home"); openResultView("remedy"); } else goTo(SCREEN.HOME); }} />
 
           <div style={{textAlign:"center",marginBottom:24}}>
             <div style={{width:52,height:52,borderRadius:16,background:"#fbeef2",color:"#c2607c",display:"grid",placeItems:"center",margin:"0 auto 8px"}}><Heart size={26} strokeWidth={1.8}/></div>
