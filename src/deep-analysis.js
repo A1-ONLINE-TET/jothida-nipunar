@@ -760,8 +760,8 @@ export function analyzeCareer(horoscope, grahaBala, dashaData, ctx) {
   // prediction — a chart can lean one way while life takes another.
   const aspectors10 = placements.filter(p => p.ta !== h10LordName && !occupants10.includes(p) && planetAspectsHouse(p, lagnaIdx, 10)).map(p => p.ta);
   const fieldSources = [...new Set([h10LordName, ...occupants10.map(p => p.ta), ...aspectors10])];
-  const suggestedFields = [...new Set(fieldSources.map(n => CAREER_FIELDS[n]).filter(Boolean).join(" / ").split(" / "))].join(" / ");
-  if (suggestedFields) summary = `🎯 பொருத்தமான துறை: ${suggestedFields}.\n${summary}`;
+  const suggestedFields = [...new Set(fieldSources.map(n => CAREER_FIELDS[n]).filter(Boolean).join(" / ").split(" / "))].slice(0, 4).join(", ");
+  if (suggestedFields) summary = `பொருத்தமான துறை: ${suggestedFields}.\n${summary}`;
 
   return { area: "தொழில்", icon: "💼", score, verdict, verdictColor, summary, factors,
            suggestedFields, chips,
