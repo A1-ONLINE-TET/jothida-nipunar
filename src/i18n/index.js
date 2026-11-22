@@ -11,6 +11,7 @@ import { useSyncExternalStore } from "react";
 import ta from "./ta.js";
 import en from "./en.js";
 import hi from "./hi.js";
+import * as T from "./terms.js";
 
 export const LANGS = [
   { code: "ta", label: "தமிழ்", sub: "Tamil" },
@@ -53,10 +54,24 @@ export function tList(key, lang = getLang()) {
   return Array.isArray(v) ? v : [];
 }
 
-/** React hook — மொழி மாறும்போது கூறு மீண்டும் வரையப்படும். திரும்புவது: { lang, t, tList, setLang }. */
+/** React hook — மொழி மாறும்போது கூறு மீண்டும் வரையப்படும்.
+ *  திரும்புவது: { lang, t, tList, setLang } + கலைச்சொல் பெறுநர்கள் (term): tNak, tRashi, tPlanet, tTithi, tYogam, tKaranam, tGowri, tWeekday, tDir, tPhase. */
 export function useLang() {
   const lang = useSyncExternalStore((fn) => { listeners.add(fn); return () => listeners.delete(fn); }, getLang, getLang);
-  return { lang, t: (k, v) => t(k, v, lang), tList: (k) => tList(k, lang), setLang };
+  return {
+    lang, setLang,
+    t: (k, v) => t(k, v, lang), tList: (k) => tList(k, lang),
+    tNak: (x) => T.tNak(x, lang), tRashi: (x) => T.tRashi(x, lang), tPlanet: (x) => T.tPlanet(x, lang),
+    tTithi: (x) => T.tTithi(x, lang), tYogam: (x) => T.tYogam(x, lang), tKaranam: (x) => T.tKaranam(x, lang),
+    tGowri: (x) => T.tGowri(x, lang), tWeekday: (x) => T.tWeekday(x, lang), tDir: (x) => T.tDir(x, lang), tPhase: (x) => T.tPhase(x, lang), tMonth: (x) => T.tMonth(x, lang),
+  };
 }
+
+/** Hook இல்லாத இடங்களுக்கு — தற்போதைய மொழியில் கலைச்சொல். */
+export const term = {
+  nak: (x) => T.tNak(x, getLang()), rashi: (x) => T.tRashi(x, getLang()), planet: (x) => T.tPlanet(x, getLang()),
+  tithi: (x) => T.tTithi(x, getLang()), yogam: (x) => T.tYogam(x, getLang()), karanam: (x) => T.tKaranam(x, getLang()),
+  gowri: (x) => T.tGowri(x, getLang()), weekday: (x) => T.tWeekday(x, getLang()), dir: (x) => T.tDir(x, getLang()), phase: (x) => T.tPhase(x, getLang()),
+};
 
 export const ALL_DICTS = DICT; // சோதனைக்கு

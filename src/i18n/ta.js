@@ -71,4 +71,47 @@ export default {
 
   // ── கணக்கு: மொழி ──
   "acct.lang.title": "மொழி",
+
+  // ── முகப்பு ──
+  "home.start.title": "உங்கள் ஜாதகத்தை உருவாக்குங்கள்",
+  "home.start.sub": "பிறந்த தேதி, நேரம், இடம் — ஒரு முறை உள்ளிட்டால் போதும்",
+  "home.today.title": "இன்றைய பஞ்சாங்கம்",
+  "home.calendar": "நாட்காட்டி",
+  "home.servicesAria": "சேவைகள்",
+  "home.special.today": "இன்று: {list}",
+
+  // சேவை ஓடுகள்
+  "svc.rasi.t": "12 ராசி பலன்",
+  "svc.rasi.d": "இன்று முதல் ஆண்டு வரை",
+  "svc.porutham.t": "திருமண பொருத்தம்",
+  "svc.porutham.d": "10 பொருத்தம்",
+  "svc.numerology.t": "எண் கணிதம்",
+  "svc.numerology.d": "பிறந்த தேதி, பெயர் எண்",
+  "svc.names.t": "குழந்தை பெயர்",
+  "svc.names.d": "நட்சத்திரப்படி அழகிய பெயர்கள்",
+  "svc.festivals.t": "பண்டிகைகள்",
+  "svc.festivals.d": "விரத நாட்களுடன்",
+  "svc.navagraha.t": "நவகிரக வழிபாடு",
+  "svc.navagraha.d": "மந்திரம், கோயில், தானம்",
+
+  // ── பஞ்சாங்கம் (முகப்பு அட்டை + நாட்காட்டி) ──
+  "pan.tithi": "திதி",
+  "pan.nakshatra": "நட்சத்திரம்",
+  "pan.yogam": "யோகம்",
+  "pan.karanam": "கரணம்",
+  "pan.then": "பின் {x}",
+  "pan.goodTime": "நல்ல நேரம்",
+  "pan.avoidTime": "தவிர்க்க வேண்டிய நேரம்",
+  "pan.day": "பகல்",
+  "pan.night": "இரவு",
+  "pan.rahu": "ராகு காலம்",
+  "pan.yama": "எமகண்டம்",
+  "pan.kuligai": "குளிகை",
+  "pan.soolam": "சூலம்",
+  "pan.chandrashtama": "சந்திராஷ்டமம்",
+  "pan.sunriseSunset": "உதயம் – அஸ்தமனம்",
+  "pan.until": "{time} வரை",
+  "now.in": "இப்போது {x}",
+  "now.good": "இப்போது {x} — நல்ல நேரம்",
+  "now.avoid": "இப்போது {x} — தவிர்க்கவும்",
 };

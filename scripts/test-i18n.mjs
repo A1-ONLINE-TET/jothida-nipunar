@@ -27,5 +27,17 @@ for (const [k, s] of flat(ta)) { if (DEVA.test(s) || LATIN.test(s.replace(/\{[a-
 for (const [k, s] of flat(en)) { if (TAMIL.test(s) || DEVA.test(s)) bad(`en: "${k}" has non-English letters: ${s}`); else ok(); }
 for (const [k, s] of flat(hi)) { if (TAMIL.test(s) || LATIN.test(s.replace(/\{[a-zA-Z]+\}/g, "").replace(/\b(AI|PDF|Google)\b/g, ""))) bad(`hi: "${k}" has non-Hindi letters: ${s}`); else ok(); }
 
+// ── கலைச்சொல் அகராதி (terms.js) — ஒவ்வொரு வகையிலும் ஒவ்வொரு சொல்லுக்கும் en (Latin) + hi (Devanagari) ──
+import { ALL_TERM_MAPS } from "../src/i18n/terms.js";
+for (const [grp, map] of Object.entries(ALL_TERM_MAPS)) {
+  for (const [taTerm, v] of Object.entries(map)) {
+    if (!TAMIL.test(taTerm)) bad(`terms.${grp}: key "${taTerm}" not Tamil`); else ok();
+    if (typeof v?.en !== "string" || !v.en.trim()) { bad(`terms.${grp}.${taTerm}: en missing`); continue; }
+    if (typeof v?.hi !== "string" || !v.hi.trim()) { bad(`terms.${grp}.${taTerm}: hi missing`); continue; }
+    if (TAMIL.test(v.en) || DEVA.test(v.en)) bad(`terms.${grp}.${taTerm}: en has non-Latin: ${v.en}`); else ok();
+    if (TAMIL.test(v.hi) || LATIN.test(v.hi)) bad(`terms.${grp}.${taTerm}: hi has non-Devanagari: ${v.hi}`); else ok();
+  }
+}
+
 console.log(fail ? `✗ ${fail} I18N CHECKS FAILED (${pass} passed)` : `✓ ALL ${pass} I18N CHECKS PASSED`);
 if (fail) process.exit(1);
