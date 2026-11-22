@@ -630,7 +630,9 @@ const shareOut = (title, text) => {
 };
 // engine தரும் கடும் நிறங்களை அமைதியான மூன்று பொருள்-நிறங்களாக்கு
 const calmTone = (c) => { const k = String(c || "").toLowerCase(); return k === "#0d7a30" ? "#2e7d5b" : k === "#cc1a1a" ? "#c0564f" : k === "#b8860b" ? "#a9823c" : (c || "#27303f"); };
-const fmtDateTa = (d) => d ? new Date(d).toLocaleDateString("ta-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
+// தேதி — தேர்ந்த மொழியின் locale-இல் (மாதப் பெயர் தானாக மொழிபெயர்ப்பாகும்: ஜூன்/Jun/जून)
+const DATE_LOCALE = { ta: "ta-IN", en: "en-GB", hi: "hi-IN" };
+const fmtDateTa = (d) => d ? new Date(d).toLocaleDateString(DATE_LOCALE[getLang()] || "ta-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
 // பிறந்த இடத்தின் நேர மண்டலம் (IANA பெயர்) — "" = இந்தியா. Offset-ஐ server கணக்கிடும்
 // (கோடைக்கால நேரம், வரலாற்று மாற்றங்கள் உட்பட); இங்கே பெயர் மட்டும்.
 const BIRTH_ZONES = [
@@ -4627,9 +4629,9 @@ ${aiPart}
             const chainOpen = openAreas.has("__dashaChain");
             return (
               <div style={{...card,marginBottom:10,padding:"16px"}}>
-                <div style={{fontSize: 12,color:"#55626f",marginBottom:2}}>தற்போதைய காலம்</div>
+                <div style={{fontSize: 12,color:"#55626f",marginBottom:2}}>{t("dasha.currentPeriod")}</div>
                 <div style={{fontSize: 17,fontWeight:700,color:"#1f3f68",marginBottom:8,lineHeight:1.4}}>
-                  {dc.mahaLord} தசை{dc.antarLord ? ` · ${dc.antarLord} புக்தி` : ""}
+                  {tPlanet(dc.mahaLord)} {t("dasha.word")}{dc.antarLord ? ` · ${tPlanet(dc.antarLord)} ${t("dasha.bhukti")}` : ""}
                 </div>
                 <div style={{fontSize: 13,color:"#4a5365",lineHeight:1.7}}>
                   {dc.mahaLord} {dc.dashaLordHouse}ஆம் வீட்டில் ({dc.dashaLordRashi}){dc.dashaLordStrength ? ` — ${dc.dashaLordStrength}` : ""}.
@@ -4638,11 +4640,11 @@ ${aiPart}
                 <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:10}}>
                   {dc.dashaLordUnified && (
                     <span style={{...chipBase,background:dc.dashaLordUnified.composite>=60?"#e9f5ee":dc.dashaLordUnified.composite<45?"#fbeeed":"#f3f5f9",
-                      color:dc.dashaLordUnified.composite>=60?"#2e7d5b":dc.dashaLordUnified.composite<45?"#c0564f":"#4a5365"}}>தசாநாதன் பலம்: {dc.dashaLordUnified.tier}</span>
+                      color:dc.dashaLordUnified.composite>=60?"#2e7d5b":dc.dashaLordUnified.composite<45?"#c0564f":"#4a5365"}}>{t("dasha.lordStrength",{tier:dc.dashaLordUnified.tier})}</span>
                   )}
-                  {fn && (<span style={{...chipBase,background:good?"#e9f5ee":fn.nature==="பாபன்"?"#fbeeed":"#f3f5f9",color:good?"#2e7d5b":fn.nature==="பாபன்"?"#c0564f":"#4a5365"}}>உங்கள் லக்னத்திற்கு {fn.nature}</span>)}
-                  {marakaBadhaka?.marakaLords.includes(dc.mahaLord) && <span style={{...chipBase,background:"#fbeeed",color:"#c0564f"}}>மாரகாதிபதி — ஆரோக்கியத்தில் கவனம்</span>}
-                  {marakaBadhaka?.badhakaLord === dc.mahaLord && <span style={{...chipBase,background:"#fbeeed",color:"#c0564f"}}>பாதகாதிபதி — தடைகளில் கவனம்</span>}
+                  {fn && (<span style={{...chipBase,background:good?"#e9f5ee":fn.nature==="பாபன்"?"#fbeeed":"#f3f5f9",color:good?"#2e7d5b":fn.nature==="பாபன்"?"#c0564f":"#4a5365"}}>{t("dasha.forLagna",{nature:fn.nature})}</span>)}
+                  {marakaBadhaka?.marakaLords.includes(dc.mahaLord) && <span style={{...chipBase,background:"#fbeeed",color:"#c0564f"}}>{t("dasha.maraka")}</span>}
+                  {marakaBadhaka?.badhakaLord === dc.mahaLord && <span style={{...chipBase,background:"#fbeeed",color:"#c0564f"}}>{t("dasha.badhaka")}</span>}
                 </div>
                 {/* தசா சந்தி எச்சரிக்கை */}
                 {dashaData && dashaSandhi && dashaSandhi.map((sa, si) => (
@@ -4652,7 +4654,7 @@ ${aiPart}
                 {/* தசாநாதன் தன் ராசிநாதன், நட்சத்திராதிபதி, சேர்க்கை-பார்வை வழியாகவும் பலன் தருவான் */}
                 {pc && (<>
                   <button onClick={()=>toggleArea("__dashaChain")} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",padding:0,marginTop:6,minHeight:40,fontSize: 13,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>
-                    தசாநாதன் பலன் தரும் வழி <ChevronDown size={16} style={{transform:chainOpen?"rotate(180deg)":"none",transition:"transform .2s"}}/>
+                    {t("dasha.lordPath")} <ChevronDown size={16} style={{transform:chainOpen?"rotate(180deg)":"none",transition:"transform .2s"}}/>
                   </button>
                   {chainOpen && (
                     <div style={{marginTop:8}}>
@@ -4671,7 +4673,7 @@ ${aiPart}
 
           {/* தசை முறை — விம்சோத்தரி / யோகினி / அஷ்டோத்தரி */}
           <div style={{display:"flex",gap:6,marginBottom:10}}>
-            {[["vim","விம்சோத்தரி"],["yogini","யோகினி"],["ashtottari","அஷ்டோத்தரி"]].map(([k,l])=>(
+            {[["vim",t("dasha.sys.vim")],["yogini",t("dasha.sys.yogini")],["ashtottari",t("dasha.sys.ashtottari")]].map(([k,l])=>(
               <button key={k} data-dasha-system={k} onClick={()=>{
                 setDashaSystem(k);
                 if (k !== "vim" && (!altDashas || altDashas === "error")) {
@@ -4685,19 +4687,19 @@ ${aiPart}
           </div>
           {dashaSystem!=="vim" && (
             <div data-alt-dasha style={{...card,marginBottom:10,padding:"16px"}}>
-              <div style={{...secTitle,marginBottom:2}}>{dashaSystem==="yogini" ? "யோகினி தசை (36 ஆண்டு சுழற்சி)" : "அஷ்டோத்தரி தசை (108 ஆண்டு சுழற்சி)"}</div>
-              {altDashas==="loading" && <div style={{fontSize: 13,color:"#55626f"}}>கணக்கிடப்படுகிறது…</div>}
-              {altDashas==="error" && <div style={{fontSize: 13,color:"#c0564f"}}>பெற முடியவில்லை. மீண்டும் முயற்சிக்கவும்.</div>}
+              <div style={{...secTitle,marginBottom:2}}>{dashaSystem==="yogini" ? t("dasha.yoginiTitle") : t("dasha.ashtottariTitle")}</div>
+              {altDashas==="loading" && <div style={{fontSize: 13,color:"#55626f"}}>{t("common.computing")}</div>}
+              {altDashas==="error" && <div style={{fontSize: 13,color:"#c0564f"}}>{t("common.fetchFail")}</div>}
               {altDashas && typeof altDashas==="object" && (altDashas[dashaSystem]?.dashas||[]).map((d,i)=>(
                 <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 8px",borderTop:i?"1px solid #eef1f6":"none",background:d.isCurrent?"#f1f4fa":"transparent",borderRadius:d.isCurrent?8:0}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize: 14,fontWeight:d.isCurrent?700:400,color:d.isCurrent?"#1f3f68":"#27303f"}}>
-                      {d.name}{d.planet && d.planet!==d.name ? ` (${d.planet})` : ""}
-                      {d.isCurrent && <span style={{fontSize: 11,background:"#e7edf8",color:"#1f3f68",padding:"1px 7px",borderRadius:999,fontWeight:700,marginLeft:8}}>நடப்பு</span>}
+                      {tPlanet(d.name)}{d.planet && d.planet!==d.name ? ` (${tPlanet(d.planet)})` : ""}
+                      {d.isCurrent && <span style={{fontSize: 11,background:"#e7edf8",color:"#1f3f68",padding:"1px 7px",borderRadius:999,fontWeight:700,marginLeft:8}}>{t("dasha.currentBadge")}</span>}
                     </div>
                     <div style={{fontSize: 12,color:"#4a5365",marginTop:1}}>{fmtDateTa(d.startDate)} — {fmtDateTa(d.endDate)}</div>
                   </div>
-                  <span style={{fontSize: 12,color:"#4a5365",flexShrink:0}}>{d.years} ஆண்டு</span>
+                  <span style={{fontSize: 12,color:"#4a5365",flexShrink:0}}>{t("dasha.years",{n:d.years})}</span>
                 </div>
               ))}
             </div>
@@ -4705,9 +4707,9 @@ ${aiPart}
 
           {/* ═══ 4. DASHA SUMMARY (with dates) ═══ */}
           {dashaSystem==="vim"&&dashaData&&(<div style={{...card,marginBottom:10,padding:"16px"}}>
-            <div style={{...secTitle,marginBottom:2}}>விம்சோத்தரி தசா காலக்கணக்கு</div>
+            <div style={{...secTitle,marginBottom:2}}>{t("dasha.vimTitle")}</div>
             <div style={{fontSize: 13,color:"#a9823c",marginBottom:8,marginTop:6}}>
-              நட்சத்திரம்: <span style={{color:"#27303f"}}>{dashaData.birthNakshatra}</span> • நாதன்: <span style={{color:"#27303f"}}>{dashaData.birthLord.name}</span>
+              {t("pan.nakshatra")}: <span style={{color:"#27303f"}}>{tNak(dashaData.birthNakshatra)}</span> · {t("dasha.lord")}: <span style={{color:"#27303f"}}>{tPlanet(dashaData.birthLord.name)}</span>
             </div>
             {dashaData.dashas.map((d,i)=>(
               <div key={i}>
@@ -4716,52 +4718,52 @@ ${aiPart}
                   onClick={()=>setExpandedDasha(expandedDasha===i||(typeof expandedDasha==='string'&&expandedDasha.startsWith(i+"-"))?null:i)}>
                   <div style={{flex:1}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <span style={{fontSize: 14,fontWeight:d.isCurrent?700:400,color:d.isCurrent?"#1f3f68":"#27303f"}}>{d.name} தசை</span>
-                      {d.isCurrent&&<span style={{fontSize: 11,background:"#dcc27e20",color:"#1f3f68",padding:"1px 5px",borderRadius:4,fontWeight:700}}>நடப்பு</span>}
+                      <span style={{fontSize: 14,fontWeight:d.isCurrent?700:400,color:d.isCurrent?"#1f3f68":"#27303f"}}>{tPlanet(d.name)} {t("dasha.word")}</span>
+                      {d.isCurrent&&<span style={{fontSize: 11,background:"#dcc27e20",color:"#1f3f68",padding:"1px 5px",borderRadius:4,fontWeight:700}}>{t("dasha.currentBadge")}</span>}
                     </div>
                     <div style={{fontSize: 12,color:"#4a5365",marginTop:1}}>
                       {fmtDateTa(d.startDate)} — {fmtDateTa(d.endDate)}
                     </div>
                   </div>
-                  <span style={{fontSize: 12,color:"#4a5365"}}>{d.years} ஆண்டு</span>
+                  <span style={{fontSize: 12,color:"#4a5365"}}>{t("dasha.years",{n:d.years})}</span>
                   <span style={{fontSize: 13,color:"#55626f",transition:"transform 0.2s",transform:(expandedDasha===i||String(expandedDasha).startsWith(i+"-"))?"rotate(180deg)":"rotate(0)"}}> ▾</span>
                 </div>
                 {(expandedDasha===i||String(expandedDasha).startsWith(i+"-"))&&d.antardashas&&(
                   <div style={{marginLeft:24,borderLeft:"2px solid #c7a56850",paddingLeft:10,marginBottom:6}}>
-                    <div style={{fontSize: 12,color:"#4a5365",fontWeight:600,marginBottom:4,marginTop:2}}>புக்தி</div>
+                    <div style={{fontSize: 12,color:"#4a5365",fontWeight:600,marginBottom:4,marginTop:2}}>{t("dasha.bhukti")}</div>
                     {d.antardashas.map((ad,j)=>(
                       <div key={j}>
                         <div style={{display:"flex",alignItems:"center",gap:6,padding:"8px 0",cursor:"pointer",
                           background:ad.isCurrent?"#f6f1e4":"transparent",borderRadius:4}}
                           onClick={(e)=>{e.stopPropagation();setExpandedDasha(expandedDasha===`${i}-${j}`?i:`${i}-${j}`)}}>
-                          <span style={{fontSize: 13,flex:1,color:ad.isCurrent?"#a9823c":"#27303f"}}>{ad.name}
-                            {ad.isCurrent&&<span style={{fontSize: 11,background:"#e8dcc0",color:"#a9823c",padding:"0 4px",borderRadius:3,marginLeft:4,fontWeight:700}}>நடப்பு</span>}
+                          <span style={{fontSize: 13,flex:1,color:ad.isCurrent?"#a9823c":"#27303f"}}>{tPlanet(ad.name)}
+                            {ad.isCurrent&&<span style={{fontSize: 11,background:"#e8dcc0",color:"#a9823c",padding:"0 4px",borderRadius:3,marginLeft:4,fontWeight:700}}>{t("dasha.currentBadge")}</span>}
                           </span>
-                          <span style={{fontSize: 11.5,color:"#55626f"}}>{ad.startDate.toLocaleDateString("ta-IN",{month:"short",year:"2-digit"})}</span>
+                          <span style={{fontSize: 11.5,color:"#55626f"}}>{ad.startDate.toLocaleDateString(DATE_LOCALE[lang]||"ta-IN",{month:"short",year:"2-digit"})}</span>
                           <span style={{fontSize: 11.5,color:"#55626f",transition:"transform 0.2s",transform:expandedDasha===`${i}-${j}`?"rotate(180deg)":"rotate(0)"}}>▾</span>
                         </div>
                         {(expandedDasha===`${i}-${j}`||String(expandedDasha).startsWith(`${i}-${j}-`))&&ad.pratyantardashas&&(
                           <div style={{marginLeft:18,borderLeft:"1px solid #a9823c40",paddingLeft:8,marginBottom:4}}>
-                            <div style={{fontSize: 11.5,color:"#4a5365",fontWeight:600,marginBottom:2,marginTop:2}}>பிரத்யந்தரம்</div>
+                            <div style={{fontSize: 11.5,color:"#4a5365",fontWeight:600,marginBottom:2,marginTop:2}}>{t("dasha.pratyantar")}</div>
                             {ad.pratyantardashas.map((pad,k)=>(
                               <div key={k}>
                                 <div style={{display:"flex",alignItems:"center",gap:4,padding:"6px 0",cursor:"pointer",
                                   background:pad.isCurrent?"#e8f5e9":"transparent",borderRadius:3}}
                                   onClick={(e)=>{e.stopPropagation();setExpandedDasha(expandedDasha===`${i}-${j}-${k}`?`${i}-${j}`:`${i}-${j}-${k}`)}}>
-                                  <span style={{fontSize: 12,flex:1,color:pad.isCurrent?"#2e7d5b":"#4a5365"}}>{pad.name}
-                                    {pad.isCurrent&&<span style={{fontSize: 11,background:"#d4edda",color:"#2e7d5b",padding:"0 3px",borderRadius:3,marginLeft:3,fontWeight:700}}>நடப்பு</span>}
+                                  <span style={{fontSize: 12,flex:1,color:pad.isCurrent?"#2e7d5b":"#4a5365"}}>{tPlanet(pad.name)}
+                                    {pad.isCurrent&&<span style={{fontSize: 11,background:"#d4edda",color:"#2e7d5b",padding:"0 3px",borderRadius:3,marginLeft:3,fontWeight:700}}>{t("dasha.currentBadge")}</span>}
                                   </span>
                                   <span style={{fontSize: 11,color:"#55626f"}}>{pad.duration}</span>
                                   <span style={{fontSize: 11,color:"#55626f",transition:"transform 0.2s",transform:expandedDasha===`${i}-${j}-${k}`?"rotate(180deg)":"rotate(0)"}}>▾</span>
                                 </div>
                                 {expandedDasha===`${i}-${j}-${k}`&&pad.sookshmaDashas&&(
                                   <div style={{marginLeft:14,borderLeft:"1px solid #2e7d5b40",paddingLeft:6,marginBottom:3}}>
-                                    <div style={{fontSize: 11,color:"#55626f",fontWeight:600,marginBottom:2,marginTop:2}}>சூட்சுமம்</div>
+                                    <div style={{fontSize: 11,color:"#55626f",fontWeight:600,marginBottom:2,marginTop:2}}>{t("dasha.sookshma")}</div>
                                     {pad.sookshmaDashas.map((sd,l)=>(
                                       <div key={l} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 0",
                                         background:sd.isCurrent?"#e0f0ff":"transparent",borderRadius:3}}>
-                                        <span style={{fontSize: 11.5,flex:1,color:sd.isCurrent?"#1565c0":"#4a5365"}}>{sd.name}
-                                          {sd.isCurrent&&<span style={{fontSize: 11,background:"#cfe4fa",color:"#1565c0",padding:"0 3px",borderRadius:3,marginLeft:3,fontWeight:700}}>நடப்பு</span>}
+                                        <span style={{fontSize: 11.5,flex:1,color:sd.isCurrent?"#1565c0":"#4a5365"}}>{tPlanet(sd.name)}
+                                          {sd.isCurrent&&<span style={{fontSize: 11,background:"#cfe4fa",color:"#1565c0",padding:"0 3px",borderRadius:3,marginLeft:3,fontWeight:700}}>{t("dasha.currentBadge")}</span>}
                                         </span>
                                         <span style={{fontSize: 11,color:"#55626f"}}>{sd.duration}</span>
                                       </div>
