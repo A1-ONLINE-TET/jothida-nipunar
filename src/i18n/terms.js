@@ -151,12 +151,44 @@ export const WEEKDAY = {
   "சனி": { en: "Saturday", hi: "शनिवार" },
 };
 
-// திசை (சூலம் / வார சூலம்)
+// திசை (சூலம் / வார சூலம் / அதிர்ஷ்ட திசை — மூலை உட்பட)
 export const DIR = {
   "கிழக்கு": { en: "East", hi: "पूर्व" },
   "மேற்கு": { en: "West", hi: "पश्चिम" },
   "வடக்கு": { en: "North", hi: "उत्तर" },
   "தெற்கு": { en: "South", hi: "दक्षिण" },
+  "தென்கிழக்கு": { en: "South-East", hi: "आग्नेय" },
+  "வடமேற்கு": { en: "North-West", hi: "वायव्य" },
+  "வடகிழக்கு": { en: "North-East", hi: "ईशान" },
+  "தென்மேற்கு": { en: "South-West", hi: "नैऋत्य" },
+};
+
+// ரத்தினம் (ராசி ரத்தினம் + உப ரத்தினம்) — RASHI_LUCKY உடன் ஒத்தது
+export const GEM = {
+  "பவளம்": { en: "Coral", hi: "मूंगा" },
+  "வைரம்": { en: "Diamond", hi: "हीरा" },
+  "மரகதம்": { en: "Emerald", hi: "पन्ना" },
+  "முத்து": { en: "Pearl", hi: "मोती" },
+  "மாணிக்யம்": { en: "Ruby", hi: "माणिक" },
+  "புஷ்பராகம்": { en: "Yellow Sapphire", hi: "पुखराज" },
+  "நீலம்": { en: "Blue Sapphire", hi: "नीलम" },
+  "கார்னீலியன்": { en: "Carnelian", hi: "कार्नेलियन" },
+  "ஜிர்கான்": { en: "Zircon", hi: "जिरकॉन" },
+  "பச்சை ஓனிக்ஸ்": { en: "Green Onyx", hi: "हरा ओनिक्स" },
+  "முண்ஸ்டோன்": { en: "Moonstone", hi: "मूनस्टोन" },
+  "கார்னெட்": { en: "Garnet", hi: "गार्नेट" },
+  "சிட்ரின்": { en: "Citrine", hi: "सिट्रीन" },
+  "அமிதிஸ்ட்": { en: "Amethyst", hi: "एमेथिस्ट" },
+};
+
+// நிறம் (அதிர்ஷ்ட நிறம்)
+export const COLOR = {
+  "சிவப்பு": { en: "Red", hi: "लाल" },
+  "வெள்ளை": { en: "White", hi: "सफेद" },
+  "பச்சை": { en: "Green", hi: "हरा" },
+  "மஞ்சள்": { en: "Yellow", hi: "पीला" },
+  "மஞ்சள் சிவப்பு": { en: "Orange-red", hi: "नारंगी-लाल" },
+  "கருப்பு நீலம்": { en: "Dark blue", hi: "गहरा नीला" },
 };
 
 // தமிழ் மாதம் (சூரிய மாதம்) — panchang-lite.js TAMIL_MONTHS உடன் ஒத்தது
@@ -198,6 +230,8 @@ export const tWeekday = (term, lang) => pick(WEEKDAY, term, lang);
 export const tDir = (term, lang) => pick(DIR, term, lang);
 export const tPhase = (term, lang) => pick(PHASE, term, lang);
 export const tMonth = (term, lang) => pick(TMONTH, term, lang);
+export const tGem = (term, lang) => pick(GEM, term, lang);
+export const tColor = (term, lang) => pick(COLOR, term, lang);
 
 // சோதனைக்கு — எல்லா வகைகளும்
-export const ALL_TERM_MAPS = { NAK, RASHI, PLANET, TITHI, YOGAM, KARANAM, GOWRI, WEEKDAY, DIR, PHASE, TMONTH };
+export const ALL_TERM_MAPS = { NAK, RASHI, PLANET, TITHI, YOGAM, KARANAM, GOWRI, WEEKDAY, DIR, PHASE, TMONTH, GEM, COLOR };

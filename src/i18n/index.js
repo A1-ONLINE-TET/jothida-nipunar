@@ -64,6 +64,7 @@ export function useLang() {
     tNak: (x) => T.tNak(x, lang), tRashi: (x) => T.tRashi(x, lang), tPlanet: (x) => T.tPlanet(x, lang),
     tTithi: (x) => T.tTithi(x, lang), tYogam: (x) => T.tYogam(x, lang), tKaranam: (x) => T.tKaranam(x, lang),
     tGowri: (x) => T.tGowri(x, lang), tWeekday: (x) => T.tWeekday(x, lang), tDir: (x) => T.tDir(x, lang), tPhase: (x) => T.tPhase(x, lang), tMonth: (x) => T.tMonth(x, lang),
+    tGem: (x) => T.tGem(x, lang), tColor: (x) => T.tColor(x, lang),
   };
 }
 
