@@ -591,6 +591,30 @@ const HOME_QUESTIONS = [
 const stripEmoji = (t) => String(t ?? "").replace(/[\p{Extended_Pictographic}️‍]/gu, "").replace(/[ \t]{2,}/g, " ").trim();
 const TA_WORDS = [[/\btransit\b/g, "கோசாரம்"], [/\bfactors\b/g, "காரணிகள்"], [/\bclassical\b/g, "பாரம்பரிய"], [/\bchronic\b/g, "நீண்டகால"], [/BPHS உறுதிப்பாடு/g, "சாஸ்திர உறுதிப்பாடு"]];
 const taText = (t) => TA_WORDS.reduce((x, [re, to]) => x.replace(re, to), stripEmoji(t));
+// ── பலன்கள் பகுதி: ஜோதிடர் நேரில் சொல்வது போல — கணிப்பு முறை/குறியீடுகள் (பாவ-எண், அதிபதி, பிந்து,
+//    ஷட்பல ரூபா, துஸ்தானம்/கேந்திரம், ≥30) அகற்றி, நேரடிப் பலனை மட்டும் காட்டு. எடை/முடிவு மாறாது — காட்சி மட்டுமே.
+const FACTOR_PAREN = /\s*\((?:[^)]*(?:≥|≤|\d|ரூபா|துஸ்தான|கேந்திர|திரிகோண|பலமான ஸ்தான|சாதக ஸ்தான|நவாம்ச|விபரீத|ஆண் ஜாதக|பெண் ஜாதக)[^)]*)\)/g;
+function plainFactor(text) {
+  let s = stripEmoji(text).replace(FACTOR_PAREN, "");
+  // ஷட்பல/அஷ்டகவர்க்க வரிகள் — நேர் விளக்கம் இல்லை; நேரடியாக்கு
+  if (/ஷட்பலத்தில்\s*(?:தேவையை\s*எட்டுகிறார்|மிகுதி)/.test(s)) return "கிரக பலம் நல்ல நிலையில்";
+  if (/ஷட்பலத்தில்\s*மிகக்\s*குறைவு/.test(s)) return "கிரக பலம் குறைவாக உள்ளது";
+  // "<கணிப்பு முறை: வீடு/அதிபதி/காரகன்/கிரகம்…> — <நேரடிப் பலன்>": கோட்டுக்குப் பின் உள்ள நேரடிப் பகுதியை மட்டும் வைத்துக்கொள்.
+  const parts = s.split(/\s[—–]\s/);
+  if (parts.length >= 2) {
+    const head = parts.slice(0, -1).join(" ");
+    if (/வீட்டில்|வீட்டு|அதிபதி|காரகன்|கிரகம்|ஸ்தான|சர்வாஷ்டகவர்க்கம்|பாவத்தில்|ராசியில்/.test(head)) s = parts[parts.length - 1];
+  }
+  return s.replace(/\s{2,}/g, " ").replace(/\s+([,.;])/g, "$1").trim();
+}
+// பாவ அதிபதியின் நிலை → ஜோதிடர் நடையில் நேரடி வாக்கியம் (எந்தக் கிரகம்/எந்த வீடு என்ற குறியீடு இல்லை)
+function plainLord(verdict) {
+  const v = String(verdict || "");
+  if (/துஸ்தான/.test(v)) return { text: "இந்த வீட்டின் பலன் சற்று குறையலாம் — கூடுதல் கவனம்", tone: "bad" };
+  if (/பலவீன/.test(v)) return { text: "இந்த வீட்டின் பலன் சற்று பலவீனம்", tone: "bad" };
+  if (/பலமாக|நல்ல நிலையில்/.test(v)) return { text: "இந்த வீட்டின் பலன் நல்ல நிலையில்", tone: "good" };
+  return { text: "இந்த வீட்டின் பலன் நடுத்தர நிலை", tone: "mid" };
+}
 // பகிர் — கைபேசியில் system share sheet; இல்லையேல் WhatsApp
 const shareOut = (title, text) => {
   try {
@@ -2394,7 +2418,7 @@ export default function AstrologyApp() {
       // 12. Deep analysis (திருமணம்/ஆரோக்கியம்/தொழில்)
       const kaPart = keyAreas ? sec("🔮","முக்கிய வாழ்க்கைப் பகுதி பகுப்பாய்வு",
         ["marriage","health","career"].map(k=>{ const a=keyAreas[k]; if(!a) return "";
-          return `<div class="olabox"><b>${a.icon} ${a.area}</b> — <span style="font-weight:700">${a.verdict}</span><div style="font-size:9.5px;margin-top:2px">${a.summary||""}</div>${(a.factors||[]).slice(0,6).map(f=>`<div style="font-size:9px;color:${(f.weight||0)>0?"#1b5e20":"#8a4a00"}">• ${f.text}</div>`).join("")}</div>`; }).join(""), "cCrimson") : "";
+          return `<div class="olabox"><b>${a.icon} ${a.area}</b> — <span style="font-weight:700">${stripEmoji(a.verdict)}</span><div style="font-size:9.5px;margin-top:2px">${a.summary||""}</div>${(a.factors||[]).slice(0,6).map(f=>`<div style="font-size:9px;color:${(f.weight||0)>0?"#1b5e20":"#8a4a00"}">• ${plainFactor(f.text)}</div>`).join("")}</div>`; }).join(""), "cCrimson") : "";
 
       // 13. குடும்பம் & உடல்நலம்
       const fhPart = familyHealthData ? sec("👨‍👩‍👧","குடும்பம் & உடல்நல குறியீடுகள்",
@@ -2883,21 +2907,27 @@ ${aiPart}
             const st = AREA_STYLE[area.key] || AREA_STYLE.self;
             const Icon = st.icon;
             const open = openAreas.has(area.key);
-            // முக்கிய காரணிகள் — எடை அதிகமான மூன்று; மீதி "முழு விவரம்"-இல்
-            const topFactors = ka ? [...ka.factors].filter(f=>f.weight).sort((x,y)=>Math.abs(y.weight)-Math.abs(x.weight)).slice(0,3) : [];
+            // முக்கிய காரணிகள் — முடிவின் திசையில் (சாதகம்/கவனம்) ஒத்தவை முதலில்; முரண்பட்டவை "முழு விவரம்"-இல்.
+            // இதனால் தலைப்பு "சவால்" என்றால் முதல் காரணம் பச்சை ▲ ஆக வந்து குழப்பாது.
+            const dir = ka ? (ka.score > 0 ? 1 : ka.score < 0 ? -1 : 0) : 0;
+            const topFactors = ka ? [...ka.factors].filter(f=>f.weight)
+              .sort((x,y)=>{
+                const ax = dir===0?0:(Math.sign(x.weight)===dir?0:1), ay = dir===0?0:(Math.sign(y.weight)===dir?0:1);
+                if (ax!==ay) return ax-ay;                       // முடிவுடன் ஒத்தவை முன்னே
+                return Math.abs(y.weight)-Math.abs(x.weight);
+              }).slice(0,3) : [];
             const restFactors = ka ? ka.factors.filter(f=>!topFactors.includes(f)) : [];
             const factorRow = (f, fi) => (
               <div key={fi} style={{fontSize: 13,color:"#4a5365",marginBottom:6,lineHeight:1.6,display:"flex",gap:8}}>
                 <span style={{color:f.weight>0?"#2e7d5b":f.weight<0?"#c0564f":"#a3adc2",fontWeight:700,flexShrink:0,fontSize: 11,paddingTop:3}}>{f.weight>0?"▲":f.weight<0?"▼":"•"}</span>
-                <span>{taText(f.text)}</span>
+                <span>{plainFactor(f.text)}</span>
               </div>
             );
-            const lordLine = (hr) => hr.lordInfo.lordHouse ? (
-              <div style={{fontSize: 12.5,color:"#4a5365",lineHeight:1.6}}>
-                அதிபதி <b>{hr.lordInfo.lordName}</b> {hr.lordInfo.lordHouse}ஆம் வீட்டில்
-                {hr.lordVerdict && <span style={{color:(hr.lordVerdict.includes("பலமாக")||hr.lordVerdict.includes("நல்ல"))?"#2e7d5b":(hr.lordVerdict.includes("பலவீன")||hr.lordVerdict.includes("துஸ்தான"))?"#c0564f":"#4a5365"}}> — {hr.lordVerdict.split(" • ")[0]}</span>}
-              </div>
-            ) : null;
+            const lordLine = (hr) => { if (!hr.lordInfo.lordHouse || !hr.lordVerdict) return null;
+              const pl = plainLord(hr.lordVerdict);
+              return (
+                <div style={{fontSize: 12.5,color: pl.tone==="good"?"#2e7d5b":pl.tone==="bad"?"#c0564f":"#4a5365",lineHeight:1.6}}>{pl.text}</div>
+              ); };
             return (
               <div key={ai} data-area={area.key} style={{...card,marginBottom:10,padding:"16px"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
@@ -2912,7 +2942,7 @@ ${aiPart}
                       {ka.chips.map((c,ci)=>(
                         <span key={ci} style={{...chipBase,
                           background:c.tone==="bad"?"#fbeeed":c.tone==="warn"?"#f6f1e4":c.tone==="good"?"#e9f5ee":"#eef1fb",
-                          color:c.tone==="bad"?"#c0564f":c.tone==="warn"?"#7d6a3f":c.tone==="good"?"#2e7d5b":"#3e4c99"}}>{stripEmoji(c.label)}</span>
+                          color:c.tone==="bad"?"#c0564f":c.tone==="warn"?"#7d6a3f":c.tone==="good"?"#2e7d5b":"#3e4c99"}}>{stripEmoji(c.label).replace(/\s*\d\s*-\s*\d\s*/g," ").replace(/\s{2,}/g," ").trim()}</span>
                       ))}
                     </div>
                   )}
@@ -3005,7 +3035,7 @@ ${aiPart}
                           <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
                             {hr.savVerdict && (
                               <span style={{...chipBase,fontSize: 11.5,background:hr.savPoints>=30?"#e9f5ee":hr.savPoints<=24?"#fbeeed":"#f3f5f9",
-                                color:hr.savPoints>=30?"#2e7d5b":hr.savPoints<=24?"#c0564f":"#4a5365"}}>அஷ்டகவர்க்கம்: {hr.savPoints} பிந்து</span>
+                                color:hr.savPoints>=30?"#2e7d5b":hr.savPoints<=24?"#c0564f":"#4a5365"}}>கிரக ஆதரவு: {hr.savPoints>=30?"வலு":hr.savPoints<=24?"குறைவு":"நடுத்தரம்"}</span>
                             )}
                             {hr.bhavaBala && (
                               <span style={{...chipBase,fontSize: 11.5,background:hr.bhavaBala.verdict==="பலமுள்ளது"?"#e9f5ee":hr.bhavaBala.verdict==="பலவீனம்"?"#fbeeed":"#f3f5f9",
