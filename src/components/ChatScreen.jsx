@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Send } from "lucide-react";
 import "./chat.css";
 import { ReportLink } from "./ReportBox.jsx";
+import { useLang } from "../i18n/index.js";
 
 // Astrologer message that reveals itself character-by-character (typewriter).
 function TypingText({ text, onDone }) {
@@ -45,6 +46,7 @@ function asText(v, fallback) {
 // அதன் key தொடக்கத் தலைப்பாகச் சேவையகத்துக்குச் செல்கிறது — தெளிவான தலைப்பு இல்லாத கேள்வி
 // ("எப்போது?") அந்த உதவியாளரின் துறையிலேயே பதிலளிக்கப்படும்.
 export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, persona, personName, initialQuestion = "", premiumLabel = "ஆழமான AI பதில்" }) {
+  const { t } = useLang();
   const [aiMode, setAiMode] = useState(false); // AI இயல்பு மொழி ON/OFF
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -77,9 +79,9 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, p
       const fn = useAI ? askAI : ask;
       const { answer, category, ai } = await fn(question, lastTopicRef.current);
       if (category && category !== "general") lastTopicRef.current = category;
-      setMessages((m) => [...m, { role: "astro", q: question, mode: useAI && ai ? "ai" : "engine", text: asText(answer, "மன்னிக்கவும், இப்போது பதிலளிக்க முடியவில்லை."), done: false }]);
+      setMessages((m) => [...m, { role: "astro", q: question, mode: useAI && ai ? "ai" : "engine", text: asText(answer, t("chat.noAnswer")), done: false }]);
     } catch (e) {
-      setMessages((m) => [...m, { role: "astro", error: true, text: "சேவையகம் இப்போது பதிலளிக்கவில்லை. சில வினாடிகள் கழித்து மீண்டும் முயலுங்கள்.", done: true }]);
+      setMessages((m) => [...m, { role: "astro", error: true, text: t("chat.serverErr"), done: true }]);
     } finally {
       setBusy(false);
     }
@@ -93,11 +95,11 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, p
     setBusy(true);
     try {
       const { answer } = await askPremium(question);
-      setMessages((m) => [...m, { role: "astro", q: question, mode: "deep", text: asText(answer, "மன்னிக்கவும், பதிலளிக்க முடியவில்லை."), done: false, premium: true }]);
+      setMessages((m) => [...m, { role: "astro", q: question, mode: "deep", text: asText(answer, t("chat.noAnswer2")), done: false, premium: true }]);
     } catch (e) {
       const msg = String(e?.message || "");
       if (msg !== "cancelled") {
-        setMessages((m) => [...m, { role: "astro", error: true, text: "பதில் பெற முடியவில்லை. மீண்டும் முயலுங்கள்.", done: true }]);
+        setMessages((m) => [...m, { role: "astro", error: true, text: t("chat.premiumErr"), done: true }]);
       }
     } finally {
       setBusy(false);
@@ -110,18 +112,18 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, p
   return (
     <div className="chat-wrap">
       <header className="chat-top">
-        <button className="chat-back" onClick={onBack} aria-label="பின்">‹</button>
+        <button className="chat-back" onClick={onBack} aria-label={t("common.back")}>‹</button>
         <div className="chat-astro">
           <img className="chat-ava-img" src={persona.image} alt="" width="42" height="42" />
           <div style={{ minWidth: 0 }}>
             <div className="chat-ttl">{persona.name}</div>
-            <div className="chat-sub">AI உதவியாளர்</div>
+            <div className="chat-sub">{t("adv.aiAssistant")}</div>
           </div>
         </div>
         {askAI && (
           <button
             onClick={() => setAiMode((v) => !v)}
-            title="AI இயல்பு மொழி"
+            title={t("chat.aiToggleTitle")}
             style={{
               marginLeft: "auto", cursor: "pointer", fontSize: 12, fontWeight: 700, minHeight: 36,
               padding: "0 14px", borderRadius: 999, fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0,
@@ -129,13 +131,13 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, p
               background: aiMode ? "#1f3f68" : "#ffffff", color: aiMode ? "#ffffff" : "#4a5365",
             }}
           >
-            AI: {aiMode ? "இயக்கம்" : "நிறுத்தம்"}
+            AI: {aiMode ? t("chat.aiOn") : t("chat.aiOff")}
           </button>
         )}
       </header>
 
       <div className="chat-notice" data-ai-notice>
-        இது AI உதவியாளர்; மனித ஜோதிடர் அல்ல. மருத்துவம், சட்டம், முதலீடு போன்ற முடிவுகளுக்கு உரிய நிபுணரை அணுகுங்கள்.
+        {t("chat.aiNotice")}
       </div>
 
       <div className="chat-scroll" ref={scrollRef}>
@@ -144,14 +146,14 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, p
           <div className="chat-hero-name">{persona.name}</div>
           <div className="chat-hero-role">{persona.role}</div>
           <p className="chat-hero-intro">
-            வணக்கம்{personName ? " " + personName : ""}. நான் {persona.name} — AI உதவியாளர்; மனித ஜோதிடர் அல்ல. {persona.intro}
+            {t("chat.intro", { name: personName ? " " + personName : "", persona: persona.name })}{persona.intro}
           </p>
         </div>
         {messages.map((m, i) => (
           <div key={i} className={`chat-row ${m.role}`}>
             {m.role === "astro" && <img className="chat-row-ava" src={persona.image} alt="" width="28" height="28" />}
             <div className={`chat-bubble ${m.role} ${m.premium ? "premium" : ""}`}>
-              {m.premium && <div className="chat-premium-tag">AI ஆழ்ந்த பதில்</div>}
+              {m.premium && <div className="chat-premium-tag">{t("chat.premiumTag")}</div>}
               {m.role === "astro" && !m.done
                 ? <TypingText text={m.text} onDone={() => markDone(i)} />
                 : <span style={{ whiteSpace: "pre-wrap" }}>{m.text}</span>}
@@ -183,7 +185,7 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, p
           <button className="chat-premium-btn" onClick={sendPremium} disabled={busy || !input.trim()}>
             {premiumLabel}
           </button>
-          <span className="chat-premium-hint">சிக்கலான கேள்விகளுக்கு விரிவான AI பதில்</span>
+          <span className="chat-premium-hint">{t("chat.premiumHint")}</span>
         </div>
       )}
 
@@ -191,11 +193,11 @@ export default function ChatScreen({ ask, askAI, askPremium, onBack, onReport, p
         <input
           type="text"
           value={input}
-          placeholder="உங்கள் கேள்வியை இங்கே எழுதுங்கள்..."
+          placeholder={t("chat.placeholder")}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") send(); }}
         />
-        <button className="chat-send" onClick={() => send()} disabled={busy || !input.trim()} aria-label="அனுப்பு"><Send size={18} /></button>
+        <button className="chat-send" onClick={() => send()} disabled={busy || !input.trim()} aria-label={t("common.send")}><Send size={18} /></button>
       </div>
     </div>
   );

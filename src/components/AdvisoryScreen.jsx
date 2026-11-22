@@ -3,10 +3,12 @@ import { Sparkles } from "lucide-react";
 import "./home.css";
 import BottomNav from "./BottomNav.jsx";
 import { PERSONAS } from "./personas.js";
+import { useLang } from "../i18n/index.js";
 
 // ஆலோசனை — ஒவ்வொரு தேவைக்கும் ஓர் AI உதவியாளர் (படம், பெயர், துறை). தட்டினால் அந்த உதவியாளருடன்
 // அரட்டை திறக்கும்; worker/src/ask.js அந்தத் தலைப்பின் வீடுகள், காரகன், தசையை வைத்துப் பதிலளிக்கும்.
 export default function AdvisoryScreen({ onPick = () => {}, onNav = () => {} }) {
+  const { t } = useLang();
   return (
     <main className="app-shell">
       <div className="sky-stars" aria-hidden="true" />
@@ -24,12 +26,12 @@ export default function AdvisoryScreen({ onPick = () => {}, onNav = () => {} }) 
 
       <section className="hero" style={{ minHeight: "auto", paddingBottom: 8, flex: "0 0 auto" }}>
         <div className="hero-copy">
-          <h1>AI ஜோதிட உதவியாளர்கள்</h1>
+          <h1>{t("adv.title")}</h1>
           <p style={{ color: "#c9a84a", fontSize: 13, marginTop: 6, fontWeight: 600 }}>
-            எந்தத் தலைப்பில் ஆலோசனை வேண்டும்?
+            {t("adv.pick")}
           </p>
           <p data-ai-notice style={{ fontSize: 12, lineHeight: 1.6, marginTop: 8, color: "#55626f", maxWidth: 330, marginLeft: "auto", marginRight: "auto" }}>
-            பதிலளிப்பது AI உதவியாளர்; மனித ஜோதிடர் அல்ல.
+            {t("adv.aiNotice")}
           </p>
           <div className="gold-divider">
             <span />
@@ -39,7 +41,7 @@ export default function AdvisoryScreen({ onPick = () => {}, onNav = () => {} }) 
         </div>
       </section>
 
-      <section className="persona-grid" aria-label="AI உதவியாளர்கள்">
+      <section className="persona-grid" aria-label={t("adv.assistants")}>
         {PERSONAS.map((p) => {
           const Icon = p.icon;
           return (
