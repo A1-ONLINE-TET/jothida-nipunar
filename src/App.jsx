@@ -2302,7 +2302,7 @@ export default function AstrologyApp() {
       // ── ஓலை-style section builder ──
       // cls = நிற வகுப்பு: ஒவ்வொரு பகுதிக்கும் தனி நிறம் — PDF-இல் பகுதிகள்
       // நன்கு தெரியும்படி பிரிந்து, நல்ல இடைவெளியுடன் அமையும்
-      const sec = (icon, title, inner, cls) => `<div class="sec ${cls||"cMaroon"}"><div class="sec-hd"><span class="sec-ic">${icon}</span><span>${title}</span><span class="sec-lace">✦ ✦ ✦</span></div><div class="sec-in">${inner}</div></div>`;
+      const sec = (icon, title, inner, cls) => `<div class="sec ${cls||"cMaroon"}"><div class="sec-hd"><span>${title}</span></div><div class="sec-in">${inner}</div></div>`;  // icon/lace நீக்கம் (emoji இல்லை)
       // PDF-இல் ஒரு "மேலும் ஆழமான" பகுதி சேர்வது: user அதை app-இல் திறந்து பார்த்திருந்தால் மட்டுமே
       const ifViewed = (key, part) => viewedViews.has(key) ? part : "";
 
@@ -2480,7 +2480,7 @@ table.pt tr.alt td{background:#f3e9c8}
 </style></head><body><div class="page">
 <div class="ola-edge"></div>
 <div class="hdr"><img src="${MURUGAN_IMG}" alt="முருகன்" style="width:70px;height:70px;object-fit:contain;border-radius:50%;border:2px solid #d4a853;margin-bottom:6px;"/>
-<h1>✦ ஸ்ரீ ஜாதக ஓலை ✦</h1><div class="nm">${escapeHtml(formData.name)}</div>
+<h1>ஸ்ரீ ஜாதக ஓலை</h1><div class="nm">${escapeHtml(formData.name)}</div>
 <div class="sub">முழு ஜாதகம் • தமிழ் ஜோதிடம்</div></div>
 <div class="body">
 ${sec("📋","பிறப்பு & பஞ்சாங்க விவரம்",`<table class="info-tbl">
@@ -2521,7 +2521,7 @@ ${aiPart}
 </div>
 <div class="ftr">🕉 ஜோதிட நிபுணர் — முழு ஜாதக ஓலை<br>${(AYANAMSA_SYSTEMS[ayanamsaKey]||AYANAMSA_SYSTEMS.lahiri).name} அயனாம்சம் • உருவாக்கம்: ${new Date().toLocaleDateString("ta-IN")}</div>
 <div class="ola-edge"></div>
-</div><button class="btn no-print" onclick="window.print()">📄 PDF சேமி / அச்சிடு</button></body></html>`;
+</div><button class="btn no-print" onclick="window.print()">PDF சேமி / அச்சிடு</button></body></html>`.replace(/[☠⚠⚖⚡⛓🌗🎁🎯🏠🐍👁👑👧👨👩👫👶💁💍💒💼💪📅📋📐📿🔗🔢🔥🔮🔴🕉🙏🛕🛡🤖🧩🩺🪐🏥]\uFE0F?\s?/gu, "");
       try {
         const blob = new Blob([html],{type:'text/html;charset=utf-8'});
         const url = URL.createObjectURL(blob);
