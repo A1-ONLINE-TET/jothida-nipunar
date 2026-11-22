@@ -1693,7 +1693,7 @@ export default function AstrologyApp() {
     return <ChatScreen key={persona.key} persona={persona} ask={askAstrologer} askAI={askAstrologerAI} askPremium={askPremiumAstrologer} personName={formData.name || ""}
       initialQuestion={chatInitialQ}
       onReport={(r) => sendReport({ ...r, kind: "answer", app: APP_VERSION })}
-      premiumLabel={PAYMENTS_ENABLED ? "ஆழமான AI பதில் · ₹49" : "ஆழமான AI பதில்"}
+      premiumLabel={PAYMENTS_ENABLED ? t("chat.premiumLabelPaid") : t("chat.premiumLabel")}
       onBack={()=>{ setChatInitialQ(""); goTo(chatFrom === "result" && chartIsCurrent() ? SCREEN.RESULT : SCREEN.ADVISORY); }} />;
   }
 
@@ -4957,7 +4957,7 @@ ${aiPart}
   if(screen===SCREEN.DAILY && dailyData) {
     const { today, gochara, remedy, muhurtham, sadeSati, guruPeyarchi, taraBala, currentDasha } = dailyData;
     const moodColor = gochara.overallMood==="good" ? "#58a97f" : gochara.overallMood==="caution" ? "#c0564f" : "#1f3f68";
-    const moodText = gochara.overallMood==="good" ? `${today.isOtherDate?"அன்று":"இன்று"} நல்ல நாள்` : gochara.overallMood==="caution" ? "கவனமாக இருக்க வேண்டிய நாள்" : "சாதாரண நாள்";
+    const moodText = gochara.overallMood==="good" ? (today.isOtherDate?t("daily.moodGoodThat"):t("daily.moodGoodToday")) : gochara.overallMood==="caution" ? t("daily.moodCaution") : t("daily.moodNormal");
     const dailyGeo = resolveBirthGeo(formData);
     const currentHorai = calcCurrentHorai(liveClock, dailyGeo.lat, dailyGeo.lon); // live — refreshes every 30s via liveClock state
 
@@ -4966,12 +4966,12 @@ ${aiPart}
         <div style={{...container,paddingTop:20,paddingBottom:104}}>
           <div style={{textAlign:"center",marginBottom:12}}>
             <h2 style={{fontSize:20,fontWeight:700,color:"#1f3f68",margin:"0 0 2px"}}>
-              {today.isFuture?"எதிர்கால பலன்":today.isPast?"கடந்த நாள் பலன்":"இன்றைய பலன்"}
+              {today.isFuture?t("daily.titleFuture"):today.isPast?t("daily.titlePast"):t("daily.titleToday")}
             </h2>
-            <p style={{fontSize:12.5,color:"#55626f",margin:0}}>{formData.name ? `${formData.name} · ` : ""}{horoscope?.moonRashi ? `${horoscope.moonRashi} ராசி` : ""}</p>
+            <p style={{fontSize:12.5,color:"#55626f",margin:0}}>{formData.name ? `${formData.name} · ` : ""}{horoscope?.moonRashi ? `${tRashi(horoscope.moonRashi)} ${t("result.rashi")}` : ""}</p>
             {today.isOtherDate && (
               <div style={{fontSize:11.5,color:today.isFuture?"#58a97f":"#4a5365",marginTop:3,fontWeight:600}}>
-                {today.isFuture?"எதிர்கால கணிப்பு":"கடந்த நாளின் பலன் பார்வை"}
+                {today.isFuture?t("daily.subFuture"):t("daily.subPast")}
               </div>
             )}
           </div>
@@ -4979,16 +4979,16 @@ ${aiPart}
           {/* ═══ Date Navigator — browse to any past/future date ═══ */}
           <div style={{...card,marginBottom:12,padding:"8px 10px"}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <button aria-label="முந்தைய நாள்" data-daily-prev onClick={()=>{
+              <button aria-label={t("daily.prevDay")} data-daily-prev onClick={()=>{
                 const d = new Date(today.dateObj); d.setDate(d.getDate()-1);
                 openDailyScreen(d);
               }} style={{width:40,height:40,display:"grid",placeItems:"center",background:"#f2f5fb",border:"1px solid #e3e8f2",borderRadius:12,color:"#1f3f68",cursor:"pointer",flexShrink:0}}><ChevronLeft size={20}/></button>
 
               {/* தேதி — தமிழில் காட்டப்படும்; தட்டினால் கருவியின் தேதித் தேர்வி திறக்கும் (மறைவான input மேலே படர்ந்துள்ளது) */}
               <label style={{position:"relative",flex:1,minHeight:40,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
-                <span data-daily-date style={{fontSize: 14.5,fontWeight:700,color:"#27303f",lineHeight:1.35}}>{today.dateStr}</span>
-                <span style={{fontSize:12,color:"#55626f",lineHeight:1.3,whiteSpace:"nowrap"}}>{kizhamai(today.dayName)} · மாற்ற தட்டவும்</span>
-                <input type="date" aria-label="தேதியைத் தேர்ந்தெடுக்க" value={`${today.dateObj.getFullYear()}-${String(today.dateObj.getMonth()+1).padStart(2,'0')}-${String(today.dateObj.getDate()).padStart(2,'0')}`}
+                <span data-daily-date style={{fontSize: 14.5,fontWeight:700,color:"#27303f",lineHeight:1.35}}>{fmtDateTa(today.dateObj)}</span>
+                <span style={{fontSize:12,color:"#55626f",lineHeight:1.3,whiteSpace:"nowrap"}}>{lang==="ta"?kizhamai(today.dayName):tWeekday(today.dayName)} · {t("daily.tapChange")}</span>
+                <input type="date" aria-label={t("daily.pickDate")} value={`${today.dateObj.getFullYear()}-${String(today.dateObj.getMonth()+1).padStart(2,'0')}-${String(today.dateObj.getDate()).padStart(2,'0')}`}
                   onChange={e=>{
                     if(!e.target.value) return;
                     const [y,m,d] = e.target.value.split('-').map(Number);
@@ -4998,7 +4998,7 @@ ${aiPart}
                   style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:0,cursor:"pointer",border:"none",padding:0}}/>
               </label>
 
-              <button aria-label="அடுத்த நாள்" data-daily-next onClick={()=>{
+              <button aria-label={t("daily.nextDay")} data-daily-next onClick={()=>{
                 const d = new Date(today.dateObj); d.setDate(d.getDate()+1);
                 openDailyScreen(d);
               }} style={{width:40,height:40,display:"grid",placeItems:"center",background:"#f2f5fb",border:"1px solid #e3e8f2",borderRadius:12,color:"#1f3f68",cursor:"pointer",flexShrink:0}}><ChevronRight size={20}/></button>
@@ -5007,7 +5007,7 @@ ${aiPart}
               <button onClick={()=>openDailyScreen(null)} style={{
                 marginTop:8,width:"100%",background:"none",border:"none",color:"#58a97f",
                 fontSize:13,fontWeight:700,cursor:"pointer",padding:"10px 0 4px",minHeight:36
-              }}>இன்றைக்கு திரும்பு</button>
+              }}>{t("daily.backToday")}</button>
             )}
           </div>
 
@@ -5017,14 +5017,14 @@ ${aiPart}
             border:`1px solid ${currentHorai.isBenefic?"#58a97f30":"#d98aa330"}`}}>
             <div style={{fontSize:24}}>{currentHorai.symbol}</div>
             <div style={{flex:1}}>
-              <div style={{fontSize:11.5,color:"#4a5365"}}>இப்போது நடக்கும் ஹோரை (நேரலை)</div>
+              <div style={{fontSize:11.5,color:"#4a5365"}}>{t("daily.liveHorai")}</div>
               <div style={{fontSize:13,fontWeight:700,color:currentHorai.isBenefic?"#58a97f":"#c0564f"}}>
-                {currentHorai.planet} ஹோரை
+                {tPlanet(currentHorai.planet)} {t("daily.horaiWord")}
               </div>
               <div style={{fontSize:11.5,color:"#4a5365"}}>{currentHorai.startLabel} — {currentHorai.endLabel}</div>
             </div>
             <div style={{fontSize:11.5,color:currentHorai.isBenefic?"#58a97f":"#c0564f",fontWeight:600,textAlign:"right"}}>
-              {currentHorai.isBenefic?"சுப நேரம்":"கவனம்"}
+              {currentHorai.isBenefic?t("daily.horaiGood"):t("daily.horaiCaution")}
             </div>
           </div>
           )}
@@ -5033,20 +5033,20 @@ ${aiPart}
           <div style={{...card,position:"relative",marginBottom:12,padding:"14px 44px",textAlign:"center",
             border:`1.5px solid ${moodColor}40`, background:`${moodColor}10`}}>
             <div style={{fontSize:15,fontWeight:700,color:moodColor}}>{moodText}</div>
-            <button data-share onClick={()=>shareOut("இன்றைய பலன்", [
+            <button data-share onClick={()=>shareOut(t("daily.titleToday"), [
               `${formData.name} — ${today.dateStr} ${kizhamai(today.dayName)}`,
               moodText + (gochara.isChandrashtama ? " (சந்திராஷ்டமம்)" : ""),
               currentDasha?.mahadasha ? `நடப்பு தசை: ${currentDasha.mahadasha.name}${currentDasha.bhukti ? " / " + currentDasha.bhukti.name : ""}` : "",
               muhurtham ? `ராகு காலம்: ${muhurtham.rahuKalam}` : "",
               "— ஜோதிட நிபுணர்",
-            ].filter(Boolean).join("\n"))} style={{position:"absolute",top:4,right:4,width:40,height:40,background:"none",border:"none",color:"#4a5365",cursor:"pointer",padding:0,display:"grid",placeItems:"center"}} aria-label="பகிர்"><Share2 size={17}/></button>
+            ].filter(Boolean).join("\n"))} style={{position:"absolute",top:4,right:4,width:40,height:40,background:"none",border:"none",color:"#4a5365",cursor:"pointer",padding:0,display:"grid",placeItems:"center"}} aria-label={t("common.share")}><Share2 size={17}/></button>
             {gochara.isChandrashtama && (
               <div style={{fontSize:12.5,color:"#c0564f",marginTop:6,fontWeight:600}}>
-                ⚠ {today.isOtherDate?"அன்று":"இன்று"} சந்திராஷ்டமம் — புதிய காரியங்களைத் தவிர்க்கவும்
+                ⚠ {t("daily.chandrashtamaWarn",{when:today.isOtherDate?t("daily.thatDayWord"):t("daily.todayWord")})}
               </div>
             )}
             <div style={{fontSize:12,color:"#4a5365",marginTop:6}}>
-              சுப கிரகங்கள்: {gochara.goodCount} • எச்சரிக்கை: {gochara.badCount}
+              {t("daily.transitCount",{good:gochara.goodCount,bad:gochara.badCount})}
             </div>
           </div>
 
@@ -5055,41 +5055,41 @@ ${aiPart}
             <div style={{...card,marginBottom:12,padding:"12px 14px",
               background:"linear-gradient(135deg,#c7a56812,#a9823c15)",border:"1px solid #c7a56825"}}>
               <div style={{fontSize:12,fontWeight:700,color:"#a9823c",marginBottom:8,letterSpacing:0.5}}>
-                {today.isOtherDate?"அன்றைய தசை சங்கிலி":"தற்போதைய தசை சங்கிலி"}
+                {today.isOtherDate?t("daily.dashaChainThat"):t("daily.dashaChainToday")}
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <div style={{background:"#f8f4ea",borderRadius:8,padding:"8px 10px"}}>
-                  <div style={{fontSize:11,color:"#4a5365",marginBottom:2}}>மகாதசை</div>
+                  <div style={{fontSize:11,color:"#4a5365",marginBottom:2}}>{t("daily.maha")}</div>
                   <div style={{fontSize:14,fontWeight:800,color:"#1f3f68"}}>
-                    {currentDasha.mahadasha.name}
+                    {tPlanet(currentDasha.mahadasha.name)}
                   </div>
                 </div>
                 <div style={{background:"#f8f4ea",borderRadius:8,padding:"8px 10px"}}>
-                  <div style={{fontSize:11,color:"#4a5365",marginBottom:2}}>புக்தி (அந்தர் தசை)</div>
+                  <div style={{fontSize:11,color:"#4a5365",marginBottom:2}}>{t("daily.bhuktiAntar")}</div>
                   <div style={{fontSize:14,fontWeight:800,color:"#a9823c"}}>
-                    {currentDasha.bhukti?.name || currentDasha.mahadasha.name}
+                    {tPlanet(currentDasha.bhukti?.name || currentDasha.mahadasha.name)}
                   </div>
                 </div>
                 <div style={{background:"#f8f4ea",borderRadius:8,padding:"8px 10px"}}>
-                  <div style={{fontSize:11,color:"#4a5365",marginBottom:2}}>பிரத்யந்தர தசை</div>
+                  <div style={{fontSize:11,color:"#4a5365",marginBottom:2}}>{t("daily.pratyantarDasha")}</div>
                   <div style={{fontSize:14,fontWeight:800,color:"#1f3f68"}}>
-                    {currentDasha.pratyantar?.name || "—"}
+                    {currentDasha.pratyantar?.name ? tPlanet(currentDasha.pratyantar.name) : "—"}
                   </div>
                 </div>
                 <div style={{background:"#f8f4ea",borderRadius:8,padding:"8px 10px"}}>
-                  <div style={{fontSize:11,color:"#4a5365",marginBottom:2}}>சூட்சும தசை</div>
+                  <div style={{fontSize:11,color:"#4a5365",marginBottom:2}}>{t("daily.sookshmaDasha")}</div>
                   <div style={{fontSize:14,fontWeight:800,color:"#a9823c"}}>
-                    {currentDasha.sookshma?.name || "—"}
+                    {currentDasha.sookshma?.name ? tPlanet(currentDasha.sookshma.name) : "—"}
                   </div>
                 </div>
               </div>
               {currentDasha.daysLeftInSookshma > 0 ? (
                 <div style={{fontSize:11.5,color:"#4a5365",marginTop:6,textAlign:"center"}}>
-                  இந்த சூட்சும தசை இன்னும் {currentDasha.daysLeftInSookshma} நாட்கள் நீடிக்கும்
+                  {t("daily.sookshmaLeft",{n:currentDasha.daysLeftInSookshma})}
                 </div>
               ) : currentDasha.daysLeftInBhukti > 0 && (
                 <div style={{fontSize:11.5,color:"#4a5365",marginTop:6,textAlign:"center"}}>
-                  இந்த புக்தி இன்னும் {currentDasha.daysLeftInBhukti} நாட்கள் நீடிக்கும்
+                  {t("daily.bhuktiLeft",{n:currentDasha.daysLeftInBhukti})}
                 </div>
               )}
             </div>
@@ -5100,10 +5100,10 @@ ${aiPart}
             {sadeSati && (
               <div style={{...card,padding:"10px 12px",
                 border:`1px solid ${sadeSati.active?(sadeSati.severity==="high"?"#d98aa340":"#dcc27e30"):"#58a97f25"}`}}>
-                <div style={{fontSize:11.5,color:"#4a5365",marginBottom:3}}>{sadeSati.active && !sadeSati.isEzharai ? "சனி கோசாரம்" : "ஏழரைச் சனி"}</div>
+                <div style={{fontSize:11.5,color:"#4a5365",marginBottom:3}}>{sadeSati.active && !sadeSati.isEzharai ? t("daily.saniGochar") : t("daily.ezharai")}</div>
                 <div style={{fontSize:12.5,fontWeight:700,
                   color:sadeSati.active?(sadeSati.severity==="high"?"#c0564f":"#1f3f68"):"#58a97f"}}>
-                  {sadeSati.active ? sadeSati.phase : "இல்லை"}
+                  {sadeSati.active ? sadeSati.phase : t("daily.none")}
                 </div>
                 {sadeSati.active && sadeSati.stage && <div data-sani-stage style={{fontSize:11.5,color:"#55626f",marginTop:2}}>{sadeSati.stage}</div>}
               </div>
@@ -5111,7 +5111,7 @@ ${aiPart}
             {taraBala && (
               <div style={{...card,padding:"10px 12px",
                 border:`1px solid ${taraBala.mood==="good"?"#58a97f25":"#d98aa330"}`}}>
-                <div style={{fontSize:11.5,color:"#4a5365",marginBottom:3}}>தாரா பலம்</div>
+                <div style={{fontSize:11.5,color:"#4a5365",marginBottom:3}}>{t("daily.taraBala")}</div>
                 <div style={{fontSize:12.5,fontWeight:700,color:taraBala.mood==="good"?"#58a97f":"#c0564f"}}>
                   {taraBala.name}
                 </div>
@@ -5125,7 +5125,7 @@ ${aiPart}
               border:`1px solid ${guruPeyarchi.mood==="good"?"#58a97f25":"#dcc27e30"}`}}>
               <div style={{fontSize:22}}>♃</div>
               <div style={{flex:1}}>
-                <div style={{fontSize:11.5,color:"#4a5365"}}>குரு பெயர்ச்சி பலன் ({guruPeyarchi.rashi})</div>
+                <div style={{fontSize:11.5,color:"#4a5365"}}>{t("daily.guruPeyarchi",{rashi:tRashi(guruPeyarchi.rashi)})}</div>
                 <div style={{fontSize:12.5,color:"#27303f",lineHeight:1.5,marginTop:2}}>{guruPeyarchi.desc}</div>
               </div>
             </div>
@@ -5135,29 +5135,29 @@ ${aiPart}
           {muhurtham && (
             <div style={{...card,marginBottom:12,padding:"12px 14px"}}>
               <div style={{fontSize:12,fontWeight:700,color:"#1f3f68",marginBottom:2,borderBottom:"1px solid #c7a56830",paddingBottom:4}}>
-                இன்றைய நல்ல நேரம் / தவிர்க்க வேண்டிய நேரம்
+                {t("daily.goodAvoidTimes")}
               </div>
               <div style={{fontSize:11.5,color:"#4a5365",marginBottom:8,marginTop:4}}>
-                சூரிய உதயம் {muhurtham.sunrise} • அஸ்தமனம் {muhurtham.sunset} ({formData.pob ? formData.pob.split(",")[0] : "பிறந்த இடம்"} நேரப்படி)
+                {t("daily.sunriseLine",{sr:muhurtham.sunrise,ss:muhurtham.sunset,place:formData.pob ? formData.pob.split(",")[0] : t("birth.pob")})}
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:"1px solid #eef1f6"}}>
-                <span style={{fontSize:11,fontWeight:700,color:"#58a97f",background:"#58a97f15",padding:"3px 8px",borderRadius:5,width:70,textAlign:"center"}}>சுபம்</span>
-                <span style={{fontSize:12.5,color:"#27303f"}}>அபிஜித் முகூர்த்தம்</span>
+                <span style={{fontSize:11,fontWeight:700,color:"#58a97f",background:"#58a97f15",padding:"3px 8px",borderRadius:5,width:70,textAlign:"center"}}>{t("daily.auspicious")}</span>
+                <span style={{fontSize:12.5,color:"#27303f"}}>{t("daily.abhijit")}</span>
                 <span style={{fontSize:12,color:"#a9823c",marginLeft:"auto"}}>{muhurtham.abhijit}</span>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:"1px solid #eef1f6"}}>
-                <span style={{fontSize:11,fontWeight:700,color:"#c0564f",background:"#d98aa315",padding:"3px 8px",borderRadius:5,width:70,textAlign:"center"}}>தவிர்க்க</span>
-                <span style={{fontSize:12.5,color:"#27303f"}}>ராகு காலம்</span>
+                <span style={{fontSize:11,fontWeight:700,color:"#c0564f",background:"#d98aa315",padding:"3px 8px",borderRadius:5,width:70,textAlign:"center"}}>{t("daily.avoid")}</span>
+                <span style={{fontSize:12.5,color:"#27303f"}}>{t("pan.rahu")}</span>
                 <span style={{fontSize:12,color:"#a9823c",marginLeft:"auto"}}>{muhurtham.rahuKalam}</span>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:"1px solid #eef1f6"}}>
-                <span style={{fontSize:11,fontWeight:700,color:"#c0564f",background:"#d98aa315",padding:"3px 8px",borderRadius:5,width:70,textAlign:"center"}}>தவிர்க்க</span>
-                <span style={{fontSize:12.5,color:"#27303f"}}>எமகண்டம்</span>
+                <span style={{fontSize:11,fontWeight:700,color:"#c0564f",background:"#d98aa315",padding:"3px 8px",borderRadius:5,width:70,textAlign:"center"}}>{t("daily.avoid")}</span>
+                <span style={{fontSize:12.5,color:"#27303f"}}>{t("pan.yama")}</span>
                 <span style={{fontSize:12,color:"#a9823c",marginLeft:"auto"}}>{muhurtham.yamagandam}</span>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0"}}>
-                <span style={{fontSize:11,fontWeight:700,color:"#c0564f",background:"#d98aa315",padding:"3px 8px",borderRadius:5,width:70,textAlign:"center"}}>தவிர்க்க</span>
-                <span style={{fontSize:12.5,color:"#27303f"}}>குளிகை</span>
+                <span style={{fontSize:11,fontWeight:700,color:"#c0564f",background:"#d98aa315",padding:"3px 8px",borderRadius:5,width:70,textAlign:"center"}}>{t("daily.avoid")}</span>
+                <span style={{fontSize:12.5,color:"#27303f"}}>{t("pan.kuligai")}</span>
                 <span style={{fontSize:12,color:"#a9823c",marginLeft:"auto"}}>{muhurtham.kuligai}</span>
               </div>
             </div>
@@ -5166,16 +5166,16 @@ ${aiPart}
           {/* Today's Panchangam */}
           <div style={{...card,marginBottom:12,padding:"12px 14px",fontSize:12}}>
             <div style={{fontSize:13,fontWeight:700,color:"#53763c",marginBottom:8,borderBottom:"2px solid #6b915030",borderLeft:"3px solid #6b9150",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-              இன்றைய பஞ்சாங்கம்
+              {t("home.today.title")}
             </div>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
               <tbody>
                 {(()=>{ const dp = dayPanchang(new Date(today.dateObj), dailyGeo.lat, dailyGeo.lon); return [
-                  ["திதி", dp ? `${dp.tithi} — ${dp.tithiUntil}${dp.tithiNext ? `; பின் ${dp.tithiNext}` : ""}` : `${today.tithi}, ${today.paksham}`],
-                  ["நட்சத்திரம்", dp ? `${dp.nakshatra} — ${dp.nakUntil}${dp.nakNext ? `; பின் ${dp.nakNext}` : ""}` : `${today.nakshatra}, பாதம் ${today.nakshatraPada||1}`],
-                  ["யோகம்",today.yogam],
-                  ["கரணம்",today.karanam],
-                  ["சந்திர ராசி",today.moonRashi],
+                  [t("pan.tithi"), dp ? `${tTithi(dp.tithi)} — ${dp.tithiUntil}${dp.tithiNext ? `; ${t("pan.then",{x:tTithi(dp.tithiNext)})}` : ""}` : `${tTithi(today.tithi)}`],
+                  [t("pan.nakshatra"), dp ? `${tNak(dp.nakshatra)} — ${dp.nakUntil}${dp.nakNext ? `; ${t("pan.then",{x:tNak(dp.nakNext)})}` : ""}` : `${tNak(today.nakshatra)}, ${t("birth.pada")} ${today.nakshatraPada||1}`],
+                  [t("pan.yogam"),tYogam(today.yogam)],
+                  [t("pan.karanam"),tKaranam(today.karanam)],
+                  [t("daily.moonRashiLabel"),tRashi(today.moonRashi)],
                 ]; })().map(([l,v],i)=>(
                   <tr key={i} style={{borderTop:i?"1px solid #eef1f6":"none"}}>
                     <td style={{padding:"7px 0",color:"#55626f",width:"34%",fontSize:13,verticalAlign:"top"}}>{l}</td>
@@ -5196,32 +5196,32 @@ ${aiPart}
             return (
               <div style={{...card,marginBottom:12,padding:"12px 14px"}}>
                 <div style={{fontSize:13,fontWeight:700,color:"#6f4c92",marginBottom:10,borderBottom:"2px solid #8a62b030",borderLeft:"3px solid #8a62b0",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-                  {today.isOtherDate?"அன்றைய அதிர்ஷ்ட விவரங்கள்":"இன்றைய அதிர்ஷ்ட விவரங்கள்"}
+                  {today.isOtherDate?t("daily.luckyThat"):t("daily.luckyToday")}
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                   <div style={{background:"linear-gradient(135deg,#dcc27e10,#c7a56808)",borderRadius:8,padding:"10px 12px",border:"1px solid #dcc27e18"}}>
-                    <div style={{fontSize:11.5,color:"#4a5365",marginBottom:4}}>{today.isOtherDate?"அன்றைய அதிர்ஷ்ட எண்கள்":"இன்றைய அதிர்ஷ்ட எண்கள்"}</div>
+                    <div style={{fontSize:11.5,color:"#4a5365",marginBottom:4}}>{today.isOtherDate?t("daily.luckyNumThat"):t("daily.luckyNumToday")}</div>
                     <div style={{fontSize:22,fontWeight:800,color:"#1f3f68",letterSpacing:6}}>
                       {dailyNums.join("  ")}
                     </div>
                   </div>
                   <div style={{background:"linear-gradient(135deg,#a9823c15,#c7a56808)",borderRadius:8,padding:"10px 12px",border:"1px solid #a9823c25"}}>
-                    <div style={{fontSize:11.5,color:"#4a5365",marginBottom:4}}>அதிர்ஷ்ட நிறம்</div>
-                    <div style={{fontSize:13,fontWeight:700,color:"#a9823c"}}>{birthLucky.color}</div>
+                    <div style={{fontSize:11.5,color:"#4a5365",marginBottom:4}}>{t("lucky.color")}</div>
+                    <div style={{fontSize:13,fontWeight:700,color:"#a9823c"}}>{tColor(birthLucky.color)}</div>
                   </div>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:8}}>
                   <div style={{background:"#58a97f08",borderRadius:6,padding:"6px 8px",textAlign:"center"}}>
-                    <div style={{fontSize:11,color:"#4a5365"}}>நிரந்தர எண்</div>
+                    <div style={{fontSize:11,color:"#4a5365"}}>{t("daily.permNum")}</div>
                     <div style={{fontSize:13,fontWeight:700,color:"#58a97f"}}>{birthLucky.nums.join(", ")}</div>
                   </div>
                   <div style={{background:"#dcc27e08",borderRadius:6,padding:"6px 8px",textAlign:"center"}}>
-                    <div style={{fontSize:11,color:"#4a5365"}}>அதிர்ஷ்ட திசை</div>
-                    <div style={{fontSize:12.5,fontWeight:700,color:"#1f3f68"}}>{birthLucky.dir}</div>
+                    <div style={{fontSize:11,color:"#4a5365"}}>{t("lucky.dir")}</div>
+                    <div style={{fontSize:12.5,fontWeight:700,color:"#1f3f68"}}>{tDir(birthLucky.dir)}</div>
                   </div>
                   <div style={{background:"#eceff7",borderRadius:6,padding:"6px 8px",textAlign:"center"}}>
-                    <div style={{fontSize:11,color:"#4a5365"}}>{today.isOtherDate?"அன்று நட்சத்திரம்":"இன்று நட்சத்திரம்"}</div>
-                    <div style={{fontSize:12,fontWeight:700,color:"#a9823c"}}>{todayNakLord.name}</div>
+                    <div style={{fontSize:11,color:"#4a5365"}}>{today.isOtherDate?t("daily.starThat"):t("daily.starToday")}</div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#a9823c"}}>{tPlanet(todayNakLord.name)}</div>
                   </div>
                 </div>
               </div>
@@ -5232,57 +5232,57 @@ ${aiPart}
           {remedy && (
             <div style={{...card,marginBottom:12,padding:"12px 14px"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#3e4c99",marginBottom:8,borderBottom:"2px solid #5565b830",borderLeft:"3px solid #5565b8",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-                உங்கள் ராசிக்கான நியமங்கள் & பரிகாரங்கள்
+                {t("daily.niyamamTitle")}
               </div>
 
               {/* Constant Rashi info */}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
                 <div style={{background:"#dcc27e08",borderRadius:6,padding:"7px 9px"}}>
-                  <div style={{fontSize:11.5,color:"#4a5365"}}>ஆட்சி கிரகம்</div>
-                  <div style={{fontSize:12.5,fontWeight:700,color:"#1f3f68"}}>{remedy.rashiInfo.lord}</div>
+                  <div style={{fontSize:11.5,color:"#4a5365"}}>{t("daily.rulingPlanet")}</div>
+                  <div style={{fontSize:12.5,fontWeight:700,color:"#1f3f68"}}>{tPlanet(remedy.rashiInfo.lord)}</div>
                 </div>
                 <div style={{background:"#dcc27e08",borderRadius:6,padding:"7px 9px"}}>
-                  <div style={{fontSize:11.5,color:"#4a5365"}}>வழிபட வேண்டிய தெய்வம்</div>
+                  <div style={{fontSize:11.5,color:"#4a5365"}}>{t("daily.deity")}</div>
                   <div style={{fontSize:12.5,fontWeight:700,color:"#1f3f68"}}>{remedy.rashiInfo.deity}</div>
                 </div>
                 <div style={{background:"#eceff7",borderRadius:6,padding:"7px 9px"}}>
-                  <div style={{fontSize:11.5,color:"#4a5365"}}>அணிய நல்ல நிறம்</div>
-                  <div style={{fontSize:12.5,fontWeight:700,color:"#27303f"}}>{remedy.rashiInfo.color}</div>
+                  <div style={{fontSize:11.5,color:"#4a5365"}}>{t("daily.wearColor")}</div>
+                  <div style={{fontSize:12.5,fontWeight:700,color:"#27303f"}}>{tColor(remedy.rashiInfo.color)}</div>
                 </div>
                 <div style={{background:"#eceff7",borderRadius:6,padding:"7px 9px"}}>
-                  <div style={{fontSize:11.5,color:"#4a5365"}}>சாதகமான கிழமை</div>
-                  <div style={{fontSize:12.5,fontWeight:700,color:"#27303f"}}>{kizhamai(["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"][remedy.rashiInfo.favDay] || "")}</div>
+                  <div style={{fontSize:11.5,color:"#4a5365"}}>{t("daily.goodWeekday")}</div>
+                  <div style={{fontSize:12.5,fontWeight:700,color:"#27303f"}}>{(wd=>lang==="ta"?kizhamai(wd):tWeekday(wd))(["ஞாயிறு","திங்கள்","செவ்வாய்","புதன்","வியாழன்","வெள்ளி","சனி"][remedy.rashiInfo.favDay] || "")}</div>
                 </div>
               </div>
               <div style={{background:"#58a97f08",border:"1px solid #58a97f20",borderRadius:6,padding:"8px 10px",marginBottom:10}}>
-                <div style={{fontSize:11.5,color:"#58a97f90"}}>தினசரி ஜபிக்க வேண்டிய மந்திரம்</div>
+                <div style={{fontSize:11.5,color:"#58a97f90"}}>{t("daily.dailyMantra")}</div>
                 <div style={{fontSize:12,fontWeight:600,color:"#58a97f",fontFamily:"serif",marginTop:2}}>{remedy.rashiInfo.mantra}</div>
               </div>
 
               {/* Today's specific remedy */}
               <div style={{borderTop:"1px dashed #c7a56830",paddingTop:10}}>
                 <div style={{fontSize:12.5,fontWeight:700,color:"#27303f",marginBottom:6}}>
-                  இன்று ({kizhamai(today.dayName)}) செய்ய வேண்டியவை
+                  {t("daily.todayTodo",{day:lang==="ta"?kizhamai(today.dayName):tWeekday(today.dayName)})}
                 </div>
                 {remedy.isSpecialDay && (
                   <div style={{fontSize:12,background:"#e6d2d2",color:"#1f3f68",padding:"4px 8px",borderRadius:6,marginBottom:6,fontWeight:600}}>
-                    இன்று உங்கள் ராசி நாதன் ({remedy.rashiInfo.lord}) நாள் — சிறப்பு நாள்!
+                    {t("daily.specialLordDay",{lord:tPlanet(remedy.rashiInfo.lord)})}
                   </div>
                 )}
                 <div style={{fontSize:12.5,color:"#27303f",lineHeight:1.7,marginBottom:6}}>
-                  <span style={{color:"#a9823c"}}>வழிபாடு:</span> {remedy.dayInfo.remedy}
+                  <span style={{color:"#a9823c"}}>{t("daily.worship")}</span> {remedy.dayInfo.remedy}
                 </div>
                 <div style={{fontSize:12.5,color:"#27303f",lineHeight:1.7,marginBottom:6}}>
-                  <span style={{color:"#a9823c"}}>தானம்:</span> {remedy.dayInfo.donate}
+                  <span style={{color:"#a9823c"}}>{t("daily.donate")}</span> {remedy.dayInfo.donate}
                 </div>
                 <div style={{fontSize:12.5,color:"#27303f",lineHeight:1.7}}>
-                  <span style={{color:"#a9823c"}}>தவிர்க்க வேண்டியது:</span> {remedy.dayInfo.avoid}
+                  <span style={{color:"#a9823c"}}>{t("daily.avoidThing")}</span> {remedy.dayInfo.avoid}
                 </div>
 
                 {/* Tithi-based guidance — changes daily (15-day cycle), keeps this from feeling like a 7-day repeat */}
                 <div style={{marginTop:10,borderTop:"1px dashed #a9823c30",paddingTop:8}}>
                   <div style={{fontSize:12,color:"#a9823c",marginBottom:3}}>
-                    இன்றைய திதி ({today.tithi}) வழிகாட்டுதல்
+                    {t("daily.tithiGuide",{tithi:tTithi(today.tithi)})}
                   </div>
                   <div style={{fontSize:12.5,color:"#27303f",lineHeight:1.6}}>
                     {remedy.tithiInfo.note} — <span style={{color:"#58a97f"}}>{remedy.tithiInfo.activity}</span>
@@ -5291,9 +5291,9 @@ ${aiPart}
 
                 {remedy.isChandrashtama && (
                   <div style={{marginTop:10,background:"#d98aa310",border:"1px solid #d98aa330",borderRadius:6,padding:"8px 10px"}}>
-                    <div style={{fontSize:12,fontWeight:700,color:"#c0564f",marginBottom:3}}>⚠ சந்திராஷ்டம பரிகாரம்</div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#c0564f",marginBottom:3}}>⚠ {t("daily.chandrashtamaRemedy")}</div>
                     <div style={{fontSize:12,color:"#27303f",lineHeight:1.6}}>
-                      இன்று புதிய காரியங்கள், பயணம், முக்கிய முடிவுகள் தவிர்க்கவும். சிவன் கோவிலில் "ஓம் நமசிவாய" 108 முறை ஜபிக்கவும். பால் அபிஷேகம் செய்தால் நல்லது.
+                      {t("daily.chandrashtamaRemedyText")}
                     </div>
                   </div>
                 )}
@@ -5304,20 +5304,20 @@ ${aiPart}
           {/* Gochara Transit Table */}
           <div style={{...card,marginBottom:12,padding:"12px 14px"}}>
             <div style={{fontSize:13,fontWeight:700,color:"#226b66",marginBottom:8,borderBottom:"2px solid #2e8b8430",borderLeft:"3px solid #2e8b84",paddingBottom:4,paddingLeft:8,letterSpacing:0.5}}>
-              கிரக கோசாரம் (உங்கள் ராசி: {horoscope.moonRashi})
+              {t("daily.gocharTitle",{rashi:tRashi(horoscope.moonRashi)})}
             </div>
             {gochara.results.map((p,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 4px",
                 borderBottom:i<gochara.results.length-1?"1px solid #1f3f6808":"none",
                 borderLeft:`3px solid ${grahaCardBorder(p.ta)}`,marginBottom:2,borderRadius:4,
                 background:`${grahaCardBorder(p.ta)}08`}}>
-                <span style={{fontSize:12.5,color:T.text,flex:1,fontWeight:600}}>{p.ta} — {p.rashi}</span>
-                <span style={{fontSize:11.5,color:T.textMuted}}>{p.houseFromMoon}ஆம் வீடு</span>
+                <span style={{fontSize:12.5,color:T.text,flex:1,fontWeight:600}}>{tPlanet(p.ta)} — {tRashi(p.rashi)}</span>
+                <span style={{fontSize:11.5,color:T.textMuted}}>{t("house.n",{n:p.houseFromMoon})}</span>
                 <span style={{
                   fontSize:11, fontWeight:700, padding:"2px 7px", borderRadius:5,
                   background:p.effect==="good"?T.good+"20":p.effect==="bad"?T.bad+"20":T.neutral+"15",
                   color:p.effect==="good"?T.good:p.effect==="bad"?T.bad:T.accentSoft
-                }}>{p.effect==="good"?"சுபம்":p.effect==="bad"?"அசுபம்":"நடுநிலை"}</span>
+                }}>{p.effect==="good"?t("daily.moodGood2"):p.effect==="bad"?t("daily.moodBad2"):t("daily.moodNeutral2")}</span>
               </div>
             ))}
           </div>
@@ -5327,12 +5327,12 @@ ${aiPart}
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
               <div style={{width:32,height:32,borderRadius:10,background:"linear-gradient(135deg,#c7a56830,#a9823c20)",
                 display:"flex",alignItems:"center",justifyContent:"center",color:"#a9823c"}}><Sparkles size={17}/></div>
-              <div style={{fontSize:13,fontWeight:600,color:"#1f3f68"}}>AI தினப்பலன்</div>
+              <div style={{fontSize:13,fontWeight:600,color:"#1f3f68"}}>{t("daily.aiTitle")}</div>
             </div>
             {dailyLoading ? (
               <div style={{textAlign:"center",padding:"20px 0"}}>
                 <div style={{width:26,height:26,margin:"0 auto 8px",border:"2px solid #c7a56820",borderTop:"2px solid #c7a568",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
-                <p style={{color:"#a9823c",fontSize:12}}>தினப்பலன் உருவாக்குகிறது...</p>
+                <p style={{color:"#a9823c",fontSize:12}}>{t("daily.aiLoading")}</p>
                 <style>{`@keyframes spin{to{transform:rotate(360deg);}}`}</style>
               </div>
             ) : dailyPrediction ? (
@@ -5342,7 +5342,7 @@ ${aiPart}
               </>
             ) : (
               <button style={{...btnGold,width:"auto",padding:"10px 24px",display:"inline-block",fontSize:13}} onClick={fetchDailyPrediction}>
-                {today.isOtherDate?"அன்றைய பலன் பெறு":"இன்றைய பலன் பெறு"} →
+                {today.isOtherDate?t("daily.getAiThat"):t("daily.getAiToday")} →
               </button>
             )}
           </div>
