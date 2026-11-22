@@ -6,6 +6,7 @@
 // Date objects into ISO strings — we turn them back).
 // ═══════════════════════════════════════════════════════════════════
 import { getIdToken } from "./firebase.js";
+import { getLang } from "./i18n/index.js";
 
 const BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
@@ -80,31 +81,31 @@ export async function apiCompute(birth) {
 
 // AI birth-chart reading (prompt built server-side).
 export async function apiPredict(birth) {
-  const { text } = await post("/api/predict", birth);
+  const { text } = await post("/api/predict", { ...birth, lang: getLang() });
   return text;
 }
 
 // Daily / specific-date bundle + optional AI reading.
 export async function apiDaily(birth, targetDateISO = null, withText = true) {
-  const { daily, text } = await post("/api/daily", { ...birth, targetDateISO, withText });
+  const { daily, text } = await post("/api/daily", { ...birth, targetDateISO, withText, lang: getLang() });
   return { daily: reviveDates(daily), text };
 }
 
-// Rule-based astrologer chat — chart-grounded Tamil answer (no LLM).
+// Rule-based astrologer chat — chart-grounded answer (தமிழ்: engine; en/hi: AI மொழியாக்கம்).
 export async function apiAsk(birth, question, lastTopic = "", persona = "") {
-  const { category, label, answer } = await post("/api/ask", { ...birth, question, lastTopic, persona });
-  return { category, label, answer };
+  const { category, label, answer, ai } = await post("/api/ask", { ...birth, question, lastTopic, persona, lang: getLang() });
+  return { category, label, answer, ai };
 }
 
 // Hybrid: engine துல்லியம் + Gemini இயல்பு மொழி. key இல்லையேல் engine பதில் (ai:false).
 export async function apiAskAI(birth, question, lastTopic = "", persona = "") {
-  const { category, label, answer, ai } = await post("/api/ask-ai", { ...birth, question, lastTopic, persona });
+  const { category, label, answer, ai } = await post("/api/ask-ai", { ...birth, question, lastTopic, persona, lang: getLang() });
   return { category, label, answer, ai };
 }
 
 // FREE deep answer (no payment) — engine findings phrased deeply by the LLM.
 export async function apiAskDeep(birth, question, lastTopic = "", persona = "") {
-  const { answer, ai } = await post("/api/ask-deep", { ...birth, question, lastTopic, persona });
+  const { answer, ai } = await post("/api/ask-deep", { ...birth, question, lastTopic, persona, lang: getLang() });
   return { answer, ai };
 }
 
@@ -115,7 +116,7 @@ export async function apiOrder(amount) {
 
 // Premium AI answer — only returned after the Worker verifies the payment.
 export async function apiAskPremium(birth, question, pay) {
-  const { answer } = await post("/api/ask-premium", { ...birth, question, ...pay });
+  const { answer } = await post("/api/ask-premium", { ...birth, question, ...pay, lang: getLang() });
   return { answer };
 }
 

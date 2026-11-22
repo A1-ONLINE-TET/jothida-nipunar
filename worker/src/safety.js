@@ -15,6 +15,7 @@
 
 const norm = (q) => String(q || "").toLowerCase().replace(/\s+/g, " ").trim();
 const any = (s, list) => list.some((re) => re.test(s));
+const LANG = (l) => (l === "en" || l === "hi") ? l : "ta";
 
 // ── 1அ. தற்கொலை / தன்னைத் துன்புறுத்தும் எண்ணம் ──
 const CRISIS = [
@@ -23,18 +24,21 @@ const CRISIS = [
   /வாழ (பிடிக்க|விருப்ப|ஆசை) ?(வில்லை|இல்லை|ல)/, /வாழவே (பிடிக்க|வேண்டாம்)/, /வாழ்ந்து என்ன (பயன்|பிரயோஜன)/, /இனி வாழ (முடியா|வேண்டாம்)/,
   /suicid/, /kill (myself|my ?self)/, /end my life/, /take my (own )?life/, /(want|wish) to die/, /wanna die/, /self[- ]?harm/, /no reason to live/, /don'?t want to live/,
   /tharkolai/, /tharkola/, /saaganum/, /saganum/, /sethu ?(pogalam|poganum|dalam|ralam)/, /uyira? vida/, /vaazha pidikala/,
+  // हिन्दी
+  /आत्महत्या/, /खुदकुशी/, /मर ?(जाऊँ|जाना चाहता|जाना चाहती|जाऊंगा)/, /मरना चाहता/, /मरना चाहती/, /जीना नहीं चाहता/, /जीने का मन नहीं/, /ज़िंदगी खत्म/, /जान दे ?(दूँ|दूंगा|देना)/, /खुद को (नुकसान|खत्म)/,
 ];
 
 // ── 1ஆ. ஆயுள் / மரண காலக் கணிப்பு ──
-const DEATH_WORD = /(இறப்ப|இறப்பு|இறந்து ?(போ|விடு)|இறக்க|சாவு|சாவேன்|சாவார்|சாவான்|சாவாள்|சாவோம்|சாகும்|செத்து|மரண|உயிர் ?(போ|பிரி)|உயிரோடு|உயிருடன்|death|\bdie\b|\bdies\b|\bdying\b|\bdead\b|maranam|saavu|saaven|irappu)/;
-const PREDICT_WORD = /(எப்போ|எப்பொழு|எப்ப |எப்பம்|எந்த வய|எந்த ஆண்டு|எந்த வருட|எத்தனை|எவ்வளவு|வரை|உண்டா|இருக்கா|இருக்கிறதா|இருப்ப|வருமா|நேருமா|ஆகுமா|கண்டம்|when|how long|how many|how much|will i|will my|will he|will she|until|eppo|evvalavu|evlo|ethanai|yethana)/;
-const LIFESPAN_WORD = /(ஆயுள்|ஆயுசு|ஆயுட்|life ?span|longevity|aayul|ayul|aayusu)/;
+const DEATH_WORD = /(இறப்ப|இறப்பு|இறந்து ?(போ|விடு)|இறக்க|சாவு|சாவேன்|சாவார்|சாவான்|சாவாள்|சாவோம்|சாகும்|செத்து|மரண|உயிர் ?(போ|பிரி)|உயிரோடு|உயிருடன்|death|\bdie\b|\bdies\b|\bdying\b|\bdead\b|maranam|saavu|saaven|irappu|मृत्यु|मौत|मरण|मर ?(जा|जाऊ|जाएग|जाएँग))/;
+const PREDICT_WORD = /(எப்போ|எப்பொழு|எப்ப |எப்பம்|எந்த வய|எந்த ஆண்டு|எந்த வருட|எத்தனை|எவ்வளவு|வரை|உண்டா|இருக்கா|இருக்கிறதா|இருப்ப|வருமா|நேருமா|ஆகுமா|கண்டம்|when|how long|how many|how much|will i|will my|will he|will she|until|eppo|evvalavu|evlo|ethanai|yethana|कब|कितने|कितनी|कब तक|क्या होगा|होगा क्या)/;
+const LIFESPAN_WORD = /(ஆயுள்|ஆயுசு|ஆயுட்|life ?span|longevity|aayul|ayul|aayusu|आयु|आयुष्य|जीवनकाल|उम्र कितनी)/;
 const LIFESPAN_OK = /(ஆயுள் ?காப்பீ|ஆயுள் ?இன்சூ|life insurance|ஆயுள் ?தண்டனை)/;
 const LIVE_HOW_LONG = /(எத்தனை (வயது|ஆண்டு|வருட|வருஷ)\S* ?(வரை)? ?(வாழ|உயிர்|இருப்ப)|எவ்வளவு (காலம்|நாள்|ஆண்டு|வருட)\S* ?(வாழ|உயிர்)|how long (will|do|can) (i|he|she|we|my \w+) live|how many years .* live|ethanai (vayasu|varusham) .* (vaazh|iruppen))/;
 
 // ── 1இ. குழந்தையின் பாலினக் கணிப்பு (PCPNDT சட்டம்) ──
 const SEX_ASK = /(ஆணா|பெண்ணா|மகனா|மகளா|பையனா|பொண்ணா|ஆண் ?பிள்ளையா|பெண் ?பிள்ளையா|boy or (a )?girl|girl or (a )?boy|son or (a )?daughter|aana penna|aanaa pennaa|paiyana ponna)/;
-const CHILD_CTX = /(குழந்த|பிள்ள|வாரிசு|கர்ப்ப|கருவ|கரு |வயிற்றில|பிறக்க|பிரசவ|baby|child|pregnan|womb|unborn|deliver|kuzhand|kulanth|garbam|karu)/;
+const CHILD_CTX = /(குழந்த|பிள்ள|வாரிசு|கர்ப்ப|கருவ|கரு |வயிற்றில|பிறக்க|பிரசவ|baby|child|pregnan|womb|unborn|deliver|kuzhand|kulanth|garbam|karu|बच्च|शिशु|संतान|गर्भ|पेट में|जन्म लेने)/;
+const SEX_ASK_HI = /(लड़का या लड़की|लड़की या लड़का|बेटा या बेटी|बेटी या बेटा|पुत्र या पुत्री)/;
 const SEX_OF_CHILD = /((ஆண்|பெண்) ?(குழந்த|பிள்ள|வாரிசு|மகவு)\S* ?(தான் )?(பிறக்கும|பிறக்குமா|பிறக்க|கிடைக்கும|உண்டா|வருமா|ஆகுமா))|(gender|sex) of (my|the|our) (baby|child|foetus|fetus)|baby'?s? (gender|sex)|will (i|we) (have|get) a (boy|girl|son|daughter|male|female)|(male|female) child|(aan|pen) kuzhandhai (pirakkuma|kidaikuma)/;
 const PREGNANCY_SEX = /(கர்ப்ப|கருவ|வயிற்றில|pregnan|womb|unborn|garbam).*(ஆண்|பெண்|பாலின|gender|\bsex\b|boy|girl)|(ஆண்|பெண்|பாலின|gender|boy|girl).*(கர்ப்ப|கருவ|வயிற்றில|pregnan|womb|unborn|garbam)/;
 
@@ -45,7 +49,7 @@ const IDENTITY = [
   /are you (a |an )?(human|real|ai|bot|robot|machine|person)/, /is this (a |an )?(ai|bot|human|real)/, /(neenga|nee) (manushana|manithara|ai ah|robot ah)/,
 ];
 
-const ANSWERS = {
+const ANSWERS_TA = {
   crisis:
 `நீங்கள் இப்போது மிகுந்த மன வலியில் இருப்பது போலத் தெரிகிறது. இந்த நேரத்தில் ஜாதகப் பலனை விட, உங்களுடன் பேச ஒருவர் இருப்பதுதான் முக்கியம்.
 
@@ -69,18 +73,68 @@ const ANSWERS = {
 
 இந்தப் பதில்கள் வழிகாட்டலுக்கு மட்டும். முக்கிய முடிவுகளுக்கு அனுபவமுள்ள ஜோதிடர் அல்லது உரிய நிபுணரின் ஆலோசனையையும் பெறுங்கள்.`,
 };
+const ANSWERS_EN = {
+  crisis:
+`It sounds like you are in a lot of emotional pain right now. At a time like this, having someone to talk to matters far more than any horoscope.
 
-// கணக்கிடும் முன் கேள்வியைச் சோதி. பதில் சொல்லக் கூடாத வகை எனில் { kind, answer }.
-export function screenQuestion(question) {
+Please reach out to one of these right now:
+• Tele MANAS — Government mental-health helpline, 24 hours: 14416
+• Tamil Nadu Government health helpline: 104
+• Sneha, Chennai: 044-2464 0050
+• Emergency: 112
+
+Please speak to a trusted friend or family member right now. This hard moment will pass; you are not alone.`,
+  lifespan:
+`This app does not predict lifespan or the time of death. Astrological ethics say such things must never be stated with certainty; a wrong prediction only causes needless fear.
+
+If you are worried about health, please consult a doctor. To learn in general about periods that need care for your health, you can ask "How will my health be?"`,
+  fetal_sex:
+`This app does not predict whether an unborn child will be a boy or a girl. Determining or disclosing the sex of a foetus is prohibited under Indian law (the Pre-Conception and Pre-Natal Diagnostic Techniques Act, 1994).
+
+To learn about the blessing of children and a favourable time for it, you can ask "When is the blessing of children?"`,
+  identity:
+`I am not a human astrologer; I am this app's AI assistant. I answer using the horoscope calculated from your birth details (planetary positions, dasha-bhukti, transits).
+
+These answers are for guidance only. For important decisions, please also seek advice from an experienced astrologer or the relevant professional.`,
+};
+const ANSWERS_HI = {
+  crisis:
+`लगता है आप अभी बहुत मानसिक पीड़ा में हैं। ऐसे समय में किसी कुंडली फल से कहीं अधिक ज़रूरी है कि आपसे बात करने के लिए कोई हो।
+
+कृपया अभी इनमें से किसी एक को कॉल करें:
+• टेली मानस — सरकारी मानसिक स्वास्थ्य हेल्पलाइन, 24 घंटे: 14416
+• तमिलनाडु सरकारी स्वास्थ्य हेल्पलाइन: 104
+• स्नेहा, चेन्नई: 044-2464 0050
+• आपातकाल: 112
+
+कृपया अभी किसी विश्वसनीय मित्र या परिजन से बात करें। यह कठिन समय बीत जाएगा; आप अकेले नहीं हैं।`,
+  lifespan:
+`यह ऐप आयु या मृत्यु के समय की भविष्यवाणी नहीं करता। ज्योतिष की मर्यादा यही है कि इसे निश्चित रूप से नहीं कहना चाहिए; ग़लत भविष्यवाणी केवल अनावश्यक भय देती है।
+
+स्वास्थ्य की चिंता हो तो कृपया चिकित्सक से मिलें। स्वास्थ्य हेतु ध्यान आवश्यक काल सामान्य रूप से जानने के लिए आप पूछ सकते हैं "मेरा स्वास्थ्य कैसा रहेगा?"`,
+  fetal_sex:
+`यह ऐप यह भविष्यवाणी नहीं करता कि गर्भस्थ शिशु लड़का होगा या लड़की। गर्भ के लिंग का पता लगाना या बताना भारतीय कानून (गर्भधारण पूर्व और प्रसव पूर्व निदान तकनीक अधिनियम, 1994) के अंतर्गत प्रतिबंधित है।
+
+संतान सुख और उसके अनुकूल काल के बारे में जानने हेतु आप पूछ सकते हैं "संतान सुख कब है?"`,
+  identity:
+`मैं मानव ज्योतिषी नहीं हूँ; मैं इस ऐप का AI सहायक हूँ। मैं आपके जन्म विवरण से गणित कुंडली (ग्रह स्थिति, दशा-भुक्ति, गोचर) के आधार पर उत्तर देता हूँ।
+
+ये उत्तर केवल मार्गदर्शन हेतु हैं। बड़े निर्णयों के लिए कृपया किसी अनुभवी ज्योतिषी या संबंधित विशेषज्ञ से भी सलाह लें।`,
+};
+const ANSWERS_BY_LANG = { ta: ANSWERS_TA, en: ANSWERS_EN, hi: ANSWERS_HI };
+
+// கணக்கிடும் முன் கேள்வியைச் சோதி. பதில் சொல்லக் கூடாத வகை எனில் { kind, answer }. lang = பதிலின் மொழி.
+export function screenQuestion(question, lang) {
   const s = norm(question);
   if (!s) return null;
-  if (any(s, CRISIS)) return { kind: "crisis", answer: ANSWERS.crisis };
-  if (SEX_OF_CHILD.test(s) || PREGNANCY_SEX.test(s) || (SEX_ASK.test(s) && CHILD_CTX.test(s))) {
-    return { kind: "fetal_sex", answer: ANSWERS.fetal_sex };
+  const A = ANSWERS_BY_LANG[LANG(lang)];
+  if (any(s, CRISIS)) return { kind: "crisis", answer: A.crisis };
+  if (SEX_OF_CHILD.test(s) || PREGNANCY_SEX.test(s) || ((SEX_ASK.test(s) || SEX_ASK_HI.test(s)) && CHILD_CTX.test(s))) {
+    return { kind: "fetal_sex", answer: A.fetal_sex };
   }
   const lifespan = (LIFESPAN_WORD.test(s) && !LIFESPAN_OK.test(s)) || LIVE_HOW_LONG.test(s) || (DEATH_WORD.test(s) && PREDICT_WORD.test(s));
-  if (lifespan) return { kind: "lifespan", answer: ANSWERS.lifespan };
-  if (any(s, IDENTITY)) return { kind: "identity", answer: ANSWERS.identity };
+  if (lifespan) return { kind: "lifespan", answer: A.lifespan };
+  if (any(s, IDENTITY)) return { kind: "identity", answer: A.identity };
   return null;
 }
 
@@ -90,25 +144,33 @@ const PREGNANCY = /(கர்ப்ப|கருத்தரி|கருவு�
 const RISKY_MONEY = /(லாட்டரி|சூதாட்ட|பந்தய|பெட்டிங்|ரம்மி|பங்கு ?ச் ?சந்த|பங்குச்|பங்குகள|ஷேர்|கிரிப்டோ|பிட்காயின்|டிரேடிங்|ஊக வணிக|ஆன்லைன் கேம்|lottery|gambl|betting|\bbet\b|rummy|share market|stock|crypto|bitcoin|trading|f ?& ?o|futures|options trad|intraday)/;
 const LEGAL = /(வழக்கு|கோர்ட்|நீதிமன்ற|விவாகரத்து|ஜாமீன்|சிறை|போலீஸ்|காவல் நிலைய|court|lawsuit|legal|divorce|bail|jail|police|\bfir\b|vazhakku)/;
 
-export function safetyNote(category, question) {
+const NOTE_TXT = {
+  ta: { medical: "இது மருத்துவ ஆலோசனை அல்ல. உடல்நலப் பிரச்சனைக்கு மருத்துவரை அணுகுங்கள்; மருந்தையோ சிகிச்சையையோ ஜோதிடப் பலனை வைத்து நிறுத்தாதீர்கள்.",
+    pregnancy: "கருத்தரிப்பு, பிரசவம் தொடர்பான முடிவுகளை மருத்துவரின் ஆலோசனைப்படி எடுங்கள்.",
+    money: "இது முதலீட்டு ஆலோசனை அல்ல. பங்கு, ஊக வணிகம், சூதாட்டம் ஆகியவற்றில் பணம் இழக்க நேரிடலாம்; ஜோதிடப் பலனை மட்டும் நம்பிப் பணம் போடாதீர்கள்.",
+    legal: "சட்ட விஷயங்களில் வழக்கறிஞரின் ஆலோசனைப்படி செயல்படுங்கள்.", prefix: "குறிப்பு: " },
+  en: { medical: "This is not medical advice. For a health problem consult a doctor; do not stop any medicine or treatment based on an astrology reading.",
+    pregnancy: "Make decisions about conception and childbirth on your doctor's advice.",
+    money: "This is not investment advice. You can lose money in shares, speculation or gambling; do not invest based on an astrology reading alone.",
+    legal: "In legal matters, act on a lawyer's advice.", prefix: "Note: " },
+  hi: { medical: "यह चिकित्सा सलाह नहीं है। स्वास्थ्य समस्या हेतु चिकित्सक से मिलें; कोई दवा या उपचार ज्योतिष फल के आधार पर बंद न करें।",
+    pregnancy: "गर्भधारण और प्रसव संबंधी निर्णय चिकित्सक की सलाह से लें।",
+    money: "यह निवेश सलाह नहीं है। शेयर, सट्टा या जुए में धन की हानि हो सकती है; केवल ज्योतिष फल के आधार पर निवेश न करें।",
+    legal: "कानूनी मामलों में वकील की सलाह से कार्य करें।", prefix: "सूचना: " },
+};
+export function safetyNote(category, question, lang) {
   const s = norm(question);
+  const T = NOTE_TXT[LANG(lang)];
   const notes = [];
-  if (category === "health" || MEDICAL.test(s)) {
-    notes.push("இது மருத்துவ ஆலோசனை அல்ல. உடல்நலப் பிரச்சனைக்கு மருத்துவரை அணுகுங்கள்; மருந்தையோ சிகிச்சையையோ ஜோதிடப் பலனை வைத்து நிறுத்தாதீர்கள்.");
-  } else if (PREGNANCY.test(s)) {
-    notes.push("கருத்தரிப்பு, பிரசவம் தொடர்பான முடிவுகளை மருத்துவரின் ஆலோசனைப்படி எடுங்கள்.");
-  }
-  if (RISKY_MONEY.test(s)) {
-    notes.push("இது முதலீட்டு ஆலோசனை அல்ல. பங்கு, ஊக வணிகம், சூதாட்டம் ஆகியவற்றில் பணம் இழக்க நேரிடலாம்; ஜோதிடப் பலனை மட்டும் நம்பிப் பணம் போடாதீர்கள்.");
-  }
-  if (LEGAL.test(s)) {
-    notes.push("சட்ட விஷயங்களில் வழக்கறிஞரின் ஆலோசனைப்படி செயல்படுங்கள்.");
-  }
-  return notes.length ? "குறிப்பு: " + notes.join(" ") : "";
+  if (category === "health" || MEDICAL.test(s)) notes.push(T.medical);
+  else if (PREGNANCY.test(s)) notes.push(T.pregnancy);
+  if (RISKY_MONEY.test(s)) notes.push(T.money);
+  if (LEGAL.test(s)) notes.push(T.legal);
+  return notes.length ? T.prefix + notes.join(" ") : "";
 }
 
-export function withSafetyNote(answer, category, question) {
-  const note = safetyNote(category, question);
+export function withSafetyNote(answer, category, question, lang) {
+  const note = safetyNote(category, question, lang);
   return note ? `${String(answer || "").trimEnd()}\n\n${note}` : answer;
 }
 
@@ -118,6 +180,10 @@ const UNSAFE_OUT = [
   /ஆயுள் (\d|குறைவு|குறைந்த|முடி)/, /(\d{2,3}) ?(வயது|ஆண்டு|வருட)\S* ?வரை (மட்டுமே )?(வாழ|உயிர்)/,
   /(ஆண்|பெண்) குழந்தை (தான் )?பிறக்கும்/, /you will die/, /death (will|is likely|is indicated)/,
   /(மருந்த|மாத்திரை|சிகிச்சை)\S* ?(நிறுத்த(லாம்|ுங்கள்|வும்)|தேவையில்லை|வேண்டாம்)/,
+  // English output
+  /you (will|may|could) die/, /your (death|demise) (will|is|may)/, /(die|death) (at|by|before|around) (the )?age/, /live (only )?(until|till|up to) (the )?age/, /you will (have|get) a (boy|girl|son|daughter)/, /it will be a (boy|girl|son|daughter)/, /(stop|discontinue) (your |the )?(medicine|medication|treatment)/,
+  // हिन्दी output
+  /(मृत्यु|मौत) (होगी|होने|निश्चित|संभव)/, /आप मर (जाएँगे|जाओगे)/, /(\d{2,3}) ?(वर्ष|साल|वय) तक (ही )?(जीवित|जीएँगे)/, /आयु (कम|\d)/, /(लड़का|लड़की|बेटा|बेटी) ही (होगा|होगी)/, /(दवा|दवाई|इलाज|उपचार) (बंद|रोक|छोड़)/,
 ];
 export function answerIsUnsafe(text) {
   return any(norm(text), UNSAFE_OUT);
@@ -174,3 +240,36 @@ export const AI_GUARDRAILS = `கட்டாய விதிகள் (எந�
 - நீங்கள் மனிதரா என்று கேட்டால், "நான் AI உதவியாளர்; மனித ஜோதிடர் அல்ல" என்று உண்மையைச் சொல்லுங்கள்.
 - நேரடியாகச் சொல்லுங்கள்: முடிவு, காலம், செய்ய வேண்டியது மட்டும். "உங்கள் ஜாதகக் கணிப்பின் அடிப்படையில் பேசுகிறேன்", "ஆராய்ந்து சொல்கிறேன்", "நேரடியாகப் பதில் சொல்கிறேன்", "கணக்கின்படி" போன்ற முறை விளக்க வரிகளையும், கேட்காதபோது "நான் AI உதவியாளர்" என்ற அறிமுகத்தையும் பதிலில் எழுத வேண்டாம்.
 - முழுப் பதிலும் தமிழில் மட்டும். ஆங்கிலச் சொற்களோ ஆங்கில எழுத்துகளோ ("AI" தவிர), ஹிந்திச் சொற்களோ வேண்டாம்: "transit" அல்ல "கோசாரம்"; "Mahadasha" அல்ல "மகா தசை"; "சாடே சாதி" அல்ல "ஏழரைச் சனி". கிரகம், ராசி, நட்சத்திரப் பெயர்களைத் தமிழில் எழுதுங்கள். அடைப்புக்குறிக்குள் ஆங்கில விளக்கம் வேண்டாம்.`;
+
+const AI_GUARDRAILS_EN = `Mandatory rules (never break, in any situation):
+- Do not predict lifespan, death, danger to life, or that an accident is certain.
+- Do not diagnose an illness, prescribe or recommend medicine or treatment, or tell anyone to stop one; if health comes up, tell them to consult a doctor.
+- Do not say whether an unborn child will be a boy or a girl.
+- Do not tell anyone to put money into shares, lottery or gambling; do not state the outcome of a legal case with certainty.
+- No threatening words; do not say something "will definitely happen" — speak in terms of likelihood and caution.
+- Do not tell anyone to buy any product (gemstone, yantra, pooja).
+- No demeaning remarks based on caste, religion or gender.
+- If asked whether you are human, tell the truth: "I am an AI assistant, not a human astrologer."
+- Speak directly: only the conclusion, the timing and what to do. Do not write method-narration lines like "based on your horoscope calculation", "let me analyse", or the "I am an AI assistant" introduction when it was not asked.
+- Reply ONLY in English — clear, natural English. Do not use Tamil or Hindi words or letters.`;
+
+const AI_GUARDRAILS_HI = `अनिवार्य नियम (किसी भी स्थिति में न तोड़ें):
+- आयु, मृत्यु, जीवन के ख़तरे, या दुर्घटना निश्चित होने जैसी कोई भविष्यवाणी न करें।
+- किसी रोग का निदान, दवा या उपचार की सिफ़ारिश, या उसे रोकने को न कहें; स्वास्थ्य की बात आए तो चिकित्सक से मिलने को कहें।
+- गर्भस्थ शिशु लड़का होगा या लड़की, यह न बताएँ।
+- शेयर, लॉटरी या जुए में पैसा लगाने को न कहें; किसी कानूनी मुकदमे का परिणाम निश्चित रूप से न बताएँ।
+- धमकीपूर्ण शब्द नहीं; "निश्चित होगा" न कहें — संभावना और सावधानी के स्तर पर कहें।
+- कोई वस्तु (रत्न, यंत्र, पूजा) खरीदने को न कहें।
+- जाति, धर्म या लिंग के आधार पर अपमानजनक बात नहीं।
+- यदि पूछा जाए कि आप मानव हैं, तो सच कहें: "मैं AI सहायक हूँ, मानव ज्योतिषी नहीं।"
+- सीधे कहें: केवल निष्कर्ष, समय और क्या करना है। "आपकी कुंडली गणना के आधार पर", "विश्लेषण करता हूँ" जैसी विधि-वर्णन पंक्तियाँ, और बिना पूछे "मैं AI सहायक हूँ" परिचय न लिखें।
+- उत्तर केवल हिन्दी में दें — स्पष्ट, सहज हिन्दी। तमिल या अंग्रेज़ी शब्द/अक्षर का प्रयोग न करें।`;
+
+export function aiGuardrails(lang) {
+  return LANG(lang) === "en" ? AI_GUARDRAILS_EN : LANG(lang) === "hi" ? AI_GUARDRAILS_HI : AI_GUARDRAILS;
+}
+// en/hi வெளியீட்டை ஜோதிடச் சொல் கலப்பிலிருந்து சுத்தப்படுத்து (markdown + method-narration மட்டும்; மொழியை மாற்றாது)
+export function cleanNonTamil(text) {
+  let t = String(text || "").replace(/\*\*|__|^#{1,6}\s*/gm, "");
+  return t.replace(/[ \t]{2,}/g, " ").trim();
+}

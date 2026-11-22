@@ -11,10 +11,12 @@
 // Live current dasha chain, recomputed against "now" (ported from the
 // client's getCurrentDashaInfo — never trusts a frozen .isCurrent flag).
 import { civilNow } from "../../src/engine.js";
-import { AI_GUARDRAILS } from "./safety.js";
+import { aiGuardrails } from "./safety.js";
 
-// Appended to every prompt: what the model must never say (worker/src/safety.js).
-const RULES = `\n\n${AI_GUARDRAILS}`;
+// Appended to every prompt: what the model must never say (worker/src/safety.js), in the reply language.
+const RULES = (lang) => `\n\n${aiGuardrails(lang)}`;
+const REPLY_NAME = { ta: "Tamil", en: "English", hi: "Hindi" };
+const replyName = (l) => REPLY_NAME[l === "en" || l === "hi" ? l : "ta"];
 export function currentDashaInfo(dashaData) {
   if (!dashaData || !dashaData.dashas) return "";
   const now = civilNow();
@@ -31,13 +33,13 @@ export function currentDashaInfo(dashaData) {
   return info;
 }
 
-export function buildBirthPrompt({ person, horoscope, dashaInfo }) {
-  return `You are a world-class Vedic astrologer. Based on these birth chart details, give a personalized prediction written entirely in Tamil — no English words or letters.
+export function buildBirthPrompt({ person, horoscope, dashaInfo, lang = "ta" }) {
+  return `You are a world-class Vedic astrologer. Based on these birth chart details, give a personalized prediction written entirely in ${replyName(lang)} — use only ${replyName(lang)} script, no other language's words or letters.
 Name: ${person.name}, DOB: ${person.dob}, TOB: ${person.tob ? `${person.tob} ${person.ampm || ""}` : "Unknown"}, POB: ${person.pob || "Unknown"}
 Lagna: ${horoscope.lagnaName}, Moon: ${horoscope.moonRashi}, Nakshatra: ${horoscope.nakshatra}
 Planets: ${horoscope.placements.map((p) => `${p.ta}:${p.rashi} H${p.house} ${p.degree}°`).join(", ")}
 ${dashaInfo ? `Dasha periods:\n${dashaInfo}` : ""}
-Predict: பொது பலன், தொழில், திருமணம், ஆரோக்கியம், நிதி. Consider the current Mahadasha-Antardasha-Pratyantardasha lords and their combined effects on each life area. 200 words. Warm tone.${RULES}`;
+Predict (general, career, marriage, health, finance). Consider the current Mahadasha-Antardasha-Pratyantardasha lords and their combined effects on each life area. 200 words. Warm tone. Write the entire prediction in ${replyName(lang)} only.${RULES(lang)}`;
 }
 
 // Premium AI chat — answer the user's OWN question, grounded in their chart.
@@ -51,7 +53,7 @@ Client's question: "${question}"
 Give a focused, compassionate, practical answer (max 220 words) that directly addresses the question using the relevant houses, house lords, karakas and the running dasha. Mention likely timing where the dasha supports it. If the question is not astrology-related, gently say so and invite an astrology question. End with one short remedy or word of encouragement.${RULES}`;
 }
 
-export function buildDailyPrompt({ person, horoscope, daily }) {
+export function buildDailyPrompt({ person, horoscope, daily, lang = "ta" }) {
   const { today, gochara, remedy, sadeSati, guruPeyarchi, taraBala, currentDasha } = daily;
   const transitSummary = gochara.results
     .map(
@@ -67,7 +69,7 @@ export function buildDailyPrompt({ person, horoscope, daily }) {
   const dashaLine = currentDasha
     ? `The full dasha chain running ${timeframe}: ${currentDasha.mahadasha.name} Mahadasha (main period) → ${currentDasha.bhukti?.name || currentDasha.mahadasha.name} Bhukti (sub-period)${currentDasha.pratyantar ? ` → ${currentDasha.pratyantar.name} Pratyantardasha (sub-sub-period)` : ""}${currentDasha.sookshma ? ` → ${currentDasha.sookshma.name} Sookshma Dasha (finest-grained period, ${currentDasha.daysLeftInSookshma} days left)` : ""}. This is the person's most important long-term astrological influence for that date — the Mahadasha and Bhukti set the broad theme, while the Pratyantardasha and Sookshma Dasha fine-tune what's emphasized right now. Consider what all these planets govern together.`
     : "Dasha data not available.";
-  return `You are a Tamil Vedic astrologer giving a ${today.isOtherDate ? "specific-date" : "daily"} horoscope reading. Respond ONLY in Tamil.
+  return `You are a Vedic astrologer giving a ${today.isOtherDate ? "specific-date" : "daily"} horoscope reading. Respond ONLY in ${replyName(lang)} — use only ${replyName(lang)} script.
 Person: ${person.name}
 Birth chart: Lagna ${horoscope.lagnaName}, Moon sign (Rashi) ${horoscope.moonRashi}, Nakshatra ${horoscope.nakshatra}
 ${today.isOtherDate ? "Target date" : "Today's date"}: ${today.dateStr} (${today.dayName}கிழமை)${today.isFuture ? " — this is a FUTURE date, not today. Phrase the reading as 'அன்று' (on that day) not 'இன்று' (today)." : today.isPast ? " — this is a PAST date. Phrase the reading in past tense as 'அன்று' (on that day)." : ""}
@@ -79,5 +81,5 @@ ${sadeSati?.active ? `Saturn status on that date: ${sadeSati.isEzharai ? "ஏழ
 Guru Peyarchi (Jupiter transit) effect on that date: ${guruPeyarchi?.desc || "N/A"}
 Tara Bala on that date: ${taraBala?.name} (${taraBala?.mood === "good" ? "favorable" : "use caution"})
 Recommended remedy for this rashi: worship ${remedy?.dayInfo?.deity}, ${remedy?.dayInfo?.remedy}
-Give a short, warm, practical ${today.isFuture ? "prediction for that future date" : "daily prediction"} (170 words max) covering: general mood, favorable/unfavorable timing, one practical tip. The Dasha-Bhukti is the most important personalization factor — ground the reading in what the Mahadasha and Bhukti lords represent, then layer in the transits and panchangam on top. Do not repeat the raw planetary data back — synthesize it into natural guidance.${RULES}`;
+Give a short, warm, practical ${today.isFuture ? "prediction for that future date" : "daily prediction"} (170 words max) covering: general mood, favorable/unfavorable timing, one practical tip. The Dasha-Bhukti is the most important personalization factor — ground the reading in what the Mahadasha and Bhukti lords represent, then layer in the transits and panchangam on top. Do not repeat the raw planetary data back — synthesize it into natural guidance. Write the entire reading in ${replyName(lang)} only.${RULES(lang)}`;
 }

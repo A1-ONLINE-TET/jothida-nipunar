@@ -24,7 +24,8 @@ import { createOrder, verifyPayment } from "./pay.js";
 import { buildGeminiAstrologerPrompt, isPersona } from "./gemini.js";
 import { callClaude } from "./claude.js";
 import { callGemini } from "./gemini.js";
-import { screenQuestion, withSafetyNote, answerIsUnsafe, tamilOnly, latinWords, stripLatin } from "./safety.js";
+import { screenQuestion, withSafetyNote, answerIsUnsafe, tamilOnly, latinWords, stripLatin, cleanNonTamil } from "./safety.js";
+const okLang = (l) => (l === "en" || l === "hi") ? l : "ta";
 
 // Route AI calls: set AI_PROVIDER="gemini" in wrangler.toml [vars] to use Gemini.
 // Default is Claude. Falls back to the other if the primary key is missing.
@@ -141,7 +142,15 @@ async function fetchSwiss(env, birth) {
 // AI உரை — பாதுகாப்பு விதிகளை மீறினால் ஒருமுறை மீண்டும் கேட்கும்; மீண்டும் மீறினால் பிழை.
 // வெளியீடு தமிழில் மட்டும்: பொதுவான ஆங்கிலச் சொற்கள் தமிழாக்கப்படும்; அதன் பின்னும் ஆங்கிலம் அதிகம் இருந்தால்
 // மீண்டும் கேட்கும்; இரண்டாம் முறையும் இருந்தால் மீதமுள்ள ஆங்கிலச் சொற்கள் நீக்கப்படும்.
-async function safeAI(env, prompt, maxTokens) {
+async function safeAI(env, prompt, maxTokens, lang = "ta") {
+  // en/hi: வெளியீடு அந்த மொழியில் — தமிழ்-only வடிகட்டலைத் தவிர்; பாதுகாப்பு (answerIsUnsafe) மட்டும்.
+  if (okLang(lang) !== "ta") {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const text = cleanNonTamil(await callAI(env, prompt, maxTokens));
+      if (text && !answerIsUnsafe(text)) return text;
+    }
+    throw new Error("unsafe ai output");
+  }
   let last = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     const text = tamilOnly(await callAI(env, prompt, maxTokens));
@@ -156,9 +165,10 @@ async function safeAI(env, prompt, maxTokens) {
 // ஆலோசனைக் கேள்விக்கான பதில் — பாதுகாப்பு விதிகளுடன். mode: "engine" | "ai" | "deep".
 // persona = client-இன் உதவியாளர் key (ask.js தலைப்புகளில் ஒன்று) — சரிபார்த்த பின் மட்டும் பயன்படும்:
 // தெளிவான தலைப்பு இல்லாத கேள்விக்கு அதன் துறை; AI நடையில் அதன் பேச்சுத் தொனி.
-async function answerQuestion(env, birth, question, lastTopic, mode, personaRaw = "") {
+async function answerQuestion(env, birth, question, lastTopic, mode, personaRaw = "", lang = "ta") {
   const persona = isPersona(personaRaw) ? personaRaw : "general";
-  const screened = screenQuestion(question);
+  lang = okLang(lang);
+  const screened = screenQuestion(question, lang);
   if (screened) return { category: "general", label: "", answer: screened.answer, ai: false, safety: screened.kind };
   const swiss = await fetchSwiss(env, birth);
   const h = buildHoroscope(birth, swiss);
@@ -180,13 +190,18 @@ async function answerQuestion(env, birth, question, lastTopic, mode, personaRaw 
       // as an astrologer would. Facts come from the engine. An answer that breaks
       // the safety rules is dropped in favour of the engine's own wording.
       const deep = mode === "deep";
-      const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings, deep, persona });
-      // AI பதில் பாதுகாப்பு விதிகளை மீறினாலோ, ஆங்கிலச் சொற்கள் கலந்திருந்தாலோ engine-இன் தமிழ்ப் பதிலே தரப்படும்.
-      const text = tamilOnly(await callAI(env, prompt, deep ? 6000 : 4000));
-      if (text && !answerIsUnsafe(text) && latinWords(text).length <= 2) { answer = stripLatin(text); ai = true; }
+      const prompt = buildGeminiAstrologerPrompt({ name: birth.name, question, engineFindings, deep, persona, lang });
+      // AI பதில் பாதுகாப்பு விதிகளை மீறினால் engine-இன் பதிலே தரப்படும். தமிழில் மட்டும் கூடுதல் Latin வடிகட்டல்.
+      if (lang === "ta") {
+        const text = tamilOnly(await callAI(env, prompt, deep ? 6000 : 4000));
+        if (text && !answerIsUnsafe(text) && latinWords(text).length <= 2) { answer = stripLatin(text); ai = true; }
+      } else {
+        const text = cleanNonTamil(await callAI(env, prompt, deep ? 6000 : 4000));
+        if (text && !answerIsUnsafe(text)) { answer = text; ai = true; }
+      }
     } catch (_) { /* fall back to engine findings */ }
   }
-  return { category, label, answer: withSafetyNote(answer, category, question), ai };
+  return { category, label, answer: withSafetyNote(answer, category, question, lang), ai };
 }
 
 async function authUser(request, env) {
@@ -270,11 +285,12 @@ export default {
         const h = buildHoroscope(birth, swiss);
         const report = computeFullReport(h, birth);
         const dashaInfo = currentDashaInfo(report.dashaData);
+        const lang = okLang(body?.lang);
         const prompt = buildBirthPrompt({
           person: { name: birth.name, dob: birth.dob, tob: birth.tob, ampm: birth.ampm, pob: birth.pob },
-          horoscope: h, dashaInfo,
+          horoscope: h, dashaInfo, lang,
         });
-        const text = await safeAI(env, prompt, 4000);
+        const text = await safeAI(env, prompt, 4000, lang);
         return json(env, origin, { text });
       }
 
@@ -290,8 +306,9 @@ export default {
         let text = "";
         // AI வரம்பு தாண்டினால் கணக்கு மட்டும் திரும்பும் (AI உரை இல்லாமல்) — தினப்பலன் பக்கம் தடைபடாது
         if (withText && (await rateLimit(env, `ai:${user.sub}`, 40, 3600))) {
-          const prompt = buildDailyPrompt({ person: { name: birth.name }, horoscope: h, daily });
-          text = await safeAI(env, prompt, 3500);
+          const lang = okLang(body?.lang);
+          const prompt = buildDailyPrompt({ person: { name: birth.name }, horoscope: h, daily, lang });
+          text = await safeAI(env, prompt, 3500, lang);
         }
         return json(env, origin, { daily, text });
       }
@@ -420,8 +437,11 @@ export default {
         const birth = normalizeBirth(body);
         const question = clampStr(body?.question, 300);
         const lastTopic = clampStr(body?.lastTopic, 40);
-        const out = await answerQuestion(env, birth, question, lastTopic,
-          url.pathname === "/api/ask" ? "engine" : url.pathname === "/api/ask-ai" ? "ai" : "deep", clampStr(body?.persona, 20));
+        // en/hi: engine-only பதில் தமிழாக இருக்கும் என்பதால் AI மொழியாக்கம் தேவை → engine mode-ஐ ai ஆக்கு.
+        const lang = okLang(body?.lang);
+        let mode = url.pathname === "/api/ask" ? "engine" : url.pathname === "/api/ask-ai" ? "ai" : "deep";
+        if (mode === "engine" && lang !== "ta") mode = "ai";
+        const out = await answerQuestion(env, birth, question, lastTopic, mode, clampStr(body?.persona, 20), lang);
         return json(env, origin, out);
       }
 
@@ -446,7 +466,7 @@ export default {
         const birth = normalizeBirth(body);
         const question = clampStr(body?.question, 300);
         const lastTopic = clampStr(body?.lastTopic, 40);
-        const out = await answerQuestion(env, birth, question, lastTopic, "deep", clampStr(body?.persona, 20));
+        const out = await answerQuestion(env, birth, question, lastTopic, "deep", clampStr(body?.persona, 20), okLang(body?.lang));
         return json(env, origin, out);
       }
 

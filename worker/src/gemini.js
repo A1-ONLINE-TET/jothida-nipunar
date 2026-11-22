@@ -3,7 +3,15 @@
 //   wrangler secret put GEMINI_API_KEY
 // Never shipped to the browser.
 // ═══════════════════════════════════════════════════════════════════
-import { AI_GUARDRAILS } from "./safety.js";
+import { AI_GUARDRAILS, aiGuardrails } from "./safety.js";
+
+// பதிலின் மொழி வழிமுறை (buildGeminiAstrologerPrompt + prompt.js பகிர்கின்றன)
+export const LANG_REPLY = {
+  ta: { name: "தமிழ்", reply: (d) => `வாடிக்கையாளரின் கேள்விக்கு மட்டும் நேரடியாக, இயல்பாக, அன்புடன் ஒரு ஜோதிடர் நேரில் பேசுவது போல தமிழில் ${d} பதிலளியுங்கள்` },
+  en: { name: "English", reply: (d) => `Reply only to the customer's question, directly and warmly, as an astrologer speaking in person, in English, ${d}` },
+  hi: { name: "हिन्दी", reply: (d) => `ग्राहक के प्रश्न का ही उत्तर सीधे, सहज और स्नेह से, जैसे कोई ज्योतिषी आमने-सामने बात कर रहा हो, हिन्दी में, ${d} दें` },
+};
+const LR = (l) => LANG_REPLY[l === "en" || l === "hi" ? l : "ta"];
 
 export async function callGemini(env, prompt, maxTokens = 1000) {
   const key = env.GEMINI_API_KEY;
@@ -72,24 +80,26 @@ const PERSONA_STYLE = {
 };
 export const isPersona = (key) => typeof key === "string" && Object.prototype.hasOwnProperty.call(PERSONA_STYLE, key);
 
-export function buildGeminiAstrologerPrompt({ name, question, engineFindings, deep = false, persona = "general" }) {
+export function buildGeminiAstrologerPrompt({ name, question, engineFindings, deep = false, persona = "general", lang = "ta" }) {
   const who = PERSONA_STYLE[isPersona(persona) ? persona : "general"];
-  const limit = deep ? "350 வார்த்தைகளுக்குள்" : "200 வார்த்தைகளுக்குள்";
+  const lr = LR(lang);
+  const limit = deep ? "350" : "200";
   const depth = deep
-    ? "விரிவாக, ஒவ்வொரு முக்கிய காரணியையும் தொட்டு, காலம் மற்றும் பரிகாரம் உட்பட ஆழமாக"
-    : "சுருக்கமாக, கேட்டதற்கு மட்டும் குவிந்து";
-  return `நீங்கள் "${who.name}" என்ற தமிழ் வேத ஜோதிட AI உதவியாளர்; ஒரு வாடிக்கையாளரிடம் நேரடியாக உரையாடுகிறீர்கள். பேச்சு நடை: ${who.tone}. உங்களை மனிதர் என்று சொல்லிக்கொள்ள வேண்டாம்.
+    ? (lang === "en" ? "in depth, touching each key factor including timing and remedies" : lang === "hi" ? "विस्तार से, प्रत्येक मुख्य कारक, समय और उपाय सहित" : "விரிவாக, ஒவ்வொரு முக்கிய காரணியையும் தொட்டு, காலம் மற்றும் பரிகாரம் உட்பட ஆழமாக")
+    : (lang === "en" ? "briefly, focused only on what was asked" : lang === "hi" ? "संक्षेप में, केवल पूछे गए पर केंद्रित" : "சுருக்கமாக, கேட்டதற்கு மட்டும் குவிந்து");
+  // engineFindings தமிழில்; LLM அதைப் பயன்படுத்தி தேர்ந்த மொழியில் எழுதும். கட்டாயம்: வெளியீட்டு மொழி = lr.name.
+  return `நீங்கள் "${who.name}" என்ற வேத ஜோதிட AI உதவியாளர்; ஒரு வாடிக்கையாளரிடம் நேரடியாக உரையாடுகிறீர்கள். பேச்சு நடை: ${who.tone}. உங்களை மனிதர் என்று சொல்லிக்கொள்ள வேண்டாம்.
 
-கீழே உள்ளவை — இந்த வாடிக்கையாளரின் ஜாதகத்திலிருந்து கணிக்கப்பட்ட துல்லியமான ஜோதிட முடிவுகள் (engine கணக்கிட்டது). இவற்றை மட்டுமே ஆதாரமாகக் கொள்ளுங்கள் — புதிய கிரக நிலை, தேதி, சதவீதம், தோஷம் எதையும் நீங்களாக உருவாக்க வேண்டாம்:
+கீழே உள்ளவை — இந்த வாடிக்கையாளரின் ஜாதகத்திலிருந்து கணிக்கப்பட்ட துல்லியமான ஜோதிட முடிவுகள் (engine கணக்கிட்டது; தமிழில்). இவற்றை மட்டுமே ஆதாரமாகக் கொள்ளுங்கள் — புதிய கிரக நிலை, தேதி, சதவீதம், தோஷம் எதையும் நீங்களாக உருவாக்க வேண்டாம்:
 
 """
 ${engineFindings}
 """
 
-${AI_GUARDRAILS}
+${aiGuardrails(lang)}
 
 வாடிக்கையாளர் பெயர்: ${name || "நண்பர்"}
 வாடிக்கையாளர் கேள்வி: "${question}"
 
-மேலே உள்ள கணிப்பு முடிவுகளை அடிப்படையாக வைத்து, வாடிக்கையாளரின் கேள்விக்கு மட்டும் நேரடியாக, இயல்பாக, அன்புடன் ஒரு ஜோதிடர் நேரில் பேசுவது போல தமிழில் ${depth} பதிலளியுங்கள். எந்திரம் போன்ற வரிசைப்பட்டியல் வேண்டாம் — உரையாடல் போல இயல்பாக இருக்கட்டும். காலம்/தேதி/தோஷம்/பரிகாரம் போன்ற விவரங்களை மேலே உள்ள முடிவுகளிலிருந்து மட்டுமே எடுத்துச் சொல்லுங்கள். ${limit}. இறுதியில் ஒரு சிறிய நம்பிக்கை வார்த்தை அல்லது பரிகாரம். கேள்வி ஜோதிடம் சாராதது என்றால், மென்மையாக அதைச் சொல்லி ஜோதிட கேள்வி கேட்க அழைக்கவும்.`;
+${lr.reply(depth)}. ${lang === "en" ? `No robotic bullet lists — keep it natural like a conversation. Take details of timing/dates/doshas/remedies only from the findings above. Within ${limit} words. End with a small word of hope or a remedy. If the question is not about astrology, gently say so and invite an astrology question. Write the entire answer in English only.` : lang === "hi" ? `यंत्रवत बुलेट सूची नहीं — बातचीत जैसा सहज रखें। समय/तिथि/दोष/उपाय के विवरण केवल ऊपर दिए परिणामों से लें। ${limit} शब्दों के भीतर। अंत में एक छोटी आशा की बात या उपाय। प्रश्न ज्योतिष से न हो तो विनम्रता से कहें और ज्योतिष प्रश्न पूछने को कहें। पूरा उत्तर केवल हिन्दी में लिखें।` : `எந்திரம் போன்ற வரிசைப்பட்டியல் வேண்டாம் — உரையாடல் போல இயல்பாக இருக்கட்டும். காலம்/தேதி/தோஷம்/பரிகாரம் போன்ற விவரங்களை மேலே உள்ள முடிவுகளிலிருந்து மட்டுமே எடுத்துச் சொல்லுங்கள். ${limit} வார்த்தைகளுக்குள். இறுதியில் ஒரு சிறிய நம்பிக்கை வார்த்தை அல்லது பரிகாரம். கேள்வி ஜோதிடம் சாராதது என்றால், மென்மையாக அதைச் சொல்லி ஜோதிட கேள்வி கேட்க அழைக்கவும்.`}`;
 }
