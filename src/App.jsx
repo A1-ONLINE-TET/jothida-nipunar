@@ -2123,6 +2123,7 @@ export default function AstrologyApp() {
                   boxShadow:"0 8px 32px rgba(0,0,0,0.15)",maxHeight:220,overflowY:"auto"}}>
                   {placeResults.map((r,i)=>(
                     <div key={i}
+                      data-place-result
                       onMouseDown={()=>{
                         setFormData(d=>({...d, pob:r.shortLabel, pobLat:r.lat, pobLon:r.lon, pobSource:"osm", pobTz: guessBirthZone(r.countryCode, r.lat, r.lon)}));
                         setTzUnknown(!!r.countryCode && r.countryCode !== "in" && guessBirthZone(r.countryCode, r.lat, r.lon) === "");
