@@ -1113,7 +1113,7 @@ function calcVarshaphala(natalHoro, dobISO, lat, lon, targetYear, ayanamsaKey = 
   const candidates = uniq([
     { role: "முந்தா அதிபதி", planet: RASHI_LORD_NAME[munthaIdx] },
     { role: "வர்ஷ லக்ன அதிபதி", planet: RASHI_LORD_NAME[annual.lagna] },
-    { role: "ஜன்ம லக்ன அதிபதி", planet: RASHI_LORD_NAME[natalLagnaIdx] },
+    { role: "ஜென்ம லக்ன அதிபதி", planet: RASHI_LORD_NAME[natalLagnaIdx] },
   ]);
   return {
     year: targetYear, age,
@@ -1809,7 +1809,7 @@ function calcMuhurtham(date, lat=13.0827, lon=80.2707, tzOffset=_tz) {
     return `${fmt(startMin)} — ${fmt(endMin)}`;
   };
 
-  // Abhijit Muhurtham — 8ஆவது முஹூர்த்தம்: பகல் நடுவம் ± (பகல் நீளம்/15)/2.
+  // Abhijit Muhurtham — 8ஆவது முகூர்த்தம்: பகல் நடுவம் ± (பகல் நீளம்/15)/2.
   // (fixed ±24 நிமிடம் அல்ல — பகல் நீளத்துடன் ஆண்டு முழுதும் 45-51 நிமிடம் மாறும்)
   const noonMin = (sunrise.decimal + sunset.decimal)/2 * 60;
   const abhijitHalfMin = dayLenMin / 30;
@@ -1869,7 +1869,7 @@ function calcCurrentHorai(now, lat=13.0827, lon=80.2707, tzOffset=_tz) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// ஏழரை சனி (SADE SATI) — Saturn's 7.5-year cycle relative to birth Moon
+// ஏழரைச் சனி (SADE SATI) — Saturn's 7.5-year cycle relative to birth Moon
 // ═══════════════════════════════════════════════════════════════════
 function calcSadeSati(birthMoonRashi, saturnTodayRashi) {
   // phase = தமிழ் வழக்குப் பெயர்; stage = அது ஏழரைச் சனியின் எந்தப் பகுதி; isEzharai = ஏழரைச் சனியா (12, 1, 2)
@@ -3702,12 +3702,12 @@ function calcNakshatraBhavaLinks(placements, lagnaIdx, functionalNat, geo, ayana
           let text = isSubhaNature(satNature)
             ? `சனி கோசாரம் — உழைப்பு/பொறுப்பு வழியே இப்பலன் உறுதியாகும் காலம்`
             : `சனி கோசாரம் — தாமதம்/சோதனை; ${star && star.tone === "அசுபம்" ? "அசுப பலன் உணரப்படக்கூடிய" : "பலன் தாமதமாகக் கூடிய"} காலம் — பரிகாரம் பலன் தரும்`;
-          // ஏழரை சனி / அஷ்டம சனி மேற்பொருந்தல் — சந்திர ராசியிலிருந்து சனியின் நிலை
+          // ஏழரைச் சனி / அஷ்டம சனி மேற்பொருந்தல் — சந்திர ராசியிலிருந்து சனியின் நிலை
           if (natalMoon) {
             const satMid = transitAt(w.mid)?.["சனி"];
             if (satMid) {
               const dFromMoon = ((satMid.rashiIdx - natalMoon.rashiIdx + 12) % 12) + 1;
-              if ([12, 1, 2].includes(dFromMoon)) text += ` • ⚠ இக்காலம் ஏழரை சனிக்குள்ளும் (${dFromMoon === 12 ? "விரய" : dFromMoon === 1 ? "ஜன்ம" : "பாத"} சனி) அமைகிறது — பொறுமை/பரிகாரம் அவசியம்`;
+              if ([12, 1, 2].includes(dFromMoon)) text += ` • ⚠ இக்காலம் ஏழரைச் சனிக்குள்ளும் (${dFromMoon === 12 ? "விரய" : dFromMoon === 1 ? "ஜென்ம" : "பாத"} சனி) அமைகிறது — பொறுமை/பரிகாரம் அவசியம்`;
               else if (dFromMoon === 8) text += ` • ⚠ அஷ்டம சனி காலம் — கூடுதல் கவனம்`;
             }
           }
@@ -4150,7 +4150,7 @@ function calcBacktest(topicKey, eventDate, deps) {
       else if (jupHit) { tScore = 1; if (collect) reasons.push(`அன்று குரு (${tJup.rashi}) ${topic.primary}ஆம் வீடு/அதிபதியைத் தொடுகிறார் ✓`); }
       else if (satHit) { tScore = 0.5; if (collect) reasons.push(`அன்று சனி (${tSat.rashi}) ${topic.primary}ஆம் வீடு/அதிபதி தொடர்பில்`); }
       else if (collect) reasons.push("அன்று குரு/சனி இருவரும் நேரடித் தொடர்பில் இல்லை");
-      // குரு பெயர்ச்சி விதி — ஜன்ம ராசியிலிருந்து குரு சுப வீட்டில் (2/5/7/9/11)
+      // குரு பெயர்ச்சி விதி — ஜென்ம ராசியிலிருந்து குரு சுப வீட்டில் (2/5/7/9/11)
       // இருந்தானா. calcEventTiming மாத-scan-இன் அதே விதி (இரு திசையும் ஒரே scoring).
       // caution topics (நோய்) — சுப-நிகழ்வு விதி பொருந்தாது.
       const moonR = horoscope.placements.find(x => x.ta === "சந்திரன்")?.rashiIdx;
@@ -4158,7 +4158,7 @@ function calcBacktest(topicKey, eventDate, deps) {
         const gh = ((tJup.rashiIdx - moonR + 12) % 12) + 1;
         if (GOCHARA_RULES["குரு"].good.includes(gh)) {
           tScore += 0.5;
-          if (collect) reasons.push(`அன்று குரு ஜன்ம ராசியிலிருந்து ${gh}ஆம் வீட்டில் — குரு பெயர்ச்சி சுபம் ✓`);
+          if (collect) reasons.push(`அன்று குரு ஜென்ம ராசியிலிருந்து ${gh}ஆம் வீட்டில் — குரு பெயர்ச்சி சுபம் ✓`);
         }
       }
     } catch (e) { /* transit கணிப்பு தோல்வி — தசை score மட்டும் */ }
@@ -4294,7 +4294,7 @@ function calcEventTiming(topicKey, deps) {
   // உள்ள மாத-வீச்சுகளையும் (transitRanges) தனியே தருகிறோம்.)
   const top = windows.slice(0, 8);
   const targets = [pRashiIdx, pLord ? pLord.rashiIdx : pRashiIdx];
-  // குரு பெயர்ச்சி விதி — ஜன்ம (சந்திர) ராசியிலிருந்து குரு 2/5/7/9/11-இல்
+  // குரு பெயர்ச்சி விதி — ஜென்ம (சந்திர) ராசியிலிருந்து குரு 2/5/7/9/11-இல்
   // இருக்கும் மாதங்களே சுப-நிகழ்வு மாதங்கள் (classical தமிழ் மரபு; app-இன்
   // GOCHARA_RULES குரு வரிசையே). உண்மை-தரவு சான்று (29.01.1981 ஜாதகம்):
   // சனி-குரு புக்தி 2005-2007 முழுதும் ஓடினும், குரு சந்திரனுக்கு 2ஆம்
@@ -4329,7 +4329,7 @@ function calcEventTiming(topicKey, deps) {
       // நோய் போன்றவற்றில் — "சுபம்" bonus அபத்தமாகும்)
       if (topic.mood !== "caution" && months.some(x => x.guruFav)) {
         w.score += 0.5;
-        w.reasons.push(`ஜன்ம ராசியிலிருந்து குரு சுப வீட்டில் (2/5/7/9/11 — குரு பெயர்ச்சி விதி) வரும் மாதங்கள் இவ்வீச்சில் உள்ளன`);
+        w.reasons.push(`ஜென்ம ராசியிலிருந்து குரு சுப வீட்டில் (2/5/7/9/11 — குரு பெயர்ச்சி விதி) வரும் மாதங்கள் இவ்வீச்சில் உள்ளன`);
       }
       // தொடர்ச்சியான ஆதரவு-வீச்சுகள் — நுண்-கால சுட்டிக்கு
       const ranges = [];
@@ -4363,7 +4363,7 @@ function calcEventTiming(topicKey, deps) {
       // இந்த நுண்-window-இல் கோசார ஆதரவு உள்ளதா (மாத grid overlap)
       const inSub = (x) => x.t >= new Date(s.getFullYear(), s.getMonth() - 1, 1) && x.t <= e;
       const gochara = (w.transitMonths || []).some(x => (x.jup || x.sat) && inSub(x));
-      // குரு பெயர்ச்சி விதி — ஜன்ம ராசியிலிருந்து குரு சுப வீட்டில் உள்ள
+      // குரு பெயர்ச்சி விதி — ஜென்ம ராசியிலிருந்து குரு சுப வீட்டில் உள்ள
       // மாதங்களுடன் இப்பிரத்யந்தரம் மேற்பொருந்துகிறதா (caution topics-இல் பொருந்தாது)
       const guruFav = topic.mood !== "caution" && (w.transitMonths || []).some(x => x.guruFav && inSub(x));
       subs.push({ name: pd.name, start: s, end: e, w: Math.round(pdW * 10) / 10, gochara, guruFav,
@@ -5245,7 +5245,7 @@ function calcInauspiciousTimes(date, lat=13.0827, lon=80.2707) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// முஹூர்த்தம் (MUHURTHA — சுப நேரம் கணிப்பு)
+// முகூர்த்தம் (MUHURTHA — சுப நேரம் கணிப்பு)
 // ═══════════════════════════════════════════════════════════════════
 // சுப நட்சத்திரங்கள் — அசுவினி(0), ரோகிணி(3), மிருகசீரிடம்(4), புனர்பூசம்(6),
 // பூசம்(7), உத்திரம்(11), அஸ்தம்(12), சித்திரை(13), சுவாதி(14), அனுஷம்(16),
@@ -5288,8 +5288,8 @@ function calcMuhurtha(targetDate, birthMoonNakIdx, lat = 13.0827, lon = 80.2707)
   if (isYogaBad) score -= 15;
   score += 15; // base
   score = Math.max(0, Math.min(100, score));
-  const verdict = score >= 80 ? "மிகச் சிறந்த முஹூர்த்தம்" : score >= 60 ? "நல்ல முஹூர்த்தம்" : score >= 40 ? "சுமாரான நாள்" : "தவிர்க்கவும்";
-  // சுப நேரங்கள் — உண்மையான சூரிய உதயத்திலிருந்து: பிரம்ம முஹூர்த்தம்
+  const verdict = score >= 80 ? "மிகச் சிறந்த முகூர்த்தம்" : score >= 60 ? "நல்ல முகூர்த்தம்" : score >= 40 ? "சுமாரான நாள்" : "தவிர்க்கவும்";
+  // சுப நேரங்கள் — உண்மையான சூரிய உதயத்திலிருந்து: பிரம்ம முகூர்த்தம்
   // (உதயத்திற்கு 96→48 நிமிடம் முன்), அபிஜித் (பகல் நடுவம் ± பகல்/30)
   const sr = calcSunriseSunset(d, lat, lon, _tz);
   const fmtHM = (dec) => {
@@ -5300,10 +5300,10 @@ function calcMuhurtha(targetDate, birthMoonNakIdx, lat = 13.0827, lon = 80.2707)
     return `${h12}:${String(mn).padStart(2,'0')} ${ampm}`;
   };
   const midDay = (sr.sunrise.decimal + sr.sunset.decimal) / 2;
-  const abhijitHalf = (sr.sunset.decimal - sr.sunrise.decimal) / 30; // முஹூர்த்தம்/2 = பகல்/30
+  const abhijitHalf = (sr.sunset.decimal - sr.sunrise.decimal) / 30; // முகூர்த்தம்/2 = பகல்/30
   const subaNeramSlots = [
-    `${fmtHM(sr.sunrise.decimal - 1.6)} - ${fmtHM(sr.sunrise.decimal - 0.8)} (பிரம்ம முஹூர்த்தம்)`,
-    ...(dayOfWeek !== 3 ? [`${fmtHM(midDay - abhijitHalf)} - ${fmtHM(midDay + abhijitHalf)} (அபிஜித் முஹூர்த்தம்)`] : []),
+    `${fmtHM(sr.sunrise.decimal - 1.6)} - ${fmtHM(sr.sunrise.decimal - 0.8)} (பிரம்ம முகூர்த்தம்)`,
+    ...(dayOfWeek !== 3 ? [`${fmtHM(midDay - abhijitHalf)} - ${fmtHM(midDay + abhijitHalf)} (அபிஜித் முகூர்த்தம்)`] : []),
   ];
   if (isNakGood) subaNeramSlots.push(`${fmtHM(sr.sunrise.decimal + 1.5)} - ${fmtHM(sr.sunrise.decimal + 3)}`);
   return {

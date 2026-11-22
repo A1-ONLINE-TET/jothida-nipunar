@@ -706,7 +706,7 @@ const DEEP_GROUPS = [
   { title: "சிறப்பு முறைகள்", color: "#6f4c92", items: [
     ["jaimini", "ஜைமினி முறை"], ["prashna", "பிரஸ்னம் (இப்போதைய கேள்வி)"] ] },
   { title: "நாள் & பரிகாரம்", color: "#99496a", items: [
-    ["rahukalam", "ராகு காலம் / எமகண்டம் / குளிகை"], ["muhurtha", "முஹூர்த்தம் (சுப நேரம்)"], ["remedies", "கிரக வழிபாட்டு அட்டவணை"] ] },
+    ["rahukalam", "ராகு காலம் / எமகண்டம் / குளிகை"], ["muhurtha", "முகூர்த்தம் (சுப நேரம்)"], ["remedies", "கிரக வழிபாட்டு அட்டவணை"] ] },
 ];
 
 export default function AstrologyApp() {
@@ -909,7 +909,9 @@ export default function AstrologyApp() {
     try {
       const now = new Date();
       const iso = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-      const g = resolveBirthGeo(formData);
+      // "இன்று" பஞ்சாங்கம்: இந்தியப் பிறப்பு → அவ்வூர் உதயம்; வெளிநாட்டுப் பிறப்பு → சென்னை (IST-க்கு பொருந்த; இல்லையேல் நேரம் தவறு)
+      const inIndiaH = !formData.pobTz || formData.pobTz === "Asia/Kolkata";
+      const g = inIndiaH ? resolveBirthGeo(formData) : { lat: 13.0827, lon: 80.2707 };
       const h = generateHoroscope(iso, "06:00", g.lat, g.lon, true);
       const muh = calcMuhurtham(now, g.lat, g.lon, 5.5);
       return {
@@ -1265,7 +1267,7 @@ export default function AstrologyApp() {
   const applyReport = (r) => {
     chartKeyRef.current = birthKey();
     setDailyData(null); setPrediction(""); setOpenAreas(new Set());
-    setAltDashas(null); setDashaSystem("vim"); setRemedyPlan(null);
+    setAltDashas(null); setDashaSystem("vim"); setRemedyPlan(null); setEventTiming({});
     setChartMeta(r.chartMeta); setHoroscope(r.horoscope);
     setNavamsaData(r.navamsaData); setDrishtiData(r.drishtiData);
     setD10Data(r.d10Data); setD2Data(r.d2Data); setD3Data(r.d3Data);
@@ -2263,7 +2265,7 @@ export default function AstrologyApp() {
         )}
         {[
           {name:"மாதாந்திர",price:"₹149",period:"/மாதம்",features:["வரம்பற்ற ஜாதகங்கள்","AI பலன்கள்","தினப்பலன்"],popular:false},
-          {name:"ஆண்டு",price:"₹999",period:"/ஆண்டு",features:["எல்லா மாதாந்திர அம்சங்கள்","பரிகாரங்கள்","முன்னுரிமை ஆதரவு","திருமண பொருத்தம்"],popular:true}
+          {name:"ஆண்டு",price:"₹999",period:"/ஆண்டு",features:["எல்லா மாதாந்திர அம்சங்கள்","பரிகாரங்கள்","முன்னுரிமை ஆதரவு","திருமணப் பொருத்தம்"],popular:true}
         ].map((plan,i)=>(
           <div key={i} style={{...card,marginBottom:16,border:plan.popular?"1.5px solid #c7a56850":card.border,position:"relative"}}>
             {plan.popular&&(<div style={{position:"absolute",top:-10,left:"50%",transform:"translateX(-50%)",
@@ -4393,11 +4395,11 @@ ${aiPart}
             </div>
           )}
 
-          {/* ═══ முஹூர்த்தம் ═══ */}
+          {/* ═══ முகூர்த்தம் ═══ */}
           {advancedView==="muhurtha" && (
             <div style={{...card,marginBottom:12,padding:"16px"}}>
               <div style={{fontSize:15,fontWeight:700,color:"#1f3f68",marginBottom:12,paddingLeft:10,borderLeft:"3px solid #8a62b0",lineHeight:1.4}}>
-                முஹூர்த்தம் — இன்றைய சுப நேரம்
+                முகூர்த்தம் — இன்றைய சுப நேரம்
               </div>
               {(() => {
                 const m = muhurthaData;
@@ -4482,7 +4484,7 @@ ${aiPart}
                   <div style={{fontSize:13,color:"#27303f",lineHeight:1.6}}>{planetTransitAnalysis.sani.desc}</div>
                   {planetTransitAnalysis.sani.isSadeSati && (
                     <div style={{marginTop:8,padding:"8px 10px",background:"#fbeeed",borderRadius:10,border:"1px solid #f0d6d3"}}>
-                      <div style={{fontSize:13.5,fontWeight:700,color:"#c0564f"}}>ஏழரை சனி நடப்பில் உள்ளது!</div>
+                      <div style={{fontSize:13.5,fontWeight:700,color:"#c0564f"}}>ஏழரைச் சனி நடப்பில் உள்ளது!</div>
                       <div style={{fontSize:13,color:"#27303f",marginTop:2}}>நிலை: {planetTransitAnalysis.sani.sadeSatiPhase}</div>
                     </div>
                   )}
@@ -4627,7 +4629,7 @@ ${aiPart}
             {[["vim","விம்சோத்தரி"],["yogini","யோகினி"],["ashtottari","அஷ்டோத்தரி"]].map(([k,l])=>(
               <button key={k} data-dasha-system={k} onClick={()=>{
                 setDashaSystem(k);
-                if (k !== "vim" && !altDashas) {
+                if (k !== "vim" && (!altDashas || altDashas === "error")) {
                   setAltDashas("loading");
                   apiAltDashas(buildBirth(chartMeta?.dobISO || parseDDMMYYYY(formData.dob), chartMeta?.finalTime || "06:00", chartMeta?.geo || resolveBirthGeo(formData)))
                     .then(setAltDashas).catch(()=>setAltDashas("error"));
@@ -4777,7 +4779,7 @@ ${aiPart}
 
           <div style={{textAlign:"center",marginBottom:24}}>
             <div style={{width:52,height:52,borderRadius:16,background:"#fbeef2",color:"#c2607c",display:"grid",placeItems:"center",margin:"0 auto 8px"}}><Heart size={26} strokeWidth={1.8}/></div>
-            <h2 style={{fontSize:20,fontWeight:700,color:"#1f3f68",margin:"0 0 4px"}}>திருமண பொருத்தம்</h2>
+            <h2 style={{fontSize:20,fontWeight:700,color:"#1f3f68",margin:"0 0 4px"}}>திருமணப் பொருத்தம்</h2>
             <p style={{fontSize:12.5,color:"#76819a",margin:0}}>10 பொருத்தம் · தோஷ ஒப்பீடு · தசை ஒத்திசைவு</p>
           </div>
 
@@ -4859,8 +4861,8 @@ ${aiPart}
                   {poruthResult.grade}
                 </div>
                 <div style={{fontSize:12.5,color:"#a9823c",marginTop:4}}>{poruthResult.brideName||"பெண்"} ❤ {poruthResult.groomName||"ஆண்"}</div>
-                <button data-share onClick={()=>shareOut("திருமண பொருத்தம்", [
-                  `திருமண பொருத்தம்: ${poruthResult.brideName||"பெண்"} — ${poruthResult.groomName||"ஆண்"}`,
+                <button data-share onClick={()=>shareOut("திருமணப் பொருத்தம்", [
+                  `திருமணப் பொருத்தம்: ${poruthResult.brideName||"பெண்"} — ${poruthResult.groomName||"ஆண்"}`,
                   `${poruthResult.totalScore}/${poruthResult.maxScore} — ${poruthResult.grade}`,
                   `பொருந்துபவை: ${poruthResult.results.filter(r=>r.ok).map(r=>r.name).join(", ") || "—"}`,
                   `பொருந்தாதவை: ${poruthResult.results.filter(r=>!r.ok).map(r=>r.name).join(", ") || "—"}`,
@@ -5330,7 +5332,8 @@ ${aiPart}
       const iso = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const backendDay = calBackendData[d];
       // பயனர் இடம் இருந்தால் அதன் sunrise/rahu-kalam — இல்லையேல் Chennai
-      const calGeo = resolveBirthGeo(formData);
+      const calInIndia = !formData.pobTz || formData.pobTz === "Asia/Kolkata";
+      const calGeo = calInIndia ? resolveBirthGeo(formData) : { lat: 13.0827, lon: 80.2707 };
       const h = backendDay || generateHoroscope(iso, "06:00", calGeo.lat, calGeo.lon);
       const muh = calcMuhurtham(dt, calGeo.lat, calGeo.lon, 5.5);
 

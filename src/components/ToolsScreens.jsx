@@ -545,6 +545,7 @@ export function NumerologyScreen({ defaultDob = "", onNav }) {
 
         {rows.filter(([, , v]) => v != null).map(([title, how, v]) => {
           const info = NUMBER_INFO[v];
+          if (!info) return null;   // 0 / வரம்புக்கு வெளியே → crash தடுப்பு
           return (
             <div key={title} data-num={title} style={card}>
               <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 10 }}>

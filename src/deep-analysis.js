@@ -422,7 +422,7 @@ export function analyzeHealth(horoscope, grahaBala, ctx) {
   const maleficsIn8 = occupants8.filter(p => NATURAL_MALEFICS.includes(p.ta));
   if (maleficsIn8.length > 0) {
     score -= 1;
-    factors.push({ text: `8ஆம் வீட்டில்: ${maleficsIn8.map(p=>p.ta).join(", ")} — நாள்பட்ட ஆரோக்கிய கவனம், ஏழரை சனி காலத்தில் கூடுதல் கவனம்`, weight: -1 });
+    factors.push({ text: `8ஆம் வீட்டில்: ${maleficsIn8.map(p=>p.ta).join(", ")} — நாள்பட்ட ஆரோக்கிய கவனம், ஏழரைச் சனி காலத்தில் கூடுதல் கவனம்`, weight: -1 });
   }
 
   // FACTOR 5: Moon (mind/vitality) condition

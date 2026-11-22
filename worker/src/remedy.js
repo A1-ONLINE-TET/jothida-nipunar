@@ -351,7 +351,7 @@ export function computeRemedyPlan(h, R, birth) {
   const transitItems = [];
   const sani = R.planetTransitAnalysis?.sani;
   if (sani) {
-    const kind = sani.isSadeSati ? "ஏழரை சனி" : sani.isAshtama ? "அஷ்டம சனி" : sani.isKandaka ? "கண்டக சனி" : null;
+    const kind = sani.isSadeSati ? "ஏழரைச் சனி" : sani.isAshtama ? "அஷ்டம சனி" : sani.isKandaka ? "கண்டக சனி" : null;
     if (kind) {
       const natal = diag["சனி"]; const sr = PLANET_REMEDIES["சனி"];
       const strongNatal = natal && natal.composite != null && natal.composite >= 60;
@@ -384,7 +384,7 @@ export function computeRemedyPlan(h, R, birth) {
       });
     } else {
       doshas.push({ key: "sani", name: "ஏழரை / அஷ்டம சனி", status: "absent", label: "இல்லை" });
-      noNeed.push({ title: "ஏழரை சனி · அஷ்டம சனி", why: `தற்போது இல்லை — கோசார சனி உங்கள் ராசிக்கு ${sani.houseFromMoon}ஆம் இடத்தில்.` });
+      noNeed.push({ title: "ஏழரைச் சனி · அஷ்டம சனி", why: `தற்போது இல்லை — கோசார சனி உங்கள் ராசிக்கு ${sani.houseFromMoon}ஆம் இடத்தில்.` });
     }
   }
 
