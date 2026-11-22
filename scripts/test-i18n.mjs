@@ -23,9 +23,11 @@ for (const [code, dict] of Object.entries(D)) {
 }
 // ஒரு மொழியில் வேறு மொழி எழுத்து கலக்கக் கூடாது
 const flat = (d) => Object.entries(d).flatMap(([k, v]) => (Array.isArray(v) ? v : [v]).map((s) => [k, s]));
-for (const [k, s] of flat(ta)) { if (DEVA.test(s) || LATIN.test(s.replace(/\{[a-zA-Z]+\}/g, "").replace(/\b(AI|PDF|Google)\b/g, ""))) bad(`ta: "${k}" has non-Tamil letters: ${s}`); else ok(); }
+// விலக்குகள்: AI, PDF, Google, TOPPER ASTRO (சின்னம்) — CLAUDE.md வடிவமைப்பு விதி
+const ALLOW_LATIN = /\{[a-zA-Z]+\}|\b(AI|PDF|Google|TOPPER|ASTRO)\b/g;
+for (const [k, s] of flat(ta)) { if (DEVA.test(s) || LATIN.test(s.replace(ALLOW_LATIN, ""))) bad(`ta: "${k}" has non-Tamil letters: ${s}`); else ok(); }
 for (const [k, s] of flat(en)) { if (TAMIL.test(s) || DEVA.test(s)) bad(`en: "${k}" has non-English letters: ${s}`); else ok(); }
-for (const [k, s] of flat(hi)) { if (TAMIL.test(s) || LATIN.test(s.replace(/\{[a-zA-Z]+\}/g, "").replace(/\b(AI|PDF|Google)\b/g, ""))) bad(`hi: "${k}" has non-Hindi letters: ${s}`); else ok(); }
+for (const [k, s] of flat(hi)) { if (TAMIL.test(s) || LATIN.test(s.replace(ALLOW_LATIN, ""))) bad(`hi: "${k}" has non-Hindi letters: ${s}`); else ok(); }
 
 // ── கலைச்சொல் அகராதி (terms.js) — ஒவ்வொரு வகையிலும் ஒவ்வொரு சொல்லுக்கும் en (Latin) + hi (Devanagari) ──
 import { ALL_TERM_MAPS } from "../src/i18n/terms.js";

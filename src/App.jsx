@@ -1921,16 +1921,16 @@ export default function AstrologyApp() {
     return (
       <div style={base}>
         <div style={{...container,paddingTop:22,paddingBottom:104}}>
-          <h2 style={{fontSize: 20,fontWeight:700,margin:"0 0 2px",color:"#1f3f68"}}>என் கணக்கு</h2>
-          <p style={{fontSize: 13,color:"#55626f",margin:"0 0 18px"}}>சேமித்த ஜாதகங்களும் அமைப்புகளும்</p>
+          <h2 style={{fontSize: 20,fontWeight:700,margin:"0 0 2px",color:"#1f3f68"}}>{t("acct.title")}</h2>
+          <p style={{fontSize: 13,color:"#55626f",margin:"0 0 18px"}}>{t("acct.sub")}</p>
 
           <div style={{...card,marginBottom:14,padding:"16px"}}>
-            <div style={cardTitle}>சேமித்த ஜாதகங்கள்</div>
+            <div style={cardTitle}>{t("acct.savedCharts")}</div>
             {profiles.length===0 && (
-              <div style={{fontSize: 13,color:"#55626f",lineHeight:1.7,marginBottom:10}}>இன்னும் ஜாதகம் எதுவும் சேமிக்கப்படவில்லை. பிறப்பு விவரம் கொடுத்து ஜாதகம் உருவாக்கினால் இங்கே சேரும்.</div>
+              <div style={{fontSize: 13,color:"#55626f",lineHeight:1.7,marginBottom:10}}>{t("acct.empty")}</div>
             )}
             {profiles.length > 5 && (
-              <input data-profile-search value={profileQuery} onChange={e=>setProfileQuery(e.target.value)} placeholder="பெயர் அல்லது ஊர் தேடு"
+              <input data-profile-search value={profileQuery} onChange={e=>setProfileQuery(e.target.value)} placeholder={t("acct.searchProfile")}
                 style={{...inputStyle,fontSize: 16,padding:"11px 14px",marginBottom:10}}/>
             )}
             {profiles.filter(p => { const q = profileQuery.trim().toLowerCase(); return !q || (p.name||"").toLowerCase().includes(q) || (p.pob||"").toLowerCase().includes(q); }).map(p=>{
@@ -1944,15 +1944,15 @@ export default function AstrologyApp() {
                     <span style={{width:36,height:36,borderRadius:"50%",background:on?"#1f3f68":"#f3f5f9",color:on?"#ffffff":"#55626f",display:"grid",placeItems:"center",flexShrink:0}}><UserRound size={18}/></span>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize: 14,fontWeight:700,color:"#27303f",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                        {p.name}{on && <span style={{fontSize: 11,fontWeight:700,color:"#3e4c99",background:"#dfe5f6",borderRadius:999,padding:"2px 8px",marginLeft:8}}>தற்போது</span>}
+                        {p.name}{on && <span style={{fontSize: 11,fontWeight:700,color:"#3e4c99",background:"#dfe5f6",borderRadius:999,padding:"2px 8px",marginLeft:8}}>{t("acct.current")}</span>}
                       </div>
                       <div style={{fontSize: 12,color:"#55626f",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                        {p.dob}{p.tob ? ` · ${p.tob} ${p.ampm === "AM" ? "காலை" : "மாலை"}` : ""}{p.pob ? ` · ${p.pob}` : ""}
+                        {p.dob}{p.tob ? ` · ${p.tob} ${p.ampm === "AM" ? t("ob.time.am") : t("ob.time.pm")}` : ""}{p.pob ? ` · ${p.pob}` : ""}
                       </div>
                     </div>
-                    <button aria-label={`${p.name} — குறிப்பு`} data-note-btn onClick={(e)=>{ e.stopPropagation(); setNoteEditId(editing ? null : p.id); }}
+                    <button aria-label={t("acct.noteAria",{name:p.name})} data-note-btn onClick={(e)=>{ e.stopPropagation(); setNoteEditId(editing ? null : p.id); }}
                       style={{background:"none",border:"none",color:p.notes?"#a9823c":"#55626f",cursor:"pointer",padding:8,flexShrink:0,display:"grid",placeItems:"center"}}><NotebookPen size={17}/></button>
-                    <button aria-label={`${p.name} — நீக்கு`} onClick={(e)=>{ e.stopPropagation(); if (window.confirm(`"${p.name}" ஜாதகத்தை நீக்கவா?`)) deleteProfile(p.id); }}
+                    <button aria-label={t("acct.deleteAria",{name:p.name})} onClick={(e)=>{ e.stopPropagation(); if (window.confirm(t("acct.deleteProfileConfirm",{name:p.name}))) deleteProfile(p.id); }}
                       style={{background:"none",border:"none",color:"#c0564f",cursor:"pointer",padding:8,flexShrink:0,display:"grid",placeItems:"center"}}><Trash2 size={17}/></button>
                   </div>
                   {!editing && p.notes && (
@@ -1960,10 +1960,10 @@ export default function AstrologyApp() {
                   )}
                   {editing && (
                     <div style={{padding:"0 12px 12px"}}>
-                      <textarea data-note-input defaultValue={p.notes || ""} rows={3} maxLength={600} placeholder="குறிப்பு — எ.கா. கேட்ட கேள்வி, சொன்ன பரிகாரம், அடுத்த சந்திப்பு"
+                      <textarea data-note-input defaultValue={p.notes || ""} rows={3} maxLength={600} placeholder={t("acct.notePlaceholder")}
                         onBlur={(e)=>saveNote(e.target.value)}
                         style={{...inputStyle,fontSize: 13.5,padding:"10px 12px",resize:"vertical",lineHeight:1.6}}/>
-                      <button data-note-save onClick={()=>setNoteEditId(null)} style={{marginTop:6,background:"#1f3f68",border:"none",borderRadius:999,color:"#ffffff",fontSize: 12.5,fontWeight:600,padding:"7px 16px",cursor:"pointer"}}>சேமி</button>
+                      <button data-note-save onClick={()=>setNoteEditId(null)} style={{marginTop:6,background:"#1f3f68",border:"none",borderRadius:999,color:"#ffffff",fontSize: 12.5,fontWeight:600,padding:"7px 16px",cursor:"pointer"}}>{t("acct.noteSave")}</button>
                     </div>
                   )}
                 </div>
@@ -1975,14 +1975,14 @@ export default function AstrologyApp() {
             </div>
             {hasBirth && (
               <button data-edit-birth onClick={()=>{ setHomeQuestion(null); goTo(SCREEN.FORM); }} style={{background:"none",border:"none",padding:0,marginTop:6,minHeight:40,fontSize: 13,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>
-                {formData.name} — பிறப்பு விவரத்தைத் திருத்து →
+                {t("acct.editBirthOf",{name:formData.name})}
               </button>
             )}
           </div>
 
           <div style={{...card,marginBottom:14,padding:"16px"}}>
-            <div style={{...cardTitle,display:"flex",alignItems:"center",gap:8}}><Settings size={17}/> அமைப்புகள்</div>
-            <label style={{fontSize: 13,fontWeight:600,color:"#4a5365",display:"block",marginBottom:6}}>அயனாம்சம்</label>
+            <div style={{...cardTitle,display:"flex",alignItems:"center",gap:8}}><Settings size={17}/> {t("acct.settings")}</div>
+            <label style={{fontSize: 13,fontWeight:600,color:"#4a5365",display:"block",marginBottom:6}}>{t("acct.ayanamsa")}</label>
             <select value={ayanamsaKey} onChange={e=>setAyanamsaKey(e.target.value)}
               style={{...inputStyle,fontSize: 16,padding:"12px 14px",cursor:"pointer"}}>
               {Object.entries(AYANAMSA_SYSTEMS).map(([k,v])=>(
@@ -1990,7 +1990,7 @@ export default function AstrologyApp() {
               ))}
             </select>
             <div style={{fontSize: 12.5,marginTop:8,color:"#55626f",lineHeight:1.6}}>
-பெரும்பாலானோர் லாஹிரி முறையைப் பயன்படுத்துகின்றனர். மாற்றினால் அடுத்த முறை ஜாதகம் திறக்கும்போது புதிதாகக் கணக்கிடப்படும்.
+{t("acct.ayanamsaNote")}
             </div>
           </div>
 
@@ -1999,15 +1999,15 @@ export default function AstrologyApp() {
           <button data-premium-link onClick={()=>goTo(SCREEN.PREMIUM)} style={{...card,display:"flex",alignItems:"center",gap:12,width:"100%",textAlign:"left",padding:"14px 16px",cursor:"pointer",marginBottom:14}}>
             <span style={{width:40,height:40,borderRadius:12,background:"#f6f1e4",color:"#a9823c",display:"grid",placeItems:"center",flexShrink:0}}><Star size={20} strokeWidth={1.8}/></span>
             <span style={{flex:1,minWidth:0}}>
-              <span style={{display:"block",fontSize: 14.5,fontWeight:700,color:"#1f3f68"}}>சிறப்புத் திட்டம்</span>
-              <span style={{display:"block",fontSize: 12,color:"#55626f"}}>{PAYMENTS_ENABLED ? "கூடுதல் வசதிகள்" : "தற்போது எல்லா வசதிகளும் இலவசம்"}</span>
+              <span style={{display:"block",fontSize: 14.5,fontWeight:700,color:"#1f3f68"}}>{t("prem.title")}</span>
+              <span style={{display:"block",fontSize: 12,color:"#55626f"}}>{PAYMENTS_ENABLED ? t("acct.moreFeatures") : t("acct.allFreeShort")}</span>
             </span>
             <ChevronRight size={18} color="#a3adc2" style={{flexShrink:0}}/>
           </button>
           ) : (
             <div data-free-note style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderRadius:14,background:"#eaf5ef",border:"1px solid #cfe6da"}}>
               <ShieldCheck size={18} color="#2e7d5b" style={{flexShrink:0}}/>
-              <span style={{fontSize: 13,lineHeight:1.6,color:"#27303f"}}>இந்தச் செயலியின் எல்லா வசதிகளும் தற்போது <b>இலவசம்</b>.</span>
+              <span style={{fontSize: 13,lineHeight:1.6,color:"#27303f"}}>{t("acct.allFree")}</span>
             </div>
           )}
 
@@ -2019,7 +2019,7 @@ export default function AstrologyApp() {
               goTo(SCREEN.HOME);
             }} />
 
-          <p style={{textAlign:"center",fontSize: 11.5,color:"#a3adc2",margin:"14px 0 0"}}>ஜோதிட நிபுணர் · TOPPER ASTRO · பதிப்பு {APP_VERSION}</p>
+          <p style={{textAlign:"center",fontSize: 11.5,color:"#a3adc2",margin:"14px 0 0"}}>{t("acct.footer",{v:APP_VERSION})}</p>
         </div>
         <BottomNav active="account" onNav={handleNav} />
       </div>
@@ -2292,15 +2292,15 @@ export default function AstrologyApp() {
   if(screen===SCREEN.PREMIUM) return (
     <div style={base}>
       <div style={{...container,paddingTop:24,paddingBottom:104}}>
-        <BackLink onClick={()=>goTo(SCREEN.ACCOUNT)} label="என் கணக்கு" />
+        <BackLink onClick={()=>goTo(SCREEN.ACCOUNT)} label={t("acct.title")} />
         <div style={{textAlign:"center",marginBottom:28}}>
           <div style={{width:56,height:56,borderRadius:18,background:"#f4eefa",color:"#6f4c92",display:"grid",placeItems:"center",margin:"0 auto 10px"}}><Star size={28} strokeWidth={1.7}/></div>
-          <h2 style={{fontSize:22,fontWeight:700,margin:"0 0 6px",color:"#6f4c92"}}>சிறப்புத் திட்டம்</h2>
-          <p style={{fontSize:13,color:"#55626f",margin:0}}>முழு ஜோதிட அனுபவத்தைப் பெறுங்கள்</p>
+          <h2 style={{fontSize:22,fontWeight:700,margin:"0 0 6px",color:"#6f4c92"}}>{t("prem.title")}</h2>
+          <p style={{fontSize:13,color:"#55626f",margin:0}}>{t("prem.sub")}</p>
         </div>
         {!PAYMENTS_ENABLED && (
           <div style={{fontSize: 13,color:"#2e7d5b",background:"#e9f5ee",borderRadius:14,padding:"12px 14px",marginBottom:18,lineHeight:1.6,textAlign:"center"}}>
-            தற்போது எல்லா வசதிகளும் இலவசம். கட்டணத் திட்டங்கள் விரைவில் தொடங்கும்.
+            {t("acct.premiumSoon")}
           </div>
         )}
         {[
