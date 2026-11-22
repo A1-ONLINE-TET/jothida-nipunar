@@ -1971,7 +1971,7 @@ export default function AstrologyApp() {
             })}
             <div style={{marginTop:6}}>
               <button data-new-chart style={{...btnOutline,width:"100%",fontSize: 13.5,padding:"12px 0",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}
-                onClick={()=>{ setFormData(blank); setHomeQuestion(null); goTo(SCREEN.FORM); }}><Plus size={16}/> புதிய ஜாதகம்</button>
+                onClick={()=>{ setFormData(blank); setHomeQuestion(null); goTo(SCREEN.FORM); }}><Plus size={16}/> {t("form.newChart")}</button>
             </div>
             {hasBirth && (
               <button data-edit-birth onClick={()=>{ setHomeQuestion(null); goTo(SCREEN.FORM); }} style={{background:"none",border:"none",padding:0,marginTop:6,minHeight:40,fontSize: 13,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>
@@ -2040,31 +2040,31 @@ export default function AstrologyApp() {
               <div style={{fontSize:11.5,color:"#7d6a3f",fontWeight:600}}>உங்கள் கேள்வி</div>
               <div style={{fontSize:13.5,fontWeight:700,color:"#1f3f68"}}>{homeQuestion.q}</div>
             </div>
-            <span style={{marginLeft:"auto",fontSize:11.5,color:"#7d6a3f",textAlign:"right",maxWidth:110}}>விவரம் நிரப்பினால் பதில் கிடைக்கும்</span>
+            <span style={{marginLeft:"auto",fontSize:11.5,color:"#7d6a3f",textAlign:"right",maxWidth:110}}>{t("form.fillHint")}</span>
           </div>
         )}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>
           <div>
-            <h2 style={{fontSize:20,fontWeight:700,margin:"0 0 2px",color:"#3e4c99",letterSpacing:0.5}}>ஜாதகம் பார்க்க</h2>
-            <p style={{fontSize:12,color:T.accent,margin:0,fontWeight:500}}>பிறப்பு விவரங்களை உள்ளிடுக</p>
+            <h2 style={{fontSize:20,fontWeight:700,margin:"0 0 2px",color:"#3e4c99",letterSpacing:0.5}}>{t("form.title")}</h2>
+            <p style={{fontSize:12,color:T.accent,margin:0,fontWeight:500}}>{t("form.sub")}</p>
           </div>
           {profiles.length > 0 && (
             <button data-saved-link onClick={()=>goTo(SCREEN.ACCOUNT)} style={{
               background:"#ffffff",border:"1px solid #e3e8f2",borderRadius:999,padding:"8px 14px",
               color:"#1f3f68",fontSize: 12.5,fontWeight:600,cursor:"pointer",flexShrink:0
-            }}>சேமித்தவை ({profiles.length}) →</button>
+            }}>{t("form.saved",{n:profiles.length})}</button>
           )}
         </div>
 
         <div style={card}>
           <div style={{display:"flex",flexDirection:"column",gap:18}}>
-            <div><label style={labelStyle}>பெயர் *</label>
-            <input style={inputStyle} placeholder="உங்கள் பெயர்" value={formData.name} maxLength={60}
+            <div><label style={labelStyle}>{t("birth.name")} *</label>
+            <input style={inputStyle} placeholder={t("ob.name.placeholder")} value={formData.name} maxLength={60}
               onChange={e=>setFormData(d=>({...d,name:e.target.value}))}/></div>
-            <div><label style={labelStyle}>பிறந்த தேதி * <span style={{fontSize:12,color:"#4a5365",fontWeight:400}}>(நாள்.மாதம்.ஆண்டு)</span></label>
+            <div><label style={labelStyle}>{t("birth.dob")} * <span style={{fontSize:12,color:"#4a5365",fontWeight:400}}>({t("form.dobHint")})</span></label>
             <input type="text" inputMode="numeric" maxLength={10}
               style={{...inputStyle,letterSpacing:2,fontFamily:"monospace",fontSize:16}}
-              placeholder="நாள்.மாதம்.ஆண்டு" value={formData.dob}
+              placeholder={t("form.dobHint")} value={formData.dob}
               onChange={e=>{
                 const formatted = formatDateInput(e.target.value);
                 setFormData(d=>({...d,dob:formatted}));
@@ -2073,10 +2073,10 @@ export default function AstrologyApp() {
               <div style={{fontSize:12,marginTop:4,color:isValidDDMMYYYY(formData.dob)?"#58a97f":"#c0564f"}}>
                 {isValidDDMMYYYY(formData.dob)
                   ? `${formData.dob}`
-                  : "தவறான தேதி — சரிபார்க்கவும்"}
+                  : t("form.dobBad")}
               </div>
             )}</div>
-            <div><label style={labelStyle}>பிறந்த நேரம் * <span style={{fontSize:12,color:"#4a5365",fontWeight:400}}>(மணி:நிமிடம்)</span></label>
+            <div><label style={labelStyle}>{t("birth.tob")} * <span style={{fontSize:12,color:"#4a5365",fontWeight:400}}>({t("form.tobHint")})</span></label>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
               <input type="text" inputMode="numeric" maxLength={5}
                 style={{...inputStyle, width:"46%", textAlign:"center", padding:"13px 8px", letterSpacing:2, fontFamily:"monospace", fontSize:16}}
@@ -2099,7 +2099,7 @@ export default function AstrologyApp() {
                       : "rgba(255,255,255,0.5)",
                     color:formData.ampm===p ? "#fafbfe" : "#4a5365"
                   }}>
-                    {p==="AM"?"காலை":"மாலை"}
+                    {p==="AM"?t("ob.time.am"):t("ob.time.pm")}
                   </button>
                 ))}
               </div>
@@ -2108,33 +2108,33 @@ export default function AstrologyApp() {
             <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
               <input type="text" inputMode="numeric" maxLength={2}
                 style={{...inputStyle, width:"46%", textAlign:"center", padding:"11px 8px", fontFamily:"monospace", fontSize:16}}
-                placeholder="வினாடி"
+                placeholder={t("ob.time.second")}
                 value={formData.sec}
                 onChange={e=>setFormData(d=>({...d, sec: e.target.value.replace(/\D/g,'').slice(0,2)}))}/>
-              <span style={{fontSize:12,color:"#55626f"}}>வினாடி — தெரிந்தால் மட்டும்</span>
+              <span style={{fontSize:12,color:"#55626f"}}>{t("form.secHint")}</span>
             </div>
             <div style={{fontSize:12,color:"#4a5365",marginTop:5}}>
-              {formData.ampm==="AM"?"காலை 12:00 — பிற்பகல் 11:59":"பிற்பகல் 12:00 — இரவு 11:59"}
+              {formData.ampm==="AM"?t("form.amRange"):t("form.pmRange")}
             </div>
             </div>
             {/* பாலினம் — ஆண்→சுக்கிரன் / பெண்→குரு காரக வேறுபாடு + மாங்கல்யக் கணிப்புக்கு */}
             <div>
-              <label style={labelStyle}>பாலினம் <span style={{fontSize:12,color:"#4a5365",fontWeight:400}}>(விருப்பம்)</span></label>
+              <label style={labelStyle}>{t("form.gender")} <span style={{fontSize:12,color:"#4a5365",fontWeight:400}}>({t("common.optional")})</span></label>
               <div style={{display:"flex",gap:8}}>
-                {["ஆண்","பெண்"].map(g=>(
+                {[["ஆண்",t("ob.gender.male")],["பெண்",t("ob.gender.female")]].map(([g,gl])=>(
                   <button key={g} type="button" onClick={()=>setFormData(d=>({...d,gender:d.gender===g?"":g}))} style={{
                     flex:1,padding:"11px 0",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",
                     border:`1.5px solid ${formData.gender===g?"#1f3f68":"#d9e0ee"}`,
                     background:formData.gender===g?"linear-gradient(135deg,#1f3f6815,#a9823c15)":"transparent",
                     color:formData.gender===g?"#1f3f68":"#55626f"}}>
-                    {g}
+                    {gl}
                   </button>
                 ))}
               </div>
             </div>
             <div style={{position:"relative"}}>
-              <label style={labelStyle}>பிறந்த இடம் <span style={{fontSize:12,color:"#4a5365",fontWeight:400}}>(ஊரைத் தேடித் தேர்ந்தெடுக்கவும்)</span></label>
-              <input style={inputStyle} placeholder="எ.கா. மதுரை — தட்டச்சு செய்யவும்"
+              <label style={labelStyle}>{t("birth.pob")} <span style={{fontSize:12,color:"#4a5365",fontWeight:400}}>({t("form.placeHint")})</span></label>
+              <input style={inputStyle} placeholder={t("form.placePlaceholder")}
                 value={formData.pob}
                 onChange={e=>{
                   const val = e.target.value;
@@ -2245,7 +2245,7 @@ export default function AstrologyApp() {
             </div>
             <button className="jn-shine" style={{...btnGold,opacity:(!formData.name||!isValidDDMMYYYY(formData.dob))?0.4:1,
               pointerEvents:(!formData.name||!isValidDDMMYYYY(formData.dob))?"none":"auto"}} onClick={handleSubmit}>
-              ஜாதகம் உருவாக்கு
+              {t("form.submit")}
             </button>
           </div>
         </div>
@@ -2885,7 +2885,7 @@ ${aiPart}
           {resultTab==="deep" && !advancedView && (
             <div style={{...card,marginBottom:12,padding:"16px"}}>
               <div style={{...secTitle,marginBottom:4}}>ஆழமான பகுப்பாய்வுகள்</div>
-              <div style={{fontSize: 12.5,color:"#55626f",marginBottom:14,lineHeight:1.6}}>ஒரு பகுதியைத் தட்டினால் அதன் முழு விவரம் திறக்கும்.</div>
+              <div style={{fontSize: 12.5,color:"#55626f",marginBottom:14,lineHeight:1.6}}>{t("palan.tapHint")}</div>
               {DEEP_GROUPS.map(g=>(
                 <div key={g.title} style={{marginBottom:16}}>
                   <div style={{fontSize: 12.5,fontWeight:700,color:g.color,marginBottom:7}}>{g.title}</div>
@@ -2972,14 +2972,14 @@ ${aiPart}
 
                 <button data-area-toggle={area.key} onClick={()=>toggleArea(area.key)} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",
                   padding:"0",marginTop:4,minHeight:40,fontSize: 13,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>
-                  {open ? "விவரத்தை மறை" : "முழு விவரம்"}
+                  {open ? t("palan.hideDetail") : t("palan.fullDetail")}
                   <ChevronDown size={16} style={{transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}/>
                 </button>
 
                 {open && (
                   <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #eef1f6"}}>
                     {restFactors.length > 0 && (<>
-                      <div style={{fontSize: 12,fontWeight:700,color:"#55626f",marginBottom:8}}>மற்ற காரணிகள்</div>
+                      <div style={{fontSize: 12,fontWeight:700,color:"#55626f",marginBottom:8}}>{t("palan.otherFactors")}</div>
                       {restFactors.map(factorRow)}
                     </>)}
 
@@ -3011,7 +3011,7 @@ ${aiPart}
                       </div>
                     )}
 
-                    <div style={{fontSize: 12,fontWeight:700,color:"#55626f",margin:"12px 0 8px"}}>வீடு வாரியான குறிப்புகள்</div>
+                    <div style={{fontSize: 12,fontWeight:700,color:"#55626f",margin:"12px 0 8px"}}>{t("palan.houseNotes")}</div>
                     {area.houseReadings.map((hr, hi) => (
                       <div key={hi} style={{marginBottom:12}}>
                         <div style={{fontSize: 13,color:"#27303f",fontWeight:700,marginBottom:4}}>
@@ -3074,7 +3074,7 @@ ${aiPart}
                       <img src={ps.image} alt="" width="38" height="38" loading="lazy" style={{width:38,height:38,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>
                       <span style={{flex:1,minWidth:0}}>
                         <span style={{display:"block",fontSize: 13.5,fontWeight:700,color:"#27303f",lineHeight:1.4}}>{ps.name} · AI</span>
-                        <span style={{display:"block",fontSize: 12,color:"#55626f",lineHeight:1.5}}>இந்தப் பகுதியைப் பற்றி மேலும் கேட்க</span>
+                        <span style={{display:"block",fontSize: 12,color:"#55626f",lineHeight:1.5}}>{t("palan.askMore")}</span>
                       </span>
                       <ChevronRight size={18} color="#a3adc2" style={{flexShrink:0}}/>
                     </button>
@@ -3113,7 +3113,7 @@ ${aiPart}
                 </div>
                 <button data-area-toggle="family" onClick={()=>toggleArea("__family")} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",
                   padding:"0",marginTop:4,minHeight:40,fontSize: 13,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>
-                  {open ? "விவரத்தை மறை" : "முழு விவரம்"}
+                  {open ? t("palan.hideDetail") : t("palan.fullDetail")}
                   <ChevronDown size={16} style={{transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}/>
                 </button>
                 {open && (

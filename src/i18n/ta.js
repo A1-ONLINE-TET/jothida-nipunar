@@ -216,4 +216,30 @@ export default {
   "dasha.pratyantar": "பிரத்யந்தரம்",
   "dasha.sookshma": "சூட்சுமம்",
   "dasha.lord": "நாதன்",
+
+  // பலன்கள் தாவல்
+  "palan.tapHint": "ஒரு பகுதியைத் தட்டினால் அதன் முழு விவரம் திறக்கும்.",
+  "palan.fullDetail": "முழு விவரம்",
+  "palan.hideDetail": "விவரத்தை மறை",
+  "palan.otherFactors": "மற்ற காரணிகள்",
+  "palan.houseNotes": "வீடு வாரியான குறிப்புகள்",
+  "palan.askMore": "இந்தப் பகுதியைப் பற்றி மேலும் கேட்க",
+
+  // ஜாதகம் பார்க்க படிவம்
+  "form.title": "ஜாதகம் பார்க்க",
+  "form.sub": "பிறப்பு விவரங்களை உள்ளிடுக",
+  "form.saved": "சேமித்தவை ({n}) →",
+  "form.fillHint": "விவரம் நிரப்பினால் பதில் கிடைக்கும்",
+  "form.newChart": "புதிய ஜாதகம்",
+  "form.dobHint": "நாள்.மாதம்.ஆண்டு",
+  "form.dobBad": "தவறான தேதி — சரிபார்க்கவும்",
+  "form.tobHint": "மணி:நிமிடம்",
+  "form.secHint": "வினாடி — தெரிந்தால் மட்டும்",
+  "form.amRange": "காலை 12:00 — பிற்பகல் 11:59",
+  "form.pmRange": "பிற்பகல் 12:00 — இரவு 11:59",
+  "form.gender": "பாலினம்",
+  "form.placeHint": "ஊரைத் தேடித் தேர்ந்தெடுக்கவும்",
+  "form.placePlaceholder": "எ.கா. மதுரை — தட்டச்சு செய்யவும்",
+  "form.editBirth": "பிறப்பு விவரம் திருத்து",
+  "form.submit": "ஜாதகம் உருவாக்கு",
 };
