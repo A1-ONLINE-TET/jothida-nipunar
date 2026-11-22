@@ -125,7 +125,7 @@ export default function HomeScreen({ handle = () => {}, today = null, special = 
                 <b>இன்றைய பஞ்சாங்கம்</b>
                 <small>{kizhamai(today.weekday)}, {today.greg}{today.tamil ? <> · <span style={{ whiteSpace: "nowrap" }}>{today.tamil.month} {today.tamil.day}</span></> : null}</small>
               </span>
-              <span className="today-more" aria-hidden="true"><ChevronRight size={18} strokeWidth={2.4} /></span>
+              <span className="today-more" aria-hidden="true"><small>நாட்காட்டி</small><ChevronRight size={16} strokeWidth={2.4} /></span>
             </div>
             {/* இன்றைய விசேஷம் + வரும் நாட்கள் (பட்டியல் கிடைத்திருந்தால் மட்டும்) */}
             {special && (special.today.length > 0 || special.upcoming.length > 0) && (

@@ -51,7 +51,7 @@ select.ob-input { padding-right: 30px; background-image: linear-gradient(45deg, 
 .ob-row.three { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.5fr) minmax(0, 1fr); }
 .ob-row.three:has([data-ob-hour]) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ob-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.ob-field small { font-size: 12.5px; font-weight: 600; color: var(--ob-muted); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ob-field small { font-size: 12.5px; font-weight: 600; color: var(--ob-muted); line-height: 1.3; min-height: 2.6em; }
 
 .ob-options { display: grid; gap: 10px; margin-top: 4px; }
 .ob-options.two { grid-template-columns: 1fr 1fr; margin-top: 14px; }

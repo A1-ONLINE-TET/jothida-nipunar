@@ -100,7 +100,7 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
         {rashi != null && (
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
             {MODES.map(([k, t]) => (
-              <button key={k} data-mode={k} onClick={() => setMode(k)} style={{ flex: "1 1 auto", padding: "9px 2px", borderRadius: 999, fontSize: 12.5, fontWeight: mode === k ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap",
+              <button key={k} data-mode={k} onClick={() => setMode(k)} style={{ flex: "1 1 auto", minHeight: 38, padding: "9px 2px", borderRadius: 999, fontSize: 12.5, fontWeight: mode === k ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap",
                 border: mode === k ? "1px solid #1f3f68" : "1px solid #e3e8f2", background: mode === k ? "#1f3f68" : "#ffffff", color: mode === k ? "#ffffff" : "#4a5365" }}>{t}</button>
             ))}
           </div>
@@ -414,7 +414,7 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
 
         {mode === "vratham" && (
           <>
-            <div data-vratham-kinds className="jn-tabs" style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 12, paddingBottom: 2 }}>
+            <div data-vratham-kinds style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
               {VRATHAM_KINDS.map(([k, label]) => (
                 <button key={k} data-vkind={k} style={chip(kind === k)} onClick={() => setKind(k)}>{label}</button>
               ))}

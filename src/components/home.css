@@ -114,7 +114,8 @@
 .today-date { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .today-date b { font-size: clamp(14.5px, 3.9vw, 17px); font-weight: 800; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .today-date small { font-size: 11.5px; color: var(--t-muted); line-height: 1.45; letter-spacing: -0.1px; }
-.today-more { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: #fdefd4; color: var(--t-orange); }
+.today-more { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; min-height: 30px; padding: 0 9px 0 11px; border-radius: 999px; background: #fdefd4; color: var(--t-orange); }
+.today-more small { font-size: 11.5px; font-weight: 800; }
 .today-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 0; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e6ece9; }
 .today-cell { display: flex; align-items: flex-start; gap: 7px; min-width: 0; padding-right: 6px; }
 .today-cell:nth-child(even) { padding-left: 10px; padding-right: 0; border-left: 1px solid #e6ece9; }

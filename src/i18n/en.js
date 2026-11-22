@@ -45,6 +45,7 @@ export default {
   "ob.place.placeholder": "e.g. Madurai",
   "ob.place.none": "No place found with this name. Try the nearest larger town.",
   "ob.place.err": "Please pick your town from the list.",
+  "ob.place.offline": "Please check your internet connection and try again. Searching for a town needs internet.",
   "ob.place.picked": "Selected place: {place}",
 
   "part.midnight": "at midnight",

@@ -1741,7 +1741,7 @@ export default function AstrologyApp() {
             <button style={btnGold} onClick={()=>{ markOnboarded(); goTo(SCREEN.HOME); }}>
               தொடங்குங்கள் &nbsp;→
             </button>
-            <p style={{fontSize:12, color:"#9aa4ba", marginTop:12}}>✦ பாரம்பரிய வேத ஜோதிடம் ✦</p>
+            <p style={{fontSize:12, color:"#9aa4ba", marginTop:12}}>பாரம்பரிய வேத ஜோதிடம்</p>
           </div>
         </div>
       </div>
@@ -2571,7 +2571,7 @@ ${aiPart}
             <div style={{position:"absolute",inset:0,opacity:0.16,pointerEvents:"none",
               background:"radial-gradient(120px 120px at 85% 15%, #f7e2a6, transparent), radial-gradient(160px 160px at 10% 110%, #e2d2a8, transparent)"}}/>
             <div style={{position:"relative",zIndex:1}}>
-              <div style={{fontSize:12.5,letterSpacing:4,color:"#f7e2a6",fontWeight:600,marginBottom:6}}>✦ ஜாதக விவரம் ✦</div>
+              <div style={{fontSize:12.5,letterSpacing:4,color:"#f7e2a6",fontWeight:600,marginBottom:6}}>ஜாதக விவரம்</div>
               <h2 className="jn-serif" style={{fontSize:26,fontWeight:700,margin:"0 0 8px",color:"#f6f8fc",letterSpacing:0.5}}>{formData.name}</h2>
               <div style={{display:"inline-flex",gap:8,flexWrap:"wrap",justifyContent:"center"}}>
                 {[horoscope.lagnaName+" லக்னம்", horoscope.moonRashi+" ராசி", horoscope.nakshatra].map((chip,i)=>(
@@ -4634,7 +4634,7 @@ ${aiPart}
                   apiAltDashas(buildBirth(chartMeta?.dobISO || parseDDMMYYYY(formData.dob), chartMeta?.finalTime || "06:00", chartMeta?.geo || resolveBirthGeo(formData)))
                     .then(setAltDashas).catch(()=>setAltDashas("error"));
                 }
-              }} style={{flex:1,padding:"8px 0",borderRadius:12,fontSize: 12.5,fontWeight:dashaSystem===k?700:500,cursor:"pointer",
+              }} style={{flex:1,minHeight:38,padding:"8px 0",borderRadius:12,fontSize: 12.5,fontWeight:dashaSystem===k?700:500,cursor:"pointer",
                 border:dashaSystem===k?"1px solid #a9823c":"1px solid #e3e8f2",background:dashaSystem===k?"#f6f1e4":"#ffffff",color:dashaSystem===k?"#7d6a3f":"#4a5365"}}>{l}</button>
             ))}
           </div>
@@ -4860,7 +4860,7 @@ ${aiPart}
                 <div style={{fontSize:16,fontWeight:700,color:poruthResult.totalScore>=9?"#58a97f":poruthResult.totalScore>=7?"#1f3f68":"#c0564f"}}>
                   {poruthResult.grade}
                 </div>
-                <div style={{fontSize:12.5,color:"#a9823c",marginTop:4}}>{poruthResult.brideName||"பெண்"} ❤ {poruthResult.groomName||"ஆண்"}</div>
+                <div style={{fontSize:12.5,color:"#a9823c",marginTop:4}}>{poruthResult.brideName||"பெண்"} · {poruthResult.groomName||"ஆண்"}</div>
                 <button data-share onClick={()=>shareOut("திருமணப் பொருத்தம்", [
                   `திருமணப் பொருத்தம்: ${poruthResult.brideName||"பெண்"} — ${poruthResult.groomName||"ஆண்"}`,
                   `${poruthResult.totalScore}/${poruthResult.maxScore} — ${poruthResult.grade}`,
@@ -4886,7 +4886,7 @@ ${aiPart}
                   borderLeft:`3px solid ${poruthResult.dashaCompat.ok?"#58a97f":poruthResult.dashaCompat.neutral?"#c7a568":"#c0564f"}`,
                   background:"#fdf8ec"}}>
                   <div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",
-                    background:poruthResult.dashaCompat.ok?"#58a97f20":poruthResult.dashaCompat.neutral?"#c7a56820":"#d98aa320"}}>⏳</div>
+                    background:poruthResult.dashaCompat.ok?"#58a97f20":poruthResult.dashaCompat.neutral?"#c7a56820":"#d98aa320"}}></div>
                   <div style={{flex:1}}>
                     <div style={{display:"flex",justifyContent:"space-between"}}>
                       <span style={{fontSize:13,fontWeight:600,color:"#27303f"}}>தசா-பொருத்தம்</span>

@@ -77,6 +77,7 @@ export default function Onboarding({ steps = ALL_STEPS, initial = {}, searchPlac
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [netErr, setNetErr] = useState(false);
   const timer = useRef(null);
   const seq = useRef(0);
   const firstField = useRef(null);
@@ -125,16 +126,18 @@ export default function Onboarding({ steps = ALL_STEPS, initial = {}, searchPlac
 
   // ── இடத் தேடல் (தட்டச்சு நின்ற அரை வினாடியில்) ──
   const onPlace = (val) => {
-    setPlace(val); setGeo(null); setErr(""); setSearched(false);
+    setPlace(val); setGeo(null); setErr(""); setSearched(false); setNetErr(false);
     if (timer.current) clearTimeout(timer.current);
     if (val.trim().length < 3 || !searchPlaces) { setResults([]); setSearching(false); return; }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) { setResults([]); setSearching(false); setSearched(true); setNetErr(true); return; }
     setSearching(true);
     const my = ++seq.current;
     timer.current = setTimeout(async () => {
-      let r = [];
-      try { r = (await searchPlaces(val)) || []; } catch (_) { r = []; }
+      let r = [], failed = false;
+      try { r = (await searchPlaces(val)) || []; } catch (_) { failed = true; }
       if (my !== seq.current) return;      // பழைய தேடலின் பதில் — விடு
-      setResults(r); setSearching(false); setSearched(true);
+      if (!failed && r.length === 0 && typeof navigator !== "undefined" && navigator.onLine === false) failed = true;
+      setResults(r); setSearching(false); setSearched(true); setNetErr(failed);
     }, 500);
   };
   const pick = (r) => {
@@ -279,7 +282,7 @@ export default function Onboarding({ steps = ALL_STEPS, initial = {}, searchPlac
               ))}
             </div>
           )}
-          {searched && !searching && results.length === 0 && !geo ? <p className="ob-hint warn" data-ob-noplace>{t("ob.place.none")}</p> : null}
+          {netErr && !searching ? <p className="ob-hint warn" data-ob-offline>{t("ob.place.offline")}</p> : searched && !searching && results.length === 0 && !geo ? <p className="ob-hint warn" data-ob-noplace>{t("ob.place.none")}</p> : null}
           {geo ? <p className="ob-confirm" data-ob-place-show>{t("ob.place.picked", { place: place.trim() })}</p> : null}
         </>)}
 
