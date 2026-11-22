@@ -41,7 +41,7 @@ function AccessGate({ children }) {
           உள்நுழை
         </button>
       </form>
-      <p style={{ margin: 0, fontSize: 12, color: "#76819a", maxWidth: 300 }}>
+      <p style={{ margin: 0, fontSize: 12, color: "#55626f", maxWidth: 300 }}>
         குறியீடு தவறெனில் மீண்டும் கேட்கும்.
       </p>
     </div>

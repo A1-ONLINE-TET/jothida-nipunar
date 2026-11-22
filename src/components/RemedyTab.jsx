@@ -10,7 +10,7 @@ import {
   Flame, Share2, Sprout, Clock, Star, Heart, Hourglass,
 } from "lucide-react";
 
-const INK = "#27303f", SOFT = "#4a5365", MUTED = "#76819a", LINE = "#e3e8f2", NAVY = "#1f3f68";
+const INK = "#27303f", SOFT = "#4a5365", MUTED = "#55626f", LINE = "#e3e8f2", NAVY = "#1f3f68";
 const TEAL = "#2e8b84", TEAL_DARK = "#226b66", TEAL_TINT = "#e9f5f4";
 const GREEN = "#2e7d5b", RED = "#c0564f", GOLD = "#a9823c";
 

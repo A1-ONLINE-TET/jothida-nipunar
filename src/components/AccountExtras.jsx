@@ -87,7 +87,7 @@ export default function AccountExtras({ card, cardTitle, profileCount = 0, onWip
         <div style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 8 }}><Languages size={17} /> {t("acct.lang.title")}</div>
         {LANGS.map((l, i) => (
           <button key={l.code} data-set-lang={l.code} onClick={() => setLang(l.code)} style={{ ...rowBtn, borderTop: i ? "1px solid #e3e8f2" : "none" }}>
-            <span style={{ flex: 1 }} lang={l.code}>{l.label} <span style={{ color: "#76819a", fontWeight: 500, fontSize: 12.5 }}>· {l.sub}</span></span>
+            <span style={{ flex: 1 }} lang={l.code}>{l.label} <span style={{ color: "#55626f", fontWeight: 500, fontSize: 12.5 }}>· {l.sub}</span></span>
             {lang === l.code ? <Check size={18} color="#2e7d5b" /> : <span style={{ width: 18 }} />}
           </button>
         ))}
@@ -122,13 +122,13 @@ export default function AccountExtras({ card, cardTitle, profileCount = 0, onWip
       <div data-legal-card style={{ ...card, marginTop: 14, padding: "16px 16px 6px" }}>
         <div style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 8 }}><ShieldCheck size={17} /> தனியுரிமை மற்றும் உதவி</div>
         <a data-legal="privacy" href="/privacy.html" style={{ ...rowBtn, borderTop: "none" }}>
-          <ShieldCheck size={18} color="#76819a" /><span style={{ flex: 1 }}>தனியுரிமைக் கொள்கை</span><ChevronRight size={18} color="#a3adc2" />
+          <ShieldCheck size={18} color="#55626f" /><span style={{ flex: 1 }}>தனியுரிமைக் கொள்கை</span><ChevronRight size={18} color="#a3adc2" />
         </a>
         <a data-legal="terms" href="/terms.html" style={rowBtn}>
-          <FileText size={18} color="#76819a" /><span style={{ flex: 1 }}>பயன்பாட்டு விதிமுறைகள்</span><ChevronRight size={18} color="#a3adc2" />
+          <FileText size={18} color="#55626f" /><span style={{ flex: 1 }}>பயன்பாட்டு விதிமுறைகள்</span><ChevronRight size={18} color="#a3adc2" />
         </a>
         <button data-feedback-toggle onClick={() => { setFbOpen((v) => !v); setFbMsg(null); }} style={rowBtn}>
-          <MessageSquare size={18} color="#76819a" /><span style={{ flex: 1 }}>கருத்து அல்லது புகார் அனுப்ப</span><ChevronRight size={18} color="#a3adc2" style={{ transform: fbOpen ? "rotate(90deg)" : "none" }} />
+          <MessageSquare size={18} color="#55626f" /><span style={{ flex: 1 }}>கருத்து அல்லது புகார் அனுப்ப</span><ChevronRight size={18} color="#a3adc2" style={{ transform: fbOpen ? "rotate(90deg)" : "none" }} />
         </button>
         {fbOpen && (
           <div style={{ padding: "4px 0 12px" }}>

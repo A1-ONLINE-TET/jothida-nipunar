@@ -12,11 +12,11 @@ const page = { minHeight: "100vh", fontFamily: "'Noto Sans Tamil','Segoe UI',sys
 const wrap = { maxWidth: 430, margin: "0 auto", padding: "18px 20px 104px" };
 const card = { background: "#ffffff", border: "1px solid #e3e8f2", borderRadius: 18, padding: 16, boxShadow: "0 10px 34px -14px rgba(35,55,95,0.14), 0 1px 4px rgba(35,55,95,0.04)", marginBottom: 12 };
 const h2 = { fontSize: 20, fontWeight: 700, margin: "0 0 2px", color: "#1f3f68" };
-const sub = { fontSize: 13, color: "#76819a", margin: "0 0 16px", lineHeight: 1.6 };
+const sub = { fontSize: 13, color: "#55626f", margin: "0 0 16px", lineHeight: 1.6 };
 const secTitle = { fontSize: 15, fontWeight: 700, color: "#1f3f68", marginBottom: 10 };
 const chip = { fontSize: 12, fontWeight: 600, padding: "4px 11px", borderRadius: 999, lineHeight: 1.5, display: "inline-block" };
 const backBtn = { display: "inline-flex", alignItems: "center", gap: 4, minHeight: 40, padding: "0 16px 0 10px", marginBottom: 12, background: "#ffffff", border: "1px solid #e3e8f2", borderRadius: 999, color: "#1f3f68", fontSize: 13.5, fontWeight: 600, cursor: "pointer" };
-const input = { width: "100%", padding: "13px 15px", background: "#fcfdff", border: "1.5px solid #d9e0ee", borderRadius: 12, color: "#27303f", fontSize: 15, outline: "none", boxSizing: "border-box" };
+const input = { width: "100%", padding: "13px 15px", background: "#fcfdff", border: "1.5px solid #c2cfca", borderRadius: 12, color: "#27303f", fontSize: 16, outline: "none", boxSizing: "border-box" };
 const label = { display: "block", marginBottom: 6, fontSize: 13, color: "#4a5365", fontWeight: 600 };
 const note = { fontSize: 11.5, color: "#a3adc2", textAlign: "center", lineHeight: 1.6, margin: "4px 0 0" };
 const iconBox = (bg, fg) => ({ width: 40, height: 40, borderRadius: 12, background: bg, color: fg, display: "grid", placeItems: "center", flexShrink: 0 });
@@ -92,7 +92,7 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
         </div>
 
         {rashi == null && (
-          <div style={{ ...card, textAlign: "center", color: "#76819a", fontSize: 13, lineHeight: 1.7 }}>
+          <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13, lineHeight: 1.7 }}>
             ராசி தெரியவில்லையா? “ஜாதகம்” பகுதியில் பிறப்பு விவரம் கொடுத்தால் உங்கள் ராசி, நட்சத்திரம் தெரியும்.
           </div>
         )}
@@ -106,7 +106,7 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
           </div>
         )}
 
-        {rashi != null && state === "loading" && <div style={{ ...card, textAlign: "center", color: "#76819a", fontSize: 13 }}>பலன் கணக்கிடப்படுகிறது…</div>}
+        {rashi != null && state === "loading" && <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13 }}>பலன் கணக்கிடப்படுகிறது…</div>}
         {rashi != null && state === "error" && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>பலன் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.</div>}
 
         {rashi != null && state === "idle" && !isDaily && pdata && pdata.period === mode && (
@@ -130,13 +130,13 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
             {moon && <div style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.7, marginBottom: 8 }}>சந்திரன் {moon.rashi} ராசியில் — உங்கள் ராசிக்கு {moon.houseFromMoon}ஆம் இடம்.</div>}
             {good.length > 0 && (
               <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 12, color: "#76819a", marginBottom: 5 }}>சாதகமான கிரகங்கள்</div>
+                <div style={{ fontSize: 12, color: "#55626f", marginBottom: 5 }}>சாதகமான கிரகங்கள்</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{good.map((p) => <span key={p} style={{ ...chip, background: "#e9f5ee", color: "#2e7d5b" }}>{p}</span>)}</div>
               </div>
             )}
             {bad.length > 0 && (
               <div>
-                <div style={{ fontSize: 12, color: "#76819a", marginBottom: 5 }}>கவனம் தேவைப்படும் கிரகங்கள்</div>
+                <div style={{ fontSize: 12, color: "#55626f", marginBottom: 5 }}>கவனம் தேவைப்படும் கிரகங்கள்</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{bad.map((p) => <span key={p} style={{ ...chip, background: "#fbeeed", color: "#c0564f" }}>{p}</span>)}</div>
               </div>
             )}
@@ -172,7 +172,7 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
               data.panchaka ? ["பஞ்சகம்", `${data.panchaka.name} — ${data.panchaka.avoid}`] : null,
             ].filter(Boolean).map(([k, v], i) => (
               <div key={k} style={{ display: "flex", gap: 12, padding: "8px 0", borderTop: i ? "1px solid #eef1f6" : "none", fontSize: 13, lineHeight: 1.6 }}>
-                <span style={{ width: 92, flexShrink: 0, color: "#76819a" }}>{k}</span>
+                <span style={{ width: 92, flexShrink: 0, color: "#55626f" }}>{k}</span>
                 <span style={{ color: "#27303f" }}>{v}</span>
               </div>
             ))}
@@ -187,7 +187,7 @@ export function RasiPalanScreen({ rashis, defaultRashi = null, fetchPalan, fetch
                 ["அதிர்ஷ்ட எண்கள்", (data.luckyNums || []).join(", ")],
               ].filter(([, v]) => v).map(([k, v]) => (
                 <div key={k} style={{ background: "#f8f9fc", borderRadius: 12, padding: "9px 12px" }}>
-                  <div style={{ fontSize: 11.5, color: "#76819a" }}>{k}</div>
+                  <div style={{ fontSize: 11.5, color: "#55626f" }}>{k}</div>
                   <div style={{ fontSize: 13.5, fontWeight: 700, color: "#1f3f68" }}>{v}</div>
                 </div>
               ))}
@@ -216,9 +216,9 @@ function PlanetRows({ rows, dated = false }) {
   return rows.map((r, i) => (
     <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "9px 0", borderTop: i ? "1px solid #eef1f6" : "none" }}>
       <div style={{ flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.6, color: "#4a5365" }}>
-        {dated && <span style={{ color: "#76819a" }}>{dShort(r.iso)} · </span>}
+        {dated && <span style={{ color: "#55626f" }}>{dShort(r.iso)} · </span>}
         <b style={{ color: "#27303f" }}>{r.ta}</b> {dated ? "→" : "—"} {r.rashi} ({r.house}ஆம் இடம்)
-        {r.theme && <span style={{ display: "block", fontSize: 12, color: "#76819a" }}>{r.theme}</span>}
+        {r.theme && <span style={{ display: "block", fontSize: 12, color: "#55626f" }}>{r.theme}</span>}
       </div>
       <span style={{ ...chip, flexShrink: 0, background: r.effect === "good" ? "#e9f5ee" : r.effect === "bad" ? "#fbeeed" : "#f3f5f9", color: r.effect === "good" ? "#2e7d5b" : r.effect === "bad" ? "#c0564f" : "#4a5365" }}>
         {r.effect === "good" ? "சாதகம்" : r.effect === "bad" ? "கவனம்" : "நடுநிலை"}
@@ -232,14 +232,14 @@ function PeriodPalan({ p, onNav, onShare }) {
     return (<>
       <div data-period="year" style={card}>
         <div style={secTitle}>{p.rashi} ராசி — {p.year} ஆண்டு நிலை</div>
-        <div style={{ fontSize: 12.5, color: "#76819a", lineHeight: 1.6, marginBottom: 6 }}>குரு, சனி, ராகு, கேது நிலை</div>
+        <div style={{ fontSize: 12.5, color: "#55626f", lineHeight: 1.6, marginBottom: 6 }}>குரு, சனி, ராகு, கேது நிலை</div>
         {p.slow.map((s, i) => (
           <div key={i} style={{ padding: "11px 0", borderTop: "1px solid #eef1f6" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#27303f" }}>{s.ta} — {s.rashi} <span style={{ fontWeight: 500, color: "#76819a" }}>({s.house}ஆம் இடம்)</span></div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#27303f" }}>{s.ta} — {s.rashi} <span style={{ fontWeight: 500, color: "#55626f" }}>({s.house}ஆம் இடம்)</span></div>
               <span style={{ ...chip, flexShrink: 0, background: s.effect === "good" ? "#e9f5ee" : "#fbeeed", color: s.effect === "good" ? "#2e7d5b" : "#c0564f" }}>{s.effect === "good" ? "சாதகம்" : "கவனம்"}</span>
             </div>
-            <div style={{ fontSize: 12, color: "#76819a", marginTop: 2 }}>{dShort(s.from)} – {dShort(s.to)}</div>
+            <div style={{ fontSize: 12, color: "#55626f", marginTop: 2 }}>{dShort(s.from)} – {dShort(s.to)}</div>
             <div style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.65, marginTop: 4 }}>{s.desc || s.theme}</div>
             {s.sadeSati?.active && <span style={{ ...chip, marginTop: 6, background: "#fbeeed", color: "#c0564f" }}>{s.sadeSati.isEzharai ? "ஏழரைச் சனி — " : ""}{s.sadeSati.phase}{s.sadeSati.stage ? ` (${s.sadeSati.stage})` : ""}</span>}
           </div>
@@ -258,7 +258,7 @@ function PeriodPalan({ p, onNav, onShare }) {
   return (<>
     <div data-period={p.period} style={card}>
       <div style={secTitle}>{p.rashi} ராசி — {isWeek ? "இந்த வாரம்" : "அடுத்த 30 நாட்கள்"}</div>
-      <div style={{ fontSize: 12.5, color: "#76819a", marginBottom: 10 }}>{dShort(p.from)} முதல் {dShort(p.to)} வரை</div>
+      <div style={{ fontSize: 12.5, color: "#55626f", marginBottom: 10 }}>{dShort(p.from)} முதல் {dShort(p.to)} வரை</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
         {[["good", "நல்ல நாட்கள்"], ["neutral", "சாதாரணம்"], ["caution", "கவனம்"]].map(([k, t]) => (
           <div key={k} style={{ background: MOOD[k].bg, borderRadius: 12, padding: "10px 6px", textAlign: "center" }}>
@@ -282,7 +282,7 @@ function PeriodPalan({ p, onNav, onShare }) {
           <div key={x.iso} data-pday style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: i ? "1px solid #eef1f6" : "none" }}>
             <div style={{ width: 92, flexShrink: 0 }}>
               <div style={{ fontSize: 13.5, fontWeight: 700, color: "#27303f" }}>{dWeek(x.iso)}</div>
-              <div style={{ fontSize: 12, color: "#76819a" }}>{dShort(x.iso)}</div>
+              <div style={{ fontSize: 12, color: "#55626f" }}>{dShort(x.iso)}</div>
             </div>
             <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#4a5365", lineHeight: 1.5 }}>சந்திரன் {x.moonRashi}{x.moonHouse ? ` (${x.moonHouse}ஆம் இடம்)` : ""}</div>
             <span style={{ ...chip, flexShrink: 0, background: x.chandrashtama ? "#fbeeed" : MOOD[x.mood].bg, color: x.chandrashtama ? "#c0564f" : MOOD[x.mood].c }}>{x.chandrashtama ? "சந்திராஷ்டமம்" : MOOD[x.mood].t}</span>
@@ -294,7 +294,7 @@ function PeriodPalan({ p, onNav, onShare }) {
         <div style={secTitle}>சிறந்த நாட்கள்</div>
         {p.bestDays.length > 0 ? (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{p.bestDays.map((x) => <span key={x} data-best style={{ ...chip, background: "#e9f5ee", color: "#2e7d5b" }}>{dShort(x)} {dWeek(x).slice(0, 2)}</span>)}</div>
-        ) : <div style={{ fontSize: 13, color: "#76819a" }}>இந்தக் காலத்தில் கிரக நிலை பெரும்பாலும் கவனம் தேவைப்படுவதாக உள்ளது.</div>}
+        ) : <div style={{ fontSize: 13, color: "#55626f" }}>இந்தக் காலத்தில் கிரக நிலை பெரும்பாலும் கவனம் தேவைப்படுவதாக உள்ளது.</div>}
       </div>
     )}
 
@@ -390,7 +390,7 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
         {mode === "festivals" && (
           <>
             {err && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>பட்டியலைப் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.</div>}
-            {!err && list === null && <div style={{ ...card, textAlign: "center", color: "#76819a", fontSize: 13 }}>கணக்கிடப்படுகிறது…</div>}
+            {!err && list === null && <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13 }}>கணக்கிடப்படுகிறது…</div>}
             {list && (
               <div style={{ ...card, padding: "4px 14px" }}>
                 {list.map((f, i) => {
@@ -400,7 +400,7 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
                       {dateBox(f.iso, isNext)}
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: "block", fontSize: 14.5, fontWeight: 700, color: "#27303f", lineHeight: 1.4 }}>{f.name}</span>
-                        <span style={{ display: "block", fontSize: 12, color: "#76819a", lineHeight: 1.5 }}>{dWeek(f.iso)} · {f.tamil}{isNext ? " · அடுத்து வருவது" : ""}</span>
+                        <span style={{ display: "block", fontSize: 12, color: "#55626f", lineHeight: 1.5 }}>{dWeek(f.iso)} · {f.tamil}{isNext ? " · அடுத்து வருவது" : ""}</span>
                       </span>
                       <ChevronRight size={16} color="#a3adc2" style={{ flexShrink: 0 }} />
                     </button>
@@ -420,8 +420,8 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
               ))}
             </div>
             {vrErr && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>பட்டியலைப் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.</div>}
-            {!vrErr && vr === null && <div style={{ ...card, textAlign: "center", color: "#76819a", fontSize: 13 }}>கணக்கிடப்படுகிறது…</div>}
-            {vr && vrItems.length === 0 && <div style={{ ...card, textAlign: "center", color: "#76819a", fontSize: 13 }}>இந்த ஆண்டுக்குப் பட்டியல் இல்லை.</div>}
+            {!vrErr && vr === null && <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13 }}>கணக்கிடப்படுகிறது…</div>}
+            {vr && vrItems.length === 0 && <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13 }}>இந்த ஆண்டுக்குப் பட்டியல் இல்லை.</div>}
             {vrMonths.map((g) => (
               <div key={g.m} data-vratham-month style={{ ...card, padding: g.m < 0 ? "4px 14px" : "10px 14px 4px" }}>
                 {g.m >= 0 && <div style={{ fontSize: 13, fontWeight: 700, color: "#7d6a3f", paddingBottom: 4 }}>{TA_MONTHS_FULL[g.m]}</div>}
@@ -433,7 +433,7 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
                       {dateBox(v.date, isNext)}
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: "block", fontSize: 14.5, fontWeight: 700, color: "#27303f", lineHeight: 1.4 }}>{v.name}</span>
-                        <span style={{ display: "block", fontSize: 12, color: "#76819a", lineHeight: 1.5 }}>{dWeek(v.date)}{extra ? ` · ${extra}` : ""}{isNext ? " · அடுத்து வருவது" : ""}</span>
+                        <span style={{ display: "block", fontSize: 12, color: "#55626f", lineHeight: 1.5 }}>{dWeek(v.date)}{extra ? ` · ${extra}` : ""}{isNext ? " · அடுத்து வருவது" : ""}</span>
                       </span>
                       <ChevronRight size={16} color="#a3adc2" style={{ flexShrink: 0 }} />
                     </button>
@@ -472,13 +472,13 @@ export function NavagrahaScreen({ fetchNavagraha, onNav }) {
         <h2 style={h2}>நவகிரக வழிபாடு</h2>
         <p style={sub}>ஒவ்வொரு கிரகத்துக்கும் மந்திரம், கோயில், ரத்தினம், தானம்</p>
         {err && <div style={{ ...card, textAlign: "center", color: "#c0564f", fontSize: 13 }}>விவரங்களைப் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.</div>}
-        {!err && !data && <div style={{ ...card, textAlign: "center", color: "#76819a", fontSize: 13 }}>ஏற்றுகிறது…</div>}
+        {!err && !data && <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13 }}>ஏற்றுகிறது…</div>}
         {today && (
           <div data-today-worship style={{ ...card, background: "#f6f1e4", border: "none", boxShadow: "none" }}>
             <div style={{ fontSize: 12.5, color: "#7d6a3f", marginBottom: 2 }}>இன்று {kizhamai(dWeek(isoOffset(0)))} · {today.lord}</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#27303f", lineHeight: 1.5 }}>{today.deity}</div>
             <div style={{ fontSize: 13, color: "#4a5365", lineHeight: 1.7, marginTop: 4 }}>{today.remedy}</div>
-            <div style={{ fontSize: 12.5, color: "#76819a", lineHeight: 1.6, marginTop: 4 }}>தானம்: {today.donate}</div>
+            <div style={{ fontSize: 12.5, color: "#55626f", lineHeight: 1.6, marginTop: 4 }}>தானம்: {today.donate}</div>
           </div>
         )}
         {data && data.planets.map((g) => {
@@ -488,18 +488,18 @@ export function NavagrahaScreen({ fetchNavagraha, onNav }) {
               <button data-graha={g.ta} onClick={() => setOpen(on ? null : g.ta)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: "14px 16px" }}>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "block", fontSize: 15, fontWeight: 700, color: "#1f3f68" }}>{g.ta}</span>
-                  <span style={{ display: "block", fontSize: 12, color: "#76819a" }}>{kizhamai(g.day)} · {g.gem}</span>
+                  <span style={{ display: "block", fontSize: 12, color: "#55626f" }}>{kizhamai(g.day)} · {g.gem}</span>
                 </span>
                 <ChevronRight size={18} color="#a3adc2" style={{ flexShrink: 0, transform: on ? "rotate(90deg)" : "none", transition: "transform .2s" }} />
               </button>
               {on && (
                 <div data-graha-detail style={{ padding: "0 16px 14px" }}>
                   <div style={{ background: "#f8f9fc", borderRadius: 12, padding: "10px 12px", fontSize: 14, fontWeight: 700, color: "#27303f", lineHeight: 1.7, marginBottom: 6 }}>{g.mantra}
-                    <span style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#76819a" }}>{g.mantraCount}</span>
+                    <span style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#55626f" }}>{g.mantraCount}</span>
                   </div>
                   {[["கோயில்", g.temple], ["ரத்தினம்", g.gem], ["உலோகம்", g.metal], ["நிறம்", g.color], ["மலர்", g.flower], ["தானம்", g.donate], ["உணவு", g.food], ["திசை", g.direction]].filter(([, v]) => v).map(([k, v], i) => (
                     <div key={k} style={{ display: "flex", gap: 12, padding: "7px 0", borderTop: i ? "1px solid #eef1f6" : "none", fontSize: 13, lineHeight: 1.6 }}>
-                      <span style={{ width: 76, flexShrink: 0, color: "#76819a" }}>{k}</span>
+                      <span style={{ width: 76, flexShrink: 0, color: "#55626f" }}>{k}</span>
                       <span style={{ color: "#27303f" }}>{v}</span>
                     </div>
                   ))}
@@ -552,7 +552,7 @@ export function NumerologyScreen({ defaultDob = "", onNav }) {
                 <span style={{ width: 52, height: 52, borderRadius: 16, background: "#eef1fb", color: "#1f3f68", display: "grid", placeItems: "center", fontSize: 26, fontWeight: 800, flexShrink: 0 }}>{v}</span>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: "#1f3f68" }}>{title}</div>
-                  <div style={{ fontSize: 12, color: "#76819a", lineHeight: 1.5 }}>{how}</div>
+                  <div style={{ fontSize: 12, color: "#55626f", lineHeight: 1.5 }}>{how}</div>
                 </div>
               </div>
               <span style={{ ...chip, background: "#f6f1e4", color: "#7d6a3f", marginBottom: 8 }}>{info.planet} · {info.title}</span>
@@ -561,7 +561,7 @@ export function NumerologyScreen({ defaultDob = "", onNav }) {
           );
         })}
         {n.birth == null && n.name == null && (
-          <div style={{ ...card, textAlign: "center", color: "#76819a", fontSize: 13, lineHeight: 1.7 }}>பிறந்த தேதி அல்லது பெயரை உள்ளிடுங்கள்.</div>
+          <div style={{ ...card, textAlign: "center", color: "#55626f", fontSize: 13, lineHeight: 1.7 }}>பிறந்த தேதி அல்லது பெயரை உள்ளிடுங்கள்.</div>
         )}
       </div>
       <BottomNav active="" onNav={onNav} />
@@ -611,7 +611,7 @@ export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = nu
               {list.map((n) => <span key={n} data-name style={nameChip}>{n}</span>)}
             </div>
           </div>
-        )) : <div style={{ fontSize: 13, color: "#76819a" }}>இந்த நடையில் இந்த எழுத்தில் வழக்கமான பெயர்கள் அரிது.</div>}
+        )) : <div style={{ fontSize: 13, color: "#55626f" }}>இந்த நடையில் இந்த எழுத்தில் வழக்கமான பெயர்கள் அரிது.</div>}
       </div>
     );
   };
@@ -635,7 +635,7 @@ export function NameLettersScreen({ nakshatras, defaultNak = 0, defaultPada = nu
             return (
               <button key={i} data-pada={i + 1} aria-pressed={on} onClick={() => setPada(i + 1)}
                 style={{ ...card, marginBottom: 0, textAlign: "center", cursor: "pointer", fontFamily: "inherit", border: on ? "1.5px solid #1f3f68" : card.border, background: on ? "#eef1fb" : "#ffffff" }}>
-                <div style={{ fontSize: 12, color: "#76819a" }}>{i + 1}ஆம் பாதம்{mine ? " · உங்களுடையது" : ""}</div>
+                <div style={{ fontSize: 12, color: "#55626f" }}>{i + 1}ஆம் பாதம்{mine ? " · உங்களுடையது" : ""}</div>
                 <div style={{ fontSize: 30, fontWeight: 800, color: "#1f3f68", lineHeight: 1.4 }}>{ta}</div>
                 <div data-pada-example style={{ fontSize: 12.5, color: "#7d6a3f", minHeight: 19 }}>{ex ? `எ.கா. ${ex}` : ""}</div>
               </button>

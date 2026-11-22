@@ -28,7 +28,7 @@ export default function AdvisoryScreen({ onPick = () => {}, onNav = () => {} }) 
           <p style={{ color: "#c9a84a", fontSize: 13, marginTop: 6, fontWeight: 600 }}>
             எந்தத் தலைப்பில் ஆலோசனை வேண்டும்?
           </p>
-          <p data-ai-notice style={{ fontSize: 12, lineHeight: 1.6, marginTop: 8, color: "#76819a", maxWidth: 330, marginLeft: "auto", marginRight: "auto" }}>
+          <p data-ai-notice style={{ fontSize: 12, lineHeight: 1.6, marginTop: 8, color: "#55626f", maxWidth: 330, marginLeft: "auto", marginRight: "auto" }}>
             பதிலளிப்பது AI உதவியாளர்; மனித ஜோதிடர் அல்ல.
           </p>
           <div className="gold-divider">

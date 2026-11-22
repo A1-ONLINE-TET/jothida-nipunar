@@ -54,7 +54,7 @@ export function ReportLink({ onReport, label = "தவறான பதிலா?
 export function AiTextFooter({ onReport }) {
   return (
     <div data-ai-footer style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #e3e8f2" }}>
-      <div style={{ fontSize: 12, lineHeight: 1.55, color: "#76819a" }}>இந்த உரை AI உருவாக்கியது; வழிகாட்டலுக்கு மட்டும்.</div>
+      <div style={{ fontSize: 12, lineHeight: 1.55, color: "#55626f" }}>இந்த உரை AI உருவாக்கியது; வழிகாட்டலுக்கு மட்டும்.</div>
       <ReportLink onReport={onReport} label="தவறாக உள்ளதா? புகார் செய்" />
     </div>
   );
