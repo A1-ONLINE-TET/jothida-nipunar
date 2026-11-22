@@ -5408,7 +5408,7 @@ ${aiPart}
                 const isFest = calFestivals.year === calYear && calFestivals.list.some(f => f.iso === iso);
                 const vk = calVratham.year === calYear ? (calVratham.map[iso] || []).map(v => v.key) : null;
                 const mark = (key, flag) => (vk ? vk.includes(key) : flag);
-                const dots = [mark("pournami", cd.isPournami) ? "#e0b84c" : null, mark("amavasai", cd.isAmavasai) ? "#27303f" : null, mark("ekadashi", cd.isEkadashi) ? "#2e8b84" : null, isFest ? "#c2607c" : null].filter(Boolean);
+                const dots = [mark("pournami", cd.isPournami) ? {c:"#b58a1e",shape:"circle"} : null, mark("amavasai", cd.isAmavasai) ? {c:"#27303f",shape:"ring"} : null, mark("ekadashi", cd.isEkadashi) ? {c:"#226b66",shape:"square"} : null, isFest ? {c:"#b04a69",shape:"diamond"} : null].filter(Boolean);
                 return(
                   <button key={i} data-cal-day={cd.d} onClick={()=>setCalSelected(cd.d)} style={{
                     background:isSelected?"#1f3f68":cd.dayType==="good"?"#eef7f1":cd.dayType==="bad"?"#fbf1f0":"#ffffff",
@@ -5417,8 +5417,8 @@ ${aiPart}
                   }}>
                     <span style={{fontSize:15,fontWeight:isSelected||isTodayCell?800:600,lineHeight:1.2,
                       color:isSelected?"#ffffff":cd.dayOfWeek===0?"#c0564f":"#27303f"}}>{cd.d}</span>
-                    <span style={{display:"flex",gap:3,height:6}}>
-                      {dots.map((c,k)=>(<span key={k} style={{width:6,height:6,borderRadius:6,background:c,boxShadow:isSelected?"0 0 0 1px #ffffff":"none"}}/>))}
+                    <span style={{display:"flex",gap:4,height:8,alignItems:"center"}}>
+                      {dots.map((d,k)=>(<span key={k} aria-hidden="true" style={{width:7,height:7,flexShrink:0,background:d.shape==="ring"?"transparent":d.c,border:d.shape==="ring"?`1.5px solid ${d.c}`:"none",borderRadius:d.shape==="circle"||d.shape==="ring"?"50%":d.shape==="square"?"1px":"2px",transform:d.shape==="diamond"?"rotate(45deg)":"none",boxShadow:isSelected?"0 0 0 1px #ffffff":"none"}}/>))}
                     </span>
                   </button>
                 );
@@ -5428,8 +5428,8 @@ ${aiPart}
 
           {/* Legend */}
           <div style={{display:"flex",justifyContent:"center",gap:"6px 12px",marginBottom:14,flexWrap:"wrap"}}>
-            {[["#e0b84c","பௌர்ணமி"],["#27303f","அமாவாசை"],["#2e8b84","ஏகாதசி"],["#c2607c","பண்டிகை"]].map(([c,l])=>(
-              <span key={l} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,color:"#4a5365"}}><span style={{width:7,height:7,borderRadius:7,background:c}}/>{l}</span>
+            {[["#b58a1e","பௌர்ணமி","circle"],["#27303f","அமாவாசை","ring"],["#226b66","ஏகாதசி","square"],["#b04a69","பண்டிகை","diamond"]].map(([c,l,shape])=>(
+              <span key={l} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,color:"#4a5365"}}><span aria-hidden="true" style={{width:9,height:9,background:shape==="ring"?"transparent":c,border:shape==="ring"?`1.5px solid ${c}`:"none",borderRadius:shape==="circle"||shape==="ring"?"50%":shape==="square"?"1px":"2px",transform:shape==="diamond"?"rotate(45deg)":"none"}}/>{l}</span>
             ))}
             <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,color:"#4a5365"}}><span style={{width:11,height:11,borderRadius:3,background:"#eef7f1",border:"1px solid #cfe6da"}}/>சுப நாள்</span>
             <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,color:"#4a5365"}}><span style={{width:11,height:11,borderRadius:3,background:"#fbf1f0",border:"1px solid #f0d6d3"}}/>கவனம்</span>
