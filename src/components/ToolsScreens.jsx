@@ -328,7 +328,7 @@ function PeriodPalan({ p, onNav, onShare }) {
 const VRATHAM_KINDS = ["all", "amavasai", "pournami", "ekadashi", "pradosham", "chaturthi", "sankatahara", "krittikai", "sivaratri"];
 
 export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDate }) {
-  const { t, tList, tWeekday } = useLang();
+  const { t, tList, tWeekday, tFestival } = useLang();
   const [year, setYear] = useState(new Date().getFullYear());
   const [mode, setMode] = useState("festivals"); // festivals | vratham
   const [kind, setKind] = useState("all");
@@ -402,7 +402,7 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
                     <button key={f.iso + f.name} data-festival onClick={() => onOpenDate(f.iso)} style={rowBtn(i === 0, f.iso < todayIso)}>
                       {dateBox(f.iso, isNext)}
                       <span style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ display: "block", fontSize: 14.5, fontWeight: 700, color: "#27303f", lineHeight: 1.4 }}>{f.name}</span>
+                        <span style={{ display: "block", fontSize: 14.5, fontWeight: 700, color: "#27303f", lineHeight: 1.4 }}>{tFestival(f.name)}</span>
                         <span style={{ display: "block", fontSize: 12, color: "#55626f", lineHeight: 1.5 }}>{tWeekday(dWeek(f.iso))} · {f.tamil}{isNext ? ` · ${t("fest.next")}` : ""}</span>
                       </span>
                       <ChevronRight size={16} color="#a3adc2" style={{ flexShrink: 0 }} />
@@ -435,7 +435,7 @@ export function FestivalsScreen({ fetchFestivals, fetchVratham, onNav, onOpenDat
                     <button key={v.date + v.key} data-vratham={v.key} onClick={() => onOpenDate(v.date)} style={rowBtn(i === 0, v.date < todayIso)}>
                       {dateBox(v.date, isNext)}
                       <span style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ display: "block", fontSize: 14.5, fontWeight: 700, color: "#27303f", lineHeight: 1.4 }}>{v.name}</span>
+                        <span style={{ display: "block", fontSize: 14.5, fontWeight: 700, color: "#27303f", lineHeight: 1.4 }}>{tFestival(v.name)}</span>
                         <span style={{ display: "block", fontSize: 12, color: "#55626f", lineHeight: 1.5 }}>{tWeekday(dWeek(v.date))}{extra ? ` · ${extra}` : ""}{isNext ? ` · ${t("fest.next")}` : ""}</span>
                       </span>
                       <ChevronRight size={16} color="#a3adc2" style={{ flexShrink: 0 }} />

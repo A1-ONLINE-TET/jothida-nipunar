@@ -94,7 +94,7 @@ const spaced = (s) => String(s || "").replace(/\s*[–—-]\s*/, " – ");
 // வடிவமைப்பு: பயனர் கொடுத்த மாதிரிப் படம் (2026-11). மேலே தலைப்புப் படம் (/logo/home-banner.webp — சின்னமும் அதிலேயே),
 // பின் அட்டைகள், ஓடுகள், கீழே அலை. `name` இப்போது காட்டப்படுவதில்லை (மாதிரியில் வாழ்த்து வரி இல்லை).
 export default function HomeScreen({ handle = () => {}, today = null, special = null, hasProfile = false }) {
-  const { lang, t, tNak, tTithi, tYogam, tKaranam, tGowri, tRashi, tWeekday, tPhase, tDir, tMonth } = useLang();
+  const { lang, t, tNak, tTithi, tYogam, tKaranam, tGowri, tRashi, tWeekday, tPhase, tDir, tMonth, tFestival } = useLang();
   // "இப்போது" பட்டை நிமிடத்துக்கு ஒரு முறை புதுப்பிக்கப்படும்
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(t); }, []);
@@ -137,8 +137,8 @@ export default function HomeScreen({ handle = () => {}, today = null, special = 
               <div className="today-special" data-home-special>
                 <Bell size={17} strokeWidth={1.9} />
                 <span>
-                  {special.today.length > 0 && <b>{t("home.special.today", { list: special.today.join(", ") })}</b>}
-                  {special.upcoming.length > 0 && <i>{special.upcoming.map((u) => `${u.when} ${u.names.join(", ")}`).join(" · ")}</i>}
+                  {special.today.length > 0 && <b>{t("home.special.today", { list: special.today.map(tFestival).join(", ") })}</b>}
+                  {special.upcoming.length > 0 && <i>{special.upcoming.map((u) => `${u.when} ${u.names.map(tFestival).join(", ")}`).join(" · ")}</i>}
                 </span>
               </div>
             )}

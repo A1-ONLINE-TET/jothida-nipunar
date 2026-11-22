@@ -720,29 +720,19 @@ const AREA_STYLE = {
   marriage:  { icon: Heart,         color: "#b86084", tint: "#faeef3", short: "திருமணம்" },
   career:    { icon: Briefcase,     color: "#6b9150", tint: "#f0f6ea", short: "தொழில்" },
 };
-// "ஆழம்" tab — 29 பகுப்பாய்வுகள், வகை வாரியாக (key = advancedView)
+// "ஆழம்" tab — 29 பகுப்பாய்வுகள், வகை வாரியாக (key = advancedView). தலைப்புகள் i18n வழியே:
+//   குழு → t(`deep.grp.${gkey}`), பகுப்பாய்வு → t(`deep.v.${key}`).
 const DEEP_GROUPS = [
-  { title: "கிரக பலம்", color: "#3e4c99", items: [
-    ["grahabala", "கிரக பலம்"], ["unified", "ஒருங்கிணைந்த கிரக பலம்"], ["shadbala", "ஷட்பலம்"],
-    ["navamsastrength", "நவாம்ச பலம்"], ["avasthas", "கிரக அவஸ்தைகள்"], ["bhavabala", "பாவ பலம்"],
-    ["funcnature", "லக்னவாரி சுப-பாபர் / மாரக-பாதகர்"], ["planetcontext", "கிரக சூழல்"] ] },
-  { title: "யோகம் & தோஷம்", color: "#53763c", items: [
-    ["yogas", "யோகங்கள்"], ["kalasarpa", "கால சர்ப்ப தோஷம்"], ["chevvai", "செவ்வாய் தோஷம்"] ] },
-  { title: "சக்கரங்கள் & வர்க்கங்கள்", color: "#226b66", items: [
-    ["bhava", "பாவ சக்கரம்"], ["d10", "தசாம்சம் (தொழில்)"], ["divisional", "பிரிவு சக்கரங்கள்"],
-    ["shodashavarga", "மேல் வர்க்கங்கள்"], ["ashtakavarga", "சர்வாஷ்டகவர்க்கம்"], ["drishti", "கிரக திருஷ்டி (பார்வை)"] ] },
-  { title: "காலக்கணிப்பு", color: "#9d5f38", items: [
-    ["eventtiming", "வாழ்க்கை நிகழ்வு காலக்கணிப்பு"], ["sequence", "வரிசை-நிபந்தனை பலன்கள்"],
-    ["nakbhava", "நட்சத்திர-பாவக இணைப்பு"], ["transitoverlay", "கோசாரம்"], ["saniguru", "சனி-குரு பெயர்ச்சி பலன்"],
-    ["varshaphala", "வர்ஷபலன் (ஆண்டு ஜாதகம்)"] ] },   // backtest = உருவாக்குநர் கருவி; பயனர் பட்டியலில் இல்லை
-  { title: "சிறப்பு முறைகள்", color: "#6f4c92", items: [
-    ["jaimini", "ஜைமினி முறை"], ["prashna", "பிரஸ்னம் (இப்போதைய கேள்வி)"] ] },
-  { title: "நாள் & பரிகாரம்", color: "#99496a", items: [
-    ["rahukalam", "ராகு காலம் / எமகண்டம் / குளிகை"], ["muhurtha", "முகூர்த்தம் (சுப நேரம்)"], ["remedies", "கிரக வழிபாட்டு அட்டவணை"] ] },
+  { gkey: "strength", color: "#3e4c99", items: ["grahabala","unified","shadbala","navamsastrength","avasthas","bhavabala","funcnature","planetcontext"] },
+  { gkey: "yogadosha", color: "#53763c", items: ["yogas","kalasarpa","chevvai"] },
+  { gkey: "charts", color: "#226b66", items: ["bhava","d10","divisional","shodashavarga","ashtakavarga","drishti"] },
+  { gkey: "timing", color: "#9d5f38", items: ["eventtiming","sequence","nakbhava","transitoverlay","saniguru","varshaphala"] },
+  { gkey: "special", color: "#6f4c92", items: ["jaimini","prashna"] },
+  { gkey: "dayremedy", color: "#99496a", items: ["rahukalam","muhurtha","remedies"] },
 ];
 
 export default function AstrologyApp() {
-  const { lang, t, tList, tNak, tRashi, tPlanet, tTithi, tYogam, tKaranam, tGowri, tWeekday, tDir, tPhase, tMonth, tGem, tColor } = useLang();
+  const { lang, t, tList, tNak, tRashi, tPlanet, tTithi, tYogam, tKaranam, tGowri, tWeekday, tDir, tPhase, tMonth, tGem, tColor, tFestival } = useLang();
   const [screen, setScreen] = useState(SCREEN.SPLASH);
   const [authMode, setAuthMode] = useState("login");
   const [user, setUser] = useState(null);
@@ -2884,16 +2874,16 @@ ${aiPart}
           {/* ═══ ஆழம் — வகை வாரியான பட்டியல்; தட்டினால் அந்தப் பகுப்பாய்வு மட்டும் ═══ */}
           {resultTab==="deep" && !advancedView && (
             <div style={{...card,marginBottom:12,padding:"16px"}}>
-              <div style={{...secTitle,marginBottom:4}}>ஆழமான பகுப்பாய்வுகள்</div>
+              <div style={{...secTitle,marginBottom:4}}>{t("deep.heading")}</div>
               <div style={{fontSize: 12.5,color:"#55626f",marginBottom:14,lineHeight:1.6}}>{t("palan.tapHint")}</div>
               {DEEP_GROUPS.map(g=>(
-                <div key={g.title} style={{marginBottom:16}}>
-                  <div style={{fontSize: 12.5,fontWeight:700,color:g.color,marginBottom:7}}>{g.title}</div>
+                <div key={g.gkey} style={{marginBottom:16}}>
+                  <div style={{fontSize: 12.5,fontWeight:700,color:g.color,marginBottom:7}}>{t(`deep.grp.${g.gkey}`)}</div>
                   <div style={{border:"1px solid #e3e8f2",borderRadius:14,overflow:"hidden"}}>
-                    {g.items.map(([k,l],i)=>(
+                    {g.items.map((k,i)=>(
                       <button key={k} data-deep={k} onClick={()=>pickAdvancedView(k)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,width:"100%",
                         padding:"12px 14px",background:"#ffffff",borderLeft:"none",borderRight:"none",borderBottom:"none",borderTop:i?"1px solid #eef1f6":"none",cursor:"pointer",textAlign:"left",fontSize: 13.5,color:"#27303f"}}>
-                        <span>{l}</span><ChevronRight size={16} color="#a3adc2" style={{flexShrink:0}}/>
+                        <span>{t(`deep.v.${k}`)}</span><ChevronRight size={16} color="#a3adc2" style={{flexShrink:0}}/>
                       </button>
                     ))}
                   </div>
@@ -2903,7 +2893,7 @@ ${aiPart}
           )}
           {resultTab==="deep" && advancedView && (
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-              <button data-deep-back onClick={()=>{ setAdvancedView(""); window.scrollTo({top:0}); }} style={{background:"#ffffff",border:"1px solid #e3e8f2",borderRadius:999,color:"#1f3f68",fontSize: 13,cursor:"pointer",padding:"9px 16px",minHeight:36,fontWeight:600,flexShrink:0}}>← பட்டியல்</button>
+              <button data-deep-back onClick={()=>{ setAdvancedView(""); window.scrollTo({top:0}); }} style={{background:"#ffffff",border:"1px solid #e3e8f2",borderRadius:999,color:"#1f3f68",fontSize: 13,cursor:"pointer",padding:"9px 16px",minHeight:36,fontWeight:600,flexShrink:0}}>{t("deep.backList")}</button>
             </div>
           )}
 
@@ -5502,7 +5492,7 @@ ${aiPart}
                   const iso = `${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(sel.d).padStart(2,"0")}`;
                   const fs = calFestivals.year === calYear ? calFestivals.list.filter(f => f.iso === iso) : [];
                   return fs.length ? (
-                    <div data-day-festival style={{marginTop:8,fontSize: 13.5,fontWeight:700,color:"#99496a"}}>{fs.map(f => f.name).join(" · ")}</div>
+                    <div data-day-festival style={{marginTop:8,fontSize: 13.5,fontWeight:700,color:"#99496a"}}>{fs.map(f => tFestival(f.name)).join(" · ")}</div>
                   ) : null;
                 })()}
                 {(()=>{
@@ -5514,7 +5504,7 @@ ${aiPart}
                         .filter(x => x[0]).map(([,k,l]) => [l, ...(TONE[k] || ["#4a5365","#f3f5f9"])]);
                   return chips.length ? (
                     <div data-day-vratham style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
-                      {chips.map(([l,c,b])=>(<span key={l} style={{fontSize:11.5,background:b,color:c,padding:"3px 10px",borderRadius:999,fontWeight:700}}>{l}</span>))}
+                      {chips.map(([l,c,b])=>(<span key={l} style={{fontSize:11.5,background:b,color:c,padding:"3px 10px",borderRadius:999,fontWeight:700}}>{tFestival(l)}</span>))}
                     </div>
                   ) : null;
                 })()}
@@ -5685,7 +5675,7 @@ ${aiPart}
                         <button key={f.iso + f.name} data-month-festival onClick={()=>setCalSelected(d)} style={{display:"flex",gap:12,width:"100%",textAlign:"left",padding:"7px 0",background:"none",
                           borderLeft:"none",borderRight:"none",borderBottom:"none",borderTop:"1px solid #f3f5f9",cursor:"pointer",fontSize: 13,lineHeight:1.5}}>
                           <span style={{width:60,flexShrink:0,fontWeight:700,color:"#27303f"}}>{d} {dshort(new Date(calYear, calMonth, d).getDay())}</span>
-                          <span style={{color:"#99496a",fontWeight:600}}>{f.name}</span>
+                          <span style={{color:"#99496a",fontWeight:600}}>{tFestival(f.name)}</span>
                         </button>
                       ); })}
                     </>);
@@ -5704,7 +5694,7 @@ ${aiPart}
                         <button key={r.d} data-month-vratham onClick={()=>setCalSelected(r.d)} style={{display:"flex",gap:12,width:"100%",textAlign:"left",padding:"7px 0",background:"none",
                           borderLeft:"none",borderRight:"none",borderBottom:"none",borderTop:"1px solid #f3f5f9",cursor:"pointer",fontSize: 13,lineHeight:1.5}}>
                           <span style={{width:60,flexShrink:0,fontWeight:700,color:"#27303f"}}>{r.d} {dshort(new Date(calYear, calMonth, r.d).getDay())}</span>
-                          <span style={{color:"#4a5365"}}>{r.names.join(" · ")}</span>
+                          <span style={{color:"#4a5365"}}>{r.names.map(tFestival).join(" · ")}</span>
                         </button>
                       ))}
                       {!vrOK && <div style={{fontSize: 11.5,color:"#a3adc2",marginTop:6,lineHeight:1.6}}>{t("cal.approxVratham")}</div>}

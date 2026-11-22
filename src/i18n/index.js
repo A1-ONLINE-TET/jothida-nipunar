@@ -64,7 +64,7 @@ export function useLang() {
     tNak: (x) => T.tNak(x, lang), tRashi: (x) => T.tRashi(x, lang), tPlanet: (x) => T.tPlanet(x, lang),
     tTithi: (x) => T.tTithi(x, lang), tYogam: (x) => T.tYogam(x, lang), tKaranam: (x) => T.tKaranam(x, lang),
     tGowri: (x) => T.tGowri(x, lang), tWeekday: (x) => T.tWeekday(x, lang), tDir: (x) => T.tDir(x, lang), tPhase: (x) => T.tPhase(x, lang), tMonth: (x) => T.tMonth(x, lang),
-    tGem: (x) => T.tGem(x, lang), tColor: (x) => T.tColor(x, lang),
+    tGem: (x) => T.tGem(x, lang), tColor: (x) => T.tColor(x, lang), tFestival: (x) => T.tFestival(x, lang),
   };
 }
 
@@ -73,6 +73,7 @@ export const term = {
   nak: (x) => T.tNak(x, getLang()), rashi: (x) => T.tRashi(x, getLang()), planet: (x) => T.tPlanet(x, getLang()),
   tithi: (x) => T.tTithi(x, getLang()), yogam: (x) => T.tYogam(x, getLang()), karanam: (x) => T.tKaranam(x, getLang()),
   gowri: (x) => T.tGowri(x, getLang()), weekday: (x) => T.tWeekday(x, getLang()), dir: (x) => T.tDir(x, getLang()), phase: (x) => T.tPhase(x, getLang()),
+  festival: (x) => T.tFestival(x, getLang()),
 };
 
 export const ALL_DICTS = DICT; // சோதனைக்கு

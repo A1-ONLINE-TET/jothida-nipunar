@@ -207,6 +207,50 @@ export const TMONTH = {
   "பங்குனி": { en: "Panguni", hi: "पंगुनि" },
 };
 
+// தமிழ்ப் பண்டிகைகள் — worker/src/festivals.js name-களுடன் ஒத்தது (API உருவாக்குவது; display-இல் மொழிபெயர்)
+export const FEST = {
+  "அட்சய திருதியை": { en: "Akshaya Tritiya", hi: "अक्षय तृतीया" },
+  "ஆடி அமாவாசை": { en: "Aadi Amavasai", hi: "आडि अमावस्या" },
+  "ஆடிப்பூரம்": { en: "Aadi Pooram", hi: "आडि पूरम" },
+  "ஆடிப்பெருக்கு": { en: "Aadi Perukku", hi: "आडि पेरुक्कु" },
+  "ஆருத்ரா தரிசனம்": { en: "Arudra Darshan", hi: "आर्द्रा दर्शन" },
+  "கந்த சஷ்டி (சூரசம்ஹாரம்)": { en: "Kanda Sashti (Surasamharam)", hi: "कंद षष्ठी (सूरसंहारम)" },
+  "கார்த்திகை தீபம்": { en: "Karthigai Deepam", hi: "कार्त्तिकै दीपम" },
+  "கோகுலாஷ்டமி": { en: "Gokulashtami", hi: "गोकुलाष्टमी" },
+  "சரஸ்வதி பூஜை · ஆயுத பூஜை": { en: "Saraswati Pooja · Ayudha Pooja", hi: "सरस्वती पूजा · आयुध पूजा" },
+  "சித்ரா பௌர்ணமி": { en: "Chithra Pournami", hi: "चित्रा पूर्णिमा" },
+  "தமிழ்ப் புத்தாண்டு": { en: "Tamil New Year", hi: "तमिल नववर्ष" },
+  "தீபாவளி": { en: "Deepavali", hi: "दीपावली" },
+  "தை அமாவாசை": { en: "Thai Amavasai", hi: "तै अमावस्या" },
+  "தைப்பூசம்": { en: "Thaipusam", hi: "तैपूसम" },
+  "தைப்பொங்கல்": { en: "Thai Pongal", hi: "तै पोंगल" },
+  "நவராத்திரி தொடக்கம்": { en: "Navaratri begins", hi: "नवरात्रि आरंभ" },
+  "பங்குனி உத்திரம்": { en: "Panguni Uthiram", hi: "पंगुनि उत्तिरम" },
+  "போகி": { en: "Bhogi", hi: "भोगी" },
+  "மகா சிவராத்திரி": { en: "Maha Shivaratri", hi: "महा शिवरात्रि" },
+  "மகாளய அமாவாசை": { en: "Mahalaya Amavasai", hi: "महालय अमावस्या" },
+  "மாசி மகம்": { en: "Masi Magam", hi: "मासि मगम" },
+  "மாட்டுப் பொங்கல்": { en: "Mattu Pongal", hi: "माट्टु पोंगल" },
+  "ரத சப்தமி": { en: "Ratha Saptami", hi: "रथ सप्तमी" },
+  "விஜயதசமி": { en: "Vijayadashami", hi: "विजयदशमी" },
+  "விநாயகர் சதுர்த்தி": { en: "Vinayaka Chaturthi", hi: "विनायक चतुर्थी" },
+  "வைகாசி விசாகம்": { en: "Vaikasi Visakam", hi: "वैकासि विसाकम" },
+  "வைகுண்ட ஏகாதசி": { en: "Vaikunta Ekadashi", hi: "वैकुंठ एकादशी" },
+};
+
+// விரத வகைகள் — worker/src/vratham.js + நாட்காட்டி fallback
+export const VRAT = {
+  "அமாவாசை": { en: "Amavasya", hi: "अमावस्या" },
+  "ஏகாதசி": { en: "Ekadashi", hi: "एकादशी" },
+  "சங்கடஹர சதுர்த்தி": { en: "Sankatahara Chaturthi", hi: "संकटहर चतुर्थी" },
+  "சதுர்த்தி": { en: "Chaturthi", hi: "चतुर्थी" },
+  "சஷ்டி": { en: "Shashti", hi: "षष्ठी" },
+  "பிரதோஷம்": { en: "Pradosham", hi: "प्रदोष" },
+  "பௌர்ணமி": { en: "Pournami", hi: "पूर्णिमा" },
+  "மாத சிவராத்திரி": { en: "Masa Shivaratri", hi: "मास शिवरात्रि" },
+  "கிருத்திகை": { en: "Krithigai", hi: "कृत्तिकै" },
+};
+
 // பக்ஷம் (வளர்பிறை / தேய்பிறை)
 export const PHASE = {
   "வளர்பிறை": { en: "Waxing", hi: "शुक्ल पक्ष" },
@@ -232,6 +276,12 @@ export const tPhase = (term, lang) => pick(PHASE, term, lang);
 export const tMonth = (term, lang) => pick(TMONTH, term, lang);
 export const tGem = (term, lang) => pick(GEM, term, lang);
 export const tColor = (term, lang) => pick(COLOR, term, lang);
+// பண்டிகை/விரதப் பெயர் — இரண்டிலும் தேடு (API எதை அனுப்பினாலும்)
+export const tFestival = (term, lang) => {
+  if (lang === "ta" || !term) return term;
+  const e = FEST[term] || VRAT[term] || TITHI[term];
+  return e && e[lang] ? e[lang] : term;
+};
 
 // சோதனைக்கு — எல்லா வகைகளும்
-export const ALL_TERM_MAPS = { NAK, RASHI, PLANET, TITHI, YOGAM, KARANAM, GOWRI, WEEKDAY, DIR, PHASE, TMONTH, GEM, COLOR };
+export const ALL_TERM_MAPS = { NAK, RASHI, PLANET, TITHI, YOGAM, KARANAM, GOWRI, WEEKDAY, DIR, PHASE, TMONTH, GEM, COLOR, FEST, VRAT };
