@@ -33,12 +33,26 @@
     .en p,.en li{font-size:13.5px;line-height:1.7}
     footer{margin-top:30px;padding-top:14px;border-top:1px solid #e3e8f2;font-size:12.5px;color:#76819a}
     footer a{margin-right:14px}
+    .langbar{display:flex;gap:8px;margin:16px 0 4px;flex-wrap:wrap}
+    .langbar button{min-height:38px;padding:0 16px;border-radius:999px;border:1px solid #c9d3ea;background:#fff;color:#1f3f68;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer}
+    .langbar button.on{background:#1f3f68;color:#fff;border-color:#1f3f68}
+    .L{display:none}.L.show{display:block}
+    .L.en,.L.hi{margin-top:4px}
+    .L.en h2,.L.hi h2{font-size:15px}
+    .L.en p,.L.en li,.L.hi p,.L.hi li{font-size:13.5px;line-height:1.7}
   </style>
 </head>
 <body>
   <div class="wrap">
     <a class="back" href="/">பயன்பாட்டுக்குத் திரும்ப</a>
 
+    <div class="langbar" role="group" aria-label="Language">
+      <button type="button" data-lang="ta" onclick="pickLang('ta')">தமிழ்</button>
+      <button type="button" data-lang="en" onclick="pickLang('en')">English</button>
+      <button type="button" data-lang="hi" onclick="pickLang('hi')">हिन्दी</button>
+    </div>
+
+    <div class="L ta">
     <h1>தரவையும் கணக்கையும் நீக்குவது எப்படி</h1>
     <div class="date">ஜோதிட நிபுணர் · TOPPER ASTRO</div>
 
@@ -66,10 +80,32 @@
     <p>பயன்பாட்டில் <b>கணக்கு → "கருத்து அல்லது புகார் அனுப்ப"</b> வழியாக எங்களுக்கு எழுதலாம். Google Play-இல் இந்தப் பயன்பாட்டின் பக்கத்தில் உள்ள உருவாக்குநர் மின்னஞ்சல் முகவரிக்கும் எழுதலாம்.</p>
     <p>நீக்கக் கோரிக்கையில், Google கணக்குடன் இணைத்திருந்தால் அந்த மின்னஞ்சல் முகவரியைக் குறிப்பிடுங்கள். கோரிக்கை கிடைத்த 30 நாட்களுக்குள் நீக்கப்படும்.</p>
 
-    <div class="en" lang="en">
-      <h2>Delete your data and account — English</h2>
-      <p>Open the app (the Android app or this website), tap <b>கணக்கு</b> (Account) in the bottom bar, tap <b>"என் தரவை நீக்கு"</b> (Delete my data) and confirm. This immediately and permanently deletes all saved charts, notes and verification records from the device and the cloud, and deletes the account itself (including any linked Google sign-in). Feedback and reports you sent earlier may be kept as long as needed to fix the service; you can ask for those to be deleted too. If you cannot open the app, write to the developer email shown on the app's Google Play page; requests are completed within 30 days.</p>
     </div>
+
+    <div class="L en" lang="en">
+      <h1>How to delete your data and account</h1>
+      <div class="date">ஜோதிட நிபுணர் · TOPPER ASTRO</div>
+      <p>Open the app (the Android app or this website), tap <b>Account</b> in the bottom bar, tap <b>"Delete my data"</b> and confirm <b>"Yes, delete everything"</b>.</p>
+      <p>If you linked a Google account, do this while signed in to that same Google account.</p>
+      <p><b>What is deleted:</b> the birth details, notes and verification records of all saved charts — on the device and in the cloud — and your account itself (the anonymous account id, plus any linked Google sign-in). Deletion is immediate and cannot be undone.</p>
+      <p><b>What remains:</b> feedback and reports you sent earlier may be kept as long as needed to fix the service; you can ask for those to be deleted too.</p>
+      <p><b>If you cannot open the app:</b> write to the developer email shown on the app's Google Play page. In the request, if you linked a Google account, mention that email address. Requests are completed within 30 days.</p>
+    </div>
+
+    <div class="L hi" lang="hi">
+      <h1>अपना डेटा और खाता कैसे हटाएँ</h1>
+      <div class="date">ஜோதிட நிபுணர் · TOPPER ASTRO</div>
+      <p>ऐप खोलें (Android ऐप या यही वेबसाइट), नीचे की पट्टी में <b>खाता</b> पर टैप करें, <b>"मेरा डेटा हटाएँ"</b> पर टैप करके <b>"हाँ, सब कुछ हटाएँ"</b> की पुष्टि करें।</p>
+      <p>यदि आपने Google खाता जोड़ा है, तो उसी Google खाते में साइन-इन रहते हुए यह करें।</p>
+      <p><b>क्या हटेगा:</b> सभी सहेजी कुंडलियों के जन्म विवरण, टिप्पणियाँ व सत्यापन रिकॉर्ड — उपकरण व क्लाउड दोनों से — और आपका खाता (अनाम खाता आईडी तथा कोई जुड़ा Google साइन-इन)। विलोपन तुरंत होता है और पूर्ववत नहीं किया जा सकता।</p>
+      <p><b>क्या रहेगा:</b> पहले भेजे गए सुझाव व शिकायतें सेवा सुधारने हेतु आवश्यक अवधि तक रखी जा सकती हैं; उन्हें भी हटाने का अनुरोध किया जा सकता है।</p>
+      <p><b>यदि ऐप न खुले:</b> ऐप के Google Play पृष्ठ पर दिखाए डेवलपर ईमेल पर लिखें। अनुरोध में, यदि Google खाता जोड़ा है तो वह ईमेल बताएँ। अनुरोध 30 दिनों के भीतर पूरे होते हैं।</p>
+    </div>
+
+    <script>
+      function pickLang(l){var ps=["ta","en","hi"];ps.forEach(function(p){var el=document.querySelector(".L."+p);if(el)el.classList.toggle("show",p===l);var b=document.querySelector('.langbar button[data-lang="'+p+'"]');if(b)b.classList.toggle("on",p===l);});try{document.documentElement.lang=l;}catch(e){}}
+      (function(){var l="ta";try{var v=localStorage.getItem("jn_lang");if(v==="en"||v==="hi"||v==="ta")l=v;}catch(e){}pickLang(l);})();
+    </script>
 
     <footer>
       <a href="/privacy.html">தனியுரிமைக் கொள்கை</a>

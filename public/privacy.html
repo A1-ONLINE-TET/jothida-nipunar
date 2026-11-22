@@ -33,12 +33,28 @@
     .en p,.en li{font-size:13.5px;line-height:1.7}
     footer{margin-top:30px;padding-top:14px;border-top:1px solid #e3e8f2;font-size:12.5px;color:#76819a}
     footer a{margin-right:14px}
+    /* மொழித் தேர்வு — jn_lang-க்கு ஏற்ப ஒரு மொழிப் பகுதியைக் காட்டு */
+    .langbar{display:flex;gap:8px;margin:16px 0 4px;flex-wrap:wrap}
+    .langbar button{min-height:38px;padding:0 16px;border-radius:999px;border:1px solid #c9d3ea;background:#fff;color:#1f3f68;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer}
+    .langbar button.on{background:#1f3f68;color:#fff;border-color:#1f3f68}
+    .L{display:none}
+    .L.show{display:block}
+    .L.en,.L.hi{margin-top:18px}
+    .L.en h2,.L.hi h2{font-size:15px}
+    .L.en p,.L.en li,.L.hi p,.L.hi li{font-size:13.5px;line-height:1.7}
   </style>
 </head>
 <body>
   <div class="wrap">
     <a class="back" href="/">பயன்பாட்டுக்குத் திரும்ப</a>
 
+    <div class="langbar" role="group" aria-label="Language">
+      <button type="button" data-lang="ta" onclick="pickLang('ta')">தமிழ்</button>
+      <button type="button" data-lang="en" onclick="pickLang('en')">English</button>
+      <button type="button" data-lang="hi" onclick="pickLang('hi')">हिन्दी</button>
+    </div>
+
+    <div class="L ta">
     <h1>தனியுரிமைக் கொள்கை</h1>
     <div class="date">நடைமுறைக்கு வந்த நாள்: 20 நவம்பர் 2026</div>
 
@@ -124,9 +140,12 @@
 
     <h2>11. தொடர்பு</h2>
     <p>பயன்பாட்டில் <b>கணக்கு → "கருத்து அல்லது புகார் அனுப்ப"</b> வழியாக எங்களுக்கு எழுதலாம். Google Play-இல் இந்தப் பயன்பாட்டின் பக்கத்தில் உள்ள உருவாக்குநர் மின்னஞ்சல் முகவரிக்கும் எழுதலாம்.</p>
+    </div>
 
-    <div class="en" lang="en">
-      <h2>Privacy Policy — English summary</h2>
+    <div class="L en" lang="en">
+      <h1>Privacy Policy</h1>
+      <div class="date">Effective: 20 November 2026</div>
+      <p style="color:#76819a;font-size:13px">A short summary follows. The complete, authoritative policy is the Tamil version above — tap <b>தமிழ்</b>.</p>
       <p><b>App:</b> ஜோதிட நிபுணர் (Jothida Nipunar) by TOPPER ASTRO — a Tamil Vedic astrology app. <b>Effective:</b> 20 November 2026.</p>
       <p><b>Data we collect:</b> birth details you enter (name, date, time and place of birth, gender; a second person's details for marriage matching); questions you ask the AI assistant; notes you save; feedback and reports you send; an anonymous Firebase account identifier; your Google email address and name only if you choose to link a Google account. Your IP address is visible to our servers and is used only for abuse prevention.</p>
       <p><b>Data we do not collect:</b> precise location, contacts, photos, camera, microphone, advertising identifiers. The app has no advertising and no analytics SDK.</p>
@@ -136,8 +155,39 @@
       <p><b>Retention and deletion:</b> saved charts are kept until you delete them. You can delete everything — device data, cloud record and the account itself — in the app under Account → "என் தரவை நீக்கு" (Delete my data). See <a href="/delete-data.html">how to delete your data</a>.</p>
       <p><b>Security:</b> all traffic uses HTTPS; each cloud record is readable only by its owner.</p>
       <p><b>Children:</b> the app is intended for users aged 18 and over.</p>
-      <p><b>Contact:</b> use Account → "கருத்து அல்லது புகார் அனுப்ப" (Send feedback) in the app, or the developer email shown on the app's Google Play page.</p>
+      <p><b>Contact:</b> use Account → "Send feedback or a complaint" in the app, or the developer email shown on the app's Google Play page.</p>
     </div>
+
+    <div class="L hi" lang="hi">
+      <h1>गोपनीयता नीति</h1>
+      <div class="date">प्रभावी: 20 नवंबर 2026</div>
+      <p style="color:#76819a;font-size:13px">नीचे संक्षिप्त सारांश है। पूर्ण और मान्य नीति ऊपर तमिल संस्करण है — <b>தமிழ்</b> पर टैप करें।</p>
+      <p><b>ऐप:</b> ஜோதிட நிபுணர் (Jothida Nipunar) — TOPPER ASTRO का तमिल वैदिक ज्योतिष ऐप। <b>प्रभावी:</b> 20 नवंबर 2026।</p>
+      <p><b>हम जो डेटा लेते हैं:</b> आपके द्वारा भरे गए जन्म विवरण (नाम, जन्म तिथि, समय और स्थान, लिंग; विवाह मिलान हेतु दूसरे व्यक्ति का विवरण); AI सहायक से पूछे गए प्रश्न; सहेजी गई टिप्पणियाँ; भेजे गए सुझाव/शिकायतें; एक अनाम Firebase खाता पहचान; और केवल तभी आपका Google ईमेल व नाम जब आप Google खाता जोड़ना चुनें। आपका IP पता हमारे सर्वर को दिखता है और केवल दुरुपयोग रोकने हेतु उपयोग होता है।</p>
+      <p><b>हम जो नहीं लेते:</b> सटीक स्थान, संपर्क, फ़ोटो, कैमरा, माइक्रोफ़ोन, विज्ञापन पहचानकर्ता। ऐप में कोई विज्ञापन और कोई analytics SDK नहीं है।</p>
+      <p><b>उपयोग कैसे होता है:</b> कुंडली व फलादेश की गणना, आपके प्रश्नों के उत्तर, उपकरणों में सहेजी कुंडलियाँ उपलब्ध रखना, रिपोर्ट किए उत्तरों की समीक्षा, और दुरुपयोग रोकना। डेटा कभी नहीं बेचा जाता और विज्ञापन या प्रोफ़ाइलिंग हेतु उपयोग नहीं होता।</p>
+      <p><b>सेवा प्रदाता:</b> Google Firebase (साइन-इन व सहेजी कुंडलियों का क्लाउड भंडारण); Cloudflare (होस्टिंग व गणना सर्वर, जो जन्म विवरण या प्रश्न संग्रहित नहीं करता); एक AI प्रदाता (Google Gemini या Anthropic Claude) जिसे आपका नाम, जन्म विवरण, प्रश्न व गणना परिणाम केवल तभी मिलते हैं जब आप AI-लिखित उत्तर माँगते हैं; OpenStreetMap Nominatim (निर्देशांक खोजने हेतु आपके द्वारा टाइप किया स्थान नाम); Google Fonts।</p>
+      <p><b>AI सूचना:</b> परामर्श भाग के उत्तर एक स्वचालित AI सहायक द्वारा बनाए जाते हैं, मानव ज्योतिषी द्वारा नहीं। हर उत्तर में ऐप के भीतर "रिपोर्ट" विकल्प है।</p>
+      <p><b>अवधारण व विलोपन:</b> सहेजी कुंडलियाँ तब तक रहती हैं जब तक आप उन्हें हटाते नहीं। आप ऐप में खाता → "मेरा डेटा हटाएँ" के अंतर्गत सब कुछ — उपकरण डेटा, क्लाउड रिकॉर्ड व खाता — हटा सकते हैं। देखें <a href="/delete-data.html">डेटा कैसे हटाएँ</a>।</p>
+      <p><b>सुरक्षा:</b> सभी ट्रैफ़िक HTTPS से; प्रत्येक क्लाउड रिकॉर्ड केवल उसके स्वामी को पढ़ने योग्य।</p>
+      <p><b>बच्चे:</b> यह ऐप 18 वर्ष व अधिक आयु के उपयोगकर्ताओं हेतु है।</p>
+      <p><b>संपर्क:</b> ऐप में खाता → "सुझाव या शिकायत भेजें", या ऐप के Google Play पृष्ठ पर दिखाया डेवलपर ईमेल।</p>
+    </div>
+
+    <script>
+      function pickLang(l){
+        var pages=["ta","en","hi"];
+        pages.forEach(function(p){
+          var el=document.querySelector(".L."+p); if(el) el.classList.toggle("show", p===l);
+          var btn=document.querySelector('.langbar button[data-lang="'+p+'"]'); if(btn) btn.classList.toggle("on", p===l);
+        });
+        try{ document.documentElement.lang=l; }catch(e){}
+      }
+      (function(){
+        var l="ta"; try{ var v=localStorage.getItem("jn_lang"); if(v==="en"||v==="hi"||v==="ta") l=v; }catch(e){}
+        pickLang(l);
+      })();
+    </script>
 
     <footer>
       <a href="/privacy.html">தனியுரிமைக் கொள்கை</a>

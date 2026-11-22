@@ -33,12 +33,26 @@
     .en p,.en li{font-size:13.5px;line-height:1.7}
     footer{margin-top:30px;padding-top:14px;border-top:1px solid #e3e8f2;font-size:12.5px;color:#76819a}
     footer a{margin-right:14px}
+    .langbar{display:flex;gap:8px;margin:16px 0 4px;flex-wrap:wrap}
+    .langbar button{min-height:38px;padding:0 16px;border-radius:999px;border:1px solid #c9d3ea;background:#fff;color:#1f3f68;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer}
+    .langbar button.on{background:#1f3f68;color:#fff;border-color:#1f3f68}
+    .L{display:none}.L.show{display:block}
+    .L.en,.L.hi{margin-top:4px}
+    .L.en h2,.L.hi h2{font-size:15px}
+    .L.en p,.L.en li,.L.hi p,.L.hi li{font-size:13.5px;line-height:1.7}
   </style>
 </head>
 <body>
   <div class="wrap">
     <a class="back" href="/">பயன்பாட்டுக்குத் திரும்ப</a>
 
+    <div class="langbar" role="group" aria-label="Language">
+      <button type="button" data-lang="ta" onclick="pickLang('ta')">தமிழ்</button>
+      <button type="button" data-lang="en" onclick="pickLang('en')">English</button>
+      <button type="button" data-lang="hi" onclick="pickLang('hi')">हिन्दी</button>
+    </div>
+
+    <div class="L ta">
     <h1>பயன்பாட்டு விதிமுறைகள்</h1>
     <div class="date">நடைமுறைக்கு வந்த நாள்: 20 நவம்பர் 2026</div>
 
@@ -87,6 +101,46 @@
 
     <h2>11. தொடர்பு</h2>
     <p>பயன்பாட்டில் <b>கணக்கு → "கருத்து அல்லது புகார் அனுப்ப"</b> வழியாக எங்களுக்கு எழுதலாம். Google Play-இல் இந்தப் பயன்பாட்டின் பக்கத்தில் உள்ள உருவாக்குநர் மின்னஞ்சல் முகவரிக்கும் எழுதலாம்.</p>
+    </div>
+
+    <div class="L en" lang="en">
+      <h1>Terms of Use</h1>
+      <div class="date">Effective: 20 November 2026</div>
+      <p style="color:#76819a;font-size:13px">A short summary follows. The complete, authoritative terms are the Tamil version above — tap <b>தமிழ்</b>.</p>
+      <p>By using ஜோதிட நிபுணர் (Jothida Nipunar) by TOPPER ASTRO you accept these terms. If you do not accept them, do not use the app. The app is for users aged 18 and over.</p>
+      <p><b>Service:</b> from your birth details the app calculates horoscope, dasha-bhukti, transits, marriage matching, panchangam, predictions and remedy guidance.</p>
+      <p><b>Guidance only:</b> astrology is a traditional belief-based knowledge. Results shown are not firm predictions and carry no guarantee. They are not a substitute for medical, legal, financial or mental-health advice — consult a qualified professional for those. Do not make major decisions (marriage, work, investment, treatment) on the app's results alone. The app does not predict lifespan, time of death, or the sex of an unborn child.</p>
+      <p><b>AI assistant:</b> answers in the consultation section, and the "AI prediction" / "AI daily prediction" texts, are written by an automated AI assistant, not a human astrologer, and may contain errors. Use the in-app "report" option for any wrong, threatening or inappropriate answer.</p>
+      <p><b>Accuracy:</b> planetary positions are computed with astronomical formulas; a wrong birth time or place changes the result. Panchangam traditions (Drik/Vakya; ayanamsa systems) can differ — compare festival and vratham days with your local panchangam.</p>
+      <p><b>Payment:</b> all features are currently free. If paid features are added later, the price and terms will be shown clearly before purchase. No gemstone, yantra, pooja or other product is sold in the app.</p>
+      <p><b>You must not:</b> use another person's birth details to harm them; abuse the service with automated programs, attack the server, or try to reverse-engineer the calculation engine; use the app for anything unlawful.</p>
+      <p><b>Intellectual property:</b> the calculation engine, design, texts and logos belong to TOPPER ASTRO. You may download and share a horoscope for your own use; commercial re-publishing of the app's content is not permitted.</p>
+      <p><b>Limitation of liability:</b> the service is provided "as is". To the extent the law allows, TOPPER ASTRO is not liable for losses from decisions made relying on the app's results. The service may be interrupted at times.</p>
+      <p><b>Privacy, changes & law:</b> see the <a href="/privacy.html">Privacy Policy</a>. Changed terms are published on this page with a new date. These terms are governed by Indian law.</p>
+      <p><b>Contact:</b> Account → "Send feedback or a complaint" in the app, or the developer email on the app's Google Play page.</p>
+    </div>
+
+    <div class="L hi" lang="hi">
+      <h1>उपयोग की शर्तें</h1>
+      <div class="date">प्रभावी: 20 नवंबर 2026</div>
+      <p style="color:#76819a;font-size:13px">नीचे संक्षिप्त सारांश है। पूर्ण व मान्य शर्तें ऊपर तमिल संस्करण हैं — <b>தமிழ்</b> पर टैप करें।</p>
+      <p>ஜோதிட நிபுணர் (Jothida Nipunar) — TOPPER ASTRO का उपयोग करके आप इन शर्तों को स्वीकार करते हैं। स्वीकार न होने पर ऐप का उपयोग न करें। यह ऐप 18 वर्ष व अधिक आयु हेतु है।</p>
+      <p><b>सेवा:</b> आपके जन्म विवरण से ऐप कुंडली, दशा-भुक्ति, गोचर, विवाह मिलान, पंचांग, फलादेश व उपाय मार्गदर्शन की गणना करता है।</p>
+      <p><b>केवल मार्गदर्शन:</b> ज्योतिष एक पारंपरिक आस्था-आधारित ज्ञान है। दिखाए गए परिणाम निश्चित भविष्यवाणी नहीं हैं और कोई गारंटी नहीं देते। ये चिकित्सा, कानूनी, वित्तीय या मानसिक-स्वास्थ्य सलाह का विकल्प नहीं हैं — उनके लिए योग्य विशेषज्ञ से परामर्श लें। विवाह, नौकरी, निवेश, उपचार जैसे बड़े निर्णय केवल ऐप के परिणाम पर न लें। ऐप आयु, मृत्यु समय, या अजन्मे बच्चे का लिंग नहीं बताता।</p>
+      <p><b>AI सहायक:</b> परामर्श भाग के उत्तर व "AI फलादेश" / "AI दैनिक फल" पाठ एक स्वचालित AI सहायक द्वारा लिखे जाते हैं, मानव ज्योतिषी द्वारा नहीं, और इनमें त्रुटि हो सकती है। किसी गलत, धमकीपूर्ण या अनुचित उत्तर हेतु ऐप के "रिपोर्ट" विकल्प का उपयोग करें।</p>
+      <p><b>सटीकता:</b> ग्रह स्थिति खगोलीय सूत्रों से गणित होती है; गलत जन्म समय या स्थान परिणाम बदल देता है। पंचांग परंपराएँ (दृक/वाक्य; अयनांश पद्धतियाँ) भिन्न हो सकती हैं — त्योहार व व्रत दिन अपने स्थानीय पंचांग से मिलाएँ।</p>
+      <p><b>भुगतान:</b> सभी सुविधाएँ अभी नि:शुल्क हैं। बाद में सशुल्क सुविधा जुड़ने पर मूल्य व शर्तें खरीद से पहले स्पष्ट दिखाई जाएँगी। ऐप में कोई रत्न, यंत्र, पूजा या अन्य वस्तु नहीं बेची जाती।</p>
+      <p><b>आप नहीं कर सकते:</b> किसी अन्य के जन्म विवरण का उसे हानि पहुँचाने हेतु उपयोग; स्वचालित प्रोग्रामों से सेवा का दुरुपयोग, सर्वर पर हमला, या गणना इंजन को रिवर्स-इंजीनियर करने का प्रयास; किसी गैर-कानूनी कार्य हेतु उपयोग।</p>
+      <p><b>बौद्धिक संपदा:</b> गणना इंजन, डिज़ाइन, पाठ व लोगो TOPPER ASTRO के हैं। आप अपने उपयोग हेतु कुंडली डाउनलोड व साझा कर सकते हैं; ऐप सामग्री का व्यावसायिक पुन:प्रकाशन अनुमत नहीं।</p>
+      <p><b>दायित्व सीमा:</b> सेवा "जैसी है" दी जाती है। कानून की अनुमति सीमा तक, ऐप के परिणामों पर भरोसा कर लिए निर्णयों से हुई हानि हेतु TOPPER ASTRO उत्तरदायी नहीं। सेवा कभी-कभी बाधित हो सकती है।</p>
+      <p><b>गोपनीयता, परिवर्तन व कानून:</b> देखें <a href="/privacy.html">गोपनीयता नीति</a>। बदली शर्तें इसी पृष्ठ पर नई तिथि सहित प्रकाशित होंगी। ये शर्तें भारतीय कानून के अधीन हैं।</p>
+      <p><b>संपर्क:</b> ऐप में खाता → "सुझाव या शिकायत भेजें", या ऐप के Google Play पृष्ठ पर डेवलपर ईमेल।</p>
+    </div>
+
+    <script>
+      function pickLang(l){var ps=["ta","en","hi"];ps.forEach(function(p){var el=document.querySelector(".L."+p);if(el)el.classList.toggle("show",p===l);var b=document.querySelector('.langbar button[data-lang="'+p+'"]');if(b)b.classList.toggle("on",p===l);});try{document.documentElement.lang=l;}catch(e){}}
+      (function(){var l="ta";try{var v=localStorage.getItem("jn_lang");if(v==="en"||v==="hi"||v==="ta")l=v;}catch(e){}pickLang(l);})();
+    </script>
 
     <footer>
       <a href="/privacy.html">தனியுரிமைக் கொள்கை</a>
