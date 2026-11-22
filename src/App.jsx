@@ -742,7 +742,7 @@ const DEEP_GROUPS = [
 ];
 
 export default function AstrologyApp() {
-  const { lang, t, tNak, tRashi, tPlanet, tTithi, tYogam, tKaranam, tWeekday, tDir, tMonth, tGem, tColor } = useLang();
+  const { lang, t, tList, tNak, tRashi, tPlanet, tTithi, tYogam, tKaranam, tGowri, tWeekday, tDir, tPhase, tMonth, tGem, tColor } = useLang();
   const [screen, setScreen] = useState(SCREEN.SPLASH);
   const [authMode, setAuthMode] = useState("login");
   const [user, setUser] = useState(null);
@@ -5422,26 +5422,26 @@ ${aiPart}
 
           {/* Header */}
           <div style={{textAlign:"center",marginBottom:14}}>
-            <div style={{fontSize: 20,fontWeight:700,color:"#1f3f68"}}>பஞ்சாங்கம்</div>
-            <div style={{fontSize:12.5,color:"#55626f",marginTop:2}}>{TAMIL_MONTHS[tamilMonthPrevIdx]} / {TAMIL_MONTHS[tamilMonthIdx]} மாதம்</div>
+            <div style={{fontSize: 20,fontWeight:700,color:"#1f3f68"}}>{t("cal.title")}</div>
+            <div style={{fontSize:12.5,color:"#55626f",marginTop:2}}>{t("cal.monthLabel",{a:tMonth(TAMIL_MONTHS[tamilMonthPrevIdx]),b:tMonth(TAMIL_MONTHS[tamilMonthIdx])})}</div>
           </div>
 
           {/* Month Navigator */}
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,padding:"6px 8px",
             background:"#e9f5f4",borderRadius:14,border:"1px solid #cfe6e3"}}>
-            <button aria-label="முந்தைய மாதம்" onClick={()=>{ if(calMonth===0){setCalMonth(11);setCalYear(y=>y-1);} else setCalMonth(m=>m-1); setCalSelected(1); }}
+            <button aria-label={t("cal.prevMonth")} onClick={()=>{ if(calMonth===0){setCalMonth(11);setCalYear(y=>y-1);} else setCalMonth(m=>m-1); setCalSelected(1); }}
               style={{width:40,height:40,display:"grid",placeItems:"center",background:"#ffffff",border:"1px solid #cfe6e3",borderRadius:12,color:"#226b66",cursor:"pointer"}}><ChevronLeft size={20}/></button>
             <div style={{textAlign:"center"}}>
-              <div style={{fontSize:17,fontWeight:700,color:"#226b66"}}>{MONTH_NAMES_TA[calMonth]} {calYear}</div>
+              <div style={{fontSize:17,fontWeight:700,color:"#226b66"}}>{tList("months")[calMonth]} {calYear}</div>
             </div>
-            <button aria-label="அடுத்த மாதம்" onClick={()=>{ if(calMonth===11){setCalMonth(0);setCalYear(y=>y+1);} else setCalMonth(m=>m+1); setCalSelected(1); }}
+            <button aria-label={t("cal.nextMonth")} onClick={()=>{ if(calMonth===11){setCalMonth(0);setCalYear(y=>y+1);} else setCalMonth(m=>m+1); setCalSelected(1); }}
               style={{width:40,height:40,display:"grid",placeItems:"center",background:"#ffffff",border:"1px solid #cfe6e3",borderRadius:12,color:"#226b66",cursor:"pointer"}}><ChevronRight size={20}/></button>
           </div>
 
           {/* Calendar Grid — தேதி + குறிப் புள்ளிகள் மட்டும்; விவரம் கீழே தேர்ந்தெடுத்த நாள் அட்டையில் */}
           <div style={{...card,padding:"8px 8px 10px",marginBottom:10}}>
             <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:4}}>
-              {DAY_SHORT.map((dh,i)=>(
+              {(lang==="ta"?DAY_SHORT:tList("daysShort")).map((dh,i)=>(
                 <div key={i} style={{textAlign:"center",fontSize:12,fontWeight:700,
                   color:i===0?"#c0564f":"#55626f",padding:"6px 0"}}>{dh}</div>
               ))}
@@ -5475,11 +5475,11 @@ ${aiPart}
 
           {/* Legend */}
           <div style={{display:"flex",justifyContent:"center",gap:"6px 12px",marginBottom:14,flexWrap:"wrap"}}>
-            {[["#b58a1e","பௌர்ணமி","circle"],["#27303f","அமாவாசை","ring"],["#226b66","ஏகாதசி","square"],["#b04a69","பண்டிகை","diamond"]].map(([c,l,shape])=>(
+            {[["#b58a1e",tTithi("பௌர்ணமி"),"circle"],["#27303f",tTithi("அமாவாசை"),"ring"],["#226b66",tTithi("ஏகாதசி"),"square"],["#b04a69",t("cal.festival"),"diamond"]].map(([c,l,shape])=>(
               <span key={l} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,color:"#4a5365"}}><span aria-hidden="true" style={{width:9,height:9,background:shape==="ring"?"transparent":c,border:shape==="ring"?`1.5px solid ${c}`:"none",borderRadius:shape==="circle"||shape==="ring"?"50%":shape==="square"?"1px":"2px",transform:shape==="diamond"?"rotate(45deg)":"none"}}/>{l}</span>
             ))}
-            <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,color:"#4a5365"}}><span style={{width:11,height:11,borderRadius:3,background:"#eef7f1",border:"1px solid #cfe6da"}}/>சுப நாள்</span>
-            <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,color:"#4a5365"}}><span style={{width:11,height:11,borderRadius:3,background:"#fbf1f0",border:"1px solid #f0d6d3"}}/>கவனம்</span>
+            <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,color:"#4a5365"}}><span style={{width:11,height:11,borderRadius:3,background:"#eef7f1",border:"1px solid #cfe6da"}}/>{t("cal.goodDay")}</span>
+            <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,color:"#4a5365"}}><span style={{width:11,height:11,borderRadius:3,background:"#fbf1f0",border:"1px solid #f0d6d3"}}/>{t("daily.horaiCaution")}</span>
           </div>
 
           {/* ═══ Selected Day Detail — Full Panchangam ═══ */}
@@ -5491,11 +5491,11 @@ ${aiPart}
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div>
                     <div style={{fontSize:24,fontWeight:800,color:"#1f3f68"}}>{sel.d}</div>
-                    <div style={{fontSize:12,fontWeight:600,color:"#27303f"}}>{DAY_NAMES_TA[sel.dayOfWeek]}</div>
+                    <div style={{fontSize:12,fontWeight:600,color:"#27303f"}}>{lang==="ta"?DAY_NAMES_TA[sel.dayOfWeek]:tWeekday(DAY_NAMES_TA[sel.dayOfWeek])}</div>
                   </div>
                   <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:12,color:"#a9823c"}}>{MONTH_NAMES_TA[calMonth]} {calYear}</div>
-                    <div data-tamil-date style={{fontSize:12,color:"#4a5365"}}>{(()=>{ const md = calMuhurta.days ? calMuhurta.days.find(x => x.d === sel.d) : null; return md?.tamil ? `${md.tamil.month} ${md.tamil.day}` : `${TAMIL_MONTHS[tamilMonthPrevIdx]}/${TAMIL_MONTHS[tamilMonthIdx]}`; })()}</div>
+                    <div style={{fontSize:12,color:"#a9823c"}}>{tList("months")[calMonth]} {calYear}</div>
+                    <div data-tamil-date style={{fontSize:12,color:"#4a5365"}}>{(()=>{ const md = calMuhurta.days ? calMuhurta.days.find(x => x.d === sel.d) : null; return md?.tamil ? `${tMonth(md.tamil.month)} ${md.tamil.day}` : `${tMonth(TAMIL_MONTHS[tamilMonthPrevIdx])}/${tMonth(TAMIL_MONTHS[tamilMonthIdx])}`; })()}</div>
                   </div>
                 </div>
                 {(()=>{
@@ -5524,11 +5524,11 @@ ${aiPart}
               {(()=>{
                 const dp = selPanchang;
                 const rows = [
-                  ["திதி", dp ? dp.tithi : sel.tithi, dp ? `${dp.tithiUntil}${dp.tithiNext ? ` · பின் ${dp.tithiNext}` : ""}` : (sel.paksham || "")],
-                  ["நட்சத்திரம்", dp ? dp.nakshatra : sel.nakshatra, dp ? `${dp.nakUntil}${dp.nakNext ? ` · பின் ${dp.nakNext}` : ""}` : ""],
-                  ["பக்ஷம்", sel.paksham?.includes("சுக்ல") ? "வளர்பிறை" : "தேய்பிறை", ""],
-                  ["யோகம்", sel.yogam, ""], ["கரணம்", sel.karanam, ""], ["சந்திர ராசி", sel.moonRashi, ""],
-                  ["சூரிய உதயம்", sel.sunrise, ""], ["சூரிய அஸ்தமனம்", sel.sunset, ""],
+                  [t("pan.tithi"), dp ? tTithi(dp.tithi) : tTithi(sel.tithi), dp ? `${dp.tithiUntil}${dp.tithiNext ? ` · ${t("pan.then",{x:tTithi(dp.tithiNext)})}` : ""}` : (sel.paksham ? tPhase(sel.paksham.includes("சுக்ல")?"வளர்பிறை":"தேய்பிறை") : "")],
+                  [t("pan.nakshatra"), dp ? tNak(dp.nakshatra) : tNak(sel.nakshatra), dp ? `${dp.nakUntil}${dp.nakNext ? ` · ${t("pan.then",{x:tNak(dp.nakNext)})}` : ""}` : ""],
+                  [t("cal.paksha"), tPhase(sel.paksham?.includes("சுக்ல") ? "வளர்பிறை" : "தேய்பிறை"), ""],
+                  [t("pan.yogam"), tYogam(sel.yogam), ""], [t("pan.karanam"), tKaranam(sel.karanam), ""], [t("daily.moonRashiLabel"), tRashi(sel.moonRashi), ""],
+                  [t("cal.sunrise"), sel.sunrise, ""], [t("cal.sunset"), sel.sunset, ""],
                 ];
                 return (
                   <div data-cal-panchang style={{padding:"6px 14px 4px",borderBottom:"1px solid #eef1f6"}}>
@@ -5547,15 +5547,15 @@ ${aiPart}
 
               {/* காலங்கள் — ராகு காலம், எமகண்டம், குளிகை, அபிஜித் */}
               <div style={{padding:"12px 14px"}}>
-                <div style={{fontSize: 13.5,fontWeight:700,color:"#1f3f68",marginBottom:8}}>நல்ல நேரம் · தவிர்க்க வேண்டிய நேரம்</div>
+                <div style={{fontSize: 13.5,fontWeight:700,color:"#1f3f68",marginBottom:8}}>{t("cal.goodAvoid")}</div>
                 {[
-                  {label:"அபிஜித் முகூர்த்தம்", value:sel.abhijit, good:true},
-                  {label:"ராகு காலம்", value:sel.rahuKalam},
-                  {label:"எமகண்டம்", value:sel.yamagandam},
-                  {label:"குளிகை", value:sel.kuligai},
+                  {label:t("daily.abhijit"), value:sel.abhijit, good:true},
+                  {label:t("pan.rahu"), value:sel.rahuKalam},
+                  {label:t("pan.yama"), value:sel.yamagandam},
+                  {label:t("pan.kuligai"), value:sel.kuligai},
                 ].map((k,i)=>(
                   <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:i?"1px solid #f2f4f9":"none"}}>
-                    <span style={{...chipSm,color:k.good?"#2e7d5b":"#c0564f",background:k.good?"#eaf5ef":"#fbeeed"}}>{k.good?"சுபம்":"தவிர்க்க"}</span>
+                    <span style={{...chipSm,color:k.good?"#2e7d5b":"#c0564f",background:k.good?"#eaf5ef":"#fbeeed"}}>{k.good?t("daily.auspicious"):t("daily.avoid")}</span>
                     <span style={{flex:1,fontSize: 13.5,fontWeight:600,color:"#27303f"}}>{k.label}</span>
                     <span style={{fontSize: 13.5,fontWeight:700,color:"#27303f",fontVariantNumeric:"tabular-nums"}}>{(k.value||"").replace(" — ","–")}</span>
                   </div>
@@ -5566,11 +5566,11 @@ ${aiPart}
               {(()=>{
                 const md = calMuhurta.days ? calMuhurta.days.find(x => x.d === sel.d) : null;
                 const rows = [
-                  md ? ["சுப மதிப்பு", `${md.verdict} (${md.score}/100)`, md.score >= 60 ? "#2e7d5b" : md.score < 40 ? "#c0564f" : "#4a5365"] : null,
-                  ["வார சூலம்", `${VARA_SOOLAM[sel.dayOfWeek]} — இத்திசைப் பயணத்தைத் தவிர்ப்பது மரபு`, "#4a5365"],
-                  md?.panchaka ? ["பஞ்சகம்", md.panchaka, "#c0564f"] : null,
-                  md?.tara ? ["உங்கள் தாரா பலம்", `${md.tara.name} — ${md.tara.desc}`, md.tara.mood === "good" ? "#2e7d5b" : md.tara.mood === "bad" ? "#c0564f" : "#4a5365"] : null,
-                  md?.chandrashtama ? ["சந்திராஷ்டமம்", "உங்கள் ராசிக்கு சந்திராஷ்டம நாள் — முக்கிய முடிவுகளைத் தவிர்க்கவும்", "#c0564f"] : null,
+                  md ? [t("cal.shubaScore"), `${md.verdict} (${md.score}/100)`, md.score >= 60 ? "#2e7d5b" : md.score < 40 ? "#c0564f" : "#4a5365"] : null,
+                  [t("cal.varaSoolam"), t("cal.varaSoolamNote",{dir:tDir(VARA_SOOLAM[sel.dayOfWeek])}), "#4a5365"],
+                  md?.panchaka ? [t("cal.panchaka"), md.panchaka, "#c0564f"] : null,
+                  md?.tara ? [t("cal.taraBala"), `${md.tara.name} — ${md.tara.desc}`, md.tara.mood === "good" ? "#2e7d5b" : md.tara.mood === "bad" ? "#c0564f" : "#4a5365"] : null,
+                  md?.chandrashtama ? [t("cal.chandrashtama"), t("cal.chandrashtamaNote"), "#c0564f"] : null,
                 ].filter(Boolean);
                 return (
                   <div data-day-nature style={{padding:"4px 14px 10px",borderTop:"1px solid #eef1f6"}}>
@@ -5612,27 +5612,27 @@ ${aiPart}
                 const slot = (x, i) => (
                   <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"7px 10px",borderRadius:10,marginBottom:4,
                     background:x.good?"#e9f5ee":"#fbeeed"}}>
-                    <span style={{fontSize: 13,fontWeight:700,color:x.good?"#2e7d5b":"#c0564f"}}>{x.ta}</span>
+                    <span style={{fontSize: 13,fontWeight:700,color:x.good?"#2e7d5b":"#c0564f"}}>{tGowri(x.ta)}</span>
                     <span style={{fontSize: 12.5,color:"#4a5365",fontFamily:"monospace"}}>{x.from} – {x.to}</span>
                   </div>
                 );
                 return (<>
-                  {head("gowri", "கௌரி நல்ல நேரம்", "உத்தி, அமிர்தம், லாபம், தனம், சுகம் — நல்லவை")}
+                  {head("gowri", t("cal.gowriTitle"), t("cal.gowriHint"))}
                   {calOpen.has("gowri") && (
                     <div data-gowri style={{padding:"0 14px 12px"}}>
-                      <div style={{fontSize: 12,fontWeight:700,color:"#55626f",margin:"2px 0 6px"}}>பகல்</div>
+                      <div style={{fontSize: 12,fontWeight:700,color:"#55626f",margin:"2px 0 6px"}}>{t("pan.day")}</div>
                       {gowri.day.map(slot)}
-                      <div style={{fontSize: 12,fontWeight:700,color:"#55626f",margin:"10px 0 6px"}}>இரவு</div>
+                      <div style={{fontSize: 12,fontWeight:700,color:"#55626f",margin:"10px 0 6px"}}>{t("pan.night")}</div>
                       {gowri.night.map(slot)}
                     </div>
                   )}
-                  {head("hora", "ஹோரை அட்டவணை", "குரு, சுக்கிரன், புதன், சந்திரன் ஹோரைகள் சுபம்")}
+                  {head("hora", t("cal.horaTitle"), t("cal.horaHint"))}
                   {calOpen.has("hora") && (
                     <div data-hora style={{padding:"0 14px 12px"}}>
                       {horaRows().map((h, i) => (
                         <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderTop:i?"1px solid #f3f5f9":"none",fontSize: 13}}>
                           <span style={{width:22,textAlign:"center",color:"#a9823c"}}>{h.symbol}</span>
-                          <span style={{flex:1,fontWeight:600,color:h.isBenefic?"#2e7d5b":"#4a5365"}}>{h.planet}{i===0?" (பகல்)":i===12?" (இரவு)":""}</span>
+                          <span style={{flex:1,fontWeight:600,color:h.isBenefic?"#2e7d5b":"#4a5365"}}>{tPlanet(h.planet)}{i===0?` ${t("cal.day")}`:i===12?` ${t("cal.night")}`:""}</span>
                           <span style={{fontSize: 12.5,color:"#4a5365",fontFamily:"monospace"}}>{h.startLabel} – {h.endLabel}</span>
                         </div>
                       ))}
@@ -5660,36 +5660,37 @@ ${aiPart}
               if (x.nakshatra === "கார்த்திகை") v.push("கிருத்திகை");
               return v;
             };
+            const dshort = (dow) => (lang==="ta"?DAY_SHORT:tList("daysShort"))[dow];
             const dateChip = (x, bg, fg) => (
               <button key={x.d} onClick={()=>setCalSelected(x.d)} style={{fontSize: 13,fontWeight:700,minHeight:36,padding:"0 13px",borderRadius:999,border:"none",cursor:"pointer",background:bg,color:fg}}>
-                {x.d} {DAY_SHORT[new Date(calYear, calMonth, x.d).getDay()]}
+                {x.d} {dshort(new Date(calYear, calMonth, x.d).getDay())}
               </button>
             );
             return (
               <div data-month-days style={{...card,padding:"16px",marginBottom:12}}>
-                <div style={{fontSize: 15,fontWeight:700,color:"#1f3f68",marginBottom:10}}>{MONTH_NAMES_TA[calMonth]} — முக்கிய நாட்கள்</div>
-                {days === null && <div style={{fontSize: 13,color:"#55626f"}}>கணக்கிடப்படுகிறது…</div>}
-                {days && days.length === 0 && <div style={{fontSize: 13,color:"#c0564f"}}>இந்தப் பட்டியலைப் பெற முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.</div>}
+                <div style={{fontSize: 15,fontWeight:700,color:"#1f3f68",marginBottom:10}}>{t("cal.monthKeyDays",{m:tList("months")[calMonth]})}</div>
+                {days === null && <div style={{fontSize: 13,color:"#55626f"}}>{t("common.computing")}</div>}
+                {days && days.length === 0 && <div style={{fontSize: 13,color:"#c0564f"}}>{t("err.fetchList")}</div>}
                 {days && days.length > 0 && (<>
                   {(()=>{
                     const pre = `${calYear}-${String(calMonth+1).padStart(2,"0")}-`;
                     const fs = calFestivals.year === calYear ? calFestivals.list.filter(f => f.iso.startsWith(pre)) : [];
                     return (<>
                       <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:8,marginBottom:6}}>
-                        <div style={{fontSize: 12.5,fontWeight:700,color:"#99496a"}}>பண்டிகைகள்</div>
-                        <button data-all-festivals onClick={()=>goTo(SCREEN.FESTIVALS)} style={{background:"none",border:"none",padding:"0 0 0 12px",minHeight:36,fontSize: 12.5,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>ஆண்டு முழுவதும் →</button>
+                        <div style={{fontSize: 12.5,fontWeight:700,color:"#99496a"}}>{t("svc.festivals.t")}</div>
+                        <button data-all-festivals onClick={()=>goTo(SCREEN.FESTIVALS)} style={{background:"none",border:"none",padding:"0 0 0 12px",minHeight:36,fontSize: 12.5,fontWeight:600,color:"#1f3f68",cursor:"pointer"}}>{t("cal.wholeYear")}</button>
                       </div>
-                      {fs.length === 0 && <div style={{fontSize: 13,color:"#55626f",marginBottom:4}}>இந்த மாதம் முக்கியப் பண்டிகை இல்லை.</div>}
+                      {fs.length === 0 && <div style={{fontSize: 13,color:"#55626f",marginBottom:4}}>{t("cal.noFestival")}</div>}
                       {fs.map((f) => { const d = Number(f.iso.slice(8)); return (
                         <button key={f.iso + f.name} data-month-festival onClick={()=>setCalSelected(d)} style={{display:"flex",gap:12,width:"100%",textAlign:"left",padding:"7px 0",background:"none",
                           borderLeft:"none",borderRight:"none",borderBottom:"none",borderTop:"1px solid #f3f5f9",cursor:"pointer",fontSize: 13,lineHeight:1.5}}>
-                          <span style={{width:60,flexShrink:0,fontWeight:700,color:"#27303f"}}>{d} {DAY_SHORT[new Date(calYear, calMonth, d).getDay()]}</span>
+                          <span style={{width:60,flexShrink:0,fontWeight:700,color:"#27303f"}}>{d} {dshort(new Date(calYear, calMonth, d).getDay())}</span>
                           <span style={{color:"#99496a",fontWeight:600}}>{f.name}</span>
                         </button>
                       ); })}
                     </>);
                   })()}
-                  <div style={{fontSize: 12.5,fontWeight:700,color:"#226b66",margin:"14px 0 6px"}}>விரத நாட்கள்</div>
+                  <div style={{fontSize: 12.5,fontWeight:700,color:"#226b66",margin:"14px 0 6px"}}>{t("cal.vrathamDays")}</div>
                   {(()=>{
                     // "பண்டிகைகள் → விரத நாட்கள்" பக்கத்தின் அதே server பட்டியல் (ஒவ்வொரு விரதத்துக்கும் உரிய நேர விதிப்படி).
                     // அது கிடைக்காதபோது மட்டும் உதய காலத் திதிப்படி தோராயப் பட்டியல்.
@@ -5702,32 +5703,32 @@ ${aiPart}
                       {rows.map((r) => (
                         <button key={r.d} data-month-vratham onClick={()=>setCalSelected(r.d)} style={{display:"flex",gap:12,width:"100%",textAlign:"left",padding:"7px 0",background:"none",
                           borderLeft:"none",borderRight:"none",borderBottom:"none",borderTop:"1px solid #f3f5f9",cursor:"pointer",fontSize: 13,lineHeight:1.5}}>
-                          <span style={{width:60,flexShrink:0,fontWeight:700,color:"#27303f"}}>{r.d} {DAY_SHORT[new Date(calYear, calMonth, r.d).getDay()]}</span>
+                          <span style={{width:60,flexShrink:0,fontWeight:700,color:"#27303f"}}>{r.d} {dshort(new Date(calYear, calMonth, r.d).getDay())}</span>
                           <span style={{color:"#4a5365"}}>{r.names.join(" · ")}</span>
                         </button>
                       ))}
-                      {!vrOK && <div style={{fontSize: 11.5,color:"#a3adc2",marginTop:6,lineHeight:1.6}}>தோராயப் பட்டியல் (சூரிய உதயத் திதிப்படி). சரியான விரத நாட்களுக்கு இணையம் தேவை.</div>}
+                      {!vrOK && <div style={{fontSize: 11.5,color:"#a3adc2",marginTop:6,lineHeight:1.6}}>{t("cal.approxVratham")}</div>}
                     </>);
                   })()}
 
-                  <div style={{fontSize: 12.5,fontWeight:700,color:"#53763c",margin:"14px 0 6px"}}>பொதுவான சுப நாட்கள்</div>
+                  <div style={{fontSize: 12.5,fontWeight:700,color:"#53763c",margin:"14px 0 6px"}}>{t("cal.goodDaysTitle")}</div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                     {days.filter(x => x.score >= 80 && !x.panchaka).map(x => dateChip(x, "#e9f5ee", "#2e7d5b"))}
-                    {days.filter(x => x.score >= 80 && !x.panchaka).length === 0 && <span style={{fontSize: 13,color:"#55626f"}}>இந்த மாதம் மிகச் சிறந்த நாள் இல்லை; நல்ல நாட்களை நாள் விவரத்தில் பார்க்கவும்.</span>}
+                    {days.filter(x => x.score >= 80 && !x.panchaka).length === 0 && <span style={{fontSize: 13,color:"#55626f"}}>{t("cal.noBestDay")}</span>}
                   </div>
-                  <div style={{fontSize: 11.5,color:"#55626f",marginTop:6,lineHeight:1.6}}>திருமணம் போன்ற முகூர்த்தங்களுக்கு இருவர் நட்சத்திரப்படியும் பார்க்க வேண்டும்.</div>
+                  <div style={{fontSize: 11.5,color:"#55626f",marginTop:6,lineHeight:1.6}}>{t("cal.muhurtaNote")}</div>
 
-                  <div style={{fontSize: 12.5,fontWeight:700,color:"#99496a",margin:"14px 0 6px"}}>சந்திராஷ்டமம்</div>
+                  <div style={{fontSize: 12.5,fontWeight:700,color:"#99496a",margin:"14px 0 6px"}}>{t("cal.chandrashtama")}</div>
                   {personal ? (
                     <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                       {days.filter(x => x.chandrashtama).map(x => dateChip(x, "#fbeeed", "#c0564f"))}
-                      {days.filter(x => x.chandrashtama).length === 0 && <span style={{fontSize: 13,color:"#55626f"}}>இந்த மாதம் இல்லை.</span>}
+                      {days.filter(x => x.chandrashtama).length === 0 && <span style={{fontSize: 13,color:"#55626f"}}>{t("cal.noneThisMonth")}</span>}
                     </div>
                   ) : (
-                    <div style={{fontSize: 13,color:"#55626f",lineHeight:1.6}}>ஜாதகம் உருவாக்கினால் உங்கள் ராசிக்கான சந்திராஷ்டம நாட்களும் தாரா பலமும் இங்கே காட்டப்படும்.</div>
+                    <div style={{fontSize: 13,color:"#55626f",lineHeight:1.6}}>{t("cal.chandrashtamaPrompt")}</div>
                   )}
-                  {personal && <div style={{fontSize: 11.5,color:"#55626f",marginTop:6}}>{formData.name} — {horoscope.moonRashi} ராசி, {horoscope.nakshatra} நட்சத்திரப்படி.</div>}
-                  <div style={{fontSize: 11.5,color:"#a3adc2",marginTop:10,lineHeight:1.6}}>ஊர், பஞ்சாங்க மரபைப் பொறுத்து விரத நாள் ஒரு நாள் வேறுபடலாம்.</div>
+                  {personal && <div style={{fontSize: 11.5,color:"#55626f",marginTop:6}}>{t("cal.personalNote",{name:formData.name,rashi:tRashi(horoscope.moonRashi),nak:tNak(horoscope.nakshatra)})}</div>}
+                  <div style={{fontSize: 11.5,color:"#a3adc2",marginTop:10,lineHeight:1.6}}>{t("cal.vrathamVaryNote")}</div>
                 </>)}
               </div>
             );
@@ -5737,7 +5738,7 @@ ${aiPart}
           {!isCurrentMonth && (
             <button onClick={()=>{setCalMonth(today.getMonth());setCalYear(today.getFullYear());setCalSelected(today.getDate());}}
               style={{...btnOutline,fontSize:12.5,padding:"9px 0",borderColor:"#dcc27e30",color:"#1f3f68"}}>
-              இன்றைய தேதிக்கு செல்
+              {t("cal.goToday")}
             </button>
           )}
         </div>
